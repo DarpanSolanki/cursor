@@ -1,0 +1,295 @@
+# Novopay Platform - Cursor AI Configuration
+# Optimizes Cursor AI to use codebase documentation during development
+
+# Repository Information
+repository:
+  name: "novopay-platform"
+  type: "microservices-platform"
+  purpose: "Microfinance platform workspace with multiple microservices"
+  version: "1.0.0"
+
+# AI Assistance Configuration
+ai:
+  # Optimize for code understanding and development
+  mode: "documentation-enhanced"
+  
+  # Context prioritization for this repository
+  context:
+    priority_directories:
+      # Most Important: API Specifications and Framework Documentation
+      - "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/"
+      # Second Most Important: Infrastructure and Code Documentation
+      - "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/"
+      # Other important documentation
+      - "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/"
+      - "trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/"
+      - "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/"
+    
+    # Make documentation highly discoverable (prioritized by importance)
+    api_specs_weight: 1.0          # Highest priority - API specs and framework
+    infra_documentation_weight: 0.95  # Second highest - Infrastructure code docs
+    documentation_weight: 0.9
+    api_documentation_weight: 0.85
+    schema_documentation_weight: 0.85
+    
+    # Exclude folders with "prompt" or "others" in name
+    exclude_patterns:
+      - "**/prompt*/**"
+      - "**/prompts/**"
+      - "**/others/**"
+      - "**/*prompt*"
+      - "**/*others*"
+    
+    # Quick access patterns (ordered by priority)
+    quick_access:
+      # Highest Priority: API Specifications
+      - pattern: "service orchestration"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/TPLTFRM - Service Orchestration Framework.md"]
+      - pattern: "API framework"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/"]
+      - pattern: "API specification"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/"]
+      # Second Priority: Infrastructure Documentation
+      - pattern: "infra platform"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Platform-Library-Deep-Analysis.md"]
+      - pattern: "navigation framework"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Navigation-Library-Deep-Analysis.md"]
+      - pattern: "transaction"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Navigation-Library-Deep-Analysis.md"]
+      - pattern: "transaction management"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Navigation-Library-Deep-Analysis.md"]
+      - pattern: "transaction boundary"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Navigation-Library-Deep-Analysis.md"]
+      - pattern: "infra"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/"]
+      # Other patterns
+      - pattern: "code documentation"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/"]
+      - pattern: "data dictionary"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/"]
+      - pattern: "API documentation"
+        paths: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/"]
+
+# Code Generation Optimization
+generation:
+  # Reference repository settings
+  treat_as_documentation_source: true
+  
+  # Enable deep indexing of documentation
+  indexing:
+    include_all_markdown: true
+    include_data_dictionaries: true
+    index_api_documentation: true
+    exclude_folders_with:
+      - "prompt"
+      - "others"
+    
+  # Suggestion enhancement
+  suggestions:
+    prefer_documented_patterns: true
+    use_schema_context: true
+    leverage_existing_apis: true
+    follow_service_orchestration_patterns: true
+
+# Search and Discovery
+search:
+  # Optimize search for documentation lookup (prioritized by importance)
+  boost_factors:
+    api_specs: 2.5              # Highest priority - API specs and framework
+    infra_documentation: 2.3    # Second highest - Infrastructure code docs
+    documentation: 2.0
+    code_documentation: 1.9
+    api_documentation: 1.8
+    schema_documentation: 1.8
+    
+  # Enable semantic search across all documentation
+  semantic_search:
+    enabled: true
+    include_file_types: [".md", ".mdc", ".csv"]
+    exclude_paths:
+      - "**/prompt*/**"
+      - "**/prompts/**"
+      - "**/others/**"
+    
+  # Quick reference shortcuts (ordered by priority)
+  shortcuts:
+    api_specs: "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/"  # Most Important
+    infra_docs: "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/"      # Second Most Important
+    code_docs: "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/"
+    data_dict: "trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/"
+    api_docs: "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/"
+
+# Integration Settings
+integration:
+  # Auto-suggest related documentation
+  auto_suggest_related_files: true
+  cross_reference_enabled: true
+  
+  # Documentation integration
+  documentation_integration:
+    suggest_code_docs: true
+    suggest_api_docs: true
+    suggest_schema_docs: true
+
+# Performance Optimization
+performance:
+  # Optimize for documentation lookup speed
+  cache_strategy: "aggressive"
+  preload_key_files: true
+  
+  # Index optimization for documentation (ordered by priority)
+  index_priority:
+    # Most Important: API Specifications
+    - "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/**/*.md"
+    - "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/**/*.csv"
+    # Second Most Important: Infrastructure Documentation
+    - "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/**/*.md"
+    # Other documentation
+    - "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/**/*.md"
+    - "trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/**/*.md"
+    - "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/**/*.md"
+
+# Workspace Behavior
+workspace:
+  # Treat as knowledge base
+  repository_role: "knowledge_base"
+  
+  # File organization hints (ordered by priority)
+  file_categories:
+    api_specs:
+      patterns: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/**/*.md", "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/**/*.csv"]
+      priority: "highest"
+      exclude: ["**/prompt*/**", "**/others/**"]
+    infra_documentation:
+      patterns: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/**/*.md"]
+      priority: "highest"
+      exclude: ["**/prompt*/**", "**/others/**"]
+    code_documentation:
+      patterns: ["trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/**/*.md"]
+      priority: "high"
+      exclude: ["**/prompt*/**", "**/others/**"]
+    api_documentation:
+      patterns: ["trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/**/*.md"]
+      priority: "high"
+      exclude: ["**/prompt*/**", "**/others/**"]
+    schema_documentation:
+      patterns: ["trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/**/*.md"]
+      priority: "high"
+
+# Metadata for AI Context
+metadata:
+  domain: "microfinance_platform"
+  tech_stack: ["java", "spring_boot", "gradle", "postgresql", "yugabytedb"]
+  architecture: "microservices"
+  framework: "service_orchestration"
+  
+  # Key documentation summary (ordered by priority)
+  key_documentation:
+    # Most Important: API Specifications
+    - name: "Service Orchestration Framework"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/TPLTFRM - Service Orchestration Framework.md"
+      type: "framework_documentation"
+      priority: "highest"
+    - name: "API Specification Template"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/TPLTFRM-API-Specification-Template.docx.md"
+      type: "api_template"
+      priority: "highest"
+    # Second Most Important: Infrastructure Documentation
+    - name: "Infra Platform Library"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Platform-Library-Deep-Analysis.md"
+      type: "code_documentation"
+      priority: "high"
+    - name: "Infra Navigation Library"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Navigation-Library-Deep-Analysis.md"
+      type: "code_documentation"
+      priority: "high"
+      note: "Contains CRITICAL Transaction Management and Boundaries section - essential for understanding transaction behavior across microservices"
+    - name: "Infra Service Gateway Library"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/Infra-Service-Gateway-Library-Deep-Analysis.md"
+      type: "code_documentation"
+      priority: "high"
+    - name: "LOS Data Dictionary"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/mfi_los_data_dictionary_v2.md"
+      type: "schema_documentation"
+    - name: "Actor Data Dictionary"
+      path: "trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/mfi_actor_data_dictionary.md"
+      type: "schema_documentation"
+
+# Feature Flags
+features:
+  enhanced_documentation_mode: true
+  cross_service_suggestions: true
+  schema_aware_suggestions: true
+  api_pattern_suggestions: true
+
+# TRD Generation Configuration (Cursor Plan Mode)
+contextSets:
+  trdGen:
+    include:
+      - .                       # service repo (read/write)
+      - trustt-platform-ai-codegen-artifacts-java/sli/**  # central knowledgebase (read-only)
+      - aicodegen/**            # shared rules/prompts/plans (read-only)
+    
+    rules:
+      - aicodegen/rules/**/**/*.mdc
+    
+    prompts:
+      - aicodegen/prompts/**/**/*.prompt
+    
+    plans:
+      - aicodegen/plans/**/**/*.yaml
+    
+    mcpServers:
+      # Start these before running the Plan (see MCP setup instructions below)
+      # Run: cd trustt-platform-ai-codegen-artifacts-java/cursor-setup/mcp
+      # python3 manage_servers.py start
+      # #### Check Status
+      # python3 manage_servers.py status
+      - name: mcp-orch-parse
+        type: http
+        url: http://localhost:7301
+      - name: mcp-repo-scan
+        type: http
+        url: http://localhost:7302
+      - name: mcp-migration-advisor
+        type: http
+        url: http://localhost:7303
+      - name: mcp-impact
+        type: http
+        url: http://localhost:7304
+      - name: mcp-git-change-locate
+        type: http
+        url: http://localhost:7305
+  
+  bugfixGen:
+    include:
+      - .                       # service repo (read/write)
+      - trustt-platform-ai-codegen-artifacts-java/sli/**  # central knowledgebase (read-only)
+      - aicodegen/**            # shared rules/prompts/plans (read-only)
+    
+    rules:
+      - aicodegen/rules/**/**/*.mdc
+    
+    prompts:
+      - aicodegen/prompts/**/**/*.prompt
+    
+    plans:
+      - aicodegen/plans/**/**/*.yaml
+    
+    mcpServers:
+      # mcp-atlassian is configured via .cursor/mcp.json
+      - name: mcp-orch-parse
+        type: http
+        url: http://localhost:7301
+      - name: mcp-repo-scan
+        type: http
+        url: http://localhost:7302
+      - name: mcp-migration-advisor
+        type: http
+        url: http://localhost:7303
+      - name: mcp-impact
+        type: http
+        url: http://localhost:7304
+      - name: mcp-git-change-locate
+        type: http
+        url: http://localhost:7305

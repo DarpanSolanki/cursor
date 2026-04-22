@@ -1,0 +1,54 @@
+flowchart TB
+  subgraph HTTP["HTTP entry 🔧 platform-lib"]
+    SGC["ServiceGatewayController.getService()<br/>novopay-platform-lib/.../ServiceGatewayController.java"]
+    RPI["RequestProcessor.processRequest()<br/>(impl: RequestProcessorImpl 🔧)"]
+    SO["ServiceOrchestrator.executeProcessors() 🔧"]
+    OXP["OrchestrationXMLParser.getRequestFromOrcXML() 🔧"]
+  end
+
+  subgraph KAFKA["Kafka entry — disburse async"]
+    LMC["LmsMessageBrokerConsumer.computeRecords()"]
+    PCR["LmsMessageBrokerConsumer.processConsumerRecord()"]
+    GSR["LmsMessageBrokerConsumer.getDisburseSkipReason()"]
+    ESO["LmsMessageBrokerConsumer.executeServiceOrchestration()"]
+  end
+
+  subgraph DED["Dedup / state reads"]
+    LAD["LoanAccountDAOService.findLoanByExternalRefNumberAndProductId()"]
+    NCC["NovopayCacheClient.get/set/remove 🔧<br/>dl* keys — no TTL ⚠️"]
+  end
+
+  subgraph PUB["Result publish"]
+    AKP["AccountingKafkaProducer.pushDataToKafkaQueue()<br/>topic los_lms_disbursement_sync"]
+    SRK["LmsMessageBrokerConsumer.sendResultMessageToKafka()<br/>❌ inner catch only logs publish failure"]
+  end
+
+  subgraph DB["DB"]
+    YB[("mfi_accounting (Yugabyte)<br/>loan_account, CRR, txn tables")]
+  end
+
+  SGC -->|calls| RPI
+  RPI --> SO
+  SO --> OXP
+  PCHAIN["Processor chain from ORC XML<br/>(e.g. validateTransactionDataProcessor,<br/>clientReferenceNumberDedupProcessor, createTransaction*)"]
+  SO -->|processors per ORC XML| PCHAIN
+
+  LMC --> PCR
+  PCR --> GSR
+  GSR --> LAD
+  GSR --> NCC
+  PCR -->|try| NCC
+  NCC -->|then| ESO
+  DCP["DefaultExecutionContextPopulator.populateExecutionContext() 🔧"]
+  ESO --> DCP
+  DCP --> SO
+  PCHAIN -->|JPA / *DAOService| YB
+  LAD --> YB
+  PCR -->|finally| SRK
+  SRK --> AKP
+
+  classDef plat fill:#e6f2ff,stroke:#3366cc
+  classDef bad fill:#ffcccc,stroke:#cc0000
+  class SGC,RPI,SO,OXP,DCP plat
+  class NCC bad
+  class SRK bad

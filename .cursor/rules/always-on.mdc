@@ -1,0 +1,216 @@
+---
+description: Session bootstrap, workspace brain map, debugging/RCA discipline, system_brain maintenance cues
+alwaysApply: true
+---
+
+# Always-On Platform Intelligence
+
+## Session bootstrap (mandatory — before other tools)
+
+**When:** The **first** assistant turn in a conversation that does **substantive** workspace work, **and** again if the user switches to a **new** incident/feature/domain in the same thread (different service, log, or money path). Skip only for **non-work** messages (e.g. thanks, off-topic).
+
+**Order (silent — do not ask permission):**
+
+1. `.cursor/onboarding.md`
+2. `.cursor/gaps-and-risks.md` — at least **summary table + all High** items; add Medium/Low **GAP-ids** when the ask clearly touches that area
+3. `.cursor/architecture.md`
+4. **If money, Kafka, multi-service, or cross-repo:** `.cursor/knowledge-graph.md` (name the **money path** + walk **Edge Registry**); add `.cursor/cross-service-transactions.md` when debugging **partial failure** across HTTP/Kafka.
+5. `.cursorrules` — **AGENT SELF-KNOWLEDGE SUMMARY** (and deeper sections when the task needs them)
+
+**Hard gate:** Do **not** open user-supplied logs, run repo-wide search, or read service source **for that problem** until bootstrap (1)–(3) is done. For high blast-radius money/async topics, complete **(4)** before deep code. Narrow glossary-style exceptions below still load (1)–(3) if the term is domain-specific (money, services, flows).
+
+---
+
+## PROMPT SELF-EXPANSION RULE
+
+**Default:** After session bootstrap, for **every** user instruction except the **narrow exceptions** below, run STEP 1–3 **before**:
+
+- Any **code or configuration** change, **or**
+- Further **investigation tools** (reading logs/attachments, grep/search, DB/SQL, tracing orchestration/processors)
+
+This applies to **read-only RCA and log analysis** when the topic is **high blast radius** (see **Mandatory expansion**).
+
+### STEP 1 — Classify the request
+
+**BUG FIX** / **FEATURE** / **INVESTIGATION** / **CODE REVIEW** / **REFACTOR** / **QUESTION**
+
+### STEP 2 — Expand the prompt
+
+```text
+## EXPANDED TASK
+**Type:** [classification]
+**Original request:** [what user said]
+**What I understand:** [precise interpretation]
+**Service(s) involved:** [from architecture.md]
+**Flow(s) involved:** [from **knowledge-graph.md** money path + edges, then `orchestration-map.md` / `accounting-flows.md` / `system_brain/flows/`]
+**Known gaps in this area:** [from gaps-and-risks.md — list gap IDs]
+**Files / evidence I will use:** [paths, correlators, log IDs — before touching]
+**Risk level:** High / Medium / Low
+**Blast radius if I get this wrong:** [services, contracts, money paths]
+```
+
+### STEP 3 — Confirm before proceeding
+
+1. Show the expanded task.
+2. Ask: *“Is this what you want? Anything missing before I proceed?”*
+3. **Wait for confirmation** (or an explicit *proceed / go ahead / yes* in reply).
+4. Only then: edits, deep reads, log drill-down, or multi-file search **for that scope**.
+
+**Mandatory expansion (no shortcut):** production or prod-like **logs**, **incidents**, **money** (ledger, disbursement, repayment, collections, GL, batches), **multi-service** flows, **API/Kafka/ExecutionContext contracts**, **DB/cluster** errors, **security/compliance** — even if the user asked for **analysis only** and **no code**.
+
+### EXCEPTION — skip expansion + confirmation gate (rare)
+
+- **Continuation:** User is answering *proceed / yes / go ahead* to **your** expansion from the **same** thread.
+- **Pure glossary:** One-line definition with **no** code path, logs, DB, or behaviour change (e.g. expand an acronym with zero repo work).
+- **Pure social / out of scope:** Thanks, meta only.
+
+If unsure whether the ask is high blast radius → **use expansion**.
+
+`discuss-before-updating.mdc` still governs **edits**: no code/config changes without explicit user approval after options/trade-offs when appropriate.
+
+---
+
+## On every file open — check silently
+
+- Path listed in `gaps-and-risks.md` evidence? → flag known gap area
+- Money path (orchestration processor, posting, disburse, repayment, batch writer)? → apply financial + idempotency discipline from workspace rules
+- Under `novopay-platform-lib/`? → platform-lib blast radius
+
+## On every suggestion — verify
+
+- Introduces swallow-on-money, missing TTL on lock/dedupe, or contract break?
+- Matches patterns in this repo (orchestration, ExecutionContext, native SQL) — not generic stack-overflow defaults
+
+## End of every task — output
+
+- **Knowledge updated:** [files updated or "none needed"]
+- **Gaps touched:** [GAP-ids or "none"]
+- **Changelog:** [appended | not needed — no platform knowledge change]
+
+Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-dive files for the task type.
+
+---
+
+## Workspace brain + rules (cross-agent)
+
+`system_brain/` and `.cursor/rules/*.mdc` are **on disk for every agent/session** that uses this workspace path. They do **not** auto-run; **read the right files early** to shorten diagnosis.
+
+## Consultation order (efficient)
+
+1. **Orient by symptom / domain** → `system_brain/` (maps, flows, runbooks, edge cases, glossary). **Not** a substitute for verifying code/DB.
+2. **Cross-service or “which hop failed?”** → **`.cursor/knowledge-graph.md`** + **`.cursor/cross-service-transactions.md`** before spelunking multiple repos.
+3. **Standards + gates** → `.cursorrules` (Java/XML); glob-scoped `.mdc` rules when editing matching paths (execution context, architect-thinking, contract safety, `accounting.mdc` preflight/signoff when in accounting-v2).
+4. **Accounting module behaviour (detailed)** → `accounting.mdc` after brain orientation when the change is in accounting-v2.
+5. **Framework / API templates** → `.cursor/index.mdc` and codegen paths it names (`trustt-platform-ai-codegen-artifacts-java/...`).
+6. **Source of truth** → service repos: orchestration XML, processors, services, `deploy/application/`, migrations, **actual DB state** for incidents.
+
+## system_brain layout (quick map)
+
+| Path | Use |
+|------|-----|
+| `system_brain/system_overview.md` | Start here for platform slice this brain covers; **system-wide graph:** `.cursor/knowledge-graph.md` |
+| `system_brain/glossary.md` | Terms |
+| `system_brain/flows/*.md` | End-to-end flow notes (disbursement, repayment, reversals, GL zeroisation, …) |
+| `system_brain/debugging/*.md` | Runbooks |
+| `system_brain/edge_cases/*.md` | Known failure patterns |
+| `system_brain/batch_jobs/`, `system_brain/events/` | Batches / Kafka |
+| `system_brain/data_model/core_tables.md` | Table orientation |
+| `system_brain/rules/rule_inventory.md` | Inventory of workspace rules |
+
+## Rules vs brain
+
+- **`.mdc` rules**: Enforce discipline (ExecutionContext, contracts, financial checks, git, etc.).
+- **`system_brain/`**: Curated **orientation and proven gotchas**; keep factual; if you change accounting-v2 behaviour, sync **`accounting.mdc`** per its **Accounting knowledge sync** section.
+
+## Other workspace artifacts
+
+- **Service-adjacent docs** that must not live inside a service git repo → `docs/<service>/` (see `docs-outside-service-repos.mdc`). When **editing** those files, follow **`docs-outside-service-repos.mdc (Workspace docs maintenance section)`**.
+- **Scripts / local SQL** → `scripts/` (e.g. disburse replay reset) as referenced by relevant rules.
+
+## Efficiency for agents
+
+- Prefer **opening 1–2 brain files** matching the task flow before searching the whole repo; for **multi-service** work, add **`.cursor/knowledge-graph.md`** (correct money path) up front.
+- After orientation, go to **orchestration XML + processors** named in brain docs (or grep) rather than re-deriving from scratch.
+- **Parallel chats/agents**: only when tasks partition cleanly; see **`multi-agent-spawning.mdc`** (default: one agent for money/contract work).
+- **Thin or vague user message**: see **`effective-prompts-and-issue-triage.mdc`** (restate ask, infer from `system_brain/` + code, batch clarifying questions).
+
+## Session handoff (next agent / new chat)
+
+When stopping mid-task, leave **concrete state** so another session can continue without re-discovery:
+
+- **Goal** (one line) and **what’s done vs blocked**
+- **Repos / paths** touched / to touch next (exact module dirs)
+- **Branch** (if git work); **never assume workspace root is a git repo**—run git inside the correct **service** directory (`sliProd = multi-repo`).
+- **Evidence**: error codes, `external_ref_number` / LAN / `stan` (if safe), log file path, **schema + key query** you ran
+- **Open risks**: contract change? replay/idempotency? unresolved DB state?
+
+## Maintaining system_brain
+
+- After a **verified** production or RCA fix in code, consider a short note under **`system_brain/edge_cases/`** or **`flows/`** so the next agent hits it from `system_brain/` first.
+- Use the **system_brain maintenance** section below when editing anything under `system_brain/`.
+
+## Workspace scripts (common entrypoints)
+
+- **`sync_branches_v2.sh`** — multi-repo branch sync (see `git-workflow.mdc`).
+- **`scripts/disburse_loan_sanity.py`** — local disburse sanity (see `disburse-loan-sanity-suite.mdc`).
+- **SQL under `scripts/`** — local DB resets/replay (see `local-dev-workflows.mdc`).
+
+---
+
+## Debugging production issues (RCA discipline)
+
+BUG FIXING, COMPREHENSION & RCA
+
+You are operating as a Principal Engineer in a strict, high-stakes fintech environment. Accuracy and safety are paramount. When investigating a bug, explaining a system flow, or proposing a fix, you MUST adhere strictly to this evidence-based workflow:
+
+## 1. INVESTIGATION BEFORE IMPLEMENTATION (Zero Guessing)
+* **Never jump straight to writing code.** If the request lacks logs, stack traces, or clear context, explicitly ask for them.
+* Trace the execution path. Identify exactly which contracts, APIs, or downstream flows (e.g., accounting, General Ledger, event registries) are involved.
+* Use local/dev DBs for fact-finding when necessary.
+
+## 2. EVIDENCE-BASED ROOT CAUSE ANALYSIS
+* Do not guess the solution. Formulate a hypothesis and **prove it** using the provided code or logs.
+* Format your analysis strictly as follows:
+    * **Observation:** (What the system is currently doing)
+    * **Hypothesis:** (Why it is happening)
+    * **Evidence:** (The specific lines of code or log entries that prove the hypothesis)
+* If you cannot definitively prove the root cause, state: *"I lack the evidence to confirm this root cause. Please provide [Specific Missing Information]."*
+
+## 3. ADVERSARIAL SELF-REVIEW & VERIFICATION (The Superpowers Check)
+Before proposing a final code change, you must provide:
+* **Adversarial Check:** Explicitly list at least TWO ways your proposed solution could fail, edge cases it might miss, or downstream systems it could negatively impact.
+* **Manual Verification Plan:** Since automated tests are restricted, provide the exact `curl` commands, JSON payloads, or Yugabyte SQL queries the user should run locally to absolutely prove the issue is resolved and the database state is correct.
+
+## 4. DISCUSS BEFORE UPDATING (The Human Gate)
+* Propose a targeted, minimal fix.
+* Explicitly list the files that will be modified.
+* **Blast Radius Assessment:** Briefly state any potential risks to adjacent systems or financial flows.
+* **STOP AND WAIT.** End your response with a prompt for the user to approve the approach. Do not generate the final code until explicit approval is given.
+
+## 5. STRICT EXECUTION
+* Once approved, implement ONLY the agreed-upon fix.
+* Do not refactor unrelated code.
+* Do not write or generate automated tests unless explicitly instructed to do so.
+
+---
+
+## system_brain maintenance
+
+Apply when adding or editing files under **`system_brain/`**.
+
+## Content standards
+
+- **Factual only**: Tie claims to **service paths** (e.g. `novopay-platform-accounting-v2/.../FooProcessor.java`), orchestration XML filenames, or verified DB observations. Mark guesses as **UNVERIFIED** if you must keep them.
+- **No secrets**: No passwords, tokens, or production URLs; use placeholders.
+- **Symptom-first in edge_cases**: Title or opening line should match how someone searches (error code, stuck status, duplicate symptom).
+- **Flows**: State **entry API / consumer / batch**, **major status fields**, and **where partial failure** can occur; point to rules (`events.mdc`, `execution-context-discipline`) when relevant—do not duplicate full rule text.
+
+## Cross-links
+
+- **Glossary**: New domain terms → add a line to `system_brain/glossary.md` if reused.
+- **Rule inventory**: When you add a **new** `.cursor/rules/*.mdc`, add one row to `system_brain/rules/rule_inventory.md`.
+- **Accounting code changes**: If the brain doc reflects behaviour implemented in `novopay-platform-accounting-v2/`, sync **`accounting.mdc`** when appropriate (see **Accounting knowledge sync** in that file); brain stays **short orientation**, `accounting.mdc` holds **module deep detail**.
+
+## What not to do
+
+- Do not move **service source** or **large copied code** into `system_brain/`; use `docs/<service>/` for lengthy QA/release artifacts per `docs-outside-service-repos.mdc`.

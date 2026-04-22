@@ -1,0 +1,83 @@
+---
+description: Git commit hygiene, fork/upstream PR workflow, multi-repo sync script phrase
+globs:
+  - "sync_branches_v2.sh"
+  - "**/build.gradle"
+  - "**/build.gradle.kts"
+  - "**/settings.gradle"
+  - "**/settings.gradle.kts"
+alwaysApply: false
+---
+
+# Git commits
+
+When making git commits in this project:
+
+- **Do not** add Cursor, "cursor agent", or any AI/agent reference to commit messages, author, committer, or sign-off.
+- Use the **repository's configured git user** (e.g. `git config user.name` / `user.email`) for author and committer. Do not set author/committer to anything that includes "Cursor" or "agent".
+- Write **neutral commit messages** that describe the code change only (e.g. "Add X", "Fix Y"), with no mention of who or what suggested the change.
+- Do not add `Co-authored-by`, `Signed-off-by`, or similar lines that reference Cursor or an agent.
+
+This keeps the git history showing only the human developer.
+
+---
+
+# Fork & upstream PR workflow
+
+**Remotes**: origin = your fork (push here). upstream = canonical repo (no direct push; changes go via PR).
+
+**Tone**: Minimal git commentary. Run required commands; confirm outcome briefly (e.g. "Pushed. PR shows only your change.").
+
+## Single-feature integration branch
+
+When only one feature (e.g. fetchLoanAccountChargeDetails) must go upstream from an integration branch, with no unrelated commits:
+
+1. Reset branch to upstream: `git fetch upstream <branch>`, `git checkout <branch>`, `git reset --hard upstream/<branch>`.
+2. Apply only the intended change: edit the affected file(s) or cherry-pick the feature commit. Do not merge a branch that brings in other work.
+3. Commit with a single-purpose message.
+4. Push to origin: `git push origin <branch> --force-with-lease`. Force is acceptable on your fork's integration branch when producing a clean diff.
+
+## PR into upstream
+
+- **Base**: upstream branch (e.g. khoslalabs:mfi_integration_v3.2.8.3). **Head**: origin branch (e.g. DarpanSolanki:mfi_integration_v3.2.8.3).
+- Before merge: verify the PR "Files changed" shows only the intended diff. If not, redo the branch as above.
+
+## Contract
+
+- Do not push directly to upstream. Changes are backward-compatible: additive keys and optional behaviour only; no removal or semantic change of existing fields unless agreed.
+
+## Fork integration branch on upstream (no lost fork-only commits)
+
+Use this when **origin** carries commits that are **not** on **upstream** yet (hotfixes, QA-only merges, portfolio tweaks) but you still want the branch to sit on the **latest upstream production line** (same branch name, e.g. `mfi_integration_v3.2.8.4.1`).
+
+1. Fetch both remotes separately (avoid `git fetch upstream origin` — Git treats the second token as a refspec on `upstream`, not a second remote):  
+   `git fetch upstream --prune && git fetch origin --prune`
+2. `git checkout <integration_branch>` then `git reset --hard origin/<integration_branch>` so you start from what the fork last published.
+3. `git rebase upstream/<integration_branch>` — replays **only** commits that are on origin but not on upstream onto the current upstream tip. Resolve conflicts if any; prefer keeping upstream semantics and re-applying fork deltas.
+4. `git push origin <integration_branch> --force-with-lease` — updates the fork without dropping the replayed commits (hashes change; that is expected).
+
+**Downstream feature branches** (e.g. `…_payment_reinitiation` created from upstream-only before this sync): after step 4, either `git reset --hard origin/<integration_branch>` (if they have no unique commits yet) or `git rebase origin/<integration_branch>` so they inherit **upstream + fork-only** work in one line.
+
+Repeat whenever upstream advances on that integration branch so PRs and local work stay aligned with production and fork-only code is not stranded on an old base.
+
+---
+
+# Sync branches shortcut
+
+When the user says any of the following (or equivalent), run the sync script with the branch they name:
+
+- **"sync \<branch_name\>"**
+- **"sync branches to \<branch\>"**
+- **"sync to branch \<branch\>"**
+- **"checkout/sync all repos to \<branch\>"**
+- **"run sync_branches for \<branch\>"**
+
+## What to do
+
+1. From workspace root run: `bash sync_branches_v2.sh <branch_name> DarpanSolanki <workspace_root_path>`.
+2. **Defaults**: username = `DarpanSolanki`, base path = workspace root (e.g. `/home/darpan/Documents/sliProd`). Use these unless the user specifies otherwise.
+3. Do not change the script's default branch in the file unless the user asks to change the default.
+
+## Branch name
+
+Use the exact branch name the user gives (e.g. `mfi_integration_v3.2.8.3`). If they only give a version or partial name, ask for the full branch name.

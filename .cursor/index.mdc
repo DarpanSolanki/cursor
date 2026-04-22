@@ -1,0 +1,169 @@
+---
+description: "Novopay Platform - Microfinance Platform codebase documentation and design patterns. This workspace contains multiple microservices with comprehensive documentation for codebase understanding, API specifications, and database schemas."
+globs: 
+alwaysApply: true
+---
+
+# Novopay Platform Codebase Documentation
+
+## Repository Structure
+
+This workspace contains multiple microservices for the Novopay microfinance platform:
+
+### Core Microservices
+- **`novopay-mfi-los/`** - Loan Origination System (LOS)
+- **`novopay-platform-actor/`** - Actor/Orchestration Service
+- **`novopay-platform-payments/`** - Payments/Collections Service (LCS)
+- **`novopay-platform-task/`** - Task Management Service
+- **`novopay-platform-accounting-v2/`** - Accounting Service
+- **`novopay-platform-masterdata-management/`** - Master Data Management
+- **`novopay-platform-notifications/`** - Notifications Service
+- **`novopay-platform-authorization/`** - Authorization Service
+- **`novopay-platform-approval/`** - Approval Service
+- **`trustt-platform-ai-codegen-artifacts-java/`** - AI code generation artifacts, documentation, and setup scripts
+
+### Infrastructure Libraries
+- **`novopay-platform-lib/`** - Shared libraries and infrastructure components
+  - `infra-platform/` - Core platform framework
+  - `infra-navigation/` - Navigation/processor framework
+  - `infra-service-gateway/` - Service gateway library
+  - Other infra modules for various functionalities
+
+## Documentation Structure
+
+### Workspace fast path: `system_brain/` (orientation + runbooks)
+
+Use **`system_brain/`** at the **workspace root** for **curated flow maps, debugging runbooks, edge cases, batch/event notes, and glossary**—especially for accounting, disbursement, repayment, and money-state flows. Read **`system_brain/system_overview.md`** first, then the relevant file under `flows/`, `debugging/`, or `edge_cases/`. For **cross-service hops** (HTTP/Kafka/Redis between services), also load **`.cursor/knowledge-graph.md`** (money paths + edges). This complements (does not replace) codegen docs and source code; verification is always in orchestration XML, processors, and DB. Cross-agent use is defined in **`.cursor/rules/always-on.mdc`** (Workspace brain + rules) and **`AGENTS.md`**.
+
+### ⭐ MOST IMPORTANT: API Specifications (`trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/0-api-specs/`)
+**Highest Priority Documentation** - Contains API templates and framework documentation:
+- **`TPLTFRM - Service Orchestration Framework.md`** - Core orchestration framework (MOST CRITICAL)
+- **`TPLTFRM-API-Specification-Template.docx.md`** - API specification template
+- **`Trustt Platform API Specification Bodyheader Template - Standard Request-Response Format.csv`** - Request/response format
+
+This directory contains the foundational framework documentation that defines how APIs are structured and implemented across the platform.
+
+### 🔥 SECOND MOST IMPORTANT: Infrastructure Code Documentation (`trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/infra/`)
+**Second Highest Priority** - Infrastructure library documentation:
+- **`Infra-Platform-Library-Deep-Analysis.md`** - Core platform framework
+- **`Infra-Navigation-Library-Deep-Analysis.md`** - Navigation/processor framework
+  - **⚠️ CRITICAL: Transaction Management Section** - Deep understanding of transaction boundaries, implicit vs explicit transactions, inter-service transaction isolation, and nested transaction blocks. **MUST READ** for understanding how transactions work across microservices.
+- **`Infra-Service-Gateway-Library-Deep-Analysis.md`** - Service gateway
+- **`Masterdata-Management-Service-Deep-Analysis.md`** - Master data service
+- **`Notifications-Service-Deep-Analysis.md`** - Notifications service
+- **`PLTFRM - Java Code Generator Guidelines.md`** - Code generation guidelines
+
+This directory contains deep analysis of the infrastructure libraries that form the foundation of all microservices.
+
+### Other Code Documentation (`trustt-platform-ai-codegen-artifacts-java/sli/code-documentations/`)
+Service-specific deep analysis documents for various microservices (outside of infra/)
+
+### API Documentation (`trustt-platform-ai-codegen-artifacts-java/sli/api-documentations/`)
+Service-specific API documentation files for each microservice (outside of 0-api-specs/)
+
+### Database Schema Documentation (`trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/data_dictionaries/`)
+Contains data dictionaries for all database schemas:
+- `mfi_los_data_dictionary_v2.md` - LOS database schema
+- `mfi_actor_data_dictionary.md` - Actor database schema
+- `mfi_payments_data_dictionary.md` - Payments database schema
+- `mfi_task_data_dictionary.md` - Task database schema
+- `mfi_accounting_data_dictionary.md` - Accounting database schema
+- `mfi_masterdata_data_dictionary.md` - Master data database schema
+- `mfi_notifications_data_dictionary.md` - Notifications database schema
+- `mfi_authorization_data_dictionary.md` - Authorization database schema
+- `mfi_approval_data_dictionary.md` - Approval database schema
+
+## Key Design Patterns
+
+### Service Orchestration Framework
+The platform uses a declarative Service Orchestration Framework:
+- **Processors**: Reusable POJO components that implement business logic
+- **Validators**: Standard validation components (MandatoryFieldValidator, PatternFieldValidator, etc.)
+- **Service Orchestration XML**: Declarative configuration for API implementation
+- **Request/Response Templates**: Externalized JSON templates for marshalling/unmarshalling
+
+### ⚠️ CRITICAL: Transaction Management
+**Transaction boundaries are fundamental to understanding the framework:**
+- **Each microservice API call operates under a single transaction boundary**
+- **When Microservice A calls Microservice B's API, they operate in separate, independent transaction boundaries**
+- **Two transaction modes:**
+  - **Implicit Transaction Boundary**: All processors in single transaction (default for POST/PUT/DELETE)
+  - **Explicit Transaction Boundary**: Each processor commits immediately (GET requests, internal API calls)
+- **Nested Transaction Blocks**: Use `<Transaction>` tags in XML for independent transaction boundaries
+- **Same-service internal calls**: Always use explicit transaction management (separate transaction boundary)
+
+**📖 For complete understanding, see:** `Infra-Navigation-Library-Deep-Analysis.md` → **Transaction Management and Boundaries** section
+
+### Architecture Patterns
+- **Multi-tenant Architecture**: Support for multiple tenants with data isolation
+- **Microservices Architecture**: Independent, deployable services
+- **Event-Driven Communication**: Asynchronous communication between services
+- **Repository Pattern**: Data access abstraction layer
+- **Processor Pattern**: Business logic encapsulation in reusable processors
+
+## Usage Guidelines for AI Assistants
+
+### When Working with This Codebase
+0. **For platform incidents / money flows (fast orientation)**: When the task touches disbursement, repayment, GL, reversals, or accounting lifecycle, skim **`system_brain/`** first (see section above), then proceed to specs and code.
+1. **For API Development (HIGHEST PRIORITY)**: Always start with `api-documentations/0-api-specs/` for framework patterns, templates, and Service Orchestration Framework documentation
+2. **For Code Understanding (SECOND PRIORITY)**: Reference `code-documentations/infra/` for deep analysis of infrastructure libraries and core framework components
+3. **For Database Work**: Reference `schema_structure/data_dictionaries/` for table structures and relationships
+4. **For Service-Specific Work**: Check service-specific documentation in `code-documentations/` and `api-documentations/` (outside of infra/ and 0-api-specs/)
+
+### Code Generation Best Practices
+- Always check existing patterns in `code-documentations/` before implementing new features
+- Follow the Service Orchestration Framework patterns documented in `0-api-specs/`
+- Use documented database schemas from `data_dictionaries/` when working with database operations
+- Reference infrastructure library documentation for framework usage patterns
+- Maintain consistency with established conventions and patterns
+
+### Domain Context
+- **Domain**: Microfinance Platform (Novopay/Trustt Platform)
+- **Focus Areas**: Loan Origination, Collections, Task Management, Master Data, Accounting
+- **Technology Stack**: Java 17, Spring Boot 3.5.x on services (3.2.x on some infra libs — verify `build.gradle`), Gradle, YugabyteDB (PostgreSQL protocol)
+- **Architecture**: Microservices with Service Orchestration Framework
+
+## Common Code Patterns
+
+### Processor Creation Pattern
+1. Extend AbstractProcessor
+2. Inject required services via @Autowired
+3. Extract parameters from ExecutionContext (for processor flow)
+4. Call service methods (pass ExecutionContext or extract as parameters based on service needs)
+5. Set response in ExecutionContext
+
+### Service Method Pattern
+1. Use @Service annotation
+2. Use @Transactional for write operations
+3. Inject repositories
+4. Accept ExecutionContext or normal method parameters (based on requirements)
+5. Use ExecutionContext when making inter-microservice calls or need context sharing
+6. Implement business logic
+7. Return entity or result
+
+### Repository Query Pattern
+1. Extend JpaRepository<Entity, ID>
+2. Use @Query for custom queries
+3. Use nativeQuery = true for complex SQL
+4. Use @Param for named parameters
+5. Return List or Optional as appropriate
+6. Always filter by is_deleted = false for soft delete
+
+### ExecutionContext Usage Pattern
+- **In Processors**: Extract from ExecutionContext, pass to service methods (as parameters or ExecutionContext based on need)
+- **In Service Methods**: 
+  - Prefer normal method parameters for simple data passing
+  - Use ExecutionContext when needed for inter-microservice calls or context sharing
+- **Between Microservices**: Use putAPIResponse/getAPIResponse for inter-service calls
+
+## Error Code Conventions
+- Format: SERVICE-XXXX (e.g., LOS-5095, ACT-0028)
+- Range 130001-130099: Mandatory field errors
+- Range 132001-132099: Pattern validation errors
+- Range 30000-30099: Success responses
+- Always use constants, never hardcode
+
+## Important Notes
+- Folders containing "prompt" or "others" in their names are excluded from indexing
+- Documentation is organized by service and functional area
+- All documentation follows consistent naming conventions

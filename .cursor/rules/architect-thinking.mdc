@@ -1,0 +1,1043 @@
+---
+description: Architect thinking, framework internals, tiered solutions, bank/DB/financial patterns, repository comment policy
+globs:
+  - "**/*.java"
+  - "**/*.xml"
+  - "**/*.gradle"
+  - "**/*.gradle.kts"
+alwaysApply: false
+---
+
+# Architect-level thinking
+
+## Design before code
+
+- Before implementing, think: What are the failure modes? What happens on retry? What if the downstream service is down? What if this runs concurrently?
+- For any new feature: draw the data flow mentally (or explain it). Which services are involved? What are the transaction boundaries? Where can partial failure happen?
+- Ask: "If this runs in production with 10K concurrent users and one service is slow, what happens?"
+
+## Distributed systems awareness
+
+- **Partial failure**: When MS A calls MS B then MS C, if C fails, B's changes are already committed. Design compensating actions or make C idempotent.
+- **Eventual consistency**: Kafka-based flows are eventually consistent. The consumer may process hours later. Design for the gap.
+- **Idempotency**: Every write endpoint and consumer must be safe to replay. Use status checks, upserts, or idempotency keys.
+- **Ordering**: Kafka partitions guarantee order within a partition. Use meaningful partition keys (e.g. `external_ref_number` for loan-level ordering).
+- **Timeouts and retries**: Bank API calls can timeout. The transaction may have succeeded on the bank side. Always implement inquiry/callback before assuming failure.
+
+## Performance thinking
+
+- **Think in batch sizes**: If processing 1000 loans, don't make 1000 DB calls. Batch with `IN (...)` or `UNNEST`. Stream results if they don't fit in memory.
+- **Index awareness**: Before writing a WHERE clause, ask: is there an index on this column? If not, should there be?
+- **Connection pool**: Each DB call uses a connection. N+1 queries exhaust pools under load. One query with JOIN is one connection use.
+- **Async where possible**: Bank callbacks, notifications, and non-critical updates can be Kafka-async. Don't block the user's API call.
+
+## Error classification
+
+- **Validation error** (user's fault): Fail-fast, clear message, no retry. `NovopayFatalException`.
+- **Business rule violation** (system state): Fail with clear error code. No retry.
+- **Transient failure** (network, lock, timeout): Retry with backoff. `NovopayNonFatalException` or `@Retryable`.
+- **Infrastructure failure** (DB down, Kafka down): Circuit-break or degrade gracefully. Alert.
+- **Data inconsistency** (shouldn't happen): Log with full context, alert, and fail rather than silently proceeding with wrong data.
+
+## When reviewing or changing code, think like an architect
+
+1. **Blast radius**: How many flows/modules does this change affect?
+2. **Rollback plan**: If this goes wrong in production, can we revert cleanly?
+3. **Monitoring**: How will we know if this change causes problems? (logs, metrics, alerts)
+4. **Data migration**: If schema changes, what about existing data?
+5. **Feature flag**: Should this be behind a flag for gradual rollout?
+
+
+## Growth mindset
+
+- When you encounter a pattern you don't fully understand, name it and note it for study.
+- When you see a better way to do something, propose it (but don't force it into the current change).
+- Learn the "why" behind every framework choice — why native queries? why orchestration XML? why not @Transactional?
+- Study production incidents — they teach more than textbooks.
+- Read the infra-lib source code when behavior is unclear. The source is in `novopay-platform-lib/`.
+
+---
+
+# Principal architect context (sliProd)
+
+(sliProd)
+
+## Before deep work
+
+1. **Identify the service** (`novopay-platform-accounting-v2`, `novopay-mfi-los`, …) and run **git** in that repo root, not assumed workspace root.
+2. **Skim** `.cursor/architecture.md` and the relevant section of `.cursor/accounting-flows.md` or `system_brain/flows/*` for money flows.
+3. **Check platform-lib** (`.cursor/platform-lib.md`) before reimplementing orchestration, HTTP entry, cache, or Kafka plumbing.
+
+## Behaviour
+
+- **Contracts**: additive-only API/Kafka/ExecutionContext changes; grep callers across LOS, payments, batch, webapp, reporting (see `api-contract-safety.mdc`).
+- **Accounting / money**: trace orchestration XML → processors → `postTransaction` / ledger tables; run through `accounting.mdc (Accounting Financial Flow Preflight)` and signoff gate when figures or GL are touched.
+- **Risks**: read `.cursor/gaps-and-risks.md` for known edge cases; do not dismiss Redis, bank replay, or sync field requirements.
+- **Documentation**: prefer updating `system_brain/` for verified operational facts and `accounting.mdc` when accounting-v2 behaviour changes (`accounting.mdc` (Accounting knowledge sync section)).
+
+## Knowledge base files (this workspace)
+
+| File | Purpose |
+|------|---------|
+| `.cursor/architecture.md` | Services, comms, data flow |
+| `.cursor/platform-lib.md` | Shared libs and extension points |
+| `.cursor/accounting-flows.md` | Accounting entry points and major flows |
+| `.cursor/service-contracts.md` | HTTP/Kafka/context contracts |
+| `.cursor/gaps-and-risks.md` | Known gaps and operational risks |
+| `.cursor/conventions.md` | Naming, DB, orchestration habits |
+
+**Also**: `.cursor/docs/*.md` (glossary, patterns, anti-patterns, FAQ, testing) and **`system_brain/flows/*.md`** (indexed in `.cursor/architecture.md` §§11–12).
+
+These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+
+---
+
+# Backend Architecture, SOLID, and Testability
+
+, SOLID, and Testability
+
+## Clean Architecture (strict)
+Structure code so dependencies point inward and each layer has one reason to change:
+
+1. **API/Controller Layer**: HTTP/transport concerns only (request/response mapping, auth hooks, basic validation). No business logic.
+2. **Orchestration/Processor Layer**: Flow control + mandatory orchestration wiring (ExecutionContext key validation, branching decisions, calling services). Keep it lean; delegate core rules to services/domain.
+3. **Service Layer (Business)**: Core business logic + workflow orchestration that is meaningful at the domain level. Keep transactions/commit semantics aligned with the orchestration XML (avoid adding `@Transactional` in services unless explicitly required).
+4. **Domain Layer (Pure)**: Pure models/rules with no Spring annotations, no IO, no DB calls, no external API calls.
+5. **Repository/Data Access**: Only DB interactions. No business logic and no financial rule calculations.
+
+Rule of thumb: if a class needs to change when business rules change, it belongs in `Service`/`Domain` (not controller/processor/repository).
+
+## SOLID (enforced by design)
+- **Single Responsibility**: one class = one reason to change.
+- **Open/Closed**: extend behavior via new classes/implementations; avoid modifying stable, widely-used code.
+- **Liskov Substitution**: subtypes must not weaken invariants.
+- **Interface Segregation**: define small, focused interfaces (especially for external systems).
+- **Dependency Inversion**: depend on abstractions (interfaces) instead of concrete implementations.
+
+## Testability (non-negotiable)
+- Prefer constructor injection (no static dependencies for collaborators).
+- Keep business rules in small, deterministic methods that can be unit tested without DB/network.
+- When an external system is involved (bank/payment/3rd-party API), isolate it behind an interface so it can be mocked in unit tests.
+- Unit tests should not require real DB connections; use mocks/fakes for repositories and external APIs.
+
+## Size constraints (keep code reviewable)
+- Prefer methods under ~30 lines.
+- Avoid large "god classes"; use composition so responsibilities stay cohesive.
+- If a class grows beyond ~300 lines, treat it as a smell and split by responsibility.
+
+## Error handling and idempotency (safety-first)
+- Fail fast with domain-specific exceptions; do not swallow exceptions.
+- For write operations, ensure idempotency via existing status checks / dedupe patterns (especially for orchestration replays and Kafka at-least-once delivery).
+
+---
+
+# Novopay framework deep awareness
+
+## Orchestration engine (infra-navigation)
+
+- Flow defined in `deploy/application/orchestration/*.xml`. Validators → Processors → API calls → Controls.
+- `ServiceOrchestrator.executeProcessors()` runs the flow. Consumers can trigger full orchestration or call services directly.
+- Branching: `<Control method="regExp" pattern="${function_sub_code}" condition="=" value="CREATE">` for flow routing.
+- Maker-checker: `maker_checker_enabled` flag controls approval vs direct execution path.
+
+## Transaction boundaries (critical)
+
+- **Implicit** (POST/PUT/DELETE): Single transaction; commit only if all processors succeed. Rollback on any fatal exception.
+- **Explicit** (GET, internal API calls): Commit per processor/step. Each step is independent.
+- **Nested `<Transaction>` blocks**: For independent commits within a single API (e.g. portfolio transfer uses `explicitTxnMgmt="true"`).
+- **Inter-service calls**: Each microservice call = separate transaction. If MS A calls MS B, MS B's commit is independent. Design for partial failure.
+- **Same-JVM internal API**: Still uses separate transaction boundary (explicit management). Not a shared transaction.
+- **Fatal exception**: Immediate rollback of current transaction. No undo processors run first.
+- **Non-fatal exception**: Undo processors run (if defined), then rethrow.
+- **Never use @Transactional in services** unless framework explicitly requires it (rare: `REQUIRES_NEW` for filler updates).
+
+## ExecutionContext internals
+
+- Interface: `in.novopay.infra.platform.navigation.ExecutionContext`.
+- `put(key, value)` — shared across all downstream processors in the flow.
+- `putLocal(key, value)` — scoped to current step; does not propagate. Use for API call params that must not leak.
+- `getStringValue(key)` — returns String, null if absent.
+- `getLongValue(key)` — returns Long, null if absent. 
+- `getValue(key, Class)` — typed extraction.
+- `getBooleanValue(key)`, `getIntegerValue(key)`, `getDecimalValue(key)` — typed shortcuts.
+- `getAPIRequestJson()` / `getAPIResponse()` / `putAPIResponse()` / `getValueFromAPIResponse(responseName, key, Class)` — for inter-service and bank API results.
+- **Danger**: Keys are stringly-typed. Typos compile but fail at runtime. Always verify key names against orchestration XML and upstream processors.
+
+## Partner discovery + bean routing
+
+- `AbstractPartnerDiscoveryService` reads `executionContext["partner_code"]` to select bank-specific implementation.
+- Different methods may route to different implementations (e.g. blocking REST vs WebClient decorator). Confirm the exact method invoked in the flow.
+- Bank implementations: `NeftServiceHdfc`, `CustomerServiceHdfc`, `MiscFundTransferDecorator`, etc.
+
+## Bank integration templates (JTF)
+
+- Templates: `deploy/application/templates/bankIntegrationRequest/{partner}/` and `bankIntegrationResponse/{partner}/`.
+- JSON structure: `class: "SMPL"` or `"CMPLX"`, `type: "String"` or `"MAP"`. Maps ExecutionContext keys to bank request fields.
+- `JSONFormatter.parse(...)` flattens bank response into a map. Key names depend on template traversal — changes to template shape change parsed keys.
+- **Type gotcha**: JSON numbers may parse as `0` (int) or `0.0` (double) depending on the JSON library. Always handle both.
+- WebClient decorator flows may differ in timing/return contracts from blocking flows. Validate sync vs async semantics.
+
+## Infra-platform validators
+
+- `mandatoryFieldValidator` / `stringMandatoryFieldValidator` — required field check.
+- `patternFieldValidator` — regex validation.
+- `numberValidator` / `numberRangeValidator` — numeric range.
+- `stringLengthValidator`, `emailValidator`, `mobileNoValidator`, `datePatternValidator`.
+- `masterDataValidator` — validates against master data cache.
+- Used in orchestration XML: `<Validator bean="mandatoryFieldValidator"><IParam fieldName="account_number" errorCode="132001"/></Validator>`.
+
+## Mandatory verification for any change
+
+- Read the orchestration XML for the affected flow.
+- Trace all downstream processors that read keys you modify.
+- Verify status transitions, failure flags, persistence logic across retry/callback/inquiry paths.
+- Check if consumers (Kafka) trigger the same flow — they may populate context differently.
+
+---
+
+# Tiered solution approach
+
+When working on **any** bug, production issue, JIRA, or enhancement — always present solutions in tiers. The goal: **reduce TAT** with an immediate fix, then show the architectural path forward.
+
+## Always present these tiers
+
+### L0 — Hotfix / immediate (minutes–hours, no schema change, no lib upgrade)
+- Smallest code change that fixes the symptom **safely**.
+- Config change, flag toggle, condition fix, null guard, status check.
+- No new dependencies, no schema migration, no new API.
+- **Deploy**: Same build, same branch, minimal testing.
+- **Use when**: Production is broken NOW and users are affected.
+
+### L1 — Proper fix (hours–1 day, same framework, same schema)
+- Correct root cause within existing code and framework.
+- Refactor the logic, add missing validation, fix the query, handle the edge case properly.
+- May add new methods, processors, or service changes — but no schema or lib changes.
+- **Deploy**: Normal release cycle, standard QA.
+- **Use when**: Root cause is a code-level flaw that L0 only bandaids.
+
+### L2 — Enhancement (1–3 days, may involve schema change or new config)
+- Better design: add a DB column, new index, new Kafka topic, new config property.
+- Refactor flow for correctness (e.g. add idempotency key column, add status tracking, add audit column).
+- May require Flyway migration, config deployment, cache eviction.
+- **Deploy**: Planned release, schema migration, regression testing.
+- **Use when**: The current design has a structural gap that L1 cannot fully address.
+
+### L3 — Architectural improvement (days–weeks, framework/lib upgrade, cross-module)
+- Upgrade a library or framework version (e.g. Spring Boot 3.x features, Java 21 virtual threads, reactive WebClient).
+- Introduce a new pattern (circuit breaker, outbox pattern, event sourcing, CQRS).
+- Cross-module refactor (shared lib change, new inter-service contract, new Kafka event).
+- External tool/service adoption (distributed tracing, schema registry, API gateway policy).
+- **Deploy**: Major release, cross-team coordination, extensive testing.
+- **Use when**: The problem is systemic and will keep recurring without a design-level change.
+
+## How to present
+
+```
+## L0 — Hotfix (deploy today)
+[What to change, where, why it's safe, what it doesn't fix]
+
+## L1 — Proper fix (next sprint)
+[Root cause fix, what changes, why it's better than L0]
+
+## L2 — Enhancement (planned)
+[Schema/config/flow change, what it enables, migration steps]
+
+## L3 — Architectural (roadmap)
+[Framework/pattern/tool, what problem it solves at scale, rough effort]
+```
+
+## Rules
+
+- **Always start with L0**. Even if the real fix is L2, the team needs something deployable NOW for production fires.
+- **Always include at least L0 + L1**. Quick fix + proper fix is the minimum.
+- **L2 and L3 are optional** but recommended when the issue reveals a structural gap. Even a 1-line mention is valuable — it plants the seed.
+- **Be honest about trade-offs**: L0 may leave tech debt. Say so. L3 may take weeks. Say so.
+- **Tag effort and risk**: For each level, indicate approximate effort (hours/days) and deployment risk (low/medium/high).
+- **Don't over-engineer L0**: The point is speed. A perfect L0 that takes 3 days defeats the purpose.
+- **Don't under-think L1**: If L0 is deployed, L1 must actually fix the root cause, not just be a slightly better bandaid.
+
+## Examples from this codebase
+
+### 3x NEFT duplicate
+- **L0**: Add status check in consumer — skip if loan is ACTIVE. (30 min, no schema change)
+- **L1**: Fix NEFT lookup to include both NEF and NEI; fix else-branch to set DO_TRANSACTION=false; update disbursement_status after NEF. (half day)
+- **L2**: Add `idempotency_key` column to transaction table; check before any bank call. Add Redis distributed lock with TTL. (1-2 days, schema change)
+- **L3**: Adopt outbox pattern — write bank call intent to DB first, then a poller/consumer picks it up exactly-once. Eliminates duplicate at the architecture level. (1-2 weeks)
+
+### Negative net disbursement (-501)
+- **L0**: Add `net_disbursed_amount >= 0` validation before bank call — fail-fast with clear error. (30 min)
+- **L1**: Fix formula to use `approved_amount` instead of `loan_amount`; fix PROC_FEE config so charges don't exceed approved amount. (half day)
+- **L2**: Add DB constraint `CHECK (net_disbursed_amount >= 0)`; add charge validation at configuration time (charge amount < max approved amount). (1 day, schema + config)
+- **L3**: Introduce a `DisbursementAmountCalculator` service with comprehensive unit tests; extract all financial formulas into a testable, auditable calculation engine. (3-5 days)
+
+### LOS KFS broke on empty charges_details
+- **L0**: Restore placeholder in `charges_details` when no charges configured. (30 min)
+- **L1**: Add `charges_configured` flag so callers can distinguish no-config from real data. Keep placeholder for backward compat. (1-2 hours)
+- **L2**: Version the API response (v1 keeps placeholder, v2 returns clean empty list + flag). Migrate callers one by one. (2-3 days)
+- **L3**: Adopt API contract testing (consumer-driven contracts) so response shape changes are caught before merge. (1-2 weeks, tooling)
+
+## When to suggest external tools/libs (L3 ideas)
+
+Mention these when the problem pattern fits — even if adoption is months away, naming the concept helps learning:
+
+| Problem pattern | Tool/concept to mention |
+|----------------|----------------------|
+| Duplicate processing | Outbox pattern, exactly-once Kafka semantics, idempotency key |
+| Cascading failures across services | Circuit breaker (Resilience4j), bulkhead pattern |
+| Hard to trace cross-service flows | Distributed tracing (Micrometer + Zipkin/Jaeger), correlation ID |
+| API contract breaks | Consumer-driven contract testing (Pact), schema registry |
+| Slow batch jobs | Java 21 virtual threads, parallel streams, Spring Batch partitioning |
+| Schema migration pain | Flyway versioned migrations, expand-contract pattern |
+| Config drift across envs | Spring Cloud Config, feature flags (Unleash/LaunchDarkly) |
+| Cache inconsistency | Cache-aside with TTL, write-through, Redis pub/sub invalidation |
+| Monitoring blind spots | Structured logging (JSON), metrics (Micrometer), alerting (Prometheus + Grafana) |
+
+**Keep L3 suggestions to 1-2 lines.** The goal is to plant the seed and name the concept — not write a proposal.
+
+---
+
+# Bank integration patterns
+
+## JTF template flow
+
+1. **Request**: Processor populates ExecutionContext with required fields → JTF template maps context keys to bank JSON structure → HTTP call via WebClient decorator.
+2. **Response**: Raw bank response → `JSONFormatter.parse(template, response)` → flattened `Map<String, Object>` in context.
+
+## Template structure
+
+```json
+{
+  "class": "SMPL",
+  "type": "String",
+  "key": "account_number",
+  "value": "${account_number}"
+}
+```
+
+- `SMPL`: Simple key-value mapping from ExecutionContext.
+- `CMPLX`: Nested/array structures (MAP type).
+- `${key}` references ExecutionContext keys.
+
+## Response parsing gotchas
+
+- `JSONFormatter.parse(...)` flattens nested JSON into a map. Key names depend on template traversal order.
+- **Type coercion**: JSON `0` may parse as `Integer 0` or `Double 0.0` depending on the JSON library. Always handle both: `if (value instanceof Number) { ... }`.
+- **Nested responses**: Some bank APIs return nested JSON. If template changes, parsed key names change too. Always verify with actual bank response samples.
+
+## WebClient decorator pattern
+
+```java
+webClientServiceExecutorDecorator.callBankService(
+    executionContext,
+    templateName,       // e.g. "neftTransfer"
+    requestType,        // POST, PUT
+    postProcessor       // optional post-processing
+);
+```
+
+- Blocking vs async: Some flows use `WebClientServiceExecutorDecorator` (async/reactive), others use blocking REST. Confirm which one the flow uses.
+- The response is automatically placed in ExecutionContext via `putAPIResponse()`.
+
+## NEFT flow lifecycle (learned from production)
+
+1. **Initiate**: Create transaction record → `NEFT_STAGE_1_PENDING`.
+2. **Stage 1 (NEI)**: Bank validates → success → `NEFT_STAGE_2_PENDING`.
+3. **Stage 2 (NEF)**: Bank transfers → success → update `disbursement_status`.
+4. **Callback/Inquiry**: Bank confirms final status.
+
+### Critical lessons
+
+- **Lookup both types**: When checking for existing NEFT transactions, include BOTH `DISBURSEMENT_NEFT_NEF` AND `DISBURSEMENT_NEFT_NEI`. Missing one causes duplicate triggers.
+- **Update status after each stage**: Set `disbursement_status` to the correct state after NEI and NEF. If not updated, the next trigger re-runs the same stage.
+- **Else branch safety**: When a transaction row exists but status is unexpected, set `DO_TRANSACTION = false` to prevent duplicate processing. Don't default to `true`.
+- **ReplyCode extraction**: NEFT v2 response is nested differently from v1. Verify the correct JSON path for `replyCode` in the response template.
+
+## Status transition safety
+
+Before any bank call:
+1. Check current status — is this call valid in the current state?
+2. After the call, update status to the next valid state.
+3. On failure, update status to a failure state (not back to the previous state, which could cause retry loops).
+
+## Timeout handling
+
+Bank API calls can timeout without a definitive response. The transaction may have succeeded on the bank side.
+
+- **Never assume failure on timeout**. Instead:
+  1. Mark as `INQUIRY_PENDING`.
+  2. Run inquiry/callback to get the actual status.
+  3. Only then decide success or failure.
+
+---
+
+# Database performance (YugabyteDB)
+
+(YugabyteDB)
+
+## Always native queries
+
+```java
+// Correct: native SQL
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number = :accountNumber AND is_deleted = false")
+LoanAccountEntity findByAccountNumber(@Param("accountNumber") String accountNumber);
+
+// Wrong: JPQL — poor performance on YugabyteDB
+@Query("SELECT la FROM LoanAccountEntity la WHERE la.accountNumber = :accountNumber AND la.isDeleted = false")
+```
+
+Why: YugabyteDB's query planner works best with native SQL. JPQL adds a translation layer that can produce suboptimal plans.
+
+## N+1 prevention
+
+```java
+// Wrong: N+1 loop
+for (String accountNumber : accountNumbers) {
+    LoanAccountEntity account = repo.findByAccountNumber(accountNumber); // 1 query per item
+}
+
+// Correct: bulk query
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number = ANY(CAST(:accounts AS text[])) AND is_deleted = false")
+List<LoanAccountEntity> findByAccountNumbers(@Param("accounts") String[] accounts);
+
+// Or for List params:
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number IN (:accounts) AND is_deleted = false")
+List<LoanAccountEntity> findByAccountNumberIn(@Param("accounts") List<String> accounts);
+```
+
+Why: In fintech, batch jobs process thousands of accounts. N+1 turns a 50ms batch into a 50-second one.
+
+## Bulk writes
+
+```java
+// Use saveAll for batch inserts
+repository.saveAll(entities); // Single round-trip for all
+
+// For bulk updates, use native query
+@Modifying
+@Query(nativeQuery = true, value = "UPDATE loan_account SET office_id = :officeId, updated_by = :updatedBy, updated_on = :updatedOn WHERE account_id IN (:accountIds)")
+void updateOfficeByAccountIds(@Param("accountIds") List<Long> accountIds, @Param("officeId") Long officeId, ...);
+```
+
+## Soft delete everywhere
+
+Every query MUST include `is_deleted = false` unless explicitly querying deleted records for audit.
+
+```java
+// Every SELECT
+WHERE ... AND is_deleted = false
+
+// Soft delete (never physical DELETE)
+UPDATE table SET is_deleted = true, updated_on = now(), updated_by = :user WHERE id = :id
+```
+
+## Pagination for list queries
+
+```java
+// Native query with pagination
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE office_id = :officeId AND is_deleted = false ORDER BY created_on DESC LIMIT :limit OFFSET :offset")
+List<LoanAccountEntity> findByOffice(@Param("officeId") Long officeId, @Param("limit") int limit, @Param("offset") int offset);
+```
+
+## Index awareness
+
+Before writing a WHERE clause, consider:
+- Is there an index on the filtered column?
+- For composite conditions, is there a composite index?
+- For ORDER BY, does the index support the sort?
+- For JOINs, are foreign keys indexed?
+
+## Projections for read-only queries
+
+When you don't need the full entity, use interface projections or `Object[]` mapping to reduce data transfer:
+
+```java
+@Query(nativeQuery = true, value = "SELECT account_number, account_id, status FROM loan_account WHERE office_id = :officeId AND is_deleted = false")
+List<Object[]> findAccountSummaryByOffice(@Param("officeId") Long officeId);
+```
+
+Architect tip: Interface projections (e.g. `LoanAccountSummaryProjection`) are cleaner than `Object[]` indexing. Prefer named projections for readability.
+
+---
+
+# Financial safety
+
+## Amount validation
+
+Every financial calculation must be validated before persistence or bank call:
+
+```java
+// Validate net disbursement amount
+BigDecimal netDisbursedAmount = approvedAmount
+    .subtract(crossSellAmount)
+    .subtract(taxAmount)
+    .subtract(netOffAmount)
+    .subtract(chargesAmount);
+
+if (netDisbursedAmount.compareTo(BigDecimal.ZERO) < 0) {
+    throw new NovopayFatalException("ACCT-XXXX", "Net disbursed amount cannot be negative: " + netDisbursedAmount);
+}
+```
+
+### Base amount rules
+- **approved_amount**: Use for net disbursement calculations. This is the amount sanctioned to the borrower.
+- **loan_amount**: Includes insurance and add-ons. Do NOT use as base for net disbursement.
+- **Always clarify which amount** is the base in any formula.
+
+## Precision
+
+- Use `BigDecimal` for all monetary amounts. Never `double` or `float`.
+- Set scale explicitly: `amount.setScale(2, RoundingMode.HALF_UP)` for INR.
+- Compare with `compareTo()`, never `equals()` (scale-sensitive).
+
+## Charge and fee calculations
+
+- Charges can be fixed or percentage-based. Percentage charges use the correct base amount.
+- Tax on charges: calculate tax after charge amount, not on the base loan amount.
+- `charge_inclusive_of_tax`: Never return null. Return `false` as default.
+- When no charges are configured, still return a placeholder entry (backward compat) and set `charges_configured = false`.
+
+## Audit trail for money movement
+
+Every money movement must be traceable:
+- Who initiated it (`performed_by`)
+- When (`performed_on`)
+- What amount and from/to accounts
+- GL entries (debit/credit)
+- Status transitions with timestamps
+
+## Idempotency for financial operations
+
+- Disbursement: Check if already disbursed before calling bank API.
+- Repayment: Check if receipt already processed before applying.
+- Charges: Check if already levied before creating.
+
+## Formula documentation
+
+When implementing a financial formula, state it explicitly:
+
+```java
+// Net disbursement = approved_amount - cross_sell - tax - net_off - charges
+// All amounts are in INR, 2 decimal places
+```
+
+This is one of the few places where a comment adds real value — financial formulas must be unambiguous.
+
+---
+
+# Code style: concise and crisp
+
+concise and crisp
+
+When writing or editing code in this project:
+
+- **Default to concise**: Prefer fewer lines, minimal helpers, and no unnecessary repetition. Write the compact version first, not the verbose one.
+- **Avoid verbosity**: Don't add extra methods, layers, or comments just for "clarity" when the same behavior can be expressed more briefly. One clear traversal beats multiple long methods when behavior is the same.
+- **Crisp over elaborate**: Favor direct logic and reuse (e.g. one shared method with a few call sites) over sprawling, step-by-step code unless the user explicitly asks for more detail or documentation.
+
+You do not need the user to say "keep it concise" each time—apply this by default.
+
+---
+
+# Repository layer — no comments
+
+— no comments
+
+When editing files under `**/repository/**` (Spring Data repositories, `*Repository.java`, `*DAOService.java` in that package):
+
+- **Do not** add Javadoc on methods, block comments, or explanatory line comments. Names + `@Query` / SQL text are the documentation.
+- Put performance, index usage, EXPLAIN notes, and schema rationale in **`.cursor/rules/accounting.mdc`** (accounting) or **comments in Flyway SQL** / workspace docs — not in Java repository classes.
+
+Existing file-level headers that predate this rule are left as-is unless a change explicitly removes them.
+
+---
+
+# Principal architect context (sliProd)
+
+(sliProd)
+
+## Before deep work
+
+1. **Identify the service** (`novopay-platform-accounting-v2`, `novopay-mfi-los`, …) and run **git** in that repo root, not assumed workspace root.
+2. **Skim** `.cursor/architecture.md` and the relevant section of `.cursor/accounting-flows.md` or `system_brain/flows/*` for money flows.
+3. **Check platform-lib** (`.cursor/platform-lib.md`) before reimplementing orchestration, HTTP entry, cache, or Kafka plumbing.
+
+## Behaviour
+
+- **Contracts**: additive-only API/Kafka/ExecutionContext changes; grep callers across LOS, payments, batch, webapp, reporting (see `api-contract-safety.mdc`).
+- **Accounting / money**: trace orchestration XML → processors → `postTransaction` / ledger tables; run through `accounting.mdc (Accounting Financial Flow Preflight)` and signoff gate when figures or GL are touched.
+- **Risks**: read `.cursor/gaps-and-risks.md` for known edge cases; do not dismiss Redis, bank replay, or sync field requirements.
+- **Documentation**: prefer updating `system_brain/` for verified operational facts and `accounting.mdc` when accounting-v2 behaviour changes (`accounting.mdc` (Accounting knowledge sync section)).
+
+## Knowledge base files (this workspace)
+
+| File | Purpose |
+|------|---------|
+| `.cursor/architecture.md` | Services, comms, data flow |
+| `.cursor/platform-lib.md` | Shared libs and extension points |
+| `.cursor/accounting-flows.md` | Accounting entry points and major flows |
+| `.cursor/service-contracts.md` | HTTP/Kafka/context contracts |
+| `.cursor/gaps-and-risks.md` | Known gaps and operational risks |
+| `.cursor/conventions.md` | Naming, DB, orchestration habits |
+
+**Also**: `.cursor/docs/*.md` (glossary, patterns, anti-patterns, FAQ, testing) and **`system_brain/flows/*.md`** (indexed in `.cursor/architecture.md` §§11–12).
+
+These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+
+---
+
+# Backend Architecture, SOLID, and Testability
+
+, SOLID, and Testability
+
+## Clean Architecture (strict)
+Structure code so dependencies point inward and each layer has one reason to change:
+
+1. **API/Controller Layer**: HTTP/transport concerns only (request/response mapping, auth hooks, basic validation). No business logic.
+2. **Orchestration/Processor Layer**: Flow control + mandatory orchestration wiring (ExecutionContext key validation, branching decisions, calling services). Keep it lean; delegate core rules to services/domain.
+3. **Service Layer (Business)**: Core business logic + workflow orchestration that is meaningful at the domain level. Keep transactions/commit semantics aligned with the orchestration XML (avoid adding `@Transactional` in services unless explicitly required).
+4. **Domain Layer (Pure)**: Pure models/rules with no Spring annotations, no IO, no DB calls, no external API calls.
+5. **Repository/Data Access**: Only DB interactions. No business logic and no financial rule calculations.
+
+Rule of thumb: if a class needs to change when business rules change, it belongs in `Service`/`Domain` (not controller/processor/repository).
+
+## SOLID (enforced by design)
+- **Single Responsibility**: one class = one reason to change.
+- **Open/Closed**: extend behavior via new classes/implementations; avoid modifying stable, widely-used code.
+- **Liskov Substitution**: subtypes must not weaken invariants.
+- **Interface Segregation**: define small, focused interfaces (especially for external systems).
+- **Dependency Inversion**: depend on abstractions (interfaces) instead of concrete implementations.
+
+## Testability (non-negotiable)
+- Prefer constructor injection (no static dependencies for collaborators).
+- Keep business rules in small, deterministic methods that can be unit tested without DB/network.
+- When an external system is involved (bank/payment/3rd-party API), isolate it behind an interface so it can be mocked in unit tests.
+- Unit tests should not require real DB connections; use mocks/fakes for repositories and external APIs.
+
+## Size constraints (keep code reviewable)
+- Prefer methods under ~30 lines.
+- Avoid large "god classes"; use composition so responsibilities stay cohesive.
+- If a class grows beyond ~300 lines, treat it as a smell and split by responsibility.
+
+## Error handling and idempotency (safety-first)
+- Fail fast with domain-specific exceptions; do not swallow exceptions.
+- For write operations, ensure idempotency via existing status checks / dedupe patterns (especially for orchestration replays and Kafka at-least-once delivery).
+
+---
+
+# Novopay framework deep awareness
+
+## Orchestration engine (infra-navigation)
+
+- Flow defined in `deploy/application/orchestration/*.xml`. Validators → Processors → API calls → Controls.
+- `ServiceOrchestrator.executeProcessors()` runs the flow. Consumers can trigger full orchestration or call services directly.
+- Branching: `<Control method="regExp" pattern="${function_sub_code}" condition="=" value="CREATE">` for flow routing.
+- Maker-checker: `maker_checker_enabled` flag controls approval vs direct execution path.
+
+## Transaction boundaries (critical)
+
+- **Implicit** (POST/PUT/DELETE): Single transaction; commit only if all processors succeed. Rollback on any fatal exception.
+- **Explicit** (GET, internal API calls): Commit per processor/step. Each step is independent.
+- **Nested `<Transaction>` blocks**: For independent commits within a single API (e.g. portfolio transfer uses `explicitTxnMgmt="true"`).
+- **Inter-service calls**: Each microservice call = separate transaction. If MS A calls MS B, MS B's commit is independent. Design for partial failure.
+- **Same-JVM internal API**: Still uses separate transaction boundary (explicit management). Not a shared transaction.
+- **Fatal exception**: Immediate rollback of current transaction. No undo processors run first.
+- **Non-fatal exception**: Undo processors run (if defined), then rethrow.
+- **Never use @Transactional in services** unless framework explicitly requires it (rare: `REQUIRES_NEW` for filler updates).
+
+## ExecutionContext internals
+
+- Interface: `in.novopay.infra.platform.navigation.ExecutionContext`.
+- `put(key, value)` — shared across all downstream processors in the flow.
+- `putLocal(key, value)` — scoped to current step; does not propagate. Use for API call params that must not leak.
+- `getStringValue(key)` — returns String, null if absent.
+- `getLongValue(key)` — returns Long, null if absent. 
+- `getValue(key, Class)` — typed extraction.
+- `getBooleanValue(key)`, `getIntegerValue(key)`, `getDecimalValue(key)` — typed shortcuts.
+- `getAPIRequestJson()` / `getAPIResponse()` / `putAPIResponse()` / `getValueFromAPIResponse(responseName, key, Class)` — for inter-service and bank API results.
+- **Danger**: Keys are stringly-typed. Typos compile but fail at runtime. Always verify key names against orchestration XML and upstream processors.
+
+## Partner discovery + bean routing
+
+- `AbstractPartnerDiscoveryService` reads `executionContext["partner_code"]` to select bank-specific implementation.
+- Different methods may route to different implementations (e.g. blocking REST vs WebClient decorator). Confirm the exact method invoked in the flow.
+- Bank implementations: `NeftServiceHdfc`, `CustomerServiceHdfc`, `MiscFundTransferDecorator`, etc.
+
+## Bank integration templates (JTF)
+
+- Templates: `deploy/application/templates/bankIntegrationRequest/{partner}/` and `bankIntegrationResponse/{partner}/`.
+- JSON structure: `class: "SMPL"` or `"CMPLX"`, `type: "String"` or `"MAP"`. Maps ExecutionContext keys to bank request fields.
+- `JSONFormatter.parse(...)` flattens bank response into a map. Key names depend on template traversal — changes to template shape change parsed keys.
+- **Type gotcha**: JSON numbers may parse as `0` (int) or `0.0` (double) depending on the JSON library. Always handle both.
+- WebClient decorator flows may differ in timing/return contracts from blocking flows. Validate sync vs async semantics.
+
+## Infra-platform validators
+
+- `mandatoryFieldValidator` / `stringMandatoryFieldValidator` — required field check.
+- `patternFieldValidator` — regex validation.
+- `numberValidator` / `numberRangeValidator` — numeric range.
+- `stringLengthValidator`, `emailValidator`, `mobileNoValidator`, `datePatternValidator`.
+- `masterDataValidator` — validates against master data cache.
+- Used in orchestration XML: `<Validator bean="mandatoryFieldValidator"><IParam fieldName="account_number" errorCode="132001"/></Validator>`.
+
+## Mandatory verification for any change
+
+- Read the orchestration XML for the affected flow.
+- Trace all downstream processors that read keys you modify.
+- Verify status transitions, failure flags, persistence logic across retry/callback/inquiry paths.
+- Check if consumers (Kafka) trigger the same flow — they may populate context differently.
+
+---
+
+# Tiered solution approach
+
+When working on **any** bug, production issue, JIRA, or enhancement — always present solutions in tiers. The goal: **reduce TAT** with an immediate fix, then show the architectural path forward.
+
+## Always present these tiers
+
+### L0 — Hotfix / immediate (minutes–hours, no schema change, no lib upgrade)
+- Smallest code change that fixes the symptom **safely**.
+- Config change, flag toggle, condition fix, null guard, status check.
+- No new dependencies, no schema migration, no new API.
+- **Deploy**: Same build, same branch, minimal testing.
+- **Use when**: Production is broken NOW and users are affected.
+
+### L1 — Proper fix (hours–1 day, same framework, same schema)
+- Correct root cause within existing code and framework.
+- Refactor the logic, add missing validation, fix the query, handle the edge case properly.
+- May add new methods, processors, or service changes — but no schema or lib changes.
+- **Deploy**: Normal release cycle, standard QA.
+- **Use when**: Root cause is a code-level flaw that L0 only bandaids.
+
+### L2 — Enhancement (1–3 days, may involve schema change or new config)
+- Better design: add a DB column, new index, new Kafka topic, new config property.
+- Refactor flow for correctness (e.g. add idempotency key column, add status tracking, add audit column).
+- May require Flyway migration, config deployment, cache eviction.
+- **Deploy**: Planned release, schema migration, regression testing.
+- **Use when**: The current design has a structural gap that L1 cannot fully address.
+
+### L3 — Architectural improvement (days–weeks, framework/lib upgrade, cross-module)
+- Upgrade a library or framework version (e.g. Spring Boot 3.x features, Java 21 virtual threads, reactive WebClient).
+- Introduce a new pattern (circuit breaker, outbox pattern, event sourcing, CQRS).
+- Cross-module refactor (shared lib change, new inter-service contract, new Kafka event).
+- External tool/service adoption (distributed tracing, schema registry, API gateway policy).
+- **Deploy**: Major release, cross-team coordination, extensive testing.
+- **Use when**: The problem is systemic and will keep recurring without a design-level change.
+
+## How to present
+
+```
+## L0 — Hotfix (deploy today)
+[What to change, where, why it's safe, what it doesn't fix]
+
+## L1 — Proper fix (next sprint)
+[Root cause fix, what changes, why it's better than L0]
+
+## L2 — Enhancement (planned)
+[Schema/config/flow change, what it enables, migration steps]
+
+## L3 — Architectural (roadmap)
+[Framework/pattern/tool, what problem it solves at scale, rough effort]
+```
+
+## Rules
+
+- **Always start with L0**. Even if the real fix is L2, the team needs something deployable NOW for production fires.
+- **Always include at least L0 + L1**. Quick fix + proper fix is the minimum.
+- **L2 and L3 are optional** but recommended when the issue reveals a structural gap. Even a 1-line mention is valuable — it plants the seed.
+- **Be honest about trade-offs**: L0 may leave tech debt. Say so. L3 may take weeks. Say so.
+- **Tag effort and risk**: For each level, indicate approximate effort (hours/days) and deployment risk (low/medium/high).
+- **Don't over-engineer L0**: The point is speed. A perfect L0 that takes 3 days defeats the purpose.
+- **Don't under-think L1**: If L0 is deployed, L1 must actually fix the root cause, not just be a slightly better bandaid.
+
+## Examples from this codebase
+
+### 3x NEFT duplicate
+- **L0**: Add status check in consumer — skip if loan is ACTIVE. (30 min, no schema change)
+- **L1**: Fix NEFT lookup to include both NEF and NEI; fix else-branch to set DO_TRANSACTION=false; update disbursement_status after NEF. (half day)
+- **L2**: Add `idempotency_key` column to transaction table; check before any bank call. Add Redis distributed lock with TTL. (1-2 days, schema change)
+- **L3**: Adopt outbox pattern — write bank call intent to DB first, then a poller/consumer picks it up exactly-once. Eliminates duplicate at the architecture level. (1-2 weeks)
+
+### Negative net disbursement (-501)
+- **L0**: Add `net_disbursed_amount >= 0` validation before bank call — fail-fast with clear error. (30 min)
+- **L1**: Fix formula to use `approved_amount` instead of `loan_amount`; fix PROC_FEE config so charges don't exceed approved amount. (half day)
+- **L2**: Add DB constraint `CHECK (net_disbursed_amount >= 0)`; add charge validation at configuration time (charge amount < max approved amount). (1 day, schema + config)
+- **L3**: Introduce a `DisbursementAmountCalculator` service with comprehensive unit tests; extract all financial formulas into a testable, auditable calculation engine. (3-5 days)
+
+### LOS KFS broke on empty charges_details
+- **L0**: Restore placeholder in `charges_details` when no charges configured. (30 min)
+- **L1**: Add `charges_configured` flag so callers can distinguish no-config from real data. Keep placeholder for backward compat. (1-2 hours)
+- **L2**: Version the API response (v1 keeps placeholder, v2 returns clean empty list + flag). Migrate callers one by one. (2-3 days)
+- **L3**: Adopt API contract testing (consumer-driven contracts) so response shape changes are caught before merge. (1-2 weeks, tooling)
+
+## When to suggest external tools/libs (L3 ideas)
+
+Mention these when the problem pattern fits — even if adoption is months away, naming the concept helps learning:
+
+| Problem pattern | Tool/concept to mention |
+|----------------|----------------------|
+| Duplicate processing | Outbox pattern, exactly-once Kafka semantics, idempotency key |
+| Cascading failures across services | Circuit breaker (Resilience4j), bulkhead pattern |
+| Hard to trace cross-service flows | Distributed tracing (Micrometer + Zipkin/Jaeger), correlation ID |
+| API contract breaks | Consumer-driven contract testing (Pact), schema registry |
+| Slow batch jobs | Java 21 virtual threads, parallel streams, Spring Batch partitioning |
+| Schema migration pain | Flyway versioned migrations, expand-contract pattern |
+| Config drift across envs | Spring Cloud Config, feature flags (Unleash/LaunchDarkly) |
+| Cache inconsistency | Cache-aside with TTL, write-through, Redis pub/sub invalidation |
+| Monitoring blind spots | Structured logging (JSON), metrics (Micrometer), alerting (Prometheus + Grafana) |
+
+**Keep L3 suggestions to 1-2 lines.** The goal is to plant the seed and name the concept — not write a proposal.
+
+---
+
+# Bank integration patterns
+
+## JTF template flow
+
+1. **Request**: Processor populates ExecutionContext with required fields → JTF template maps context keys to bank JSON structure → HTTP call via WebClient decorator.
+2. **Response**: Raw bank response → `JSONFormatter.parse(template, response)` → flattened `Map<String, Object>` in context.
+
+## Template structure
+
+```json
+{
+  "class": "SMPL",
+  "type": "String",
+  "key": "account_number",
+  "value": "${account_number}"
+}
+```
+
+- `SMPL`: Simple key-value mapping from ExecutionContext.
+- `CMPLX`: Nested/array structures (MAP type).
+- `${key}` references ExecutionContext keys.
+
+## Response parsing gotchas
+
+- `JSONFormatter.parse(...)` flattens nested JSON into a map. Key names depend on template traversal order.
+- **Type coercion**: JSON `0` may parse as `Integer 0` or `Double 0.0` depending on the JSON library. Always handle both: `if (value instanceof Number) { ... }`.
+- **Nested responses**: Some bank APIs return nested JSON. If template changes, parsed key names change too. Always verify with actual bank response samples.
+
+## WebClient decorator pattern
+
+```java
+webClientServiceExecutorDecorator.callBankService(
+    executionContext,
+    templateName,       // e.g. "neftTransfer"
+    requestType,        // POST, PUT
+    postProcessor       // optional post-processing
+);
+```
+
+- Blocking vs async: Some flows use `WebClientServiceExecutorDecorator` (async/reactive), others use blocking REST. Confirm which one the flow uses.
+- The response is automatically placed in ExecutionContext via `putAPIResponse()`.
+
+## NEFT flow lifecycle (learned from production)
+
+1. **Initiate**: Create transaction record → `NEFT_STAGE_1_PENDING`.
+2. **Stage 1 (NEI)**: Bank validates → success → `NEFT_STAGE_2_PENDING`.
+3. **Stage 2 (NEF)**: Bank transfers → success → update `disbursement_status`.
+4. **Callback/Inquiry**: Bank confirms final status.
+
+### Critical lessons
+
+- **Lookup both types**: When checking for existing NEFT transactions, include BOTH `DISBURSEMENT_NEFT_NEF` AND `DISBURSEMENT_NEFT_NEI`. Missing one causes duplicate triggers.
+- **Update status after each stage**: Set `disbursement_status` to the correct state after NEI and NEF. If not updated, the next trigger re-runs the same stage.
+- **Else branch safety**: When a transaction row exists but status is unexpected, set `DO_TRANSACTION = false` to prevent duplicate processing. Don't default to `true`.
+- **ReplyCode extraction**: NEFT v2 response is nested differently from v1. Verify the correct JSON path for `replyCode` in the response template.
+
+## Status transition safety
+
+Before any bank call:
+1. Check current status — is this call valid in the current state?
+2. After the call, update status to the next valid state.
+3. On failure, update status to a failure state (not back to the previous state, which could cause retry loops).
+
+## Timeout handling
+
+Bank API calls can timeout without a definitive response. The transaction may have succeeded on the bank side.
+
+- **Never assume failure on timeout**. Instead:
+  1. Mark as `INQUIRY_PENDING`.
+  2. Run inquiry/callback to get the actual status.
+  3. Only then decide success or failure.
+
+---
+
+# Database performance (YugabyteDB)
+
+(YugabyteDB)
+
+## Always native queries
+
+```java
+// Correct: native SQL
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number = :accountNumber AND is_deleted = false")
+LoanAccountEntity findByAccountNumber(@Param("accountNumber") String accountNumber);
+
+// Wrong: JPQL — poor performance on YugabyteDB
+@Query("SELECT la FROM LoanAccountEntity la WHERE la.accountNumber = :accountNumber AND la.isDeleted = false")
+```
+
+Why: YugabyteDB's query planner works best with native SQL. JPQL adds a translation layer that can produce suboptimal plans.
+
+## N+1 prevention
+
+```java
+// Wrong: N+1 loop
+for (String accountNumber : accountNumbers) {
+    LoanAccountEntity account = repo.findByAccountNumber(accountNumber); // 1 query per item
+}
+
+// Correct: bulk query
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number = ANY(CAST(:accounts AS text[])) AND is_deleted = false")
+List<LoanAccountEntity> findByAccountNumbers(@Param("accounts") String[] accounts);
+
+// Or for List params:
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE account_number IN (:accounts) AND is_deleted = false")
+List<LoanAccountEntity> findByAccountNumberIn(@Param("accounts") List<String> accounts);
+```
+
+Why: In fintech, batch jobs process thousands of accounts. N+1 turns a 50ms batch into a 50-second one.
+
+## Bulk writes
+
+```java
+// Use saveAll for batch inserts
+repository.saveAll(entities); // Single round-trip for all
+
+// For bulk updates, use native query
+@Modifying
+@Query(nativeQuery = true, value = "UPDATE loan_account SET office_id = :officeId, updated_by = :updatedBy, updated_on = :updatedOn WHERE account_id IN (:accountIds)")
+void updateOfficeByAccountIds(@Param("accountIds") List<Long> accountIds, @Param("officeId") Long officeId, ...);
+```
+
+## Soft delete everywhere
+
+Every query MUST include `is_deleted = false` unless explicitly querying deleted records for audit.
+
+```java
+// Every SELECT
+WHERE ... AND is_deleted = false
+
+// Soft delete (never physical DELETE)
+UPDATE table SET is_deleted = true, updated_on = now(), updated_by = :user WHERE id = :id
+```
+
+## Pagination for list queries
+
+```java
+// Native query with pagination
+@Query(nativeQuery = true, value = "SELECT * FROM loan_account WHERE office_id = :officeId AND is_deleted = false ORDER BY created_on DESC LIMIT :limit OFFSET :offset")
+List<LoanAccountEntity> findByOffice(@Param("officeId") Long officeId, @Param("limit") int limit, @Param("offset") int offset);
+```
+
+## Index awareness
+
+Before writing a WHERE clause, consider:
+- Is there an index on the filtered column?
+- For composite conditions, is there a composite index?
+- For ORDER BY, does the index support the sort?
+- For JOINs, are foreign keys indexed?
+
+## Projections for read-only queries
+
+When you don't need the full entity, use interface projections or `Object[]` mapping to reduce data transfer:
+
+```java
+@Query(nativeQuery = true, value = "SELECT account_number, account_id, status FROM loan_account WHERE office_id = :officeId AND is_deleted = false")
+List<Object[]> findAccountSummaryByOffice(@Param("officeId") Long officeId);
+```
+
+Architect tip: Interface projections (e.g. `LoanAccountSummaryProjection`) are cleaner than `Object[]` indexing. Prefer named projections for readability.
+
+---
+
+# Financial safety
+
+## Amount validation
+
+Every financial calculation must be validated before persistence or bank call:
+
+```java
+// Validate net disbursement amount
+BigDecimal netDisbursedAmount = approvedAmount
+    .subtract(crossSellAmount)
+    .subtract(taxAmount)
+    .subtract(netOffAmount)
+    .subtract(chargesAmount);
+
+if (netDisbursedAmount.compareTo(BigDecimal.ZERO) < 0) {
+    throw new NovopayFatalException("ACCT-XXXX", "Net disbursed amount cannot be negative: " + netDisbursedAmount);
+}
+```
+
+### Base amount rules
+- **approved_amount**: Use for net disbursement calculations. This is the amount sanctioned to the borrower.
+- **loan_amount**: Includes insurance and add-ons. Do NOT use as base for net disbursement.
+- **Always clarify which amount** is the base in any formula.
+
+## Precision
+
+- Use `BigDecimal` for all monetary amounts. Never `double` or `float`.
+- Set scale explicitly: `amount.setScale(2, RoundingMode.HALF_UP)` for INR.
+- Compare with `compareTo()`, never `equals()` (scale-sensitive).
+
+## Charge and fee calculations
+
+- Charges can be fixed or percentage-based. Percentage charges use the correct base amount.
+- Tax on charges: calculate tax after charge amount, not on the base loan amount.
+- `charge_inclusive_of_tax`: Never return null. Return `false` as default.
+- When no charges are configured, still return a placeholder entry (backward compat) and set `charges_configured = false`.
+
+## Audit trail for money movement
+
+Every money movement must be traceable:
+- Who initiated it (`performed_by`)
+- When (`performed_on`)
+- What amount and from/to accounts
+- GL entries (debit/credit)
+- Status transitions with timestamps
+
+## Idempotency for financial operations
+
+- Disbursement: Check if already disbursed before calling bank API.
+- Repayment: Check if receipt already processed before applying.
+- Charges: Check if already levied before creating.
+
+## Formula documentation
+
+When implementing a financial formula, state it explicitly:
+
+```java
+// Net disbursement = approved_amount - cross_sell - tax - net_off - charges
+// All amounts are in INR, 2 decimal places
+```
+
+This is one of the few places where a comment adds real value — financial formulas must be unambiguous.
+
+---
+
+# Code style: concise and crisp
+
+concise and crisp
+
+When writing or editing code in this project:
+
+- **Default to concise**: Prefer fewer lines, minimal helpers, and no unnecessary repetition. Write the compact version first, not the verbose one.
+- **Avoid verbosity**: Don't add extra methods, layers, or comments just for "clarity" when the same behavior can be expressed more briefly. One clear traversal beats multiple long methods when behavior is the same.
+- **Crisp over elaborate**: Favor direct logic and reuse (e.g. one shared method with a few call sites) over sprawling, step-by-step code unless the user explicitly asks for more detail or documentation.
+
+You do not need the user to say "keep it concise" each time—apply this by default.
+
+---
+
+# Repository layer — no comments
+
+— no comments
+
+When editing files under `**/repository/**` (Spring Data repositories, `*Repository.java`, `*DAOService.java` in that package):
+
+- **Do not** add Javadoc on methods, block comments, or explanatory line comments. Names + `@Query` / SQL text are the documentation.
+- Put performance, index usage, EXPLAIN notes, and schema rationale in **`.cursor/rules/accounting.mdc`** (accounting) or **comments in Flyway SQL** / workspace docs — not in Java repository classes.
+
+Existing file-level headers that predate this rule are left as-is unless a change explicitly removes them.

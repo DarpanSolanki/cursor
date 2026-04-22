@@ -1,0 +1,2307 @@
+---
+description: "Accounting module (novopay-platform-accounting-v2) deep knowledge — transaction types, entities, GL codes, flows, column semantics"
+globs: "novopay-platform-accounting-v2/**/*.java"
+alwaysApply: false
+---
+
+# Accounting Module — LMS Core Knowledge
+
+## Transaction types and sub-types
+
+| Type | Sub-type | Source | What it posts | When |
+|------|----------|--------|---------------|------|
+| LOAN_DISBURSEMENT | CASH, CASA, ACCOUNT_TRANSFER_NEFT | loans_orc.xml, BookChildLoanProcessor | Principal, upfront interest | Real-time disbursement |
+| LOAN_REPAYMENT | CASH, UPI, NET_BANKING, EXCESS_AMT | loans_orc.xml, mfi_orc.xml | PRIN, INT, PINT, FEE, excess | Real-time repayment |
+| LOAN_PREPAYMENT | CASH | loans_orc.xml | PRIN, INT, POS, BPI, CBC | Foreclosure |
+| LOAN_PART-PREPAYMENT | CASH, instrumentType | PopulateAdditionalAmountForPartPrepaymentProcessor | PRIN, INT, charges | Part prepayment |
+| BILLING | NORMAL_BILLING | LoanAccountBillingService | PRIN + INT per installment | EOD nightly |
+| INTEREST | NORMAL_ACCRUAL | InterestAccrualBookingService | Interest accrual | EOD / forceful in DCF |
+| INTEREST | NPA_ACCRUAL, NPA_ACCRUAL_BOOKING | InterestAccrualBookingService | NPA interest | EOD for NPA loans |
+| DEATH_FORECLOSURE | DEFAULT | DeathForeclosureInsuranceWriter | PRIN, INT, BPI, POS, excess, losses | DCF batch |
+| RSCH_DEATH_FORECLOSURE | DEFAULT | DeathForeclosureInsuranceWriter | Parent loan part-prepayment | DCF batch (parent) |
+| AUTO_CLOSURE | LOAN_ACCOUNT | LoanAccountClosureService | Closure amounts | EOD auto-closure |
+| REGULAR_TO_NPA / NPA_TO_REGULAR | INT_INCOME | AssetClassification processors | NPA movement | NPA batch |
+| EXCESS_AMT_REFUND | LOAN_ACCOUNT, INCOME_GL | loans_orc.xml | Excess refund | Real-time |
+| LOAN_DISB_CNCL | CASH | loans_orc.xml | Disbursement reversal | Cancellation |
+| LOAN_WRITE_OFF | FINAL_WRITE_OFF | loans_orc.xml | Write-off | Real-time |
+| LOAN_REBOOKING | INTEREST_ADJUSTMENT | ExecuteLoanAccountRebookingProcessor | Interest adjustment | Rebooking |
+| ACCR_PROVISIONING | LOANS | LoanProvisioningPostingService | Provisioning | EOD |
+| MANUAL_JOURNAL_POSTING | GL | product_transaction_orc.xml | Manual JE | Real-time |
+
+## Key entities and column semantics
+
+### loan_due_details (LoanDueDetailsEntity)
+- **due_amount**: total amount due for this component in this installment
+- **paid_amount**: cumulative actual payments received (persisted, updated after each repayment)
+- **waived_amount**: cumulative amount waived/written off (loss bucket, NOT actual payment)
+- **current_paid_amount**: TRANSIENT — amount paid in the current transaction only; NOT persisted
+- **component_type**: PRIN, INT, PINT (penal), FEE
+- **Outstanding = due_amount - paid_amount - waived_amount**
+- **CRITICAL**: paid_amount ≠ waived_amount. paid = actual money received. waived = forgiven/loss. Never mix them when computing "extra interest paid" or similar.
+
+### Who writes paid_amount
+- RepaymentApproppriationProcessor → sets currentPaidAmount → CreateRepaymentInstallmentDetailsProcessor adds to paidAmount
+- UpdateLoanDueDetailsProcessor (repayment, DCF)
+- DeathForeclosureInsuranceWriter (BPI paid)
+
+### Who writes waived_amount
+- UpdateLoanDueDetailsForWaiverProcessor
+- UpdateDueDetailsForPrepaymentProcessor (foreclosure waivers)
+- DeathForeclosureInsuranceWriter (interest/penal/fee waivers)
+
+### loan_account (LoanAccountEntity)
+- **loan_status**: APPROVED, ACTIVE, DEATH_FORECLOSURE_FREEZE, FORECLOSURE_FREEZE, CLOSED, etc.
+- **excess_amount**: money overpaid by customer sitting in loan account
+- **loan_amount**: total loan (may include insurance premium)
+- **approved_amount**: sanctioned amount (use this for net disbursement calcs, NOT loan_amount)
+- **disbursement_status**: BANK_SUCCESS, COMPLETED, NEFT stages, etc.
+
+### Group / individual child loan — bank `externalReferenceNo` vs `client_request_response_log`
+- **Dedupe / lookup**: `CallBankAPIForIndividualChildLoanDisbursementProcessor` keeps **`client_request_response_log.loan_account_number` = parent loan account number** (same key as verified parent dedupe), with **child-scoped `transaction_type`** (suffix includes child id, e.g. `…_EXTREF<childExternalRef>_MFT` / `_NEFT_NEF` / `_NEFT_NEI`).
+- **Generated bank reference string**: `ExternalReferenceNoUtil.computeDeterministicExternalReferenceNo(..., clientReferenceBaseOverride)` uses **`clientReferenceBaseOverride = parentLAN + child_seq_no`** for child disbursement bank calls (`CreateClmtLoanAccountEventsProcessor` sets `child_seq_no` as 1..N and `ChildLoanMoneyTransferEventsQueueDataPopulator` carries it in queue payload). `CallBankAPIForIndividualChildLoanDisbursementProcessor` now treats `child_seq_no` as mandatory and fails fast (`MFI-40001`) if missing, to avoid long `externalReferenceNo` fallback paths. Lookup stays parent LAN + child-scoped `transaction_type`.
+- **GL CBS disbursement NET-OFF external key**: `DisbGLCBSIntegrationProcessor` uses leg prefix `01` + `DISB_GL_CBS_INTEGRATION` for the main leg and `04` + `DISB_GL_CBS_INTEGRATION_NETOFF` for NET-OFF so full `client_reference_number` never collides with the main leg while counters stay per-type (standard `ExternalReferenceNoUtil` FAIL/SUCCESS retry). `GLCBSIntegrationService` dedupe remains by `loan_account_number` + `transaction_type` + SUCCESS for both disbursement types.
+- **Child money-transfer queue payload** (`ChildLoanMoneyTransferEventsQueueDataPopulator`): `ACCOUNT_NUMBER` in the JSON is the **parent** LAN from the batch execution context (not a resolved child LAN).
+- **`client_request_response_log.status = UNKNOWN` (MFT/NEFT disbursement bank calls only)**: `CallBankAPIForDisbursementProcessor` / `CallBankAPIForIndividualChildLoanDisbursementProcessor` persist **UNKNOWN** for ambiguous/non-success outcomes on bank calls, not just uncertain transport:
+  - **MFT status inquiry**: if the parsed inquiry outcome is **not** a definitive success (`isMFTTransactionSuccess == false`), log **UNKNOWN** (instead of logging SUCCESS).
+  - **MFT status inquiry (try-path mapping)**: when `errorCode=0` and parsing can extract `transactionStat`:
+    - `transactionStat != "Failure"` => log **SUCCESS**
+    - `transactionStat == "Failure"` => log **FAIL**
+    - otherwise (parsing can’t be trusted) => log **UNKNOWN**
+  - **MFT status inquiry (exception path)**: if the inquiry call throws (catch path), log **UNKNOWN** (instead of FAIL) so retries preserve idempotency.
+  - **MFT status inquiry (HDFC GTSI) `externalReferenceNo`**: session `externalReferenceNo` uses leg prefix **`06`** plus the **same numeric attempt counter** as the corresponding `DISBURSEMENT_*_MFT` payment ref (leg **`02`**). `refUsrNo` / `transaction_ref_number` remains the **original MFT payment** `client_reference_number`. This avoids bank duplicate-session rejection; `ExternalReferenceNoUtil` UNKNOWN-stability logic parses inquiry refs with **`06`** or legacy rows that reused **`02`**.
+  - **MFT status inquiry retry/stop decision (`DO_TRANSACTION`)**:
+    - `SUCCESS` => `DO_TRANSACTION=false` (do not re-initiate `DISBURSEMENT_MFT`)
+    - definitive `FAIL` (`inquiryLogStatus=FAIL`) => `DO_TRANSACTION=true` (re-initiate `DISBURSEMENT_MFT`)
+    - `UNKNOWN` => `DO_TRANSACTION=false` (processor does not re-initiate immediately; later replay relies on deterministic ref reuse)
+  - **NEFT v1 payment**: if `out_transaction_id` is blank, log **UNKNOWN** (instead of FAIL).
+  - **NEFT v1 sender/debit account (child-loans)**: child-loan NEFT v1 now sets `from_account_number=parent_disbursement_account_number` (and `from_customer_id=parent_disbursement_bank_customer_id`) in the execution context, and the HDFC NEFT v1 lib (`NeftTransaction`) uses these values when present; otherwise it falls back to configured `hdfc.bank.neft.sender.account.number` / `hdfc.bank.neft.customer.id`. This matches the existing `MiscFundTransfer` override pattern and prevents debiting the global config account for child transfers.
+ - **Child charges distribution**: falls back to **parent-level** charges when the request contains an **empty/null** member charge payload for **any** member. When all members have **non-empty** details, charge amounts are computed **per child** from that child's payload (prevents PROC_FEE/child amount mismatches for `[]` cases).
+  - Existing **uncertain transport** handling still applies (connect/read timeout, `NovopayFatalException` **408**, `BANK-100001` / `BANK-100004` when not SSL peer verification) with `DisbursementBankCallUncertainty`.
+  - Other/non-disbursement steps still log **FAIL** (e.g. `getCustomerDetails` / Actor errors) because UNKNOWN is tied to MFT/NEFT disbursement call contexts.
+  - Same ref on retry: `ExternalReferenceNoUtil` bumps counter only on **definitive FAIL** for the last MFT payment attempt. Additionally, if the latest **MFT inquiry** is `UNKNOWN`, it **reuses the inquiry counter** for the next MFT payment initiation to avoid double-disbursement risk. **GL CBS** CRR remains **FAIL** on error (`GLCBSIntegrationService` unchanged for UNKNOWN). Detection: `DisbursementBankCallUncertainty`.
+- **NEFT v2 stage-wise flow (child-loans)**: when `disbursement_mode=OTHBACCT`, the child processor initiates NEFT in two stages and updates `loan_account_events_queue` via the WebClient post-processor:
+  - stage-1: `disbursement_status=DTFC_SUCCESS` -> `ST_NEF`, sets `NEFT_STAGE_1_PENDING`, and logs child-scoped `..._NEFT_NEF`
+  - stage-2: `disbursement_status=NEFT_STAGE_1_SUCCESS` (or `NEFT_STAGE_2_PENDING`) -> `ST_NEI`, sets `NEFT_STAGE_2_PENDING`, and logs child-scoped `..._NEFT_NEI`; callbacks progress the CLMT queue to `COMPLETED`
+  - **NEFT v2 NEI callback CLMT parity with single-loan (UD)**: For **single-loan** NEFT v2, `DoGenericSyncSTPBankNeftCallBackProcessor` `processInProgressCallback` already sets `loan_account.disbursement_status=COMPLETED` on NEI **in-progress** (`codstatus` **N** / NDF path) as well as terminal **P**. For **CLMT**, `processInProgressCallbackForChild` now mirrors that for **`ST_NEI`** when queue `disbursement_status=NEFT_STAGE_2_PENDING`: sets embedded `COMPLETED`, `event_status=C`, preserves `BN`+reason on queue JSON like the parent in-progress path, and calls **`ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress`**. **ST_NEI** success (`P`) child path also invokes **`syncParentAfterChildQueueProgress`** after saving CLMT (same as post-processor parity).
+- **CLMT status persistence guard (post-processor)**: `ChildNeftClmtPostBankService.persistClmtAfterNeftBankResponse(...)` sets `loan_account_events_queue.event_status='C'` only when the embedded `disbursement_status` is `COMPLETED`; otherwise it remains `P` so the child event-processing job can pick it up for further stages.
+- **Multi-path persistence reminder (child disbursement)**: CLMT status can be persisted via multiple entry points — (a) bank callback processors (`DoGenericSyncSTPBankNeftCallBackProcessor`), (b) inquiry/WebClient post-processors (`PostNEFTChildLoanBankDisbursementProcessor` / `PostMFTChildLoanBankDisbursementProcessor`), and (c) the pending-events batch (`childLoanEventProcessingBatchJob`). Any change to completion/status must keep **both** the queue row (`event_status`) and embedded JSON (`disbursement_status`) consistent across all paths, otherwise parent status sync can stall.
+- **NEFT v2 STP inquiry success detection (parent + child-safe)**: HDFC `doGenericSyncSTPInquiry` returns numeric `errorcode` (e.g. `0`). The parent NEFT inquiry processor compares using `String.valueOf(executionContext.get("errorCode"))` (type-tolerant) so a successful inquiry is not misclassified as `FAIL` due to `getStringValue(...)` returning null for numeric values.
+- **NEFT v2 inquiry reference key (parent + child, strict)**: inquiry/NEI resolve bank batch key from the persisted NEF request payload (`paymentrefno` preferred, fallback `batchnumext`) via `NeftV2BankReferenceUtil`. No fallback to `client_reference_number` in strict rollout mode; if payload is missing/unparseable or both keys are absent, flow fails fast with `MFI-40001` to avoid sending wrong inquiry keys to bank.
+- **NEFT v2 stage-2 idempotency (child-loans)**: if `disbursement_status=NEFT_STAGE_2_PENDING` and a `client_request_response_log` row with `status=SUCCESS` already exists for the parent loan account + the child-scoped `..._NEFT_NEI` `transaction_type`, the processor skips re-initiating `ST_NEI` and waits for the existing callback to complete CLMT -> `COMPLETED`.
+- **CLMT `loan_account_events_queue`**: `PerformChildLoanBankDisbursementProcessor` relies on `CreateClmtLoanAccountEventsProcessor` to **`saveAll`** member CLMT rows up front (pending **P**), not `create_event_data_only=false` (which skipped `saveAll` and left child-loan bank calls without a persisted row). **`filler_2`** is set at CLMT row creation from the child **`external_ref_number`** on the same member `eventData` that `ChildLoanMoneyTransferEventsQueueDataPopulator` uses for queue `data`, so **`DisbursementClmtCashOverrideHandler`** / LAR can correlate pending CLMT even when the bank leg fails before **`PostNEFTChildLoanBankDisbursementProcessor`** runs (post-processors may still refresh `filler_2` on success paths). For **NEFT v2**, WebClient calls invoke `PostNEFTChildLoanBankDisbursementProcessor` to update CLMT after bank responses; for **NEFT v1**, `doNEFTTransactionVersion1` calls `PostNEFTChildLoanBankDisbursementProcessor.updateChildClmtQueueAfterNeftV1` after inline CRR because `neftPayment` does not invoke the WebClient post-processor. After processing all children, `PerformChildLoanBankDisbursementProcessor` calls **`ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress`** (fresh DB read of CLMT rows). **Gap closed**: child bank calls can finish on **WebClient** threads **after** that synchronous sync runs — **`PostMFTChildLoanBankDisbursementProcessor`** and **`PostNEFTChildLoanBankDisbursementProcessor`** (NEF/NEI WebClient path) call **`syncParentAfterChildQueueProgress`** again after persisting CLMT so mixed MFT/NEFT multi-child runs still move the parent from **`PARENT_SUCCESS`** to **`CHILD_SUCCESS`** when all CLMT are **C** and CLB is still **P**.
+
+### interest_accrual_details (InterestAccrualDetailsEntity)
+- **totalAccruedAmount**: interest accrued for this period
+- **totalAccrualPostedAmount**: how much of accrued has been posted via INTEREST/NORMAL_ACCRUAL txn
+- **lastAccrualPostedDate**: last date accrual was posted
+- Booking = posting the accrual (totalAccrualPostedAmount catches up to totalAccruedAmount)
+
+### loan_account_billing_details (LoanAccountBillingDetailsEntity)
+- Tracks which installments have been billed (BILLING/NORMAL_BILLING posted)
+- **transactionValueDate**: installment date that was billed
+- Billing ≠ Accrual: billing generates dues, accrual recognizes interest income
+
+### death_foreclosure_details (DeathForeclosureDetailsEntity)
+- **outstandingLoanBalance**: computed as-of death date
+- **balanceClaimAmount**: sum_assured - outstandingLoanBalance (sent to insurer)
+- **excessAmount**: from deathForeclosureDetailsEntity (customer excess used in settlement)
+
+### death_foreclosure_insurance_staging_details
+- Stores claim data sent to/from insurer (outbound/inbound files)
+- **balanceClaimAmount** here drives the insurance file, independent of GL posting
+- **Row reuse (initiation path)**: when (re)initiating an insurance claim for the same `death_foreclosure_details_id`, the flow **reuses** the existing staging row if present (looked up by `death_foreclosure_details_id`) and resets `file_upload_id`, `status`, and `inout_status` to null, then sets `claim_status='PENDING'`. A new row is created only if no row exists for that `death_foreclosure_details_id`. (Evidence: `ProcessDeathForeclosureAsPerStageProcessor.populateDeathForeclosureInsuranceStagingDetails()`.)
+- **Reverse-feed rework loop (`Pending for FR`) risk**: `deathForeclosureInsuranceJob` processes inbound reverse-feed rows (`inout_status='INBOUND_SUCCESS'`) with insurer statuses like `Pending for FR` and `Claim Closed`. For `Pending for FR`, it attempts a task workflow update (`updateTaskWorkflow`) and then marks the staging row as handled by setting `claim_status='REJECTED'`. Because the task update is a separate microservice transaction, a failure/rollback after that call can leave the staging row still eligible (`Pending for FR` + `INBOUND_SUCCESS`) while task state has changed. In chunk/partition execution, a single such poison row can fail the job and block other eligible records. (See `system_brain/edge_cases/death_foreclosure_insurance_pending_fr_partial_progress_blocks_batch.md`.)
+
+### loan_account_closure_details (LoanAccountClosureDetailsEntity)
+- Records closure event: identifierType = FORECLOSURE, DEATH_FORECLOSURE, REPAYMENT, AUTOCLOSURE
+- Can be used for idempotency checks
+
+## GL posting reference codes (additional_amount_details)
+
+| Code | Context key source | Meaning |
+|------|--------------------|---------|
+| PRIN_AMT | prin_amt | Overdue/billed principal |
+| INT_AMT | int_amt | Overdue/billed interest |
+| POS | pos | Principal outstanding (future principal) |
+| BPI_AMT | bpi_amount | Broken period interest |
+| PENAL_AMT | penal_amount | Penal interest |
+| FEE_AMT | fee_amount | Fees |
+| LOSSES_INT_WAIVED | losses_int_waived | Interest waived (loss) |
+| LOSSES_INT_WAIVED_AIR | losses_int_waived_air | Interest waived AIR (accrual reversal) |
+| EXCESS_INCOME_INT | extra_int_paid | Extra interest paid (income) |
+| EXCESS_ACCOUNT_INC | extra_int_paid | Extra interest to excess account |
+| ADV_PRIN_AMT, ADV_INT_AMT, etc. | adv_prin_amt, adv_int_amt | Advance/excess-sourced portions |
+| ROUND_UP_AMT / ROUND_DOWN_AMT | rounding factor | Rounding adjustment |
+
+## Booking vs billing vs posting vs accrual
+
+- **Billing** (BILLING/NORMAL_BILLING): generates installment dues (PRIN+INT) when due date arrives. EOD nightly.
+- **Accrual booking** (INTEREST/NORMAL_ACCRUAL): posts accrued interest to GL. EOD or forceful in DCF flow.
+- **Posting** (any postTransaction call): creates GL entries (debit/credit legs) for any transaction type.
+- **Forceful booking**: skips date/condition checks (isAccrualPostingDate), posts all unposted accrual for the loan.
+
+## Orchestration-ledger engines (code-verified)
+
+### `postTransaction` (ORC Request) - processor chain + persistence points
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postTransaction"`).
+
+Processors executed (ordered):
+- `validateTransactionDataProcessor` → `in.novopay.accounting.transaction.processor.ValidateTransactionDataProcessor`
+  - Validates `run_mode` in `{TRIAL, REAL}`, `function_code == DEFAULT`, `function_sub_code == DEFAULT`, optional `receipt_number` regex, and `amount` parses to non-negative INR-rounded value.
+- `populateAdditionalInformationProcessor` → `in.novopay.accounting.transaction.processor.PopulateAdditionalInformationProcessor`
+  - Expects `additional_information_details` (array of `{placeholder, value}`); removes it and populates execution-context keys by `placeholder` and `value`.
+- `populateAndValidateAccountDetailsProcessor` → `in.novopay.accounting.transaction.processor.PopulateAndValidateAccountDetailsProcessor`
+  - Expects `account_details` (array of `{placeholder, account_number, narration}`).
+  - Resolves actor accounts via `AccountDAOService.findAccountSummaryForTransaction(accountNumber)` and validates status in `{ACTIVE, CLOSED, APPROVED}`.
+  - Resolves internal accounts via `InternalAccountDAOService.getInternalAccountDetailsByCode(accountNumber)`.
+  - Writes execution-context keys:
+    - `is_child_account` (if not already set and actor account resolution returns it)
+    - `<account_placeholder_code>` → account number
+    - actor account DTO keyed by account number (execution-context key = `account_number`)
+    - internal account entity keyed by internal-account code (execution-context key = `internalAccountEntity.code`).
+- `populateAdditionalAmountProcessor` → `in.novopay.accounting.transaction.processor.PopulateAdditionalAmountProcessor`
+  - Expects `additional_amount_details` array; removes it and populates `executionContext[reference_code] = amount`.
+- `clientReferenceNumberDedupProcessor` → `in.novopay.accounting.transaction.processor.ClientReferenceNumberDedupProcessor`
+  - Dedup guard: `TransactionMasterDAOService.findOneByClientCodeAndClientReferenceNumber(client_code, client_reference_number)`; fatal on duplicates.
+- `getTransactionCatalogueIdProcessor` → `in.novopay.accounting.transaction.processor.GetTransactionCatalogueIdProcessor`
+  - Looks up catalogue by `transaction_type` + `transaction_sub_type`, writes:
+    - `transaction_catalogue_id`
+    - normalized `transaction_type` and `transaction_sub_type`
+    - `transaction_category_list`
+- `getTransactionRuleListProcessor` → `in.novopay.accounting.transaction.processor.GetTransactionRuleListProcessor`
+  - Loads `transaction_rule_list` by `transaction_catalogue_id`.
+- `executeTransactionRulesProcessor` → `in.novopay.accounting.transaction.processor.ExecuteTransactionRulesProcessor`
+  - Builds accounting map and transaction partitions using:
+    - `PlaceholderMasterDAOService`
+    - `ProductTransactionCatalogueDAOService`
+    - `InternalAccountDAOService`
+    - `InternalAccountDefinitionDAOService`
+    - compute engines (`<entryType>Engine`) via `applicationContext.getBean(StringUtils.lowerCase(entryType) + "Engine")`
+  - Writes execution-context:
+    - `accounting_map` (Map of account -> `AccountingSummaryDTO`)
+    - `transaction_partition_details_list` (List of `TransactionPartitionDetailsEntity`)
+- `populateLimitRequestProcessor` → `in.novopay.accounting.transaction.processor.PopulateLimitRequestProcessor` (TRIAL branch)
+  - Builds `limits_to_validate` from `accounting_map` + `transaction_category_list`.
+- `validateActorAccountBalanceProcessor` → `in.novopay.accounting.transaction.processor.ValidateActorAccountBalanceProcessor` (TRIAL branch)
+  - Validates limits and updates `AccountBalanceDAOService` rows for actor accounts.
+- `createTransactionResponseProcessor` → `in.novopay.accounting.transaction.processor.CreateTransactionResponseProcessor` (TRIAL + REAL)
+  - Builds `account_level_transaction_details` and `overall_transaction_details` from `transaction_partition_details_list`, `actor_account_list`, `accounting_map`, and `transaction_rule_dto_list`.
+- `validateLimitProcessor` → `in.novopay.accounting.transaction.processor.ValidateLimitProcessor` (TRIAL branch)
+  - Calls internal API `validateLimits` using `NovopayInternalAPIClient`.
+
+REAL branch additional persistence processors:
+- `generateTransactionReferenceNumberProcessor` → `in.novopay.accounting.transaction.processor.GenerateTransactionReferenceNumberProcessor`
+  - Writes `transaction_reference_number = <JulianDay><UUID-no-dashes>`.
+- `createTransactionMasterProcessor` → `in.novopay.accounting.transaction.processor.CreateTransactionMasterProcessor`
+  - Persists `TransactionMasterEntity` via `TransactionMasterDAOService.save(...)`.
+  - Writes execution-context: `transaction_date`, `business_date`, `transaction_master_id`.
+- `createTransactionMetadataProcessor` → `in.novopay.accounting.transaction.processor.CreateTransactionMetadataProcessor`
+  - Persists `TransactionMetadataEntity` list if `metadata` is present in execution-context.
+- `createTransactionPartitionDetailsProcessor` → `in.novopay.accounting.transaction.processor.CreateTransactionPartitionDetailsProcessor`
+  - Persists `TransactionPartitionDetailsEntity` list via `TransactionPartitionDetailsDAOService.save(...)`.
+  - Writes execution-context: `account_gl_map` (account_number -> glCode).
+- `createTransactionDetailsProcessor` → `in.novopay.accounting.transaction.processor.CreateTransactionDetailsProcessor`
+  - For each entry in `accounting_map`:
+    - if `netAmount > 0` => `cr_dr_indicator = CrDrIndicator.C` and persist `netAmount = abs(netAmount)`
+    - if `netAmount < 0` => `cr_dr_indicator = CrDrIndicator.D` and persist `netAmount = abs(netAmount)`
+    - if `netAmount == 0` => skip creating a row for that account
+  - Sets `glCode` from `account_gl_map` (account_number -> glCode) and sets `child_gl_code` from `is_child_account`.
+  - Persists via `TransactionDetailsDAOService.save(...)`.
+
+### `reverseTransaction` (ORC Request) - ledger inversion engine
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseTransaction"`).
+
+Processors:
+- `reverseTransactionProcessor` → `in.novopay.accounting.transaction.reverse.processor.ReverseTransactionProcessor`
+
+What `ReverseTransactionProcessor` does (code-verified):
+- Reads from execution-context:
+  - `transaction_reference_number` OR `client_reference_number` (fatal if neither present).
+  - `created_by`, `created_on`, `user_id`, plus master attributes: `operation_mode`, `client_code`, `channel_code`, `end_channel_code`, `stan`, `remarks`.
+  - **Posting dates (reversal TM + TD):** `transaction_master.business_date`, `transaction_master.transaction_value_date`, `transaction_details.business_date`, and `transaction_details.value_date` are all set from **`PlatformDateUtil.getBusinessDateInLong()`** (`current.business.date` config). Execution-context `value_date` (string millis) is **not** used for those columns (avoids system-timestamp drift vs trial balance / date-keyed jobs).
+- Loads original master:
+  - `TransactionMasterDAOService.findOneByTransactionReferenceNumber(...)` or `findOneByClientReferenceNumber(...)`.
+  - Fatal if original not found or already reversed (`originalTransactionMasterEntity.getReversed() == true`).
+- MFT bank-leg reversal (code-verified):
+  - Attempts to locate the original `client_request_response_log` row by matching the original `TransactionMasterEntity` `clientReferenceNumber` (first) or `referenceNumber` (fallback), and searching partner=`Hdfc` first then `HDFC`.
+  - If a matching log is found and its stored `request` JSON contains the `miscFundTransfer` structure, constructs a `reversalMiscFundTransfer` bank request:
+  - `orgReferenceNo` = original `miscFundTransfer.sessionContext.externalReferenceNo`
+  - `sessionContext.externalReferenceNo` = deterministic new reversal ref using prefix `05` (based on `loanAccountNumber` + reversal transaction type + counter), so it is stable across retries
+    - Swaps `fromAccount*`/`toAccount*` to reverse the leg direction.
+    - Uses original `customerId`, `flagForceDebit`, `txnId`, `transactionAmount`, and original `creditNarrative`/`debitNarrative` for `revCreditNarrative`/`revDebitNarrative`.
+  - Calls `CustomerServicePartnerDiscoveryService.reversalMiscFundTransfer(...)` (HDFC OBP integration).
+  - Saves the bank attempt into `client_request_response_log` with `transactionType = "REVERSAL_MISC_FUND_TRANSFER"`.
+  - If bank response `errorCode` != `"0"`, throws `NovopayFatalException("MFI-40001", ...)` to fail the whole `reverseTransaction` request (GL reversal rolls back).
+  - If the original `miscFundTransfer` bank log is missing (or the request JSON is not `miscFundTransfer`), throws the same fatal (`MFI-40001`) so GL reversal does not happen.
+- Creates a new `TransactionMasterEntity` via `createTransactionMasterEntry(...)`:
+  - Sets `businessDate` and `valueDate` on the new master to the same configured business date (see above).
+  - New reference numbers prefixed with `R_`:
+    - `referenceNumber = "R_" + original.referenceNumber`
+    - `clientReferenceNumber = "R_" + original.clientReferenceNumber`
+  - Flags:
+    - new master: `reversed=false`, `reversal=true`
+    - original master: `reversed=true`, `reversalReferenceNumber=<new.referenceNumber>`
+- Ledger lines reversal:
+  - Fetches original `TransactionPartitionDetailsEntity` by original `transactionId` and reverses debit/credit:
+    - swaps `CrDrIndicator` (`C` <-> `D`)
+    - preserves the rest of partition fields (GL codes, entity references, narration, reference codes).
+  - Fetches original `TransactionDetailsEntity` by original `transactionId` and reverses debit/credit similarly.
+  - Persists via:
+    - `transactionMasterDAOService.save(...)`
+    - `transactionPartitionDetailsDAOService.save(...)`
+    - `transactionDetailsDAOService.save(...)`
+- Writes execution-context:
+  - `reversal_reference_number`
+  - `reversal_client_reference_number`
+  - `reference_number` (original reference number)
+
+### Ledger-impacting ORC call-sites: `postTransaction` (13 requests)
+These 13 ORC requests include a nested `API id="postTransaction"` call in `deploy/application/orchestration/*.xml` (accounting-v2). FieldNames below are the explicit `IParam` keys passed in the nested API call blocks (not an exhaustive list of all execution-context keys required by the `postTransaction` request itself):
+
+| ORC Request name | postTransaction API explicit `IParam` fieldNames |
+|---|---|
+| `childLoanAccountExcessAmountRefund` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `amount`, `currency` |
+| `childLoanDisbursementCancellation` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency` |
+| `childLoanDisbursementCancellationParentRescheduling` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency` |
+| `childLoanRebookingAdjustmentTransaction` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `amount`, `currency`, `client_reference_number` |
+| `childLoanRepayment` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency` |
+| `disburseLoan` | `logged_user_office_id`, `function_code`, `function_sub_code`, `expected_disbursement_date`, `loan_amount`, `currency_code` (code-verified: `originating_office_id`, `currency`, `amount`, and `value_date` are mapped directly in the nested `postTransaction` call; `transaction_type`/`transaction_sub_type` are set earlier based on `disbursement_mode`). |
+| `individualChildLoanForeclosure` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency`, `created_by`, `approved_on`, `approved_by` |
+| `loanAccountExcessAmountRefund` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `amount`, `currency` |
+| `loanAccountRebooking` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `amount`, `currency` |
+| `loanDisbursementCancellation` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency` |
+| `loanPrepayment` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency`, `created_by`, `approved_on`, `approved_by` |
+| `loanRepayment` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `office_id`, `transaction_type`, `transaction_sub_type`, `value_date`, `client_reference_number`, `amount`, `currency` |
+| `loanWriteoff` | `run_mode`, `function_code`, `function_sub_code`, `originating_office_id`, `transaction_type`, `transaction_sub_type`, `amount`, `client_reference_number`, `currency` |
+
+### Ledger-impacting ORC call-sites: `reverseTransactionProcessor` (6 requests)
+These 6 ORC requests include an explicit processor node `Processor bean="reverseTransactionProcessor"` in `deploy/application/orchestration/*.xml` (accounting-v2). FieldNames below are explicit `IParam`/`OParam` keys on that processor node.
+
+| ORC Request name | reverseTransactionProcessor explicit IParam | reverseTransactionProcessor explicit OParam |
+|---|---|---|
+| `reverseTransaction` | (none in ORC; execution-context inputs must come from API/ExecutionContext population) | (none) |
+| `reverseManualJournalEntry` | `created_by` (only in `function_code=APPROVE` branch) | (none) |
+| `loanAccountTransactionReversal` | `transaction_reference_number`, `created_by`, `created_on`, `value_date` | `reversal_reference_number`, `reversal_client_reference_number` |
+| `childLoanTransactionReversal` | `created_by`, `created_on` | `reversal_reference_number`, `reversal_client_reference_number` (code-verified: `value_date` may be prepared earlier by `ConvertTransactionValueDateProcessor` for other steps; **`ReverseTransactionProcessor` persists TM/TD business_date and value_date from `current.business.date`, not from EC `value_date`**). |
+| `loanAccountReopening` | `value_date`, `created_by`, `created_on` | (none) |
+| `childLoanReopening` | `value_date` | (none) (code-verified: `created_by` and `created_on` are not passed on this node; `ReverseTransactionProcessor` falls back to `user_id` (for `created_by`) and system current date (for `created_on`) when those EC keys are absent). |
+
+### Kafka entrypoint: `LmsMessageBrokerConsumer` → ORC request name
+Source: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`.
+
+Code-verified mapping:
+- Kafka message `consumerRec.value()` format comment: `apiName|requestBody|cacheKey`.
+- Extracts:
+  - `api` = substring before first `|`
+  - `requestBody` = substring between first `|` and last `|`
+- Sets tenant in thread-local context: `ThreadLocalContext.setTenant(tenant)` (done before processing records).
+- Populates `requestMap` with `tenant_code = tenant.getTenantCode()`, then populates `ExecutionContext` via `DefaultExecutionContextPopulator.populateExecutionContext(api, "v1", requestMap, requestBody)`.
+- Resolves ORC request definition via `OrchestrationXMLParser.getRequestFromOrcXML(tenant_code, api)`:
+  - ORC request map key is `tenantCode + "_" + requestName`
+  - If tenant-specific request is missing, it falls back by `novopay.orchestration.precedence.order` and retries lookup with other tenant prefixes.
+    - Iterates `orchestrationTenantsInOrderOfPrecedence` (config property `novopay.orchestration.precedence.order`, default `product`) and tries `${fallbackTenant}_${requestName}` until found.
+    - Throws `NovopayFatalException("13014")` if no ORC request is found.
+- Pre-orchestration skip (`getDisburseSkipReason`): if loan is `ACTIVE` and `disbursement_status=COMPLETED`, normally skips to avoid double disbursement. **Exception:** processing continues when the Kafka `requestBody` JSON has `headers.function_sub_code=REINITIATE_BANK` **and** `request.payment_reinitiation_update` truthy (`true`, case-insensitive). LOS must send that flag on the Kafka payload; JTF maps `payment_reinitiation_update` via `disburseLoan_requestTemplate.json` (mfi + product) for HTTP parity.
+
+## Whole-module orchestration walkthroughs (code-verified)
+
+### Tax Component & Tax Group APIs (Service Orchestration XML)
+These requests are configuration/master-data APIs. They don’t directly perform GL posting legs themselves; instead they persist tax component/tax group definitions (including slabs) that downstream charge/tax calculation + transaction partitioning rely on.
+
+### `createOrUpdateTaxComponent`
+- Makers/checker behavior is controlled by `maker_checker_enabled`:
+  - `maker_checker_enabled=1` builds an approval payload (`constructRequestDataForApproval`) and submits via `accounting_submitApplication`.
+  - `maker_checker_enabled=0` runs the create/update processors directly.
+- CREATE path (function_code=`DEFAULT`, function_sub_code=`CREATE`):
+  - `createTaxComponentProcessor`: persists `TaxComponentEntity` (requires `InternalAccountDefinitionEntity`)
+  - if `computation_type != TAX_COM_EXT`: `validateTaxComponentSlabProcessor` + `parseDataForStartDateAndEndDateProcessor` + `createTaxComponentSlabProcessor` (persists `TaxComponentSlabEntity`)
+- UPDATE path (function_sub_code=`UPDATE`):
+  - `updateTaxComponentProcessor`: updates `TaxComponentEntity`
+  - if `computation_type != TAX_COM_EXT`: `updateTaxComponentSlabProcessor` (updates slabs; can logical-delete old slabs depending on inputs)
+- Delete and logical delete:
+  - `deleteTaxComponent` (DEFAULT/APPROVE) uses `logicalDeleteTaxComponentProcessor` which sets `TaxComponentEntity.is_deleted=true`
+  - if `computation_type != TAX_COM_EXT`, slab deletion is handled by `logicalDeleteTaxComponentSlabProcessor`
+
+### `getTaxComponentList` / `getTaxComponentDetails`
+- List/details are read-only:
+  - `getTaxComponentListProcessor`: populates `tax_component_list` (paged)
+  - `getTaxComponentDetailsProcessor`: populates component fields and `tax_component_slab_details` (unless `computation_type == TAX_COM_EXT`)
+
+### `createOrUpdateTaxGroup` / `getTaxGroupList` / `getTaxGroupDetails` / `deleteTaxGroup`
+- Tax group is a container that maps to a set of tax components.
+- Create/update writers:
+  - `createTaxGroupProcessor` / `updateTaxGroupProcessor`: persists `TaxGroupEntity` (requires `InternalAccountDefinitionEntity`)
+  - `createTaxGroupTaxComponentMappingProcessor` / `updateTaxGroupTaxComponentMappingProcessor`:
+    - persists `TaxGroupTaxComponentMappingEntity` linking tax_group_id ↔ tax_component_id
+- Delete:
+  - `deleteTaxGroup` uses logical delete via `logicalDeleteTaxGroupProcessor` which sets `TaxGroupEntity.is_deleted=true`
+  - mapping deletion is handled by `logicalDeleteTaxGroupTaxComponentMapping` in the orchestration
+
+### `createOrUpdateLoanAccount` (ORC entrypoint) -> initial loan account setup (CREATE) / mutate account attributes (UPDATE)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="createOrUpdateLoanAccount"`).
+
+#### CREATE path (function_sub_code=`CREATE`, run_mode=`REAL`)
+This path creates the core loan account and its supporting “mode/interest” rows:
+- `populateCurrentDateProcessor`
+- `getOfficeDetails` + `getCustomerDetails` (internal APIs)
+- validations/builders: `validateLoanAccountDetailsProcessor`, `validateDisbursementRepaymentAccountDetailsProcessor`, `populateRepaymentDetailsProcessor`, `getEffectiveInterestRateForInterestSetupCodeProcessor`, `populateInterestDetailsForAccountProcessor`, `populateDisbursementAmountProcessor`, `fetchBulkUniqueMasterData`
+- `populatePerformedDateProcessor`
+- `generateSequenceNumberProcessor` (sets `account_number`)
+- `createLoanAccountProcessor`
+  - Persists: `LoanAccountEntity` (via `LoanAccountDAOService.save(...)`)
+  - Notable: sets `loan_account.disbursement_status = "LAN_CREATED"` and copies `external_ref_number` from context.
+- `createAccountBalanceProcessor`
+  - Persists: `AccountBalanceEntity` (initialized to `0` balances; via `AccountBalanceDAOService.save(...)`)
+- `createActorAccountDetails` (internal API; creates actor-account mapping, not an accounting table here)
+- `createDisbursementModeDetailsProcessor`
+  - Persists: `LoanDisbursementModeDetailsEntity` (via `LoanDisbursementModeDetailsDAOService.saveLoanDisbursementDetails(...)`)
+- `createRepaymentModeDetailsProcessor`
+  - Persists: `LoanRepaymentModeDetailsEntity` (via `LoanRepaymentModeDetailsDAOService.saveLoanRepaymentDetails(...)`)
+- `createAccountInterestDetailsProcessor`
+  - Persists: `AccountInterestDetailsEntity` (via `AccountInterestDetailsDAOService.save(...)`)
+
+#### UPDATE path (function_sub_code=`UPDATE`, run_mode=`REAL`)
+This path mutates the existing loan rows and supporting mode/interest records:
+- `validateUpdateLoanAccountDetailsProcessor`
+- `populatePerformedDateProcessor`
+- `updateLoanAccountProcessor`
+  - Persists: `LoanAccountEntity` (loads by `account_number`, updates fields like `loan_status` / `disbursed_amount`, then `LoanAccountDAOService.save(...)`)
+- `updateDisbursementModeDetailsProcessor`
+  - Persists: `LoanDisbursementModeDetailsEntity` (loads by `loan_account_id`, updates mode/account routing/bank details, then `saveLoanDisbursementDetails(...)`)
+- `updateRepaymentModeDetailsProcessor`
+  - Persists: `LoanRepaymentModeDetailsEntity` (loads by `loan_account_id`, updates mode/account/routing/bank details, then `saveLoanRepaymentDetails(...)`)
+- `updateAccountInterestDetailsProcessor`
+  - Persists: `AccountInterestDetailsEntity` (loads by `account_id`, updates spread/setup/effective/penal rates and upfront-interest fields, then `AccountInterestDetailsDAOService.save(...)`)
+
+### `postManualJournalEntry` (ORC entrypoint) -> persist manual JE + create GL posting partitions (transaction engine)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postManualJournalEntry"`).
+
+This request creates a *Manual Journal Entry* header + GL-lines, then (optionally via maker-checker) posts the accounting legs using the transaction engine.
+
+Key wiring:
+- Dummy transaction classification:
+  - dummyProcessor sets `transaction_type="MANUAL_JOURNAL_POSTING"` and `transaction_sub_type="GL"`
+- Manual JE persistence:
+  - `createManualJournalEntryDetailsProcessor`
+    - Persists `ManualJournalEntryDetailsEntity` (via `ManualJournalEntryDetailsDAOService.saveOne(...)`)
+    - Persists `ManualJournalEntryGlDetailsEntity` rows (via `ManualJournalEntryGlDetailsDAOService.saveOne(...)`)
+    - Stores the generated header row in EC under `manual_journal_entry_details_entity`
+  - `createDocumentProcessor` + `createManualJournalEntryDocumentDetailsProcessor`
+    - Persists `ManualJournalEntryDetailsDocumentEntity` rows (links `dbDocumentIdList` → manual JE header)
+- Posting (real-mode posting path for maker-checker disabled or after approval):
+  - `validateAndPopulateDataForManualPostingProcessor`
+  - `getTransactionCatalogueIdProcessor` + `generateTransactionReferenceNumberProcessor`
+  - `createTransactionMasterProcessor` + `createTransactionMetadataProcessor`
+  - `createPartitionDetailsForManualJournalPostingProcessor`
+    - Uses `ExecuteTransactionRulesProcessor.createPartitionDetails(...)` to build `TransactionPartitionDetailsEntity` list
+    - Sets TransactionRuleDTO:
+      - `entityType="LOANS"`
+      - `referenceCode="MNL_JRNL_ENTRY"`
+      - `officeId`: `loanAccountEntity.officeId` when `manual_journal_entry_on=INTRA_BRNH`, otherwise uses config `loan.internal.account.default.office.id`
+  - `createTransactionDetailsProcessor` and `updateManualJournalEntryDetailsProcessor`
+    - `updateManualJournalEntryDetailsProcessor` sets:
+      - `manual_je_status`
+      - `transaction_reference_number`
+      - approval/audit fields
+
+Makers/checker behavior:
+- `maker_checker_enabled=1`: creates JE in `manual_je_status=PENDING`, sends for approval via `constructRequestForApprovalUsingApprovalTemplate` + `accounting_submitApplication`; approval branch posts and updates status through `updateManualJournalEntryDetailsProcessor` (approval sets performed/approved fields).
+- `maker_checker_enabled=0`: runs the posting path directly and updates `manual_je_status=APPROVED`.
+
+### `reverseManualJournalEntry` (ORC entrypoint) -> reverse posted manual JE + mark reversed (reverseTransaction engine)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseManualJournalEntry"`).
+
+This request reverses an already-posted manual journal entry by:
+- populating reverse payload (processor in ORC wiring)
+- calling the `reverseTransactionProcessor` inside the ledger engine
+- updating both original + reverse manual JE rows
+
+Verified entity updates:
+- `updateReverseManualJournalEntryDetailsProcessor` (code-verified)
+  - Loads original `ManualJournalEntryDetailsEntity` by `transaction_reference_number`
+  - Loads reverse `ManualJournalEntryDetailsEntity` by `manual_je_number` in `PENDING`
+  - Sets reverse entity fields:
+    - `reverseTransactionReferenceNumber`
+    - `manual_je_status`
+    - approval/audit fields
+  - Sets original entity:
+    - `reversed=true`
+  - Persists both via `ManualJournalEntryDetailsDAOService.saveOne(...)`
+
+### `getManualJournalEntryList` (ORC entrypoint) -> paged listing of manual JE headers
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryList"`).
+
+Processors (code-verified):
+- `GetManualJournalEntryListProcessor`
+  - reads `page_size` + `offset` from EC (defaults `limit=10`, `offset=0`)
+  - calls:
+    - `ManualJournalEntryDetailsDAOService.getManualJournalEntryList(executionContext)`
+    - `ManualJournalEntryDetailsDAOService.getManualJournalEntryListTotalCount(executionContext)`
+  - populates EC:
+    - `manual_journal_entry_details_list` (paged list)
+    - `number_of_records`, and normalizes `page_size` / `offset`
+
+### `getManualJournalEntryDetails` (ORC entrypoint) -> manual JE header + GL lines + documents (+ reversal fields)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryDetails"`).
+
+Processors (code-verified):
+- `GetManualJournalEntryDetailsProcessor`
+  - input: `id` (long)
+  - loads:
+    - `ManualJournalEntryDetailsEntity` by id
+    - `ManualJournalEntryGlDetailsEntity` list by manual JE header id
+    - document mapping rows `ManualJournalEntryDetailsDocumentEntity` → resolves to `DocumentEntity` + `DocumentFileEntity`
+  - populates EC fields used by the API response:
+    - `manual_je_number`, `manual_journal_entry_on`
+    - `currency`, `value_date`, `transaction_date`, `transaction_amount`, `remarks`, `manual_je_status`
+    - reversal-related fields:
+      - `reversal` / `reversed`
+      - `transaction_reference_number` for original vs reverse based on `reversal` flag
+      - `reversal_notes`, `reversal_reason` (+ master-data mapped `reversal_reason_value` when present)
+    - `manual_journal_entry_gl_details` (array of debit/credit GL + amount)
+    - `document_details` (array of document metadata + files)
+
+### `executeLMSPortfolioTransfer` (ORC entrypoint) -> create portfolio transfer detail rows + internal GL transfer
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="executeLMSPortfolioTransfer"`).
+
+This is a *two-step* flow:
+1) `executeLMSPortfolioTransferProcessor` builds `PortfolioTransferDetailsEntity` rows (status `PENDING`) from existing loan GL balances.
+2) if `auto_process=true` (or when retrying pending), it triggers internal API `doGLTransfer` to create transaction postings and complete transfer rows.
+
+`executeLMSPortfolioTransferProcessor` (code-verified):
+- Inputs read from EC:
+  - `account_numbers` (JSONArray)
+  - `source_office_id/code`, `destination_office_id/code`, `destination_emp_id`
+  - `external_reference_code`, `auto_process`, `do_gl_transfer`, `do_employee_transfer`
+- Account scope (loan `account_id`s used for GL detail build, `doGLTransfer` `account_id_list`, and `servicing_emp_id` update):
+  - resolves request LANs → seed `loan_account.account_id`s, then `LoanAccountDAOService.expandAccountIdsForPortfolioTransferWithActiveChildLoans`: **every seed is kept**, and for **each** seed id, **ACTIVE** child `account_id`s are added via `LoanAccountRepository.getChildLoanAccountListForParentAccountId` (same SQL as before portfolio work).
+- Idempotency:
+  - queries existing `PortfolioTransferDetailsEntity` by `external_reference_code`
+  - if existing rows contain any `status="PENDING"`:
+    - skips creation
+    - if `auto_process` triggers `doGLTransfer` retry for the provided accounts
+  - if existing rows are non-pending:
+    - returns existing records as `portfolio_transfer_details_list`
+- GL category selection:
+  - loads master data `ALLOWED_GL_CATEGORY_FOR_PORTFOLIO_TRANSFER` (`datatype="ALLOWED_GL_CATEGORY_FOR_PORTFOLIO_TRANSFER"`, `subType="DEFAULT"`)
+  - fetches `GeneralLedgerEntity` rows and extracts GL codes + categories
+- Detail creation:
+  - for each loan account id:
+    - reads GL movement/partition details via `transactionPartitionDetailsDAOService.findTransactionDetailsByEntityIdOfficeIdEntityTypeAndGlCodes(accountId, sourceOfficeId, "LOANS", glCodes)`
+    - aggregates `creditBalance` and `debitBalance` based on `crDrIndicator` (`"C"` vs `"D"`)
+    - creates one `PortfolioTransferDetailsEntity` per GL code:
+      - `gl_credit_balance`, `gl_debit_balance`, `gl_net_balance`
+      - `status="PENDING"`, `completionDate=null`, audit fields
+- Completion trigger:
+  - saves list and stores JSON in EC under `portfolio_transfer_details_list`
+  - if `auto_process && !list.isEmpty()` calls internal API `doGLTransfer` with:
+    - `transaction_type="PORTFOLIO_GL_TRANSFER"`
+    - `transaction_sub_type="DEFAULT"`
+    - `external_reference_code`, `destination_office_id/code`, `account_id_list`, `user_id`
+
+`doGLTransfer` / `DoGLTransferProcessor` (code-verified):
+- Fetches all `PortfolioTransferDetailsEntity` by `external_reference_code`
+- For each record with non-zero `gl_net_balance`:
+  - chooses debit/credit GL legs based on sign of net balance
+  - creates source and destination transactions:
+    - `TransactionMasterEntity`
+    - `TransactionDetailsEntity` (debit + credit)
+    - `TransactionPartitionDetailsEntity` with `referenceCode="GL_TRANSFER"` and `entityType="OFFICE"`
+  - On master + details: `business_date` and `value_date` are both set from `PlatformDateUtil.getBusinessDateInLong()`; `transaction_date` (and related audit timestamps) use system time.
+- Marks every transfer detail row:
+  - `status="COMPLETED"`
+  - `completionDate` and `updatedOn` set to platform business date (aligned with txn `business_date` / `value_date`)
+- Updates loan/account office:
+  - `loanAccountDAOService.updateAccountOfficeAndAuditByAccountIds(...)`
+  - `loanAccountDAOService.updateLoanAccountOfficeAndAuditByAccountIds(...)`
+
+### `doGLTransfer` (ORC entrypoint) -> inter-branch GL transfer for portfolio transfer details
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="doGLTransfer"`).
+
+ORC wiring:
+- Validators:
+  - `external_reference_code` mandatory
+  - `transaction_type` + `transaction_sub_type` mandatory
+  - `function_code=function_sub_code=DEFAULT`
+- Processors:
+  - `setCommonAttributesProcessor`
+  - `getTransactionCatalogueIdProcessor`
+  - `doGLTransferProcessor`
+
+`DoGLTransferProcessor` (code-verified summary):
+- Fetches `PortfolioTransferDetailsEntity` by `external_reference_code`
+- For each row with non-zero `glNetBalance`:
+  - creates `TransactionMasterEntity`, `TransactionDetailsEntity` (debit + credit), and `TransactionPartitionDetailsEntity` legs with:
+    - `referenceCode="GL_TRANSFER"`
+    - `entityType="OFFICE"`
+  - debit/credit leg selection is based on sign of `glNetBalance`
+- Marks portfolio transfer details as:
+  - `status="COMPLETED"`
+  - sets `completionDate` + `updatedOn` to platform business date
+- Updates office mapping for impacted accounts via:
+  - `loanAccountDAOService.updateAccountOfficeAndAuditByAccountIds(...)`
+  - `loanAccountDAOService.updateLoanAccountOfficeAndAuditByAccountIds(...)`
+- EC outputs:
+  - `created_transaction_master_ids`
+  - `total_transactions_created`
+  - `loan_accounts_updated`
+
+### `disburseLoan` (ORC entrypoint) -> loan setup + disbursement GL legs + schedule/due creation
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="disburseLoan"`).
+
+High-level flow:
+- `populateUserDetails` → `validateLoanDisbursementDetailsProcessor` → `getLoanAccountDetails` (loads `loan_amount`, `expected_disbursement_date`, `disbursement_mode`, `upfront_interest_amount`, `upfront_interest_applicable`, etc.)
+- maker-checker gating:
+  - `maker_checker_enabled=1`: builds approval payload (`constructRequestForApprovalUsingApprovalTemplate`) and submits via `disburseLoan_submitApplication` (then deletes draft).
+  - ledger posting + loan state mutation happen when `call_post_transaction_required=true` (DEFAULT with `maker_checker_enabled=0`, APPROVE, RESUBMIT, or TRIAL).
+
+GL posting leg (`postTransaction`, nested API; code-verified):
+- transaction type/sub-type selection by `disbursement_mode`:
+  - `CASH` → `transaction_type=LOAN_DISBURSEMENT`, `transaction_sub_type=CASH`
+  - `ACCTWB|OTHACWB` → `transaction_type=LOAN_DISBURSEMENT`, `transaction_sub_type=CASA`
+    - also runs `populateDisbursementAccountProcessor`
+    - then `populateTransactionAccountDetailsProcessor` with `placeholder=CASA_ACCOUNT` and narration `Loan Disbursement Credit`
+  - `OTHBACCT` → `transaction_type=LOAN_DISBURSEMENT`, `transaction_sub_type=ACCOUNT_TRANSFER_NEFT`
+- account details + additional amount:
+  - `populateTransactionAccountDetailsProcessor` with `placeholder=LOAN_ACCOUNT` and narration `Loan Disbursement`
+  - `populateAdditionalAmountDetailsProcessor` adds upfront interest as `additional_amount_details`:
+    - `reference_code=INT_AMT`, `amount=upfront_interest_amount`
+- nested `postTransaction` maps:
+  - `logged_user_office_id` → `originating_office_id`
+  - `currency_code` → `currency`
+  - `loan_amount` → `amount`
+  - `expected_disbursement_date` → `value_date`
+  - captures `transaction_reference_number`, `account_level_transaction_details`, `overall_transaction_details`
+- net extraction after GL posting:
+  - `extractOverallTransactionDetailsAndNetAmountForAccountProcessor(extract_account_number=account_number)`
+
+Loan/account + repayment schedule mutation (REAL, non-maker-checker path; code-verified):
+- `validateGenerateRepaymentScheduleProcessor`
+- `generateRepaymentScheduleProcessor`:
+  - `expected_disbursement_date→schedule_effective_date`
+  - `first_repayment_date→schedule_start_date`
+  - `effective_interest_rate→interest_rate`
+  - `loan_amount→principal_outstanding`
+- `createRepaymentScheduleDetailsProcessor(schedule_number=1)`
+- `createInstallmentAndDueDetailsProcessor(schedule_number=1)`
+- `updateLoanAccountProcessor`:
+  - `loan_amount→disbursed_amount`
+  - `loan_status=ACTIVE`
+  - `updated_by→performed_by`, `updated_on→performed_on`
+- if `upfront_interest_applicable=true`:
+  - `populatePaymentDetailsForDisbursementProcessor`
+  - `updateLoanDueDetailsProcessor`
+  - `updateLoanInstallmentDetailsProcessor(expected_disbursement_date→value_date)`
+
+### `loanAccountReopening` (ORC entrypoint) -> closure reversal + status reset + post-reversal recomputation
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountReopening"`).
+
+This request is a maker-checker task flow:
+- Validation + task creation (DEFAULT/create_task):
+  - `validateDataForLoanAccountReopeningProcessor` (on non-REJECT paths)
+  - `setCommonAttributesProcessor`
+  - `createLoanAccountReopeningDetailsProcessor`
+  - `create_task=true` branch: builds approval request + creates `LOAN_REOPEN_CHECKER` task
+  - document creation:
+    - `createDocumentProcessor`
+    - `createLoanAccountReopeningDocumentProcessor`
+  - then deletes draft (`deleteDraftProcessor`)
+- Approval (APPROVE/do_reopen=true):
+  - `initiateClosureReversalProcessor`
+  - `getLoanAccountReopeningDetailsProcessor`
+  - `reverseTransactionProcessor` with:
+    - `value_date=${valueDateLongInStr}`
+    - `created_by=${reversal_created_by}`
+    - `created_on=${reversal_created_on}`
+  - `updateLoanAccountClosureDetailsProcessor`
+  - `updateLoanAccountReopeningTaskDetailsProcessor(status=APPROVED)`
+  - `updateLoanAccountStatusProcessor`:
+    - `loan_status=ACTIVE`, `account_status=ACTIVE`, `is_reopening_process=true`
+- Post-reversal jobs:
+  - `populateCurrentDateProcessor`
+  - `populateEODJobDataAfterReversalProcessor(transaction_reversal_date=${valueDateLongInStr})`
+  - `checkLoanAccountInterestAndPenalAccrualProcessor`
+  - `checkLoanAccountInterestAccrualBookingProcessor` (function DEFAULT/DEFAULT, office_id/originating_office_id from request context, `is_forceful_booking=false`)
+  - `loanAccountDpdCalcProcessor`
+  - `loanAccountAssetCriteriaProcessor`:
+    - forward movement: `REGULAR_TO_NPA` / `INT_INCOME`
+    - reverse movement: `NPA_TO_REGULAR` / `INT_INCOME`
+    - reference codes: `reference_code_int_amt=INT_AMT`, `reference_code_int_suspense_air_amt=INT_SUSPENSE_AIR_AMT`
+  - `loanAccountAssetClassificationProcessor`
+  - `bookingNonPostedPenalProcessor(job_time=${current_date_str})`
+  - `initiateClosureTaxReversalProcessor`
+  - `loanAccountPaymentsDetailsReversalProcessor`
+  - `childLoanReopeningEventGenerationProcessor`
+  - task deletion at end (`deleteTask`)
+
+### `loanAccountTransactionReversal` (ORC entrypoint) -> transaction reversal task flow + ledger inversion + NPA bookkeeping
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountTransactionReversal"`).
+
+Task flow:
+- Validation + optional task flags (run_mode REAL):
+  - `validatePendingTxnReversalTaskProcessor`
+  - `validateTransactionForLoanAccountProcessor(current_transaction_name=TXN_REVERSAL)`
+  - `validateTransactionExcessAmountProcessor`
+- Create task (function_code DEFAULT|APPROVE, create_task=true):
+  - `validateTransactionReversalDataProcessor` + `validateTransactionReversalBusinessCaseProcessor`
+  - `createTransactionReversalDetailsProcessor`
+  - `fetchBulkUniqueMasterData(reason=TRNS_REVL)`
+  - constructs approval payload and then creates `TRANSACTION_REVERSAL_CHECKER` task (documents + task status PENDING)
+- Approve task (approve_task=true):
+  - `validateTransactionReversalDataProcessor`
+  - `getTransactionReversalTaskDetailsProcessor(task_status=PENDING)`
+  - `executeTransactionReversalProcessor` (prepares reversal engine input + reversal artifacts in EC)
+  - `populateEODJobDataAfterReversalProcessor`
+  - `populateLoanAccountPaymentDetailsDataProcessor`
+  - `reverseTransactionProcessor`:
+    - `transaction_reference_number=${transaction_ref_no}`
+    - `created_by=${reversal_created_by}`
+    - `created_on=${reversal_created_on}`
+    - `value_date=${valueDateLongInStr}`
+    - captures `reversal_reference_number` + `reversal_client_reference_number`
+  - `convertTransactionValueDateProcessor`
+  - `createLoanAccountPaymentsDetailsProcessor` with transaction refs from reversal outputs
+  - recomputation:
+    - `loanAccountDpdCalcProcessor`
+    - `loanAccountAssetCriteriaProcessor` (forward REGULAR_TO_NPA / reverse NPA_TO_REGULAR, reference codes INT_AMT + INT_SUSPENSE_AIR_AMT)
+    - `loanAccountAssetClassificationProcessor`
+  - task update + delete (`updateTransactionReversalTaskDetailsProcessor(task_status=APPROVED)` + `deleteTask`)
+
+### `childLoanTransactionReversal` (ORC entrypoint) -> child txn reversal + reverseTransaction + recomputation
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanTransactionReversal"`).
+
+Chain (code-verified):
+- `executeTransactionReversalProcessor`
+  - seeds `transaction_reference_number` from `transaction_reference_no` in EC
+- `populateEODJobDataAfterReversalProcessor`
+- `populateLoanAccountPaymentDetailsDataProcessor`
+- `reverseTransactionProcessor`:
+  - passes `created_by=${reversal_created_by}` and `created_on=${reversal_created_on}`
+  - outputs `reversal_reference_number` and `reversal_client_reference_number`
+- `convertTransactionValueDateProcessor` (converts EC `value_date` Date -> String millis)
+- `createLoanAccountPaymentsDetailsProcessor`:
+  - uses `transaction_reference_number=${reversal_reference_number}`
+  - uses `client_reference_number=${reversal_client_reference_number}`
+- recomputation:
+  - `loanAccountDpdCalcProcessor`
+  - `loanAccountAssetCriteriaProcessor` sets:
+    - forward movement: `REGULAR_TO_NPA` / `INT_INCOME`
+    - reverse movement: `NPA_TO_REGULAR` / `INT_INCOME`
+    - reference codes: `reference_code_int_amt=INT_AMT`, `reference_code_int_suspense_air_amt=INT_SUSPENSE_AIR_AMT`
+  - `loanAccountAssetClassificationProcessor`
+
+### `childLoanReopening` (ORC entrypoint) -> closure reversal + set ACTIVE + post-reversal jobs
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanReopening"`).
+
+Chain (code-verified):
+- setup:
+  - `setCommonAttributesProcessor`
+  - `populateChildLoanReopeningAccountDataProcessor`:
+    - loads `loan_account_entity` and stores `str_office_id`
+  - `initiateClosureReversalProcessor`
+- ledger reversal:
+  - `reverseTransactionProcessor` with `value_date=${valueDateLongInStr}` (ORC still passes millis for compatibility; **reversal ledger rows use configured business date for TM/TD `business_date` / `value_date`** — see `ReverseTransactionProcessor` notes above)
+- closure + status:
+  - `updateLoanAccountClosureDetailsProcessor`
+  - `updateLoanAccountStatusProcessor`:
+    - `loan_status=ACTIVE`, `account_status=ACTIVE`
+- post-reversal recomputation and triggers:
+  - `populateCurrentDateProcessor`
+  - `populateEODJobDataAfterReversalProcessor(transaction_reversal_date=${valueDateLongInStr})`
+  - `checkLoanAccountInterestAndPenalAccrualProcessor`
+  - `checkLoanAccountInterestAccrualBookingProcessor` (DEFAULT/DEFAULT, office_id/originating_office_id from `str_office_id`, `is_forceful_booking=false`)
+  - `loanAccountDpdCalcProcessor`
+  - `loanAccountAssetCriteriaProcessor` (forward REGULAR_TO_NPA + reverse NPA_TO_REGULAR, reference codes INT_AMT + INT_SUSPENSE_AIR_AMT)
+  - `loanAccountAssetClassificationProcessor`
+  - `bookingNonPostedPenalProcessor(job_time=${current_date_str})`
+
+### `childLoanBooking` (ORC entrypoint) -> child events processing (booking)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanBooking"`).
+
+- For `function_code=DEFAULT`: runs `childLoanEventsProcessingProcessor`.
+
+### `childLoanDisbursement` (ORC entrypoint) -> book child loan (disbursement booking)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursement"`).
+
+Chain (code-verified):
+- `populateDataForChildLoanBookingProcessor` — before `createOrUpdateLoanAccount`, if a non-deleted child already exists for `parent_loan_account_id` + member `external_ref_number` (oldest by `created_on`), reuses that `account_id` / LAN instead of creating another row (CLB replay idempotency). DB: **unique** partial index `uidx_accounting_la_child_parent_extref_active` on `mfi_accounting.loan_account` `(parent_loan_account_id, external_ref_number, loan_product_id)` where `parent_loan_account_id IS NOT NULL` — **created/maintained manually** (not shipped via accounting flyway in this workspace).
+  - **Lookup query perf** (`LoanAccountRepository.findFirstActiveChildByParentAndExternalRef`): `WHERE parent_loan_account_id = ? AND external_ref_number = ? AND is_deleted = false` + `ORDER BY created_on LIMIT 1`. Uses **leading** index columns (`parent_loan_account_id`, `external_ref_number`) on `uidx_accounting_la_child_parent_extref_active` → expect **index access** (not seq scan on `loan_account`). Returned columns (`la_account_number`, `created_on`) are not in that index → **heap fetch** on matching row(s). `is_deleted` is **not** in the index partial predicate → **Filter** after index read. **Timing** is environment-specific — not measured in repo CI; run `EXPLAIN (ANALYZE, BUFFERS)` on `mfi_accounting` with real `parent_loan_account_id` / `external_ref_number`. Ballpark for a single lookup on a warm DB: **~1–5 ms** (order of magnitude only; verify locally).
+- `bookChildLoanProcessor`
+
+### `childLoanRepayment` (ORC entrypoint) -> child due settlement + GL posting + optional NPA reverse movement
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanRepayment"`).
+
+Core chain (code-verified):
+- load child context: `populateChildLoanAccountDataProcessor`
+- sets transaction type/sub-type by `repayment_mode`:
+  - `CASH` / `DIRDR` → `LOAN_REPAYMENT/CASH`
+  - `ACH` → `LOAN_REPAYMENT/CASH`
+  - `UPI` → `LOAN_REPAYMENT/UPI`
+  - `NET_BANKING` → `LOAN_REPAYMENT/NET_BANKING`
+  - `EXCESS_AMT` → `LOAN_REPAYMENT/EXCESS_AMT`
+- `getOfficeIdFromAccountNumberProcessor`
+- appropriation eligibility gate: `checkEligibleForRepaymentAppropriationProcessor`
+- if `do_repayment_appropriation=true`:
+  - `repaymentApproppriationProcessor` (component allocation using liquidation order & precedence)
+- excess-mode component prep:
+  - `populateAmountForExcessRepaymentModeProcessor`
+- builds `additional_amount_details` and component amounts used by due + GL:
+  - `PRIN_AMT` (`principal_amount`)
+  - `INT_AMT` (`interest_amount`)
+  - `PENALTY_AMT` (`penalty_amount`)
+  - `EXCESS_AMT` (`excess_amount`)
+  - `SUSP_AMT` (`suspense_amount`)
+  - `FEE_AMT` (`fee_amount`)
+- transaction account + due/inst updates:
+  - `populateTransactionAccountDetailsProcessor(placeholder=LOAN_ACCOUNT, narration="Loan Repayment", account_number)`
+  - `updateLoanDueDetailsProcessor`
+  - `updateLoanInstallmentDetailsProcessor`
+  - `updateLoanAccountForExcessAmountProcessor`
+- main GL posting via nested `postTransaction`:
+  - `transaction_type=${transaction_type}`, `transaction_sub_type=${transaction_sub_type}`
+  - `currency=INR`
+  - `amount=${repayment_amount}`
+  - captures `transaction_reference_number`
+- persists payment-linking + NPA logic:
+  - `createLoanAccountPaymentsDetailsProcessor`
+  - `checkNPAReverseMovementRequiredProcessor`
+- if `do_npa_reverse_movement=true`:
+  - adds `INT_SUS_AMT` (`interest_amount`)
+  - posts an additional `postTransaction` leg with `transaction_sub_type=NPA` and `amount=${interest_amount}` (client ref from `npa_client_reference_number`)
+- auto-closure recomputation (only when `is_eligible_for_auto_closure=true`):
+  - `populateLoanAutoClosureReqProcessor`
+  - `loanAccountDpdCalcProcessor`
+  - `loanAccountAssetCriteriaProcessor` forward REGULAR_TO_NPA + reverse NPA_TO_REGULAR (INT_INCOME) with reference codes INT_AMT + INT_SUSPENSE_AIR_AMT
+  - `loanAccountAutoClosureProcessor(DEFAULT/AUTO)`
+  - if `loan_account_status=CLOSED`: creates closure details via `createLoanAccountClosureDetailsProcessor`
+
+### `loanRepayment` (ORC entrypoint) -> due + installment settlement mutation
+ORC wiring (validated in `deploy/application/orchestration/loans_orc.xml`):
+- Appropriation + due/installation updates happen in the `trial_mode_post_transaction` / `real_mode_post_transaction` blocks before the nested `API id="postTransaction"`.
+
+Code-verified mutation path (repayment):
+- `repaymentApproppriationProcessor` → `in.novopay.accounting.loan.repayment.processor.RepaymentApproppriationProcessor`
+  - Allocation setup:
+    - reads `repayment_amount` from `executionContext["repayment_amount"]`
+    - loads:
+      - `loan_account_entity` and `loan_product_entity`
+      - `loan_due_details_list` (`LoanDueDetailsEntity` rows)
+    - loads asset criteria slab via `LoanProductAssetCriteriaDAOService.getAssetCriteriaSlabDetailsByProductAndAssetCriteriaSlabId(productId, assetCriteriaSlabsId)`
+      - extracts `liquidationOrder` from returned index `[4]`
+      - builds component precedence via indices `[0..3]` into `approppriationSequenceMap` (maps to PRIN/INT/PENALTY/FEE via `APPROPPRIATION_COMPONENT_TYPE_MAP`)
+  - Due-line ordering (liquidation strategy):
+    - `LIQ_INSTL`: sort by `dueDate` ascending; tie-break by component precedence
+    - `LIQ_COMP`: sort by component precedence; tie-break by `dueDate` ascending
+    - `LIQ_INSTL_CHRG_COMP`: split due lines into
+      - installments (`PRIN`/`INT`) + charges (`PINT`/`FEE`)
+      - sort each group separately using the relevant comparator, then concatenate installments first, charges second
+  - For each `LoanDueDetailsEntity` (doAppropriation):
+    - computes `settledAmount = paidAmount + waivedAmount`
+    - computes `pendingAmount = dueAmount - settledAmount`
+    - sets `currentPaidAmount = min(repaymentAmount, pendingAmount)` (caps by pending)
+    - sets transient `loanDueDetailsEntity.currentPaidAmount = currentPaidAmount`
+    - increments totals:
+      - `principal_amount` for componentType=`PRIN`
+      - `interest_amount` for componentType=`INT`
+      - `penalty_amount` for componentType=`PENALTY`
+      - `fee_amount` for componentType=`FEE`
+    - reduces remaining repayment:
+      - `repaymentAmount = repaymentAmount - currentPaidAmount`
+      - stops early when remaining becomes `0`
+  - Sets execution-context outputs:
+    - `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount`
+    - `excess_amount` = rounded remainder (CurrencyUtil.roundAmount with `ROUND_OFF_TYPE_CCY`)
+    - `total_settled_amount` = principal + interest + penalty + fee
+    - `suspense_amount`:
+      - if `loanAccountEntity.npaAgeingStartDate != null`, suspense_amount = `interest_amount`
+      - else suspense_amount = `0`
+- `updateLoanDueDetailsProcessor` → `in.novopay.accounting.loan.repayment.processor.UpdateLoanDueDetailsProcessor`
+  - persists repayment at due-row level:
+    - `loanDueDetailsEntity.paidAmount = paidAmount + currentPaidAmount`
+    - `loanDueDetailsEntity.updatedBy/updatedOn`
+    - calls `loanDueDetailsDAOService.saveEntityList(modifiedLoanDueDetailsList)`
+  - builds `loan_due_details_payment_dto_map`:
+    - if DTO not present: initializes DTO with `paidAmount = loanDueDetailsEntity.paidAmount` and `waivedAmount = 0`
+    - writes DTO map back to `executionContext` under `loan_due_details_payment_dto_map`
+- `updateLoanInstallmentDetailsProcessor` → `in.novopay.accounting.loan.repayment.processor.UpdateLoanInstallmentDetailsProcessor`
+  - updates installment settlement and settlement flags:
+    - `loanInstallmentDetailsEntity.settledAmount = settledAmount + currentPaidAmount(sum)`
+    - sets `lastPaidDate`, `updatedOn`, `updatedBy`
+    - sets `settled=true` if `mode == "prepayment"` OR `settledAmount >= dueAmount(PRIN+INT)`
+    - calls `loanInstallmentDetailsDAOService.saveEntityList(...)`
+- `createLoanDueDetailsLoanAccountPaymentsDetailsProcessor` → `in.novopay.accounting.loan.common.processor.CreateLoanDueDetailsLoanAccountPaymentsDetailsProcessor`
+  - persists link table rows:
+    - constructs `LoanDueDetailsLoanAccountPaymentsDetailsEntity` for each due DTO key:
+      - copies `paidAmount`, `waivedAmount` (from `LoanDueDetailsPaymentDTO`)
+      - copies `waiverDetailsId` if present
+    - calls `lddLoanAccountPaymentsDetailsDAOService.saveEntityList(...)`
+
+### `loanPrepayment` / foreclosure (ORC entrypoint) -> waiver/loss-bucket + BPI due-mutation
+ORC wiring (validated in `deploy/application/orchestration/loans_orc.xml`):
+- In the `do_prepayment` real block:
+  - `updateDueDetailsForPrepaymentProcessor` runs before the nested `API id="postTransaction"`.
+  - later the flow updates due/installment/loan status via `updateLoanDueDetailsProcessor`, `updateLoanInstallmentDetailsProcessor(mode=prepayment)`, and calls `updateExcessAmountForPrepaymentProcessor`.
+
+Code-verified mutation path (prepayment):
+- `updateDueDetailsForPrepaymentProcessor` → `in.novopay.accounting.loan.prepayment.processor.UpdateDueDetailsForPrepaymentProcessor`
+  - computes and persists waiver/loss impacts by setting due-row `waivedAmount`:
+    - calls `loanDueDetailsSuperListUtil.getDueDetailsByComponent(...)`
+    - filters rows where `dueAmount > paidAmount + waivedAmount`
+    - for each component bucket (INT/PRIN/BPI, plus current_lpp, foreclosure_fee, cbc_fee):
+      - sets `LoanDueDetailsEntity.waivedAmount` to either remaining amount or bucket dueAmount
+      - creates `WaiverDetailsEntity` with:
+        - `waiverAmount`
+        - `waiverStatus="APPROVED"`
+        - `fullyWaived` flag
+      - persists `WaiverLoanDueDetailsEntity`:
+        - `identifierType="FORECLOSURE"`
+        - `identifierValue=<prepaymentDetailsId>`
+        - `waivedAmount`
+  - BPI (gap interest) handling:
+    - logically deletes future gap interest rows:
+      - `logicalDeleteByLoanAccountIdAndComponentTypeAndDueDate(..., componentType="INT", dueDate=gapDueDate, foreclosureDate)`
+    - creates a new due row as a copy:
+      - sets `dueAmount = prepaymentDetailsEntity.bpiAmount`
+      - sets/accumulates `waivedAmount` by adding `prepaymentDetailsEntity.bpiWaivedAmount`
+    - persists waiver details and DTO map entries for the new BPI due row
+
+- `prepaymentApproppriationProcessor` (component allocation) → `in.novopay.accounting.loan.prepayment.processor.PrepaymentApproppriationProcessor`
+  - Allocation setup:
+    - reads `total_foreclosure_amount` and per-component amounts from EC:
+      - `principal_amount`, `interest_amount`, `penal_amount`, `fee_amount`
+    - reads `foreclosure_date` as millis (`FORECLOSURE_DATE`) and converts to `repaymentValueDate`
+    - loads `loan_due_details_list` via `LoanDueDetailsSuperListUtil.getDueDetails(loanAccountId, executionContext)`
+    - loads asset criteria slab details (same `[0..4]` extraction) to build:
+      - `liquidationOrder`
+      - component precedence map (`approppriationSequenceMap`)
+  - Due-line ordering:
+    - `LIQ_INSTL`: by dueDate then component precedence
+    - `LIQ_COMP`: by component precedence then dueDate
+    - `LIQ_INSTL_CHRG_COMP`: split installment (`PRIN`/`INT`) + charge (`PINT`/`FEE`), sort each, then concatenate
+  - For each due line (doApproppriation):
+    - computes `settledAmount = paidAmount + waivedAmount`
+    - computes `pendingAmount = dueAmount - settledAmount`
+    - principal (`PRINCIPAL`):
+      - allocates when componentType=`PRIN` with no dueDate gate:
+        - `currentPaidAmount = min(pendingAmount, remainingPrincipalAmount)`
+        - subtracts from `principalAmount` remaining
+    - interest (`INTEREST`):
+      - allocates when:
+        - `dueDate <= repaymentValueDate`, OR
+        - `isGapInterestApplicable(repaymentValueDate, loanAccountId, executionContext)` is true
+      - `isGapInterestApplicable(...)` checks previous/next due dates around `repaymentValueDate`:
+        - if `prevDueDate` is null, it falls back to `loanAccountEntity.expectedDisbursementDate`
+        - returns true when `repaymentValueDate` lies within `[prevDueDate, nextDueDate]`
+    - penalty (`PENALTY`):
+      - allocates only when `dueDate <= repaymentValueDate`
+    - fee (`FEE`):
+      - allocates regardless of dueDate (it uses `currentPaidAmount = min(pendingAmount, remainingFeeAmount)`)
+    - else:
+      - sets `currentPaidAmount=0`
+  - Sets EC outputs:
+    - `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount` (updated remaining-allocated totals)
+    - `excess_amount = 0`
+    - replaces `loan_due_details_list` with modified due rows
+
+### `loanAccountPartPrepayment` -> part prepayment appropriation (PAP: gate + reuse repayment allocation) 
+Code-verified appropriation path (part prepayment transaction):
+- `PopulateAdditionalAmountForPartPrepaymentProcessor` → `in.novopay.accounting.loan.partprepayment.processor.PopulateAdditionalAmountForPartPrepaymentProcessor`
+  - Sets up transaction context:
+    - sets `transaction_type` (PART_PREPAYMENT) and `transaction_sub_type` (instrumentType)
+    - builds EC “repayment style” inputs so it can reuse repayment appropriation:
+      - `repayment_amount = overDueAmount + overDueFeeCharges + dueAmount`
+      - `repayment_time = rescheduling_effective_date`
+      - `account_number` + `loan_account_entity`
+      - sets `is_part_prepayment_call=true`
+  - Eligibility gate:
+    - calls `CheckEligibleForRepaymentAppropriationProcessor`
+      - if due details list is empty OR (loan status inactive AND NOT part-prepayment call):
+        - sets `principal_amount/interest_amount/penalty_amount/fee_amount = 0`
+        - sets `excess_amount = repayment_amount`
+        - clears `loan_due_details_list`
+        - sets `do_repayment_appropriation=false`
+      - else:
+        - sets `do_repayment_appropriation=true` and seeds:
+          - `loan_due_details_list`
+          - `loan_product_entity`
+  - Allocation execution (when gate allows):
+    - if `do_repayment_appropriation=true`, it executes `repaymentApproppriationProcessor` (same liquidation-order logic as `loanRepayment`)
+  - Excess/advance propagation into GL additional amounts:
+    - `processExcessAmount(...)` pushes advance-sourced additional amount details:
+      - `ADV_OVER_DUE_PRIN_AMT`, `ADV_OVER_DUE_INT_AMT`, `ADV_OVER_DUE_PENALTY_AMT`, `ADV_OVER_DUE_FEE_AMT`
+      - plus `ADV_SUSP_AMT`, `ADV_PRIN_AMT`, `ADV_INT_AMT`, `ADV_PART_PREPAYMENT`
+  - Overdue additional amounts when totalDues > 0:
+    - populates `OVER_DUE_PRIN_AMT`, `OVER_DUE_INT_AMT`, `OVER_DUE_PENALTY_AMT`, `OVER_DUE_FEE_AMT`, `SUSP_AMT`
+  - Part-prepayment specific additional amount details:
+    - `additional_amount_details` includes:
+      - `PRIN_AMT` (net part prepay amount)
+      - `INT_AMT` (only when bpiAmount > 0)
+      - `PART_PREPAYMENT` charges (only when charges > 0)
+  - Tax reference setup:
+    - `populateTaxAdditionalInfo(...)` resolves product scheme transaction charge config:
+      - derives `price_setup_code` and its `tax_group_id`
+      - calls `TaxAmountUtiltyService.populateTaxExternalReference(...)` to create deterministic external tax reference ids
+
+### `loanAccountRebooking` (ORC entrypoint) -> regenerate repayment schedule with new ROI (+ optional interest adjustment posting)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountRebooking"`).
+
+Validators (ORC):
+- `function_code=function_sub_code=DEFAULT` (`patternFieldValidator`)
+- `account_number`, `existing_roi`, `new_roi`, `rebooking_effective_date`
+- ROI format validation + numeric range for `rebooking_effective_date`
+
+Processor chain (code-verified wiring):
+- `populateUserDetails`
+- `setCommonAttributesProcessor`
+- API `loanAccountRebooking_getLoanAccountDetails` (`getLoanAccountDetails` v1; maps `id` → `account_id`)
+- `executeLoanAccountRebookingProcessor`
+
+Post Transaction (code-verified from ORC + processor EC flags):
+- If `${excess_int_amt_txn}=true`:
+  - populates additional amounts for `EXCESS_PAID`, `EXCESS_BILLED`, `NPA_EXCESS_BILLED`
+  - posts `postTransaction` with:
+    - `transaction_type=LOAN_REBOOKING`
+    - `transaction_sub_type=INTEREST_ADJUSTMENT`
+    - `amount=${excess_interest_amount}`
+- If `${less_int_amt_txn}=true`:
+  - populates additional amount `LESS_INT_AMT` with `amount=${less_interest_amount}`
+  - posts `postTransaction` with:
+    - `transaction_type=LOAN_REBOOKING`
+    - `transaction_sub_type=INTEREST_ADJUSTMENT`
+    - `amount=${less_interest_amount}`
+- On `${post_txn=true}`:
+  - `populateTransactionAccountDetailsProcessor` (placeholder `LOAN_ACCOUNT`, narration `Loan Rebooking`)
+  - `postTransaction` with `originating_office_id=${logged_user_office_id}`, `office_id=${office_id}`, `function_code/function_sub_code=DEFAULT`, `currency=INR`
+  - `createLoanAccountPaymentsDetailsProcessor` with:
+    - `value_date=${rebooking_effective_date}`
+    - `repayment_amount=${txn_amount}`
+    - `repayment_mode=REBKG`
+
+`ExecuteLoanAccountRebookingProcessor` (code-verified core):
+- Regenerates repayment schedule with new ROI and computes interest diff vs existing schedule
+- Sets EC flags:
+  - `${excess_int_amt_txn}` for negative interest diff (EXCESS case)
+  - `${less_int_amt_txn}` for positive interest diff (LESS case)
+- Deletes and recreates due/installment/schedule details from the current schedule number onward
+- Updates `AccountInterestDetailsEntity.effectiveRate` to `newROI`
+- Writes EC amounts:
+  - `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount`
+  - `excess_amount="0.000000"`
+  - `client_reference_number="LR"+accountId+<timestamp>`
+
+### `childWaiveLoanAccountCharges` (ORC entrypoint) -> child due waivedAmount + waiver identifier linkage rows
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childWaiveLoanAccountCharges"`).
+
+Processor chain (code-verified wiring):
+- `populateChildLoanWaiverDataProcessor`
+- `updateLoanDueDetailsForWaiverProcessor`
+- `updateWaiverLoanDueDetailsProcessor`
+
+EC behavior:
+- Builds `waiver_details_entity_list` from `waiver_details_list`
+- Updates `LoanDueDetailsEntity.waivedAmount` (additive) and creates per-installment waived mapping
+- Persists `WaiverLoanDueDetailsEntity` rows:
+  - `identifier_type` (defaults to `WAIVER`)
+  - `identifier_value` = waiver entity id
+  - `loan_due_details_id` + `waived_amount`
+
+Idempotency/dedupe:
+- No explicit dedupe guard in this request chain; repeated invocations can re-apply waived amounts.
+
+### `cancelLoanForeclosure` (ORC entrypoint) -> mark foreclosure/prepayment task rejected + reactivate loan
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="cancelLoanForeclosure"`).
+
+Validators (ORC):
+- `account_number` mandatory
+- `function_code=function_sub_code=DEFAULT`
+
+Processor chain:
+- `cancelLoanForeclosureProcessor`
+- If `${task_status}` is NOT `APPROVED|REJECTED`, calls API `loanForeclosure_deleteTask` to delete task details for `task_id`
+
+`CancelLoanForeclosureProcessor` (code-verified):
+- Reads `account_number`, `reject_reason`, `notes`
+- Resolves `prepaymentDetailsId` and `loanAccountId`
+- Marks:
+  - `PrepaymentDetailsEntity.deleted=true`
+  - `PrepaymentDetailsEntity.task_status=REJECTED`
+  - sets `rejectReason` + `notes`
+  - marks ALL related `PrepaymentChargeDetailsEntity.deleted=true`
+- Sets `LoanAccountEntity.loanStatus=ACTIVE` and updates `loanAccountUpdatedBy/On`
+- Writes EC:
+  - `task_id`
+  - `task_status`
+
+### Waiver persistence primitives (charged-off / foreclosure waivers)
+Code-verified waiver persistence:
+- `updateLoanDueDetailsForWaiverProcessor` → `in.novopay.accounting.loan.waiver.processor.UpdateLoanDueDetailsForWaiverProcessor`
+  - for each `WaiverDetailsEntity` in `executionContext["waiver_details_entity_list"]`:
+    - loads `LoanDueDetailsEntity` by `loanDueDetailsId`
+    - accumulates `loanDueDetailsEntity.waivedAmount = waivedAmount + entity.waiverAmount`
+    - saves due-row via `loanDueDetailsDAOService.saveOne(...)`
+    - accumulates a per-installment map in `executionContext` under `waiver_installment_id_map`
+- `updateWaiverLoanDueDetailsProcessor` → `in.novopay.accounting.loan.waiver.processor.UpdateWaiverLoanDueDetailsProcessor`
+  - persists `WaiverLoanDueDetailsEntity` rows by copying:
+    - `identifierType` (defaults to `"WAIVER"` unless `waiver_identifier_type` execution key is present)
+    - `identifierValue = waiverDetailsEntity.id`
+    - `loanDueDetailsId` and `waivedAmount`
+
+### Billing state selection + posting trigger (ACTIVE-only)
+Code-verified billing selection and post trigger:
+- `loanAccountBilling` (batch) uses an ACTIVE-only partition query:
+  - `PARTITION_DATA_QUERY = SELECT la.account_id FROM loan_account la WHERE (la.loan_status = 'ACTIVE')`
+- `LoanAccountBillingBatchService.processLoanAccountBilling(...)` sets and posts:
+  - `transaction_type="BILLING"`, `transaction_sub_type="NORMAL_BILLING"`
+  - sets:
+    - `account_details=[{placeholder:"LOAN_ACCOUNT", account_number:<accountNumber>, narration:""}]`
+    - `principal_amount` and `interest_amount` as execution locals and into `additional_amount_details`
+    - `amount = principal + interest`
+    - `value_date`, `currency`, `originating_office_id`
+  - calls internal API: `postTransaction` with identifier `billing_postTransaction`
+
+### Excess refund state mutation (derived from due paid/waived buckets)
+Code-verified computation + state update:
+- `ProactiveExcessAmountRefundItemWriter.executeExcessAmountRefund(...)`
+  - uses due table state to compute due outstanding:
+    - for each `LoanDueDetailsEntity` in `loanDueDetailsDAOService.getDueDetails(loanAccountId, new Date())`:
+      - `totalDueAmount += dueAmount - paidAmount - waivedAmount`
+  - computes `total_refund_amount` as:
+    - `loanAccount.excessAmount - totalDueAmount`
+  - sets execution-context totals:
+    - `total_refund_amount`, `repayment_amount`
+  - updates `loanAccount.excessAmount` based on diff logic:
+    - if computed diff is negative: sets excessAmount = null
+    - else: sets excessAmount = diff
+- it then updates loan account again in `updateLoanAccountDetails(...)` on success:
+  - `loanAccountEntity.setExcessAmount(proactiveRefundDTO.getExcessAmount())`
+  - sets `loanAccountUpdatedBy="SYSTEM"`, `loanAccountUpdatedOn=<now>`
+
+### Auto-closure state mutation (closure orchestration before GL)
+Code-verified closure state updates and processor invocation:
+- `LoanAccountClosureService.processIndividualAccount(...)`
+  - sets `loanAccountEntity.loanStatus = CLOSED`
+  - sets `loanAccountEntity.status = AccountStatus.CLOSED` and closing dates
+  - saves via `loanAccountDAOService.save(loanAccountEntity)`
+- `LoanAccountClosureService.doClosureRelatedTransactions(...)` (when auto closure tolerance path triggers):
+  - calls in order:
+    - `createLoanAccountPaymentsDetailsProcessor.execute(...)`
+    - `populateWaiverDetailsForUnpaidPenal(...)` and stores `waiver_details_entity_list` in execution-context
+    - `updateLoanDueDetailsForWaiverProcessor.execute(...)`
+    - `updateLoanInstallmentDetailsForWaiverProcessor.execute(...)`
+    - `updateWaiverLoanDueDetailsProcessor.execute(...)` (with `WAIVER_IDENTIFIER_TYPE = AUTO_CLOSURE`)
+    - `populateLoanDueDetailsPaymentDTO(executionContext)`
+    - `createLoanDueDetailsLoanAccountPaymentsDetailsProcessor.execute(executionContext)`
+    - `populateEODJobDataProcessor.execute(...)`
+    - `loanAccountDpdCalcProcessor.execute(...)`
+    - NPA movement criteria processors + `loanAccountAssetClassificationProcessor.execute(...)`
+
+### `waiveLoanAccountCharges` (charge/fee waiver) -> due waived bucket + waiver detail rows
+Code-verified mutation path:
+- `createWaiverDetailsProcessor` → `in.novopay.accounting.loan.waiver.processor.CreateWaiverDetailsProcessor`
+  - inserts `WaiverDetailsEntity` rows with `waiverStatus=PENDING`:
+    - sets `loanAccountId`, `loanDueDetailsId`, `fullyWaived`, `waiverPercentage` (optional), `waiverAmount` (optional), `extRefNumber` (optional), `notes` (optional)
+- `getWaiverDetailsProcessor` → `in.novopay.accounting.loan.waiver.processor.GetWaiverDetailsProcessor`
+  - reads `waiver_details_list` (objects with `loan_account_number` + `loan_due_details_id`)
+  - fetches pending waiver entities and stores:
+    - `waiver_details_entity_list` (List of `WaiverDetailsEntity`)
+    - `task_id`
+- `updateLoanDueDetailsForWaiverProcessor` → `in.novopay.accounting.loan.waiver.processor.UpdateLoanDueDetailsForWaiverProcessor`
+  - increments `loan_due_details.waived_amount`:
+    - `updatedWaivedAmount = waiverAmount + current loanDueDetails.waivedAmount`
+    - persists via `loanDueDetailsDAOService.saveOne(...)`
+  - builds `waiver_installment_id_map` in execution-context (sum waived per `loan_installment_details_id`)
+- `updateWaiverLoanDueDetailsProcessor` → `in.novopay.accounting.loan.waiver.processor.UpdateWaiverLoanDueDetailsProcessor`
+  - inserts `WaiverLoanDueDetailsEntity` rows (one per `WaiverDetailsEntity`):
+    - `identifierType = executionContext.waiver_identifier_type` if present, else `"WAIVER"`
+    - `identifierValue = waiverDetailsEntity.id`
+    - `loanDueDetailsId = waiverDetailsEntity.loanDueDetailsId`
+    - `waivedAmount = waiverDetailsEntity.waiverAmount`
+
+### `loanWriteoff` -> loan status WRITEOFF + due paid movement + installment settlement
+Code-verified mutation path:
+- `validateLoanWriteOffDataProcessor` → `in.novopay.accounting.loan.writeoff.processor.ValidateLoanWriteOffDataProcessor`
+  - validates:
+    - `value_date` equals today (midnight not applied; uses LocalDate.now)
+    - `loan_status == ACTIVE`
+  - computes execution-context amount seeds:
+    - `principal_amount` from `loanDueDetailsDAOService.getPrincipalOutStandingAmount(loanAccountId)`
+    - `interest_amount` from `loanDueDetailsDAOService.getInterestDueAmountByDueDate(loanAccountId, now)`
+    - `penalty_amount` from `loanDueDetailsDAOService.getPenalDueAmountByDueDate(loanAccountId, now)`
+  - enforces `writeoff_amount == principal + interest + penalty`
+- `prepaymentApproppriationProcessor` → `in.novopay.accounting.loan.prepayment.processor.PrepaymentApproppriationProcessor`
+  - allocates the writeoff amount across `loan_due_details` and sets `LoanDueDetailsEntity.currentPaidAmount`
+  - allocation rules (from code):
+    - `pendingAmount = dueAmount - (paidAmount + waivedAmount)`
+    - `PRINCIPAL`: always allocates against `principalAmount`
+    - `INTEREST`: allocates only when `dueDate <= repaymentValueDate` OR gap-interest eligibility is true
+    - `PENALTY`: allocates only when `dueDate <= repaymentValueDate`
+    - `FEE`: allocates against `feeAmount`
+  - stores:
+    - `loan_due_details_list` (modified due rows)
+    - `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount`
+    - `excess_amount = 0`
+  - code-verified inconsistency note:
+    - in `loans_orc.xml`, `loanWriteoff` invokes `prepaymentApproppriationProcessor` with `prepayment_amount=<writeoff_amount>`
+    - but `PrepaymentApproppriationProcessor` reads `executionContext["total_foreclosure_amount"]` (not `prepayment_amount`) for `repaymentAmount`
+    - `ValidateLoanWriteOffDataProcessor` does not set `total_foreclosure_amount`, so `total_foreclosure_amount` must already exist in `ExecutionContext` before entering `PrepaymentApproppriationProcessor` (e.g., seeded from request payload or another earlier processor).
+- `updateLoanWriteOffStatusProcessor` → `in.novopay.accounting.loan.writeoff.processor.UpdateLoanWriteOffStatusProcessor`
+  - sets `loan_account.loan_status = WRITOFF`
+- `updateLoanDueDetailsProcessor` → `in.novopay.accounting.loan.repayment.processor.UpdateLoanDueDetailsProcessor`
+  - persists due paid movement:
+    - `loan_due_details.paid_amount = paidAmount + currentPaidAmount`
+    - updates audit `updatedBy/updatedOn`
+  - builds `settled_amount_map` (key=`loan_installment_details_id`, value=`sum currentPaidAmount per installment`)
+  - initializes `loan_due_details_payment_dto_map` with `waivedAmount=0` for entries not already in the DTO map
+- `updateLoanInstallmentDetailsProcessor` → `in.novopay.accounting.loan.repayment.processor.UpdateLoanInstallmentDetailsProcessor`
+  - persists installment settlement:
+    - `loan_installment_details.settled_amount = settled_amount_map[installment_id]`
+    - sets `lastPaidDate`, `updatedOn/updatedBy`
+    - sets `settled=true` if `mode == "prepayment"` OR settledAmount >= (principal+interest due amount)
+- `createLoanAccountPaymentsDetailsProcessor` → `in.novopay.accounting.loan.common.processor.CreateLoanAccountPaymentsDetailsProcessor`
+  - inserts `LoanAccountPaymentsDetailsEntity` (transaction/payment audit + component amounts + `mode`)
+
+### `loanDisbursementCancellation` -> INT gap & FEE due mutation + waiver detail rows + logical deletions
+Code-verified mutation path:
+- `updateDueDetailsForDisbursementCancellationProcessor` → `in.novopay.accounting.account.loans.processor.UpdateDueDetailsForDisbursementCancellationProcessor`
+  - input keys used:
+    - `loan_account_entity`
+    - `loan_disbursement_cancellation_details`
+    - `loan_disbursement_cancellation_charge_details_list`
+  - BPI / gap interest handling:
+    - finds gap interest due row via `loanDueDetailsDAOService.findDueDetailForGapInterest(...)`
+    - updates:
+      - `gapDue.waivedAmount += bpiWaivedAmount`
+      - `gapDue.paidAmount += bpiAmountToBePaid`
+    - persists gap due row
+    - if `bpi waivedAmount > 0`:
+      - creates `WaiverDetailsEntity` with:
+        - `identifierType`/identifier fields are stored via `WaiverLoanDueDetailsEntity` below
+        - `waiverStatus="APPROVED"`, `fullyWaived` from cancellation details, and audit fields
+      - creates `WaiverLoanDueDetailsEntity`:
+        - `identifierType="DISB_CNCL"`
+        - `identifierValue=<loanDisbursementDetailsEntity.id>`
+        - `waivedAmount=<bpiWaivedAmount>`
+  - cancellation fee handling:
+    - creates new `LoanDueDetailsEntity` rows with:
+      - `componentType="FEE"`, `chargeCode/chargeRate/chargeFixedAmount`, `baseAmount`
+      - `dueDate=overdueDate=cancellationDate`
+      - `dueAmount=chargeAmount`, `paidAmount=amountToBePaid`, `waivedAmount=waivedAmount`
+    - persists and creates corresponding `WaiverDetailsEntity` + `WaiverLoanDueDetailsEntity` with `identifierType="DISB_CNCL"`
+  - logical deletions after cancellation:
+    - `logicalDeleteByLoanAccountIdAndComponentTypeAndDueDate(...)` for `componentType in ["INT"]` using:
+      - `dueDate = gapInterestDueDetailsEntity.getDueDate()`
+      - `now = cancellationDate`
+    - `loanInstallmentDetailsDAOService.logicalDeletionOfFutureInstallmentsByLoanAccountIdAndDueDate(...)` (future installments from `now`)
+- `updateExcessAmountForDisbursementCancellationProcessor` → `in.novopay.accounting.loan.cancellation.processor.UpdateExcessAmountForDisbursementCancellationProcessor`
+  - sets `loan_account.excessAmount = newExcessAmount - oldExcessAmount`
+
+### `childLoanDisbursementCancellation` (ORC entrypoint) -> child-disbursement cancel txn + due/BPI/status mutation
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursementCancellation"`).
+
+Processor chain (code-verified wiring):
+- `setCommonAttributesProcessor`
+- `populateChildLoanDisbursementCancellationDataProcessor`
+- `checkLoanAccountInterestAccrualCalculationProcessor` with `value_date=${cancellation_date}`
+- `checkLoanAccountInterestAccrualBookingProcessor` with `function_code/function_sub_code=DEFAULT` and `office_id=${logged_user_office_id}`
+- Dummy sets:
+  - `transaction_type=LOAN_DISB_CNCL`
+  - `transaction_sub_type=CASH`
+- `populateAdditionalAmountAndAccountDetailsForCancellationProcessor`
+- `populateAdditionalTaxAmountAndAccountDetailsFromChargeDetails`
+- Nested `postTransaction` with:
+  - `run_mode=REAL`
+  - `originating_office_id=${logged_user_office_id}`
+  - `transaction_type=${transaction_type}`, `transaction_sub_type=${transaction_sub_type}`
+  - `client_reference_number=${client_reference_number}`
+  - `value_date=${cancellation_date}`
+  - `currency=INR`
+  - `amount=${total_cancellation_amount}`
+  - captures `transaction_reference_number`
+- `createLoanAccountPaymentsDetailsProcessor`:
+  - principal: `net_principle_outstanding_amount`
+  - interest: `bpi_amount_to_be_paid`
+  - fee: `cancellation_fee_amount_to_be_paid`
+  - penalty=0, excess_amount=0
+  - `transaction_reference_number` + `client_reference_number` wiring
+- Mutations after GL posting:
+  - `updateLoanDueDetailsDataProcessor` with `set_int_deleted=true`, `set_prin_paid=true`
+  - `updateLoanBPIDataProcessor`
+  - `updateLoanInstallmentDataProcessor`
+  - `updateLoanAccountStatusProcessor`:
+    - `loan_status=DISB_CNCL`
+    - `account_status=CANCELLED`
+    - `set_excess_amount=true`
+
+### `loanAccountExcessAmountRefund` -> validate refund amount + reduce loan_account.excess_amount + record payment details
+Code-verified mutation path:
+- `validateDataForLoanAccountExcessAmountRefundProcessor` → `in.novopay.accounting.loan.excessamountrefund.processor.ValidateDataForLoanAccountExcessAmountRefundProcessor`
+  - validates:
+    - parent/SHG child excess consistency
+    - lock-in period using existing `loan_account_payments_details` and `refundLockInPeriod`
+  - validates monetary correctness:
+    - `totalDueAmount = sum(dueAmount - paidAmount - waivedAmount)` across due details (as of `refundEffectiveDate`)
+    - enforces `totalRefundAmount == loanAccount.excessAmount - totalDueAmount`
+  - seeds `LOAN_ACCOUNT_ENTITY` and `customer_id` into execution-context
+- `executeExcessAmountRefundProcessor` → `in.novopay.accounting.loan.excessamountrefund.processor.ExecuteExcessAmountRefundProcessor`
+  - adjusts `loan_account.excessAmount`:
+    - `diff = excessAmt - totalRefundAmount`
+    - if diff < 0: sets `loanAccount.excessAmount = null`
+    - else: sets `loanAccount.excessAmount = diff`
+    - persists with updatedBy/updatedOn
+  - sets execution-context:
+    - component amounts to `"0.000000"`
+    - `client_reference_number = "EAR" + loanAccountId + <timestamp>`
+- In approve path, `createLoanAccountPaymentsDetailsProcessor` inserts `LoanAccountPaymentsDetailsEntity` with:
+  - `repayment_amount = total_refund_amount`
+  - `excess_amount = total_refund_amount`
+  - `mode = payment_mode`
+
+### `fetchLoanAccountChargeDetails` (ORC entrypoint) -> configured charge/tax breakdown + placeholder fallback
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanAccountChargeDetails"`).
+
+Validators (ORC):
+- `function_code=DEFAULT`
+- `function_sub_code=DEFAULT|BY_PRICE_SETUP_CODE`
+
+Processor:
+- `fetchLoanAccountChargeDetailsProcessor` (DEFAULT flow)
+- `fetchChargeDetailsProcessor` (BY_PRICE_SETUP_CODE flow)
+
+`FetchLoanAccountChargeDetailsProcessor` (code-verified core outputs):
+- writes `product_scheme_id`
+- writes `charges_details` (JSONArray)
+- writes `charges_configured`:
+  - `"true"` when non-placeholder charges exist
+  - `"false"` when it falls back to a placeholder
+- placeholder fallback (code-verified):
+  - includes `charge_identifier="PROC_FEE"` with `charge_value=0` when no configuration exists
+
+### `calculateAnnualPercentageRate` (ORC entrypoint) -> APR (annual percentage rate)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateAnnualPercentageRate"`).
+
+Processor:
+- `calculateAnnualPercentageRateProcessor`
+
+EC inputs:
+- `nper`, `nper_type`, `pmt`, `pv`
+
+EC outputs:
+- `annual_percentage_rate`
+
+### `calculateStampDutyCharges` (ORC entrypoint) -> stamp duty + surcharge + POA
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateStampDutyCharges"`).
+
+Processor:
+- `calculateStampDutyChargesProcessor`
+
+EC inputs:
+- `state_code`, `product_code`, `loan_amount`
+
+EC outputs (key shape):
+- `charge_identifier="STAMP_DUTY"`
+- `stamp_duty_charges`, `poa`
+- surcharge outputs:
+  - `is_surcharge_applicable`, `surcharge_type`, `surcharge_amount`, `surcharge_percentage_value`
+
+### `fetchPartPrepaymentRepaymentSchedule` (ORC entrypoint) -> part prepayment repayment schedule preview (generate_repayment_schedule=false)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchPartPrepaymentRepaymentSchedule"`).
+
+Processor chain (code-verified wiring):
+- `dummyProcessor` (sets `function_code=DEFAULT`)
+- `populateUserDetails`
+- `setCommonAttributesProcessor`
+- `validateLoanAccountPartPrepaymentProcessor`
+- `generateLoanAccountPartPrepaymentRepaymentScheduleProcessor` with `generate_repayment_schedule=false`
+
+Preview mode:
+- computes schedule keys into EC (no persistence).
+
+### `fetchRestructuringRepaymentSchedule` (ORC entrypoint) -> restructuring repayment schedule preview (generate_repayment_schedule=false)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchRestructuringRepaymentSchedule"`).
+
+Processor chain (code-verified wiring):
+- `populateUserDetails`
+- `setCommonAttributesProcessor`
+- `validateLoanRestructuringBusinessCaseProcessor`
+- `populateRegisterLoanAccountRescheduleDataPreProcessor`
+- `registerLoanAccountRescheduleEventProcessor` (identifier_type `EMIORTENOR`, generate_repayment_schedule=false)
+- `generateLoanAccountRestructuringRepaymentScheduleProcessor`
+
+Preview mode:
+- computes schedule keys into EC (no persistence).
+
+### `fetchLoanForeclosureSimulationDetails` (ORC entrypoint) -> foreclosure simulation amounts + charges (including fees and CBC components)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanForeclosureSimulationDetails"`).
+
+Processor chain (high-level wiring):
+- validates/prepares foreclosure inputs and super-data
+- computes prin/int for foreclosure
+- calls `fetchLoanForeclosureSimulationDetailsProcessor`
+- (optional) channel-based DDP borrower/loan details enrichment
+
+Key EC outputs:
+- `billed_principal`, `billed_interest`
+- `future_principal`, `balance_principal`
+- `bpi_amount`, `current_lpp`, `excess_amount`
+- `charges_details` (JSONArray)
+
+### `fetchDisbursementCancellationSimulationDetails` (ORC entrypoint) -> disbursement cancellation simulation amounts + fee/taxes
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchDisbursementCancellationSimulationDetails"`).
+
+Processor chain (high-level wiring):
+- prepares cancellation inputs
+- calls `fetchDisbursementCancellationSimulationDetailsProcessor` (TRIAL)
+
+Key EC outputs:
+- `charges_details` (JSONArray)
+- `bpi_amount`, `principal_outstanding_amount`
+- `excess_amount`, `cross_sell_amount`
+- `cancellation_fee`
+- `deducted_charges_details` (JSONArray)
+
+### `generatePreEMIRepaymentSchedule` (ORC entrypoint) -> pre-EMI schedule generation (combined `installment_list`)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="generatePreEMIRepaymentSchedule"`).
+
+Processor:
+- `generatePreEMIRepaymentScheduleProcessor`
+
+EC outputs:
+- `installment_list` (combined across tranches)
+
+### `generateOnDemandDocument` (ORC entrypoint) -> generate PDF documents via report microservice
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="generateOnDemandDocument"`).
+
+Branching by `function_code/function_sub_code` selects which report template to generate, then uses `GenerateReportProcessor`.
+
+EC outputs (key shape):
+- `document_details` (JSONArray; each contains `document_code`, `version`, and `file_names[]`)
+
+### `extractCasaBalanceFor180ProductCode` (ORC entrypoint) -> CASA balance extraction batch trigger for product code 180
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor180ProductCode"`).
+
+Processor:
+- `extractCasaBalanceFor180ProductCodeBatchProcessor`
+
+EC/side-effects:
+- validates `op_code`
+- uses `job_time` and sets `accts_under_pc_180_file_path`
+- adds batch execution context via `BatchExecutionContextHolder`
+
+### `extractCasaBalanceFor182ProductCode` (ORC entrypoint) -> CASA balance extraction batch trigger for product code 182
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor182ProductCode"`).
+
+Processor:
+- `extractCasaBalanceFor182ProductCodeBatchProcessor`
+
+EC/side-effects:
+- validates `op_code`
+- uses `job_time` and sets `accts_under_pc_182_file_path`
+- adds batch execution context via `BatchExecutionContextHolder`
+
+### `fetchLoanAccountsForCustomer` (ORC entrypoint) -> fetch active loans by customer IDs (status + product filters)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="fetchLoanAccountsForCustomer"`).
+
+Processor chain:
+- `fetchCustomerAccountNumberProcessor`
+
+Key EC outputs:
+- `status` (`SUCCESS` on success)
+- if none:
+  - `customer_present="FALSE"`
+  - `number_of_records=0`
+  - `loan_account_list=[]`
+
+### `bulkFileToSGManualJournalEntriesJob` (ORC entrypoint) -> bulk upload staging + trigger SG->Manual Journal posting
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGManualJournalEntriesJob"`).
+
+Processors executed (ordered):
+- `populateUserDetails`
+- `bulkFileToSGManualJournalEntriesJobProcessor` -> `ParallelBatchJobV2.runBulkFileUploadJob(jobName, op_code, overrideParams)`
+
+Spring Batch chain (file upload -> staging):
+- Batch config: `FileToSGManualJournalEntriesBatchConfigService` -> `FileToStagingBatchConfigService`
+- Worker step: `BulkFileToStagingIProcessor` (validates rows; sets staging row `status`) -> `FileToStagingIWriter` (writes temp partition CSVs)
+- Tasklet step: `FileToStagingTasklet`
+  - `COPY` temp CSVs into staging table: `file_staging_<upload_type.toLowerCase()>`
+  - `duplicateCheck()` -> `batchDBHandlerService.updateForDuplicateBulk(...)` for `DUPLICATE_CHECK`
+  - Updates overall file type status (maker-checker vs non-maker-checker) and triggers next `bulkSGTo*Job` via bulk upload internal APIs
+
+Key EC inputs/outputs:
+- Inputs used by `bulkFileToSGManualJournalEntriesJobProcessor`: `op_code`, `header_rows`, `file_upload_id`, `upload_type`, `job_time`, `user_id` (from `populateUserDetails`)
+- Outputs written:
+  - `function_sub_code = DEFAULT`
+  - overrideParams: `temp_file_path`, `user_id`, `file_upload_id`, `upload_type`, `header_rows`, `job_time`
+  - `BatchExecutionContext` stored via `BatchExecutionContextHolder.addBatchExecutionContext(...)`
+
+File staging/table names:
+- Staging load pattern: `file_staging_<upload_type.toLowerCase()>`
+- Downstream SGTo reader for this flow expects: `file_staging_manual_journal_entries`
+
+Nested accounting API calls:
+- None in this stage (only bulk upload internal APIs to update file upload/file type status and start SGTo job).
+
+Persistence/status update flow:
+- Per-row validation status written into staging by batch worker (`PENDING`/`FAILED`).
+- After `COPY`:
+  - duplicates are marked `FAILED`
+  - overall file type status is updated:
+    - maker-checker: `PENDING_APPROVAL` + application submission
+    - else: `FAILED` if `totalCount==0` or `successCount==0`, otherwise `PROCESS_READY` and SGTo job is started.
+
+Dedupe/idempotency guards:
+- Staging duplicate guard: `duplicateCheck()` using `DUPLICATE_CHECK` field validations.
+- Ledger/posting idempotency is handled in the later SGTo job via `bulkSGToManualJournalEntriesJob`.
+
+### `bulkSGToManualJournalEntriesJob` (ORC entrypoint) -> staged manual journal postings (postManualJournalEntry, per-row status)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToManualJournalEntriesJob"`).
+
+Processors executed (ordered):
+- `populateUserDetails`
+- `bulkSGToManualJournalEntriesJobProcessor` -> `ParallelBatchJobV2.runJob(jobName, op_code, overrideParams)`
+
+Spring Batch chain (staging -> manual journal posting):
+- Batch config: `SGToManualJournalEntriesBatchConfigService`
+  - Step 1 (partitioned chunk):
+    - Partitioning: `CustomBatchIdListPartitioner` using `dataQuery` over `file_staging_manual_journal_entries` (`sl_no` where `status NOT IN ('FAILED')`)
+    - Reader: `SGToManualJournalEntriesIReader`
+      - Reads from: `file_staging_manual_journal_entries`
+      - Filters: `status NOT IN ('FAILED')` and `sl_no` between partition min/max
+    - Processor: `SGToManualJournalEntriesIProcessor`
+      - Pre-loads staging rows for `file_upload_id` and validates each:
+        - enforces single LAN + SL_NO constraints
+        - rejects invalid or child LANs
+        - rejects manual journal for past date (based on `createdOn` vs current date)
+        - validates GL debit/credit codes and office mapping
+        - validates debit amount vs available GL balance derived from `TransactionPartitionDetailsEntity`
+      - sets staging `status`/`reason` (`FAILED` on validation errors)
+    - Writer: `SGToManualJournalEntriesIWriter`
+      - For each successful staging record:
+        - generates `manual_je_number` by calling `generateUniqueReferenceNumber` (sequence-based)
+        - builds `manual_journal_entry_gl_details`
+        - calls internal accounting API `postManualJournalEntry`
+        - sets staging `status = SUCCESS` or `FAILED` + `reason`
+  - Step 2 (tasklet): `SGToManualJournalEntriesTasklet`
+    - counts staging failures and updates overall file type status to `SUCCESS` or `FAILED`
+
+Key EC inputs/outputs:
+- Inputs used by `bulkSGToManualJournalEntriesJobProcessor`:
+  - `file_upload_id`, `op_code`, `user_id`, `LOGGED_USER_EMPLOYEE_FORMATTED_ID`
+- Batch override params prepared by the ORC processor:
+  - `user_id`, `file_upload_id`
+  - `business_date_long` (from `PlatformDateUtil.getValueDateInLong()`)
+  - `employee_formatted_id`
+  - `dataQuery` for partitioning by `sl_no`
+
+File staging/table names:
+- `file_staging_manual_journal_entries`
+
+Nested accounting API calls:
+- `postManualJournalEntry`
+- Ledger-level dedupe guard inside posting: `clientReferenceNumberDedupProcessor` using `client_reference_number = manual_je_number`
+
+Persistence/status update flow:
+- Per-row:
+  - validation marks staging as `FAILED` with `reason`
+  - successful rows are posted and then marked `SUCCESS` (or `FAILED` if posting fails)
+- Overall:
+  - `SGToManualJournalEntriesTasklet` sets overall to `SUCCESS` when `failedCount==0`, else `FAILED` with business validation message.
+
+Idempotency/dedupe guards:
+- Staging duplicate guard happens in the earlier file->staging stage.
+- Ledger dedupe guard happens during `postManualJournalEntry`.
+
+### `bulkFileToSGRefundMarkingJob` (ORC entrypoint) -> bulk upload staging + trigger SG->Refund marking
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkFileToSGRefundMarkingJob"`).
+
+Processors executed (ordered):
+- `populateUserDetails`
+- `bulkFileToSGRefundMarkingJobProcessor` -> `ParallelBatchJobV2.runBulkFileUploadJob(jobName, op_code, overrideParams)`
+
+Spring Batch chain (file upload -> staging):
+- Batch config: `FileToSGRefundMarkingBatchConfigService` -> generic `FileToStagingBatchConfigService`
+- Worker: `BulkFileToStagingIProcessor` -> `FileToStagingIWriter`
+- Tasklet: `FileToStagingTasklet`
+  - loads into `file_staging_<upload_type.toLowerCase()>`
+  - `duplicateCheck()` + duplicate bulk update for `DUPLICATE_CHECK`
+  - sets file type status and triggers SGTo via `startSGToFileTypeJob`
+
+Key EC inputs/outputs:
+- Inputs: `op_code`, `header_rows`, `file_upload_id`, `upload_type`, `job_time`, `user_id`
+- Output: `function_sub_code=DEFAULT` and override params for the batch job
+
+File staging/table names:
+- staging load pattern: `file_staging_<upload_type.toLowerCase()>`
+- downstream SGTo reader expects: `file_staging_refund_marking`
+
+Dedupe/idempotency guards:
+- `duplicateCheck()` at staging load stage.
+
+### `bulkSGToRefundMarkingJob` (ORC entrypoint) -> evaluate refund eligibility and update loan flags
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToRefundMarkingJob"`).
+
+Processor:
+- `bulkSGToRefundMarkingJobProcessor`
+
+Spring Batch chain (staging -> refund eligibility updates):
+- Batch config: `SGToRefundMarkingBatchConfigService`
+  - Step 1 (chunk):
+    - Reader: `SGToRefundMarkingItemReader`
+      - reads from `file_staging_refund_marking`
+      - filters `status NOT IN ('FAILED')` and partitions by id range
+    - Processor: `SGToRefundMarkingItemProcessor`
+      - calls `SGToRefundMarkingService.executeRefundMarking(...)`
+      - sets staging:
+        - `SUCCESS` if:
+          - loan is not missing
+          - loan is not a child LAN
+          - and (`excessAmountRefundAllowed == true` OR `refundAllowed == "no"`)
+        - else `FAILED` + reason (`Refund Not allowed for this Loan Product`)
+    - Writer: `SGToRefundMarkingItemWriter`
+      - persists staging rows
+      - for `SUCCESS` updates `LoanAccountEntity.refundAllowed` + `refundRemarks`
+      - propagates to child accounts too
+  - Step 2 (tasklet): `SGToTypeTasklet`
+    - updates overall file type status and sets final approval status.
+
+Key EC inputs/outputs:
+- Inputs used by ORC processor: `file_upload_id`, `user_id`, `op_code`
+- Outputs: `function_sub_code=DEFAULT` + batch override params
+
+Dedupe/idempotency guards:
+- No explicit idempotency key; re-runs overwrite eligibility flags deterministically based on staging input and loan product config.
+
+### `bulkFileToSGNocBlockUnblockJob` (ORC entrypoint) -> bulk upload staging + trigger SG->NOC block/unblock
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGNocBlockUnblockJob"`).
+
+Processors executed (ordered):
+- `populateUserDetails`
+- `bulkFileToSGNocBlockUnblockJobProcessor` -> `ParallelBatchJobV2.runBulkFileUploadJob(...)`
+
+Spring Batch chain (file upload -> staging):
+- Batch config: `FileToSGNocBlockUnblockBatchConfigService` -> `FileToStagingBatchConfigService`
+- Worker step: `BulkFileToStagingIProcessor` -> `FileToStagingIWriter`
+- Tasklet step: `FileToStagingTasklet`
+  - loads into `file_staging_<upload_type.toLowerCase()>`
+  - runs duplicate validations via `duplicateCheck()`
+  - triggers SGTo job using `startSGToFileTypeJob`
+
+File staging/table names:
+- staging load pattern: `file_staging_<upload_type.toLowerCase()>`
+- downstream SGTo reader expects: `file_staging_noc_block_unblock`
+
+### `bulkSGToNocBlockUnblockJob` (ORC entrypoint) -> validate/update NOC details and block/unblock statuses
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToNocBlockUnblockJob"`).
+
+Processor:
+- `bulkSGToNocBlockUnblockJobProcessor`
+
+Spring Batch chain:
+- Batch config: `SGToNocBlockUnblockBatchConfigService`
+  - chunk step:
+    - Reader: `SGToNocBlockUnblockIReader` from `file_staging_noc_block_unblock` where `STATUS NOT IN ('FAILED')`
+    - Processor: `SGToNocBlockUnblockIProcessor`
+      - validates:
+        - loan exists and is not child LAN
+        - loan status is `CLOSED`
+        - NOC not already dispatched and `nocDocumentId == null`
+        - requested new NOC action changes state (block/unblock cannot map to same existing)
+      - updates/creates `LoanAccountNocDetailsEntity` and reason rows
+      - mirrors update into child NOC details when `hasChildAccounts`
+      - marks staging as `SUCCESS` or `FAILED` with `reason`
+    - Writer: `SGToNocBlockUnblockIWriter` persists staging + NOC entities/reason rows (including child)
+  - tasklet step: `SGToTypeTasklet` finalizes overall file type to `APPROVED` and sets staging statuses.
+
+Idempotency/dedupe guards:
+- Rejects no-op transitions (same action vs existing NOC state) to avoid duplicate state transitions on re-runs.
+- Also avoids updates when NOC is already dispatched or document already exists.
+
+### `bulkSGToSecNpaReverseFeedFileJob` (ORC entrypoint) -> SEC NPA reverse feed + asset criteria movements
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToSecNpaReverseFeedFileJob"`).
+
+Processor:
+- `bulkSGToSecNpaReverseFeedFileJobProcessor`
+
+Spring Batch chain:
+- Batch config: `SGToSecNpaReverseFeedFileBatchConfigService`
+  - Reader: `SGToSecNpaReverseFeedFileIReader` from `file_staging_sec_npa_reverse_feed_file` (filters `status NOT IN ('FAILED')`)
+  - Processor: `SGToSecNpaReverseFeedFileIProcessor`
+    - validates loan account exists (else staging `FAILED`)
+    - updates SEC NPA fields only when:
+      - `secNpaReportingDate == null` OR `misDate > secNpaReportingDate`
+  - Writer: `SGToSecNpaReverseFeedFileIWriter`
+    - saves feed rows
+    - sets movement-related EC keys and invokes `loanAccountAssetCriteriaProcessor.execute(...)`
+      - may trigger GL movements via asset criteria processor paths
+  - Tasklet: `SGToTypeTasklet` finalizes overall file type status
+
+Persistence/status update flow:
+- Staging feed rows saved; invalid feed rows marked `FAILED`.
+- Overall file type marked `APPROVED` and staging statuses finalized.
+
+Idempotency/dedupe guards:
+- Loan SEC NPA fields update is guarded by the `secNpaReportingDate/misDate` condition.
+
+### `bulkSGToTransactionReversalJob` (ORC entrypoint) -> batch reversal posting for staged transactions
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="bulkSGToTransactionReversalJob"`).
+
+Processors:
+- `bulkSGToTransactionReversalJobProcessor`
+
+Spring Batch chain:
+- Reader: `SGToTransactionReversalIReader` from `file_staging_transaction_reversal` (filters `STATUS NOT IN ('FAILED')`)
+- Processor: `SGToTransactionReversalIProcessor`
+  - calls `ValidateBulkTransactionReversalBusinessCasesService.validate(...)`
+  - marks staging `FAILED` on business invalidations
+- Writer: `SGToTransactionReversalIWriter`
+  - seeds EC and calls:
+    - `ExecuteTransactionReversalProcessor`
+    - `populateEODJobDataAfterReversalProcessor`
+    - `populateLoanAccountPaymentDetailsDataProcessor`
+    - `reverseTransactionProcessor.execute(...)` (fatal if original transaction already reversed)
+    - `convertTransactionValueDateProcessor`
+    - `createLoanAccountPaymentsDetailsProcessor`
+    - `createTransactionReversalDetailsProcessor` + save `TransactionReversalDetailsEntity` as `APPROVED`
+    - `loanAccountDpdCalcProcessor` + `loanAccountAssetCriteriaProcessor` + `loanAccountAssetClassificationProcessor`
+    - enqueues child reversal events if needed
+  - on exception sets staging `FAILED` + `reason`
+- Tasklet: `SGToTypeTasklet` finalizes overall file type based on success counts.
+
+Idempotency/dedupe guards:
+- Business validation blocks duplicates/in-progress rows.
+- Ledger-level guard: `ReverseTransactionProcessor` (fatal if already reversed).
+
+### `bulkSGToManualHoldMarkingJob` (ORC entrypoint) -> SI manual hold marking + hold presentation rows
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldMarkingJob"`).
+
+Processors:
+- `populateUserDetails`
+- `bulkSGToManualHoldMarkingJobProcessor` -> `ParallelBatchJobV2.runJob(...)`
+
+Spring Batch chain:
+- Tasklet: `PopulateSIManualHoldMarkingTasklet`
+  - Reads success staging rows from `file_staging_manual_hold_marking`
+  - Validates:
+    - loan account exists and is not CLOSED
+    - parent-only LAN constraint
+    - active SI mandate exists for the business date
+    - CASA account exists and matches
+  - Aggregates hold amounts per CASA account
+  - Creates `SIManualHoldMarkingPresentationDetailsEntity`:
+    - `manualHoldMarkingReferenceNumber = "NP"+yyyyMMdd+sequence(...)`
+    - status `I` + audit fields
+  - Saves FAILED staging rows with `reason`
+- Tasklet: `SGToTypeTasklet` finalizes overall file type.
+
+Dedupe/idempotency guards:
+- Presentation reference numbers are generated from sequences; re-runs can duplicate rows unless upstream re-execution is prevented.
+
+### `bulkSGToManualHoldRemovalJob` (ORC entrypoint) -> SI manual hold removal + hold-unhold presentation rows
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldRemovalJob"`).
+
+Processors:
+- `populateUserDetails`
+- `bulkSGToManualHoldRemovalJobProcessor` -> `ParallelBatchJobV2.runJob(...)`
+
+Spring Batch chain:
+- Tasklet: `PopulateSIManualHoldRemovalTasklet`
+  - Reads success staging rows from `file_staging_manual_hold_removal`
+  - Validates:
+    - loan account exists and is not CLOSED
+    - parent-only LAN constraint
+    - active SI mandate exists for the business date
+    - CASA account exists and matches
+    - `holdAmount > 0`
+  - Aggregates removal amounts per CASA account
+  - Creates `SIManualHoldRemovalPresentationDetailsEntity`:
+    - `manualHoldRemovalReferenceNumber = "NP"+yyyyMMdd+sequence(...)`
+    - status `I` + audit fields
+  - Saves FAILED staging rows with `reason`
+- Tasklet: `SGToTypeTasklet` finalizes overall file type as `APPROVED`.
+
+### `bulkSGToEnachRepresentationJob` (ORC entrypoint) -> create ENACH representation work rows (mandate + presentation linkage)
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`bulkSGToEnachRepresentationJob`)
+
+Processor/tasklet chain:
+- `populateUserDetails` (populates `user_id` / `logged_user_employee_formatted_id`)
+- `bulkSGToEnachRepresentationJobProcessor` (`BulkSGToEnachRepresentationJobProcessor`)
+- Batch wiring for `SGENACHREP` (`SGToEnachRepresentationBatchConfigService`)
+  - `PopulateEnachRepresentationStepTasklet`
+  - `SGToTypeTasklet`
+
+Key inputs:
+- `op_code` (mandatory)
+- business date via `current.business.date` -> passed as `business_date_long`
+- `upload_type` must exist in execution context for `SGToTypeTasklet`
+
+Persistence/creation:
+- Creates `EnachRepresentationDetailsEntity` and `EnachRepresentationLoanAccountDetailsEntity` with status `I`
+- Idempotency guard (code-verified): if `enachRepresentationDetailsDAOService.findAllByPresentationDate(presentationDate)` is non-empty, it returns early
+
+How it generates mandates/presentation:
+- Validates loan exists and is not CLOSED
+- Validates active ENACH mandate exists for the business date and `mandateCategory=="ENACH"`
+- Finds failed ENACH presentation loan-account record for the mandate and `emiBounceDate`
+- Computes due amount capped by `mandateDetails.maxAmount` and creates representation rows
+
+Success/failure handling:
+- Staging rows marked `FAILED` for business validation failures
+- Representation entities created as `status="I"` for successes.
+
+### `generateEnachPresentationFile` (ORC entrypoint) -> generate ENACH ACH presentation request file + ACH control file
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachPresentationFile`)
+
+Processor/tasklet chain:
+- `outboundEnachPresentationBatchProcessor` -> runs batch using job_time and op_code
+- Batch wiring for `ENACH-P-O`
+  - `PopulateEnachPresentationStepTasklet`
+  - `CreateEnachPresentationFileTasklet`
+  - `CreateAchPresentationControlFileTasklet` (calls `GenerateAchPresentationFileService.generateACHControlFile`)
+
+Key inputs:
+- `job_time` (drives `presentationDate/valueDate`)
+- `op_code` (required)
+
+Idempotency:
+- `PopulateEnachPresentationStepTasklet`: skips if existing `enachPresentationLADetails` exist for `valueDate`
+- `CreateEnachPresentationFileTasklet`: skips if presentation file details already exist for that `valueDate` with fileCategory `PRESENTATION`
+- Control file stage: only generates when `!isControlFileGenerated()`
+
+Outputs:
+- ENACH request `.txt` file in configured path
+- `EnachPresentationFileDetailsEntity` (presentation file and control generation flag)
+
+### `processingEnachPresentationResponseFiles` (ORC entrypoint) -> consume ENACH presentation reverse feed and trigger loanRepayment
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachPresentationResponseFiles`)
+
+Processor/tasklet chain:
+- `inboundEnachPresentationBatchProcessor`
+- Batch wiring: `ConsumeEnachPresentationFileTasklet`
+
+Idempotency (critical):
+- processes a mandate reference only when `EnachPresentationDetailsEntity.status == "I"`
+- if status != `"I"` it skips (prevents duplicate `loanRepayment` calls)
+
+Success path:
+- sets presentation details and loan-account detail statuses to `"S"`
+- resets `loanAccount.enachBounceCount` to 0 (when >0)
+- calls internal `loanRepayment` API with `repayment_mode="ACH"` and `client_reference_number = mandateReferenceNumber + loanAccountId`
+
+Rejected path:
+- sets presentation details/status to `"F"`
+- resolves reject reason and applies bounce charges:
+  - creates `PresentationBounceChargeDetailsEntity` and `LoanDueDetailsEntity` (fee component)
+- increments bounce count via loan update logic
+
+### `generateEnachRepresentationFile` (ORC entrypoint) -> generate ENACH representation request + ACH control file
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachRepresentationFile`)
+
+Processor/tasklet chain:
+- `outboundEnachRepresentationBatchProcessor` -> runs batch with job_time/op_code
+- Batch wiring:
+  - `CreateEnachRepresentationFileTasklet`
+  - `CreateAchRepresentationControlFileTasklet`
+
+Idempotency:
+- skips if representation file details already exist for `presentationDate` with fileCategory `REPRESENTATION`
+- control file only generated when `!isControlFileGenerated()`
+
+Outputs:
+- representation request `.txt` file
+- `EnachPresentationFileDetailsEntity` with fileCategory `REPRESENTATION`
+
+### `processingEnachRepresentationResponseFiles` (ORC entrypoint) -> consume ENACH representation reverse feed and trigger loanRepayment
+Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachRepresentationResponseFiles`)
+
+Processor/tasklet chain:
+- `inboundEnachRepresentationBatchProcessor`
+- Batch wiring: `ConsumeEnachRepresentationFileTasklet`
+
+Idempotency (critical):
+- processes only when `EnachRepresentationDetailsEntity.status == "I"`
+
+Success path:
+- sets statuses to `"S"`
+- resets bounce count (`loanAccount.enachBounceCount = 0`)
+- triggers `loanRepayment` internal API (ACH) with `client_reference_number = mandateReferenceNumber + loanAccountId`
+
+Rejected path:
+- sets statuses to `"F"` and applies bounce charges by creating bounce fee due entries
+- prevents duplicate posting by the `"I"` status gate.
+
+## Death foreclosure flow (end-to-end)
+
+1. Stage processors (STAGE_1→STAGE_6) → freeze loan, collect docs, compute outstanding
+   - Claim-form calculation (e.g. `GenerateDeathClaimFormPreProcessor`) and insurance claim staging (stage-5 in `ProcessDeathForeclosureAsPerStageProcessor.populateDeathForeclosureInsuranceStagingDetails()`):
+     - unconditionally call `loanAccountBillingJob` before `GetAmountDetailsForDeathForeclosureService.fetchOutStandingLoanBalanceAsPerDate(...)`
+     - uses `function_sub_code=DEFAULT` and `job_time = date_of_death` (so billing paid/waived state is aligned with claim as-on date)
+     - ensures `user_id` is set (defaults to `SYSTEM` if missing)
+2. Outbound file to insurer (OutboundDeathForeclosureInsuranceJobProcessor)
+3. Inbound approval (InboundDeathForeclosureInsuranceJobProcessor)
+4. DeathForeclosureInsuranceWriter.calculateAmountsForTransaction():
+   - syncs installment billing up to reporting date by calling `loanAccountBillingJob` for the same LAN (`function_sub_code=DEFAULT`, `job_time=dateOfReporting`) before DCF component calculations (ensures `user_id` is set; defaults to `SYSTEM` if missing)
+   - GetAmountDetailsForDeathForeclosureService.fetchOutStandingLoanBalanceAsPerDate()
+   - calculateLossInterestWaived() → LOSSES_INT_WAIVED, LOSSES_INT_WAIVED_AIR
+   - populateAdditionalAmountDetails for all GL codes
+   - calculateTotalTransactionAmount()
+   - appropriateDeathForeclosure()
+   - checkLoanAccountInterestAccrualBookingProcessor → separate INTEREST/NORMAL_ACCRUAL txn
+   - postTransaction(DEATH_FORECLOSURE)
+   - NPA calc, closure, child loan handling
+
+## Critical lessons (from production incidents)
+
+- **paid_amount vs waived_amount**: NEVER mix. "Extra interest paid" = actual paid only. Waived = loss bucket.
+- **Future INT dues**: do NOT use future due rows' paid_amount to infer "extra interest". Use deterministic as-of-date calc.
+- **Reject/recreate**: earlier attempts can mutate due rows. Always compute from stable inputs (dates + rates), not mutable DB state.
+- **balance_claim_amount**: independent of GL posting (sum_assured - outstanding). Correct even if posting is wrong.
+- **loanAccountBilling only picks ACTIVE loans**: `LoanAccountBillingBatchService` partitions using `WHERE la.loan_status = 'ACTIVE'`, so only `ACTIVE` loans are selected for billing.
+
+## Batch platform: scheduler service ↔ accounting ↔ Spring Batch (framework, code-verified)
+
+### Roles of each codebase
+- **`novopay-platform-batch`** (separate microservice): owns **scheduling metadata** (batch groups, job definitions, schedules, execution status in the **batch service database**). It does **not** run LMS Spring Batch steps locally for accounting jobs.
+- **`novopay-platform-accounting-v2`**: hosts **orchestration `Request`s**, **`*BatchProcessor` entry beans**, and the **Spring Batch job definitions** under `batchnew/` (plus legacy `batch/` e.g. disbursement-cancellation insurance files).
+- **`novopay-platform-lib/infra-batch`**: shared **Spring Batch framework** — job lifecycle, partitioning, bulk file helpers, optional multi-node Kafka workers.
+
+### How a scheduled job reaches accounting
+1. **`SchedulerCommonService.callJobAPi`** (and **`processSingleJob`** / **`DirectJobExecutor.startNormalJob`** for restart paths) calls  
+   **`NovopayInternalAPIClient.callInternalAPI(executionContext, jobName, jobVersion, jobName, ...)`** — the **API/request name** passed to accounting is **`jobName`** (same string used twice in the call signature in code).
+2. Before the call, the scheduler sets execution-context keys including:
+   - **`function_sub_code` = `BATCH`** (so orchestration `<Control … value="BATCH">` routes to the batch processor),
+   - **`op_code` = `START`** (or **`RESTART`** then later **`START`** in group restart flows — see `DirectGroupJobExecutor`),
+   - **`job_time`** = business date as long via **`PlatformDateUtil.getBusinessDateInLong()`** after master-data cache eviction for **`current.business.date`** (`SchedulerCommonService.setJobTime`).
+
+### How accounting runs Spring Batch (`infra-batch`)
+- **`AbstractBatchJob.runJob(jobName, operationType, overrideParams)`** (code in `AbstractBatchJob.java`):
+  - **`START`**: merges **`overrideParams`** into parameters loaded from the DB via **`BatchDBHandlerService.getAllParametersByJob(jobName)`**, adds `jobName` and `tenantCode`, applies **`force_grid_size` / `force_chunk`** overrides if present, then **`startJob(params)`** → publishes **`JobStartEvent`** (async Spring Batch launch).
+  - **`RESTART` / `STOP`**: uses **`JobExplorer`** + **`JobRegistry`** to restart/stop the **same `jobName`** Spring Batch job.
+- **`ParallelCommonBatchJob.setUpJobAdvanceV2`**: if job metadata has **`is_multi_node=TRUE`** and the active profile is **not** the default profile, sets up **`ParallelKafkaBatchJob`** (manager/worker); otherwise **`ParallelBatchJobV2`** (local **`TaskExecutorPartitionHandler`** partitioning). Comment in code: default/single-node uses **`ParallelBatchJobV2`**.
+- **`ParallelBatchJobV2`**: builds partitioned steps; provides **`runBulkFileUploadJob`**, **`runInboundFileUploadJob`**, **`runBulkOutboundJob`** which load **`MasterFileUploadConfig`** / **`MasterOutboundConfig`** and field-validation metadata from the DB before `runJob`.
+
+### Naming invariant (critical for tracing)
+- In accounting `*BatchConfigService` classes, **`public static final String JOB_NAME`** is documented as **"same as api"**: it equals the orchestration **`Request name`**, the **Spring Batch job bean name**, and the **string the batch scheduler passes as `jobName`** to `callInternalAPI`.
+- **Exception pattern**: some user-facing names differ slightly from internal job beans (always grep `JOB_NAME` + `deploy/application/orchestration` for the exact `Request name`).
+
+### Orchestration batch vs non-batch branch
+- Typical pattern in `loans_orc.xml` / `ServiceOrchestrationXML.xml` / `mfi_orc.xml`: **`<Control method="regExp" pattern="${function_sub_code}" condition="=" value="BATCH">`** runs **`*BatchProcessor`**; **`DEFAULT`** (or other codes) runs synchronous/setup processors. Scheduler-driven runs use **`BATCH`**.
+
+### Where to tune performance (checklist)
+- **DB-stored job parameters** for each `jobName` (grid size, chunk, `is_multi_node`, `force_grid_size`, etc.) — loaded by **`BatchDBHandlerService`**.
+- **Partition SQL / readers** under `novopay-platform-accounting-v2/.../batchnew/**/…ItemReader.java` and **failure row mappers** (chunk boundaries, min/max id queries).
+- **Multi-node**: **`ParallelKafkaBatchJob`** path vs single-JVM **`ParallelBatchJobV2`** (throughput vs operational complexity).
+- **Hot writers/processors** that call **`postTransaction`**, internal APIs, or external bank/file IO — profile per job in the sections below.
+
+## Accounting batchnew jobs (what each one does) - verified mappings
+
+### Interest (regular)
+- `interestAccrualCalculation` (InterestAccrualCalculationBatchService / job code `LMS-IAC`)
+  - What it does: calculates accrued interest periods and writes/updates `interest_accrual_details` (`InterestAccrualDetailsEntity`).
+  - It does NOT call `postTransaction`.
+- `interestAccrualPosting` (InterestAccrualBookingBatchService / job code `LMS-IAP`)
+  - What it does: computes `bookingAmount = totalAccruedAmount - totalAccrualPostedAmount` and then calls `postTransaction` as:
+    - `transaction_type = "INTEREST"`, `transaction_sub_type = "NORMAL_ACCRUAL"`
+  - Eligibility (normal booking): `InterestAccrualBookingBatchService.isAccrualPostingDate(accountId, endDate)` returns `true` when:
+    - `endDate` is last day of month, OR
+    - `loanDueDetailsDAOService.getLoanDueDetailsForDueDate(accountId, endDate)` returns non-null.
+  - Forceful mode: `InterestAccrualBookingProcessor` sets `executionContext["forceful_booking"]` (boolean) and `InterestAccrualBookingBatchService.processIndividualActiveAccount(...)` branches to forceful vs normal booking based on that flag.
+  - `postTransaction` payload construction (in `InterestAccrualBookingBatchService.doInterestBooking`):
+    - sets placeholder `account_details=[{placeholder:"LOAN_ACCOUNT", account_number:<accountNumber>, narration:""}]`
+    - sets `client_reference_number`, `currency`, `amount=<bookingAmount>`, `value_date=<dueDate.time>`, `originating_office_id` + `office_id`
+    - calls internal API `postTransaction` (v1) using template `"postTransaction"`
+  - NPA branching:
+    - if `npaStagingDate`/`secNpaTaggingDate` is present and `stagingDate.compareTo(dueDate) < 0`, it updates the first interest txn `transaction_sub_type` to `"NPA_ACCRUAL"`.
+    - when `stagingDate != null && stagingDate.compareTo(dueDate) < 0`, it also calls `postNPABooking(...)` which posts an extra interest txn for the interest due amount (from `loanDueDetailsDAOService.getDueDetailsForDueDateAndComponentType(accountId, dueDate, AssetsConstants.INTEREST)`) with `transaction_sub_type = "NPA_ACCRUAL_BOOKING"`.
+
+### Interest (penal)
+- `penalInterestAccrualCalculation` (PenalInterestAccrualCalculationBatchService / job code `LMS-PIAC`)
+  - What it does: calculates penal accrual and persists `penal_interest_accrual_details` (`PenalInterestAccrualDetailsEntity`).
+  - It also updates installment/flag records needed by booking.
+  - It does NOT call `postTransaction`.
+- `penalInterestAccrualBooking` (PenalInterestAccrualBookingBatchService / job code `LMS-PIAB`)
+  - What it does (booking stage): it does NOT call `postTransaction`; for eligible accrual rows (or when forceful booking is enabled) it creates `loan_due_details` rows with:
+    - `component_type = "PINT"`, `paid_amount = 0`, `waived_amount = 0`
+    - `chargeCode` and either `chargeRate` (when penalRate != null) or `chargeFixedAmount` (when penalRate is null)
+    - `baseAmount`, `dueAmount`, `dueDate`, `overdueDate`, and `loanInstallmentDetailsId`
+  - Eligibility and forceful control:
+    - `PenalInterestAccrualBookingProcessor` reads `forceful_booking` and sets `forceful_booking_posting` (boolean) and adjusts the selected loan/account status list for booking.
+    - `PenalInterestAccrualBookingBatchService` creates due rows when `isPostingEligibleForEndDate(...) || forceFulBooking` is true.
+  - Persistence + child handling:
+    - `PenalInterestAccrualBookingItemWriter` persists `loan_due_details` via `loanDueDetailsDAOService.saveOne(...)` and updates `penal_interest_accrual_details` via `penalInterestAccrualDetailsDaoService.savePenalInterestAccrualDetails(...)`.
+    - if the accrual is marked `hasChildAccounts`, it calls `ChildLoanPenalInterestBookingService.bookChildLoans(...)` for the created penal `LoanDueDetailsEntity`.
+
+### Billing (dues generation)
+- `loanAccountBilling` (LoanAccountBillingBatchService / partitions ACTIVE loans)
+  - What it does:
+    - partitions ACTIVE loans (`WHERE la.loan_status = 'ACTIVE'`)
+    - creates `loan_account_billing_details` (`LoanAccountBillingDetailsEntity`) only if a billing detail does not already exist for `loan_installment_details_id` (checked via `loanAccountBillingDetailsDaoService.findByLoanInstallmentDetailsId(...)`)
+    - posts GL/ledger via `billing_postTransaction` as:
+      - `transaction_type = "BILLING"`, `transaction_sub_type = "NORMAL_BILLING"`
+  - `postTransaction` payload construction (in `LoanAccountBillingBatchService.processLoanAccountBilling(...)`):
+    - sets placeholder `account_details=[{placeholder:"LOAN_ACCOUNT", account_number:<accountNumber>, narration:""}]`
+    - sets `principal_amount` + `interest_amount` both as execution locals and as `additional_amount_details` entries (`reference_code="principal_amount"` / `"interest_amount"`)
+    - sets `amount=principal+interest`, `principal_amount`, `interest_amount`, `value_date`, `currency`, `originating_office_id`
+    - calls internal API `postTransaction` with template `"billing_postTransaction"` and returns `transaction_reference_number` from `exec.getAPIResponse("billing_postTransaction")`.
+
+### NPA: delinquency + asset movement
+- `loanAccountDpdCalc` (LoanAccountDpdCalcBatchProcessor)
+  - What it does: updates delinquency markers on `loan_account` (e.g., `past_due_days`, `delinq_string`).
+  - No direct GL posting in this processor.
+- `loanAccountAssetCriteria` (LoanAccountAssetCriteriaProcessor)
+  - What it does:
+    - decides forward vs reverse NPA movement based on slab group + tagging eligibility
+    - updates `loan_account` NPA fields (e.g., `asset_criteria_slabs_id`, `npa_ageing_start_date`, `npa_tagging_date`, `sec_npa_tagging_date`, `interest_suspense_amount`)
+  - GL/ledger impact:
+    - Forward path:
+      - triggers NPA accrual recalculation + posting by calling:
+        - `interestAccrualCalculation` then `interestAccrualPosting`
+      - then calls `postTransaction` for the movement using execution-context driven values:
+        - `transaction_type = forward_movement_transaction_type`
+        - `transaction_sub_type = forward_movement_transaction_sub_type`
+      - amount details come from interest suspense + AIR components in `additional_amount_details` (reference codes from exec keys).
+    - Reverse path:
+      - calls `postTransaction` using:
+        - `transaction_type = reverse_movement_transaction_type`
+        - `transaction_sub_type = reverse_movement_transaction_sub_type`
+      - amount details are built from interest suspense + AIR for reversal.
+
+### Auto-closure
+- `LoanAccountAutoClosureBatchProcessor` / LoanAccountClosureService
+  - What it does:
+    - verifies interest accrual + booking are up to date before closure
+    - settles unpaid components (including waiver handling)
+    - triggers closure-related forward/reverse NPA movement legs
+    - sets `loan_account.loan_status = CLOSED` and updates closure/status fields
+
+### Death foreclosure insurance (batch entrypoints)
+- `OutboundDeathForeclosureInsuranceJobProcessor`
+  - What it does: selects `PENDING` rows in `death_foreclosure_insurance_staging_details` and creates outbound insurer CSV.
+  - This processor does not directly call `postTransaction`; it delegates to bulk/outbound mechanisms.
+- `InboundDeathForeclosureInsuranceJobProcessor`
+  - What it does: runs inbound file upload processing using the staged/original filename and routes rows to inbound processing logic.
+
+### Proactive excess refund
+- Proactive Excess Amount Refund job (ProactiveExcessRefundService + ProactiveExcessAmountRefundItemWriter)
+  - What it does:
+    - calculates `total_refund_amount` using:
+      - `loan_account.excess_amount` minus outstanding due computed as `due_amount - paid_amount - waived_amount` across `loan_due_details`
+    - posts GL via `accounting_postTransaction` as:
+      - `transaction_type = "EXCESS_AMT_REFUND"`
+      - `transaction_sub_type = "LOAN_ACCOUNT"`
+    - updates `loan_account.excess_amount` and records success/failure in excess-refund staging tables.
+
+### Derived fields (reporting inputs, not GL posting)
+- **API / Spring job name** `updateLoanAccountDerivedFieldsJob` (`mfi_orc.xml` → `loanAccountDerivedFieldsJobProcessor`; `LADerivedFieldsBatchConfigService.JOB_NAME`)
+  - What it does: selects accounts from `account` + `loan_account` and filters using `loan_account_derived_fields` where `is_calculated_for_closed = false OR IS NULL`.
+  - It then runs `ParallelCommonBatchJob.runJob(...)` for the partitions.
+- **API / Spring job name** `updateLoanAccountDerivedFieldsMonthlyJob` (`mfi_orc.xml` → `loanAccountDerivedFieldsMonthlyJobProcessor`; `LADerivedFieldsMonthlyBatchConfigService.JOB_NAME`)
+  - What it does: runs only when `job_time` is the `firstDayOfMonth`, then checks `LADerivedFieldsRunHistoryService.findByMonthAndYear(...)` for previous month run history and `isDerivedFieldsMonthlyJobRun`.
+  - It then runs `ParallelCommonBatchJob.runJob(...)` for partitions.
+- `LADerivedFieldsIProcessor` and `LADerivedFieldsMonthlyIProcessor` (computation)
+  - What it does (in code): computes derived values for `LoanAccountDerivedField*` by reading `loan_due_details` and using `due.getDueAmount() - due.getPaidAmount() - due.getWaivedAmount()` (see `calculateOutstandingAmount(...)` in `LADerivedFieldsIProcessor`).
+  - It also builds GL-balance maps from `transaction_partition_details` by summing amounts based on `crDrIndicator`.
+  - In these processors, no `postTransaction` call exists.
+
+### Installment notifications jobs
+- `LoanInstallmentDueNotificationJobProcessor`
+  - What it does (in code): reads `loan.installment.due.notification.days`, builds a partition query for ACTIVE loans where `loan_installment_details.installment_date` equals `businessDate - notificationDay`, and runs `parallelCommonBatchJob.runJob(...)` with `upload_type = "LOAN_INSTALLMENT_DUE_NOTIFICATION"`.
+- `LoanInstallmentBounceNotificationJobProcessor`
+  - What it does (in code): reads `loan.installment.bounce.notification.days`, builds a partition query joining `presentation_bounce_charge_details` where `pbcd.mandate_missed_on_date = lid.installment_date` and `pbcd.is_settled = false`, and runs `parallelCommonBatchJob.runJob(...)`.
+
+### Refund jobs (orchestration entrypoints)
+- `ProactiveExcessAmountRefundJobProcessor`
+  - What it does (in code): gets staging counts via `loanAccountDAOService.getStagingRefundRecords()`, partitions, and runs the job for the selected staging records (grid sizing comes from `LoanAccountAutoClosureBatchConfigService.GRID_SIZE`).
+- `ProactiveReverseTransactionJobProcessor`
+  - What it does (in code): gets `file_upload_id` from execution context, counts failed records via `ProactiveRefundFileStagingRepository.getAllFailedRecord()`, partitions, and runs `parallelCommonBatchJob.runJob(...)`.
+- `RunInboundReverseExcessAmountRefundJobProcessor`
+  - What it does (in code): sets `upload_type = "REVERSE_EXCESS_AMOUNT_REFUND"` and calls `ParallelBatchJobV2.runJob(jobName, operationType, overrideParams)`.
+- `InboundReverseExcessAmountRefundJobProcessor`
+  - What it does (in code): calls `ParallelBatchJobV2.runInboundFileUploadJob(...)` with `file_name` from `file_original_name` and `upload_type = "REVERSE_EXCESS_AMOUNT_REFUND"`, plus override params for `loan_account_number_flag`.
+
+### eNACH jobs (representation + presentation)
+- `BulkFileToSGEnachRepresentationJobProcessor`
+  - What it does (in code): prepares a temp directory via `BulkUploadTempDirService.prepareJobDirectory(uploadType, fileUploadId)` and runs `parallelJob.runBulkFileUploadJob(...)`.
+- `BulkSGToEnachRepresentationJobProcessor`
+  - What it does (in code): counts file staging via `FileStagingEnachRepresentationDAOService.getCountOfFileStaging(fileUploadId)`, sets `business_date_long` and `employee_formatted_id`, then runs `parallelJob.runJob(...)`.
+- `OutboundEnachRepresentationBatchProcessor` / `InboundEnachRepresentationBatchProcessor`
+  - What it does (in code): both run `ParallelBatchJob.runJob(...)` with `job_time` and `op_code`.
+- `OutboundEnachPresentationBatchProcessor` / `InboundEnachPresentationBatchProcessor`
+  - What it does (in code): both run `ParallelBatchJob.runJob(...)` with `job_time` (inbound also adds batch execution context).
+
+### Standing Instruction (SI) jobs
+- ORC request → batch job/process mapping (service orchestration XML):
+  - `generateSIPresentationFiles` → `outboundSIPresentationBatchProcessor` → `OutboundSIPresentationBatchProcessor`
+  - `processingSIReverseFeedFiles` → `inboundSIPresentationBatchProcessor` → `InboundSIPresentationBatchProcessor`
+  - `generateSIManualPresentationFiles` → `outboundSIManualPresentationBatchProcessor` → `OutboundSIManualPresentationBatchProcessor`
+  - `processingSIManualPresentationReverseFeedFiles` → `inboundSIManualPresentationBatchProcessor` → `InboundSIManualPresentationBatchProcessor`
+  - `generateSIAutoHoldRemovalPresentationFiles` → `outboundSIAutoHoldRemovalBatchProcessor` (outbound hold-unhold file)
+  - `processingSIAutoHoldRemovalReverseFeedFiles` → `inboundSIAutoHoldRemovalBatchProcessor` (consume reverse feed)
+  - `generateSIManualHoldMarkingPresentationFiles` / `processingSIManualHoldMarkingReverseFeedFiles` → manual hold marking batch processors
+  - `generateSIManualHoldRemovalPresentationFiles` / `processingSIManualHoldRemovalReverseFeedFiles` → manual hold removal batch processors
+  - `retrySIJob` → `RetrySIJobProcessor`
+  - `updateSIPresentationDetails` → `checkDataForUpdateSIPresentationStatusProcessor` + `updateSIPresentationStatusProcessor` (synchronous status update)
+  - `fetchFailedSIPresentationList` → `updateFailedSIPresentationListProcessor` + `fetchFailedSIPresentationListProcessor`
+  
+- SI synchronous orchestration walkthrough (mandate + presentation status; service orchestration XML):
+  - `createRepaymentMandateDetails` (DEFAULT create)
+    - validators:
+      - `casa_account_number`, `mandate_category`, `loan_category`, `start_date`, `end_date` are mandatory
+      - master-data validations for `repayment_frequency`, `mandate_type`, `mandate_category`, `mandate_status`
+    - processors/APIs:
+      - `accounting_getUseCaseDetails` (usecase `MANDATE-DTLS-UC001`) → `getUseCaseDetailsPostProcessor`
+      - `validateMandateDetailsForCreateProcessor` → `createMandateDetailsProcessor`
+      - notification message fetch (`getNotificationMessageByNotificationCode`, user_story_code `MANDATE-DTLS`) → `setUserStoryForResponseProcessor`
+  - `fetchMandateDetails` (DEFAULT vs GROUP via `function_sub_code`)
+    - DEFAULT: requires `loan_account_number` → `fetchMandateDetailsProcessor`
+    - GROUP: requires `group_id` → `fetchMandateDetailsForGroupProcessor`
+    - then populates bulk unique master-data extensions (`fetchBulkUniqueMasterDataExt`, reason `UPDT_MNDT`) and returns mandate details with notification payload (`MANDATE-DTLS`)
+  - `fetchMandateDetailsHistory`
+    - supports `function_sub_code` in `DEFAULT|GROUP|BY_LOAN_APPLICATION_NO`
+    - routes to:
+      - `fetchMandateDetailsHistoryProcessor` (DEFAULT, BY_LOAN_APPLICATION_NO)
+      - `fetchMandateDetailsHistoryForGroupProcessor` (GROUP)
+    - returns history with notification payload (`MANDATE-DTLS`)
+  - `updateMandateDetailsTask` (maker-checker task lifecycle; `function_code` controls branch)
+    - entry: `populateUserDetails`
+    - `DIRDR` repayment_mode:
+      - validates/normalizes document metadata (`validateDocumentDataForGenericDocumentProcessor`) and sets common attributes (`setCommonAttributesProcessor`)
+    - core:
+      - `validateMandateDetailsForUpdateProcessor`
+      - `fetchBulkUniqueMasterDataExt` (reason `UPDT_MNDT`)
+      - `constructRequestForApprovalUsingApprovalTemplate`
+      - `constructRequestForTaskCreationProcessor` (task_type_code `UPDT_MANDATE_DTLS`)
+    - maker path (`function_code=DEFAULT`, and when task creation is enabled by flow config):
+      - creates document rows when `repayment_mode=DIRDR` (`createDocumentProcessor` + `createMandateDocumentDetailsProcessor`)
+      - creates/updates approval task via `createOrUpdateTask` and sets task status to `PENDING` via `updateMandateDetailsTaskProcessor`
+    - checker approval (`function_code=APPROVE`):
+      - `fetchTaskIdForMandateDetailsIdProcessor` → `updateMandateDetailsTaskProcessor(status=APPROVED)`
+      - persists approved mandate updates via `updateMandateDetailsProcessor` (DEFAULT) or `updateMandateDetailsForGroupProcessor` (GROUP)
+      - deletes the task (`deleteTask`)
+    - checker rejection (`function_code=REJECT`):
+      - `fetchTaskIdForMandateDetailsIdProcessor` → `updateMandateDetailsTaskProcessor(status=REJECTED)`
+  - `updateSIPresentationDetails` (presentation status update; synchronous)
+    - `checkDataForUpdateSIPresentationStatusProcessor` → `updateSIPresentationStatusProcessor`
+    - response wrapped with notification payload (`PRSN-DTLS`)
+  - `fetchFailedSIPresentationList` (failed SI presentation remediation; synchronous)
+    - `updateFailedSIPresentationListProcessor` → `fetchFailedSIPresentationListProcessor`
+    - response wrapped with notification payload (`PRSN-DTLS`)
+  - `updateMandateStatus` (simple orchestration wrapper)
+    - `updateMandateStatusProcessor`
+- `InboundSIPresentationBatchProcessor` (SI Presentation reverse feed)
+  - What it does (in code): fetches `SIPresentationFileDetailsEntity` via `findAllUnconsumedFilesWithManualRepresentationFlag(false)`, calculates min/max `valueDate` from those files, partitions using DAO `countMinMaxIdsForSIReverseFeedJob(minDate, maxDate)`, populates office/external branch codes, and fetches reject-reason mappings via `getDatatypeMaster(datatype="RJCT_CODE_SI")`.
+- `OutboundSIPresentationBatchProcessor`
+  - What it does (in code): runs `ParallelBatchJob.runJob(...)` using `op_code` and `job_time`.
+  - Batch writes (tasklets, code-verified):
+    - `PopulateSIPresentationStepTasklet`
+      - reads unsettled installment rows for `installment_date=valueDate` (`loanInstallmentDetailsDAOService.findUnsettledAmountsForInstallmentDate(valueDate)`)
+      - fetches active SI mandates per loan account at `valueDate`
+      - builds/updates:
+        - `SIPresentationDetailsEntity` (status `INITIATED`, narration + mandate_reference_number)
+        - `SIPresentationLoanAccountDetailsEntity` (valueDate, loanAccountId, repaymentMandateDetailsId, amount, status `INITIATED`)
+      - parent/group handling:
+        - parent mandates: creates child rows + sets `hasChildAccounts=true` on parent SIPresentationLoanAccountDetailsEntity
+        - group mandates: aggregates amounts into a shared SIPresentationDetailsEntity per groupId
+    - `CreateSIPresentationFileTasklet`
+      - generates outbound text file(s) for the presentationDate and writes `SIPresentationDetailsEntity.presentationFileName`
+      - splits into multiple files based on `si.max.records.in.file`
+      - writes `SIPresentationFileDetailsEntity` with `manualPresentation=false`, `presentationFileName`, `totalRecords`, plus `presentationDate` + computed `valueDate`
+- `OutboundSIManualPresentationBatchProcessor` / `InboundSIManualPresentationBatchProcessor`
+  - What it does (in code): outbound runs `ParallelBatchJob.runJob(...)`; inbound also adds batch execution context before running.
+  - Manual presentation outbound + reverse feed (tasklets, code-verified):
+    - `CreateSIManualPresentationFileTasklet`
+      - reads `SIManualPresentationDetailsEntity` non-presented rows
+      - writes outbound text file (same delimiter/footer scheme as SI presentation)
+      - updates `SIManualPresentationDetailsEntity.status="P"` and `presentationFileName`
+      - creates/updates `SIPresentationFileDetailsEntity` with `manualPresentation=true`, `presentationFileName`, `totalRecords`, `presentationDate`
+    - `ConsumeSIManualPresentationFileTasklet` (reverse feed)
+      - reads unconsumed `SIPresentationFileDetailsEntity` for `manualPresentation=true`
+      - parses reverse feed file rejected lines into `rejectedMandateReferenceNos` (reference_no → reject_reason_code)
+      - for rejected records:
+        - sets `SIManualPresentationDetailsEntity.status="F"` + rejectReason/rejectReasonCode + audit fields
+      - for success records:
+        - updates holds on `RepaymentAccountDetails` (holdAmount accumulation + save)
+        - calls internal API `loanRepayment` with:
+          - `repayment_amount = siManualPresentationDetailsEntity.amount`
+          - `value_date = reverseFeedDate`
+          - `repayment_mode="DIRDR"` and `function_sub_code="DEFAULT"`
+          - for parent accounts: sets `child_loans` JSON payload and adjusts `client_reference_number`
+        - marks `SIManualPresentationDetailsEntity.status="S"` and `internalApiStatus` accordingly
+- `OutboundFinnoneSILienPresentationBatchProcessor`
+  - What it does (in code): runs `ParallelBatchJob.runJob(...)` with `job_time`.
+- `RetrySIJobProcessor`
+  - What it does (in code): runs `ParallelBatchJob.runJob(...)` with `job_time`.
+- `SIFileDownloadBatchJobProcessor`
+  - What it does (in code): runs `ParallelBatchJob.runJob(...)` with `job_time`.
+- SI Hold removal entrypoints (processors)
+  - `OutboundSIManualHoldMarkingBatchProcessor`, `InboundSIAutoHoldRemovalBatchProcessor`, `OutboundSIManualHoldRemovalBatchProcessor`, `OutboundSIAutoHoldRemovalBatchProcessor`, `InboundSIManualHoldRemovalBatchProcessor`
+  - What they do (in code): all run `ParallelBatchJob.runJob(...)` with `job_time` and validate non-empty `op_code`.
+  - Auto hold removal tasklets (code-verified):
+    - Outbound: `CreateSIAutoHoldRemovalFileTasklet`
+      - fetches eligible files via `SIPresentationFileDetailsDAOService.findEligibleFilesForHoldPresentation()`
+      - writes hold-unhold outbound file using failed `SIPresentationDetailsEntity` records
+      - updates `SIPresentationFileDetailsEntity.holdPresentationDate`
+      - creates `SIAutoHoldPresentationFileDetailsEntity` (presentationDate + totalRecords + presentationFileName)
+    - Inbound: `ConsumeSIAutoHoldRemovalFileTasklet`
+      - reads unconsumed `SIAutoHoldPresentationFileDetailsEntity`
+      - if reverse feed exists, filters rejected mandate refs out of failed SIPresentationDetails and then:
+        - subtracts holdAmount from `RepaymentAccountDetails` (holdAmount decremented and holdStatus set when it becomes <= 0)
+      - updates hold presentation file details with reverse feed metadata + success/failure counts
+
+### NPA secondary feed/status jobs
+- **API / Spring job name** `runSecNpaBulkUploadJob` (`RunSecNpaJobBatchConfigService.JOB_NAME`) — processor `RunSecNpaBulkJobProcessor`
+  - What it does (in code): validates non-empty `op_code`, sets `minId=1` and `maxId=1`, then runs `ParallelBatchJobV2.runJob(...)`.
+- `BulkSGToSecNpaReverseFeedFileJobProcessor`
+  - What it does (in code): sets `job_time` from `platformDateUtil.getBusinessDateInLong()`, counts file staging via `FileStagingSecNpaRevFeedFileDaoService.getCountOfFileStaging(fileUploadId)`, partitions, sets bulk end event via `BulkBatchUtil.setBulkUploadEndEvent(...)`, then runs `parallelJob.runJob(...)`.
+- `BulkFileToSGSecNpaReverseFeedFileJobProcessor`
+  - What it does (in code): prepares temp dir via `BulkUploadTempDirService.prepareJobDirectory(uploadType, fileUploadId)` and runs `parallelJob.runBulkFileUploadJob(...)`, including end-of-line tags (`end_of_line_key="MIS_DATE"`, `end_of_line_value="TRL"`) and `is_outbound_job_tagged=true`.
+- **API / Spring job name** `bulkOutboundSecNpaReverseFeedFileJob` (`OutboundSecNpaStatusFileBatchConfigService.JOB_NAME`) — processor `OutboundSecNpaStatusFileJobProcessor`
+  - What it does (in code): fetches `now` using `fileStagingSecNpaRevFeedFileDaoService.getMisDate(fileUploadId)`, and when not null sets `upload_type="SEC_NPA_NP_STATUS_FILE"` + `file_original_name="NOVOPAY_NPA_<ddMMyyyy>_STATUS.txt"`, sets min/max/batch_record_count, then calls `parallelJob.runBulkOutboundJob(...)`.
+
+### SI GEFU file jobs (transfer + enquiry)
+- `SIFileTransferBatchJobProcessor`
+  - What it does (in code): validates non-empty `op_code`, sets `job_time`, adds batch execution context, then runs `ParallelBatchJob.runJob(...)`.
+- `SIFileEnquiryBatchJobProcessor`
+  - What it does (in code): validates non-empty `op_code`, sets `job_time`, adds batch execution context, then runs `ParallelBatchJob.runJob(...)`.
+
+### Bulk file jobs (FileToSG / SGTo… processors)
+- NOC
+  - **API / Spring job name** `generateNocFileJob` (`GenerateNocFileBatchConfigService.JOB_NAME`)
+  - `GenerateNocFileJobProcessor`
+    - What it does (in code): sets `upload_type="GENERATE_NOC_FILE"`, counts via `loanAccountNocDetailsDAOService.getNocGenerationRecordCount()`, loads `MasterOutboundConfig` for delimiter/readSource/folder and then runs `parallelCommonBatchJob.runJob(...)`.
+  - `BulkSGToDispatchDetailsJobProcessor`
+    - What it does (in code): counts via `FileStagingDispatchDetailsDAOService.getCountOfFileStaging(fileUploadId)`, sets bulk end event, then runs `ParallelBatchJob.runJob(...)`.
+  - `BulkFileToSGDispatchDetailsJobProcessor`
+    - What it does (in code): validates `file_upload_id`/`op_code`, prepares temp dir via `BulkUploadTempDirService.prepareJobDirectory(upload_type, fileUploadId)`, populates audit fields (`office_id`, `employee_id`, `employee_name`, `employee_adid`), then calls `parallelJob.runBulkFileUploadJob(...)`.
+  - `BulkSGToNocBlockUnblockJobProcessor`
+    - What it does (in code): counts via `FileStagingNocBlockUnblockDAOService.getCountOfFileStaging(fileUploadId)`, sets bulk end event, then runs `ParallelBatchJob.runJob(...)`.
+  - `BulkFileToSGNocBlockUnblockJobProcessor`
+    - What it does (in code): validates `file_upload_id`/`op_code`, prepares temp dir via `BulkUploadTempDirService.prepareJobDirectory(upload_type, fileUploadId)`, populates audit fields, then calls `parallelJob.runBulkFileUploadJob(...)`.
+
+- Manual hold (SI) bulk file processors
+  - `BulkSGToManualHoldMarkingJobProcessor`
+    - What it does (in code): counts staging rows via `FileStagingManualHoldMarkingDAOService.getCountOfFileStaging(fileUploadId)`, partitions, sets `function_sub_code="DEFAULT"` and override params including `business_date_long` and `employee_formatted_id`, then runs `parallelJob.runJob(...)`.
+  - `BulkFileToSGManualHoldMarkingJobProcessor`
+    - What it does (in code): validates `file_upload_id`/`op_code`, prepares temp dir via `BulkUploadTempDirService.prepareJobDirectory(upload_type, fileUploadId)`, sets `function_sub_code="DEFAULT"` + audit fields, then calls `parallelJob.runBulkFileUploadJob(...)`.
+  - `BulkSGToManualHoldRemovalJobProcessor`
+    - What it does (in code): counts staging rows via `FileStagingManualHoldRemovalDAOService.getCountOfFileStaging(fileUploadId)`, partitions, sets `function_sub_code="DEFAULT"` and override params including `business_date_long` and `employee_formatted_id`, then runs `parallelJob.runJob(...)`.
+  - `BulkFileToSGManualHoldRemovalJobProcessor`
+    - What it does (in code): validates `file_upload_id`/`op_code`, prepares temp dir via `BulkUploadTempDirService.prepareJobDirectory(upload_type, fileUploadId)`, sets `function_sub_code="DEFAULT"` + audit fields, then calls `parallelJob.runBulkFileUploadJob(...)`.
+- Transaction reversal
+  - `BulkSGToTransactionReversalJobProcessor`
+    - What it does (in code): counts via `FileStagingTransactionReversalDAOService.getCountOfFileStaging(fileUploadId)`, injects `max_days_for_transaction_reversal`, sets batch context and runs `parallelJob.runJob(...)`.
+  - `BulkFileToSGTransactionReversalJobProcessor`
+    - What it does (in code): prepares temp dir using `BulkUploadTempDirService` and runs `parallelJob.runBulkFileUploadJob(...)`.
+- Manual journal entries
+  - **API / Spring job names** `bulkFileToSGManualJournalEntriesJob` and `bulkSGToManualJournalEntriesJob` (`FileToSGManualJournalEntriesBatchConfigService` / `SGToManualJournalEntriesBatchConfigService`)
+  - `BulkFileToSGManualJournalEntriesJobProcessor`
+    - What it does (in code): prepares temp dir and runs `parallelJob.runBulkFileUploadJob(...)`.
+  - `BulkSGToManualJournalEntriesJobProcessor`
+    - What it does (in code): counts from `file_staging_manual_journal_entries` (status not in `FAILED`), partitions, sets bulk end event, and runs `parallelJob.runJob(...)`.
+    - Posting behavior (code-verified):
+      - `SGToManualJournalEntriesIWriter` groups staging rows by journal (generates a single `manual_je_number` via internal job api `generateUniqueReferenceNumber`)
+      - builds `manual_journal_entry_gl_details` JSON with `debit_gl_code` / `credit_gl_code` / `amount`
+      - calls internal API `postManualJournalEntry` (v1) for each successful journal with:
+        - `function_code=BULK`, `function_sub_code=TRANSACTION`
+        - `manual_journal_entry_on=INTRA_BRNH`
+        - `account_number=<loanAccountNumber from staging>`
+        - `value_date=<business_date_long from batch params>`, `currency="INR"`, `remarks=<staging remarks>`
+      - failed items are written back into file staging via `FileStagingManualJournalEntriesService.addFileStagingDetails(...)` and marked `status="FAILED"` with `reason`
+- Asset criteria group update
+  - `BulkSGToAssetCriteriaGroupUpdateJobProcessor` and `BulkFileToSGAssetCriteriaGroupUpdateJobProcessor`
+    - What they do (in code): both count/partition file staging using the dedicated service + run `ParallelBatchJobV2` paths.
+- Pre-foreclosure charge update
+  - `BulkFileToSGForeclosureChargeUpdateJobProcessor`
+    - What it does (in code): prepares temp dir and runs `runBulkFileUploadJob(...)`.
+  - `BulkSGToForeclosureChargeUpdateJobProcessor`
+    - What it does (in code): counts file staging and runs `parallelJob.runJob(...)`.
+- Bulk repayment (Finsall)
+  - **API / Spring job names** `bulkSGToFinsallRepaymentJob` and `bulkFileToSGFinsallRepaymentJob` (`SGToFinsallRepaymentBatchConfigService` / `FileToSGFinsallRepaymentBatchConfigService`)
+  - `BulkSGToFinsallRepaymentJobProcessor` and `BulkFileToSGFinsallRepaymentJobProcessor`
+    - What they do (in code): both partition on `file_upload_id` using their `FileStagingFinsallRepaymentDAOService` counts and run the appropriate `ParallelBatchJobV2` path (file upload vs SG->processing).
+
+### Loan account servicing document events
+- `LoanAccountServicingDocumentEventsJobProcessor`
+  - What it does (in code): counts `PENDING` rows via `LoanAccountServicingDocumentEventsDAOService.getCountMinMaxForPendingStatus()`, then runs partitions via `ParallelCommonBatchJob.runJob(...)`.
+- `LoanAccountServicingDocumentEventsItemProcessor`
+  - What it does (in code):
+    - retries up to `MAX_RETRIES=3`, then marks row `FAILED`
+    - parses `documentFieldsJson` and calls `reportUtil.generateReportAndRetrieveDocumentId(...)`
+    - creates `DocumentEntity` and `DocumentFileEntity`, and calls `LoanAccountServicingDocumentEventsI.updateDocumentId(...)` for each document event service
+    - sets `status` to `SUCCESS`, or on exception updates `retryCount` + `status` back to `PENDING`/`FAILED` with `errorMessage`.
+
+### Child loan event processing
+- **API / Spring job name** `childLoanEventProcessingBatchJob` (`group_mfi_orc.xml`; `ProcessChildLoanEventsBatchConfigService.JOB_NAME`)
+- `ChildLoanEventProcessingJobProcessor`
+  - What it does (in code): selects ids from `loan_account_events_queue` where `event_status='P' AND is_deleted=false`, partitions, and runs `ParallelCommonBatchJob.runJob(...)`.
+- `ChildLoanEventProcessingItemProcessor`
+  - What it does (in code):
+    - ignores some event types using `EVENT_TYPE_IGNORE_API_MAP`
+    - `@BeforeStep`: builds `BatchExecutionContextHolder` key as `jobParameters['tenantCode'] + "-" + JOB_NAME`
+    - parses queue `data` as JSON array
+    - for each event, builds an ORC request using `OrchestrationXMLParser.getRequestFromOrcXML(...)` and executes the mapped processors via `ServiceOrchestrator.executeProcessors(...)`
+    - sets queue `eventStatus` to `C` (completed) or records exception message in `filler1`
+    - **CLB and CLMT (success path)**: saves the queue row, then `ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress(parentAccountId)` so the parent loan’s `disbursement_status` matches CLMT/CLB queue state (closes the gap where all CLMT were already `C` but parent stayed `PARENT_SUCCESS` / `CHILD_SUCCESS` until CLB ran or a manual replay).
+- `ParentGroupDisbursementStatusSyncService`
+  - What it does (in code): if the parent has CLMT rows and all are `C`, and parent `disbursement_status` is `PARENT_SUCCESS` or `CHILD_SUCCESS`, sets parent to `CHILD_SUCCESS` when any CLB is still `P`, else `COMPLETED`. No-op otherwise. Also invoked from `PerformChildLoanBankDisbursementProcessor` after child bank calls (same rules as before; logic centralized here).
+
+### Accounting bank service retry
+- **API / Spring job name** `accountingBankServiceRetryJob` (`mfi_orc.xml`; `AccountingBankServiceRetryJobBatchConfigService.JOB_NAME`)
+- `AccountingBankServiceRetryJobProcessor`
+  - What it does (in code): selects failed client request/response logs with `retry=true` via `ClientRequestResponseLogDAOService.findAllFailedReuestAndRetryTrue()`, partitions, and runs `ParallelCommonBatchJob.runJob(...)`.
+
+### Loan recurring payment batch API
+- **API / Spring job name** `loanRecurringPaymentBatchApi` (`loans_orc.xml`; `LoanRecurringPaymentBatchConfigService.JOB_NAME`)
+- `LoanRecurringPaymentItemProcessor`
+  - What it does (in code): returns the input objects as pass-through (`return objects`), with comment that heavy processing is in the writer using bulk DB calls and pre-fetched data.
+
+### Loan advance repayment (batch entrypoints)
+- `LoanAdvanceRepaymentBatchProcessor`
+  - What it does (in code): delegates to `LoanAdvanceRepaymentBatchService.process(executionContext)`.
+- `LoanAdvanceRepaymentBatchService`
+  - What it does (in code): reads `job_time` (optional) to set the business timestamp, gets batch partitions via `loanAccountDAOService.batchGetCountLoanAccountsCountForAdvanceRepayment(now)`, then sets `function_sub_code="DEFAULT"` and runs `ParallelCommonBatchJob.runJob(...)`.
+  - The per-account processing (in `LoanAdvanceRepaymentService`) calls internal API `loanRepayment` using an `apiIdentifier` of `advance_repayment_<accountNumber>`, and on success it may trigger `reverseTransactionProcessor.execute(exec)` during failure paths when a reversal transaction reference is available.
+
+### Standing instruction mandate expiry
+- `ExpirePendingMandatesBatchProcessor`
+  - What it does (in code):
+    - requires non-empty `op_code` and non-blank `job_time`
+    - computes `dueDateForMandateExpiry = businessDate + configured.days.for.pending.mandates.expiry`
+    - selects `loan_account_ids` via `loanInstallmentDetailsDAOService.findLoanAccountIdsInstallmentDate(dueDateForMandateExpiry)`
+    - counts pending registrations via `mandateDetailsDAOService.findCountsForRegistrationPendingMandates()`
+    - partitions and runs `parallelJob.runJob(...)` with grid sizing from `SGToRefundMarkingBatchConfigService.GRID_SIZE`.
+
+### CASA balance extraction (external cash for PC180/PC182)
+- `ExtractCasaBalanceFor182ProductCodeBatchProcessor`
+  - What it does (in code): validates non-empty `op_code`, sets `accts_under_pc_182_file_path` from config key `accts.under.pc.one.eight.two.file.path`, preloads `existing_repayment_accounts` and `existing_pc182_accounts`, then runs `parallelJob.runJob(...)`.
+- `ExtractCasaBalanceFor180ProductCodeBatchProcessor`
+  - What it does (in code): validates non-empty `op_code`, sets `accts_under_pc_180_file_path` from config key `accts.under.pc.one.eight.zero.file.path`, preloads `existing_repayment_accounts` and `existing_pc180_accounts`, then runs `parallelJob.runJob(...)`.
+
+### Death foreclosure — billing sync cutoff & eligibility
+- Death-foreclosure flows sync billing by invoking internal API `loanAccountBillingJob` with `job_time` and `account_number_list` before computing outstanding/waivers/closure posting.
+- **Cutoff alignment (as of 2026-04-07)**: death-foreclosure billing sync uses **date of reporting** (`createdOn`) as `job_time` (fallback: `dateOfDeath` if reporting date is absent).
+- **Eligibility alignment (as of 2026-04-07)**: when the billing job is invoked from death-foreclosure flows it is marked with `billing_sync_mode = DEATH_FORECLOSURE`, and the billing job includes loan accounts in statuses **`ACTIVE`** and **`DEATH_FORECLOSURE_FREEZE`** for the provided `account_number_list`. Bulk billing remains `ACTIVE` only.
+
+### Bulk refund marking (view/download processing)
+- `BulkSGToRefundMarkingJobProcessor`
+  - What it does (in code): counts file staging rows via `FileStagingRefundMarkingDAOService.getCountOfFileStaging(fileUploadId)`, sets bulk end event via `BulkBatchUtil.setBulkUploadEndEvent(...)`, then runs `parallelJob.runJob(...)`.
+- `BulkFileToSGRefundMarkingJobProcessor`
+  - What it does (in code): prepares a temp directory via `BulkUploadTempDirService.prepareJobDirectory(uploadType, fileUploadId)` and runs `parallelJob.runBulkFileUploadJob(...)` after populating audit fields (`office_id`, `employee_id`, `employee_name`, `employee_adid`).
+
+### Trial balance & zeroisation (tasklets)
+- `PopulateTrialBalanceBatchTasklet`
+  - What it does (in code): reads `calculation_start_date`, `tb_reporting_date`, `first_day_fy`, and `OFFICE_IDS_EXTERNAL_BRANCH_CODES`; builds/refreshes a `lastReportedDateMap` of GL+office balances; then for each business date it paginates `TransactionDetailsEntity` via `TransactionDetailsDAOService` and aggregates into `TrialBalanceEntity` (saved via `trialBalanceDAOService.saveAll(...)`).
+- `GenerateGLReportBatchTasklet`
+  - What it does (in code): for `reporting_date` builds `glReportName_<TB_REPORTING_DATE_FORMAT>`; fetches GL-level TB data via `trialBalanceDAOService.getGlLevelDataForDate(...)`; writes Excel via `GLReportWriter` and a text export via `TextFileWriter`.
+- `GenerateOracleReportBatchTasklet`
+  - What it does (in code): builds `oracleReportName_<TB_REPORTING_DATE_FORMAT>`; fetches Oracle-level TB data via `trialBalanceDAOService.getOracleLevelDataForDate(...)`; writes Oracle-level sheet via `BranchOrOracleReportWriter` and exports a text file.
+- `GenerateOglReportBatchTasklet`
+  - What it does (in code): generates an OGL `.dat` file using `DatFileWriter` by iterating Oracle-level data from `trialBalanceDAOService.getOracleLevelDataForDate(...)`; skips rows with zero closing balance; sets DR/CR amounts based on sign of `closing_balance`.
+- `GenerateZeroisationReportBatchTasklet`
+  - What it does (in code): builds a “Post Zeroisation TB Report” Excel + text file for the given `reporting_date`; it loads opening balances for `firstDayOfFY` via `openingBalanceDAOService.findByDate(...)` and derives GL balances using `openingBalanceAfterZeroisation` (with fallback/aggregation).
+- `TriggerZeroisationGLEntriesTasklet`
+  - What it does (in code): selects income/expense GL codes via `generalLedgerDAOService.findIncomeAndExpenseGLCodes()`; for each opening balance entry (where openingBalance != 0 and `checkIncomeAndExpenseGl(...)` returns true) it sets `function_code="DEFAULT"`, `function_sub_code="TRANSACTION"`, `currency="INR"`, sets `gl_transaction_reference_number`, then calls internal API `glBalanceZeroisation` (`novopayInternalAPIClient.callInternalAPI(..., "glBalanceZeroisation", "v1", "glBalanceZeroisation", ...)`).
+- `PopulateOpeningBalanceAfterZeroisationBatchTasklet`
+  - What it does (in code): after zeroisation, loads (a) zeroisation transaction details and (b) opening balance entities for the `firstDayOfFY`; then adjusts `openingBalanceAfterZeroisation` for the next FY based on `TransactionDetailsEntity.crDrIndicator` and saves via `openingBalanceDAOService.saveAll(...)`; sets `TrialBalanceRunHistoryEntity.isZeroisationDone=true`.
+- `PopulateOpeningBalanceNextFYBatchTasklet`
+  - What it does (in code): on last day of FY (`tb_reporting_date == last_day_fy`), ensures opening balance entities exist for `firstDayOfNextFY`; if missing, it creates them from `LAST_REPORTED_DATE_MAP` stored in execution context; updates/creates `TrialBalanceRunHistoryEntity` with `tbLastRunDate`.
+- `GenerateBranchReportBatchTasklet`
+  - What it does (in code): generates “Branch Code Level TB Report” Excel + text export by fetching branch-level TB data via `trialBalanceDAOService.getBranchLevelDataForDate(...)` and writing with `BranchOrOracleReportWriter` (sheet name) and `TextFileWriter`.

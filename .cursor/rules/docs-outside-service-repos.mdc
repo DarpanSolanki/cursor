@@ -1,0 +1,68 @@
+---
+description: Workspace docs/ placement; editorial standards for docs outside service repos
+globs:
+  - "docs/**/*"
+alwaysApply: false
+---
+
+# Docs and artifacts outside service repos
+
+Service-specific documentation and artifacts must **not** live inside the service module's git repo if they should not be tracked (e.g. release notes, QA steps, API specs, commit CSVs, local reference copies).
+
+## Rule
+
+- **Workspace docs folder**: Put such files under the **workspace root** `docs/` in a subfolder named after the service, e.g. `docs/accounting/`, `docs/mfi-los/`, `docs/payments/`.
+- **Not in service repo**: Do not add or commit these inside the service module (e.g. `novopay-platform-accounting-v2/docs/`, or repo root). That keeps them out of that repo's git history and avoids accidental commits.
+- **Applies to all services**: Same pattern for accounting, LOS, payments, actor, batch, initial-setup, and any other service in sliProd.
+
+## Structure (whole sliProd workspace)
+
+Organize by **service** and **feature/content type**:
+
+- **By service**: `docs/accounting/<feature>/`, `docs/los/<feature>/`, `docs/payments/<feature>/`, etc.
+  - e.g. accounting: api-specs, neft-v2, vygo-repayment-roundup, failure-handling, release, reference
+- **By feature / cross-cutting**: `docs/trd/`, `docs/features/<name>/`, `docs/flows/`, `docs/jira/`, `docs/versioned/`, `docs/sli/`, `docs/setup/`
+  - trd: TRD/UD docs (customer-profile, income-source-verified-from, …)
+  - features: portfolio_transfer, group_rejection, …
+  - flows: Audit, Documents, API Flow
+  - jira: Jira-linked requirements, checklists (by ticket/folder)
+  - versioned: LLDs and change docs by version (3.1.x, 3.2.x)
+  - sli: codegen/SLI-related
+  - setup: workspace/tooling setup
+
+## What goes in docs/<service>/
+
+- API specs (Lite/verbose), QA test steps, release emails, commit/file CSVs, reference snippets.
+- Optional: reference copies of code for local use (e.g. `ConnectionContextChunkListener.java` as reference); the **real** source stays in the service repo.
+
+## What stays in the service repo
+
+- Source code (`.java`, etc.) must remain in the service module; only non-source artifacts move to `docs/<service>/`.
+- If a file is both doc and source, keep the source in the repo and put a copy in `docs/<service>/` only if you need an untracked reference.
+
+---
+
+# Workspace `docs/` maintenance
+
+Apply when adding or editing files under **`docs/`** at the workspace root. **Placement and intent** are defined in **`docs-outside-service-repos.mdc`**; this rule is **how** to write and maintain those files.
+
+## Placement
+
+- **By service**: `docs/accounting/`, `docs/los/`, `docs/payments/`, etc. — use **`docs/<service>/<feature>/`** for API specs, QA steps, release notes, CSVs, reference snippets.
+- **Cross-cutting**: `docs/trd/`, `docs/features/<name>/`, `docs/flows/`, `docs/jira/`, `docs/versioned/`, `docs/sli/`, `docs/setup/` — pick one bucket; avoid orphan files at `docs/` root unless clearly workspace-wide.
+
+## Content standards
+
+- **Factual**: Link to **service repo paths** (`novopay-platform-accounting-v2/...`), ticket IDs, or environment names (non-secret). Mark **UNVERIFIED** where code was not checked.
+- **No secrets**: No passwords, API keys, production connection strings, or full PII; redact or use placeholders.
+- **Scope label**: Prefer a one-line header or folder README note: e.g. “Local QA only”, “Release email draft”, “LLD v3.2.x” so agents do not treat drafts as prod runbooks.
+- **Duplication**: Do not paste large slabs of **live** source here to “replace” the repo—**short excerpts** only; pointer to real file path. Long procedural write-ups belong here; **deep accounting behaviour** stays in **`accounting.mdc`** + code, with **links** from `docs/` when needed.
+
+## Cross-links
+
+- **`system_brain/`**: Short orientation and edge-case maps; **`docs/`** for formal QA, releases, specs, Jira-backed checklists. If both need the same fact, **one canonical place** + link in the other.
+- **New `.cursor/rules/*.mdc`**: Add a row to **`system_brain/rules/rule_inventory.md`**.
+
+## Git
+
+- These files often live in a **workspace-level** or personal branch strategy; **do not** commit `docs/` artifacts into **`novopay-platform-*`** service repos when the goal is to keep them out of that repo’s history (`docs-outside-service-repos.mdc`).

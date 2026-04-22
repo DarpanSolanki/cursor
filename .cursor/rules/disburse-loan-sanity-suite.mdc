@@ -1,0 +1,64 @@
+---
+description: "Run disburseLoan sanity suite (commands + log tail path)"
+globs:
+  - "scripts/disburse_loan_sanity.py"
+  - "scripts/disburse_loan_sanity_*.json"
+  - "docs/disbursement-sanity/**"
+alwaysApply: false
+---
+
+# DisburseLoan sanity suite (local)
+
+## Log tailing (during suite run)
+
+- Tail this file for Accounting flow logs:
+  - `/home/darpan/Documents/sliProdLogs/mfi/accounting-mfi.log`
+
+## What the suite verifies (shareable, no internal lingo)
+
+- **Fresh request**: one disburseLoan call with `function_sub_code=DEFAULT` that should create the loan once and attempt the bank leg.
+- **On Retry**: subsequent calls for the same loan (same `external_ref_number`) to ensure **idempotency** (no duplicate LAN, no duplicate fund transfer) and safe recovery from `UNKNOWN`.
+- **Stage-based retry**: calls with `function_sub_code` set to a known stage (`LAN_CREATED`, `LOAN_BOOKED`, `DTFC_SUCCESS`) to validate safe continuation.
+- **Evidence**: suite checks DB counters like installments/dues and `client_request_response_log` (CRR) to ensure bank/GL legs are not duplicated.
+
+## Disbursement status lifecycle (reference)
+
+- **Non-child loans**: `LAN_CREATED` → `LOAN_BOOKED` → `DTFC_SUCCESS` → `COMPLETED`
+- **Child-flow loans**: `LAN_CREATED` → `LOAN_BOOKED` → `DTFC_SUCCESS` → `PARENT_SUCCESS` → `CHILD_SUCCESS` → `COMPLETED`
+
+## Recommended full suite run
+
+From workspace root (`/home/darpan/Documents/sliProd`):
+
+```bash
+rm -f /tmp/disburse_loan_sanity.lock
+python3 scripts/disburse_loan_sanity.py \
+  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
+  --stage-suite full \
+  --simulator-profile none \
+  --http-timeout-s 30 \
+  --wait-timeout-s 180 \
+  --poll-s 2.0
+```
+
+## Fast run (minimal)
+
+```bash
+rm -f /tmp/disburse_loan_sanity.lock
+python3 scripts/disburse_loan_sanity.py \
+  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
+  --stage-suite minimal \
+  --simulator-profile none \
+  --http-timeout-s 30 \
+  --wait-timeout-s 180 \
+  --poll-s 2.0
+```
+
+## Artifacts
+
+- Suite writes reports under:
+  - `docs/disbursement-sanity/`
+
+## Reading the report
+
+- The `.txt` report is **L1-style**: TC01..TCxx with **Action / Expected behaviour / Actual** (counters + statuses), designed to be shareable to anyone without explaining "replay/resume".

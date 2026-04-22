@@ -1,0 +1,43 @@
+---
+description: "When to spawn multiple agents for speed; how to partition work; when one agent is mandatory (money, contracts)."
+globs:
+  - "**/*.md"
+  - "**/*.java"
+alwaysApply: false
+---
+
+# Multi-agent spawning (parallel sessions)
+
+Goal: **shorter wall-clock time** when work **decomposes cleanly**—without duplicate edits, contract drift, or split-brain on money flows.
+
+## When parallel agents **are worth it**
+
+- **Broad discovery**: Find all callers/usages/orchestration references across many modules; partition by **service** (`novopay-platform-accounting-v2` vs `novopay-mfi-los` vs `payments`) or by **keyword/API name**.
+- **Read-heavy audits**: Trace impact, map flows, collect grep results—**no writes** or **writes confined to disjoint paths** agreed upfront.
+- **Isolated experiments**: Two **alternative** approaches (e.g. design A vs B) in **separate chats/agents**; **merge only one** after comparison—never blend incompatible patches blindly.
+- **Large refactors with explicit slices**: e.g. one agent per subtree, **after** a short written contract (interfaces, error codes, ExecutionContext keys) that all slices obey.
+
+## When to **stay on one agent** (default)
+
+- **Single cohesive narrative**: End-to-end debugging (logs → DB → code → orchestration) until a **stable hypothesis**.
+- **Tight loop**: change → build/test → fix; one thread keeps state.
+- **Small/local fixes**: Few files, obvious blast radius—coordination overhead dominates.
+- **Anything that changes financial outputs, GL, posting, disbursement/repayment state**: **One implementer** runs the change; others may **read-only assist** (search, doc pull) if clearly scoped.
+
+## How to spawn **efficiently**
+
+1. **Name the partition** (tie to **`.cursor/knowledge-graph.md`** edge or node when possible): “Agent 1: grep + read only in accounting-v2 for X”; “Agent 2: same in mfi-los”—no overlap on the same files for writes.
+2. **Prefer read-only subtasks for helpers**: Secondary tasks gather **evidence** (paths, call sites, XML names); **primary** applies edits.
+3. **Fix merge ownership**: **You** (or one designated lead chat) **integrates** results—reconcile conflicts, re-run impact checks (`no-flow-break-impact-check`, `api-contract-safety`).
+4. **Handoff**: Use **`always-on.mdc`** (session handoff under Workspace brain + rules) so parallel threads don’t lose **branch, correlators, and risks**.
+
+## Safety rails (non-negotiable)
+
+- **API/Kafka/ExecutionContext contract changes**: **Additive-only**; one owner verifies **all callers** (`api-contract-safety.mdc`).
+- **Accounting money/state**: **One** implementation path through **`accounting.mdc`** (financial preflight + signoff sections)—parallel agents must not each “fix” the same flow differently.
+- **Do not** run **multiple writers** on the **same files** without sequence control—race → broken merges and missed invariants.
+
+## Heuristic
+
+- **Parallelize** when tasks are **embarrassingly parallel** (disjoint paths, mostly read).
+- **Serialize** when tasks share **state, contracts, or ledger semantics**.

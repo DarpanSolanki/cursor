@@ -1,0 +1,50 @@
+---
+description: "Non-negotiable impact analysis before any change — learned from production incidents"
+globs:
+  - "**/*.java"
+  - "**/*.xml"
+alwaysApply: false
+---
+
+# Non-negotiable: no flow break on changes
+
+## The rule
+
+For **any** code/config change (even a small one), impact analysis is mandatory before declaring it done.
+
+## What to check
+
+1. **All call sites**: Identify every processor, service, orchestration XML, consumer, callback, and inquiry flow that uses the changed code/keys/classes.
+2. **ExecutionContext safety**: Keys written/read are correct, not overwritten unintentionally, and do not leak into downstream steps.
+3. **Flow invariants**: End-to-end flow and branching remains correct — success/failure flags, status transitions, retry paths, callback/inquiry paths.
+4. **State persistence**: DB updates cannot write invalid values (NOT NULL columns) and cannot regress status (e.g. ACTIVE → PENDING).
+5. **Cross-module callers**: Check webapp, LOS, payments, batches, reporting, actor — not just the module you're changing.
+6. **Response contract**: If the API response shape changes (even adding a field), verify all consumers of that response.
+
+## Lessons from production
+
+### charges_configured incident
+- Changed `fetchLoanAccountChargeDetails` to return empty `charges_details` when no charges configured.
+- LOS KFS page expected non-empty `charges_details` and broke.
+- Fix: Restored placeholder in `charges_details` for backward compat; added `charges_configured` flag for new callers.
+- **Lesson**: Never change an existing response semantic. Add new fields; keep old behaviour.
+
+### 3x NEFT duplicate
+- NEFT v2 lookup excluded `DISBURSEMENT_NEFT_NEI` transaction type, so after Stage 2, another NEF was triggered.
+- Consumer did not skip when loan was already ACTIVE.
+- `disbursement_status` was not updated after NEF completion.
+- **Lesson**: Always trace the full lifecycle (create → stage 1 → stage 2 → callback → inquiry). Check what happens on replay/retry at every stage.
+
+### Negative net disbursement
+- `net_disbursed_amount` formula used `loan_amount` (includes insurance) instead of `approved_amount`.
+- PROC_FEE > approved_amount led to negative disbursement.
+- **Lesson**: Validate derived financial amounts (>= 0) before bank call. Use the correct base amount.
+
+## Checklist before declaring done
+
+- [ ] Identified all callers (processors, services, consumers, other modules)
+- [ ] Verified ExecutionContext keys are not accidentally overwritten
+- [ ] Confirmed status transitions are correct across all paths (success, failure, retry, callback)
+- [ ] Confirmed DB writes are valid (NOT NULL, no status regression)
+- [ ] Confirmed API response contract is backward compatible
+- [ ] For financial calculations: validated derived amounts are non-negative

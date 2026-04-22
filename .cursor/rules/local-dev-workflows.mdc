@@ -1,0 +1,142 @@
+---
+description: Local DB investigation, MFI disburse reset scripts, disburseLoan replay reset (Yugabyte)
+globs:
+  - "scripts/**"
+  - "docs/disbursement-sanity/**"
+alwaysApply: false
+---
+
+# Local database for investigations
+
+## When this applies
+
+Any time the answer depends on **actual persisted state** — e.g. `client_request_response_log`, `loan_account`, `loan_disbursement_mode_details`, duplicate detection, status progression, `is_deleted`, timestamps, or row counts.
+
+## Microservices: multiple schemas / databases
+
+This platform is **microservice-based**: tables are **not** all in one schema. A single flow can touch **accounting**, **actor**, **payments**, **LOS-backed identifiers**, **batch** staging, etc.
+
+1. **Map the entity to the owning service** before querying — e.g. loan core + CRR log → **accounting** DB; customer/actor profile → **actor** (or its schema); payment rails / instruments → **payments** where applicable.
+2. **Use the correct connection per service** — each service’s `application.yml` (or datasource config) may point to a **different database name or schema**. Don’t assume `loan_account` and some other domain table live in the same DB without checking.
+3. **Correlate across stores** with stable keys: `external_ref_number`, `account_number` / loan id, `stan`, idempotency keys, Kafka message ids — and **tenant** (`PlatformTenant` / tenant column) so you don’t mix environments.
+4. **Eventual consistency**: one service may have committed while another lags; if code looks “wrong” but one DB is stale, check **timestamps** and **the other service’s** DB before concluding root cause.
+
+## What to do
+
+1. **Prefer the local / dev database** for the **relevant service** — run or draft **concrete SQL** per schema/DB as needed (sometimes **more than one** query set for one incident).
+2. **Do not invent data** or assume row contents from code alone when the issue is “what happened in DB”.
+3. **Connection details**: read from **each** involved service’s config (`application.yml`, env vars, `.env` local) or **ask the user** for host/schema/read-only access. Never assume passwords in rules or commit them.
+4. If you **cannot** reach a DB from the agent environment, state that clearly and give **copy-paste queries** (with placeholders) for the user to run and paste results — **label which service/schema** each query targets.
+
+## Default local DB behavior for this workspace
+
+When the user asks to "check from database" or requests DB fetch:
+
+1. Start with local defaults:
+   - host: `localhost`
+   - username: `yugabyte`
+2. First discover the right DB/schema from service configs (datasource URL + schema/search_path) for the module in scope.
+3. If schema is still unclear, run a schema discovery query first, then fetch the requested data:
+
+```sql
+SELECT table_schema, table_name
+FROM information_schema.tables
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+ORDER BY table_schema, table_name;
+```
+
+4. Use password only at runtime (interactive/env var), never persist it in rules/files/commits.
+
+## Why (fintech)
+
+Money and audit trails live in the DB; code paths without verified state are a common source of wrong RCA.
+
+## Related
+
+See `always-on.mdc` for example SQL patterns and flow tracing.
+
+---
+
+# Local MFI disburse — database reset (user preference)
+
+— database reset (user preference)
+
+When the user provides an **`external_ref_number`** and/or a **`disburseLoan`** request payload for **local** testing and asks to fix/reset the database so the request can proceed:
+
+## Defaults
+
+- **Host**: `localhost`, **port**: `5433` (Yugabyte YSQL)
+- **Database**: `yugabyte` (not `sli` unless the user says their schemas live there)
+- **Schema**: `mfi_accounting`
+- **Credentials**: use the user’s local creds (often `yugabyte` / `yugabyte`)
+
+## Extract
+
+From the JSON: **`request.loan_details.customer_id`** (required). Optionally note **`external_ref_number`** and **`account_number`** for verification queries only.
+
+## SQL actions (same transaction)
+
+For **all** `loan_account` rows with that `customer_id`:
+
+1. **`loan_account`**: `is_deleted = true`, `loan_status = 'CLOSED'`, `updated_by` / `updated_on`, and **void** `external_ref_number` with `LEFT('VOID_<account_id>_<old_ref>', 64)` so `findLoanByExternalRefNumberAndProductId` does not raise **134139**.
+2. **`account`** (join via `loan_account.account_id`): `is_deleted = true`, `status = 'CLOSED'`, set `closing_date` if null, `updated_by` / `updated_on`.
+
+## Why both CLOSED and soft-delete
+
+- **`CustomerIDDedupCheckProcessor`** uses `findAllByCustomerId`, which **does not** filter `is_deleted`; it only skips dedup when **`account.status` ≠ ACTIVE**.
+- **`checkDedupeForExternalRefNumber`** does **not** filter `is_deleted`, so **void** the external ref on soft-deleted rows.
+
+## Script
+
+Prefer reusing: `scripts/local_reset_mfi_customer_loans_yugabyte.sql` (edit `\set customer_id` then `\i` from `psql`).
+
+## Do not (unless user explicitly asks)
+
+- Run this against **shared/non-local** databases.
+- Assume **`mfi_accounting`** is a database name — it is usually a **schema** inside **`yugabyte`**.
+
+## After reset
+
+If the request still carries a pre-assigned **`loan_details.account_number`** that must be globally unique, confirm the app can allocate a new LAN or adjust the payload if a unique constraint or business rule fails.
+
+---
+
+# Local `disburseLoan` replay reset (MFI / Yugabyte)
+
+(MFI / Yugabyte)
+
+## Script
+
+- Path: `scripts/local_reset_disburse_loan_replay_mfi_yugabyte.sql`
+- Run from workspace root, e.g. `psql ... -v ON_ERROR_STOP=1 -f scripts/local_reset_disburse_loan_replay_mfi_yugabyte.sql`
+- Schema: `mfi_accounting`
+
+## Map request JSON → `\set` in the script
+
+| Variable | Request field |
+|----------|----------------|
+| `lan` | `loan_details.account_number` or `group_details.primary_sig_lan` (optional; helps parent queue row) |
+| `ext_ref` | Parent `disbursement_details.external_ref_number` |
+| `member_ext_refs` | Comma-list of `member_details[].external_ref_number` (JLG multi-loan reset) |
+| `group_id` | `group_details.group_id` (optional) |
+| `product_id` | `loan_details.product_id` (documented in script; optional) |
+| `customer_id` | `loan_details.customer_id` (optional on placeholder `repayment_mandate_details`; 134494 if another ACTIVE loan same product for same customer) |
+| `target_disb_status` | Desired `loan_account.disbursement_status` after reset — align with **`headers.function_sub_code`** for non-DEFAULT paths |
+
+## DEFAULT path — script-only bypasses (local DB)
+
+1. **134139 / `checkDedupeForExternalRefNumber`**: script ends with `loan_account.external_ref_number = ext_ref || '__LOCAL_DEDUPE_BYPASS'`; request still sends real LOS `ext_ref`.
+2. **134494 / `CustomerIDDedupCheckProcessor`**: checks `account.status == ACTIVE` + same `loan_product_id`. Script ends with **`account.status = INACTIVE`** for the target LAN only. Start of script sets **`ACTIVE`** again so re-runs are idempotent. Successful disburse usually sets account back via existing processors.
+
+- **Re-run the script before each replay** (restores ACTIVE + canonical `ext_ref`, then re-applies both bypasses).
+- If **another** loan for the same customer + product is still ACTIVE, 134494 can still fire — script only touches the one `lan`.
+
+## What the script does (summary)
+
+Restores canonical `ext_ref` + `account.status = ACTIVE`, updates `disbursement_status` + fillers, clears UTR, **soft-archives** `client_request_response_log` (no hard `DELETE` — `loan_account_number` → `~`||`id`, original LAN in `uri` as `LOCAL_RESET_ORIG_LAN=...`, `status` = `LOCAL_RESET_ARCHIVED`), soft-deletes child queue rows, resets mandates (ext_ref / group / loan), **inserts a minimal `REGISTRATION_PENDING` SI mandate per LOS ref when missing** (avoids **134488**), applies `external_ref` suffix + **`account INACTIVE`**. Does **not** delete `loan_transaction`.
+
+## Other gotchas
+
+- `expected_disbursement_date: null` can still break processors that parse it as a long without a null guard — set epoch ms aligned to disbursement.
+- `client_reference_number` must be a numeric string (not a Postman `{{$timestamp}}` literal).
+- Do **not** create a separate markdown doc for this unless the user explicitly asks; this rule is the canonical note.

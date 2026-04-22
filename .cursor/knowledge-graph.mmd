@@ -1,0 +1,50 @@
+%% Platform Knowledge Graph — Flow Sync Wave 5
+%% Legend: (D)=DRIFT (M)=MISMATCH on money-heavy edges
+
+flowchart TB
+  classDef acc fill:#ffcc99,stroke:#cc6600,stroke-width:3px
+  classDef spof stroke:#cc0000,stroke-width:3px
+  classDef kafka fill:#e6e6fa,stroke:#333333
+
+  ACC[accounting-v2 center]
+  LOS[LOS]
+  PAY[payments]
+  ACT[actor]
+  MD[masterdata SPOF]
+  BAT[batch-scheduler SPOF]
+  GW[api-gateway SPOF]
+  PLAT[platform-lib]
+
+  KDISB[disburse_loan_api_]
+  KSYNC[los_lms_disbursement_sync]
+  KBULK[bulk_collection_data_]
+
+  DBACC[(mfi_accounting DB)]
+
+  ACC:::acc
+  MD:::spof
+  BAT:::spof
+  GW:::spof
+  KDISB:::kafka
+  KSYNC:::kafka
+  KBULK:::kafka
+
+  GW -->|HTTP D| ACC
+  GW -->|HTTP D| LOS
+  GW -->|HTTP D| PAY
+  LOS -->|HTTP D| ACC
+  PAY -->|HTTP D| ACC
+  ACC -->|HTTP D| ACT
+  ACC -->|HTTP D| MD
+  BAT -->|HTTP START D| ACC
+  PLAT -.->|platform D| ACC
+
+  LOS -->|Kafka D| KDISB
+  KDISB -->|Kafka D| ACC
+  ACC -->|Kafka M| KSYNC
+  KSYNC -->|Kafka M| LOS
+
+  ACC -->|Kafka D| KBULK
+  KBULK -->|Kafka D| PAY
+
+  ACC --> DBACC

@@ -1,0 +1,40 @@
+---
+description: "How users should frame fix requests; how agents interpret thin prompts and triage before acting."
+globs:
+  - ".cursorrules"
+  - "AGENTS.md"
+  - "**/*.md"
+alwaysApply: false
+---
+
+# Effective prompts + understanding the ask
+
+## For you (issue / fix request) — paste what you have
+
+More signal **up front** = fewer wrong turns. Include as many as apply (unknown is fine—say “unknown”):
+
+| Piece | Why it helps |
+|-------|----------------|
+| **Goal** | One line: what “fixed” means (behaviour, not only “no error”). |
+| **Symptom** | Exact message, error **code**, HTTP status, stuck **status** field value, or screenshot text. |
+| **Where** | Env (local/UAT/prod), **service** if known (accounting, LOS, …), **API name** or **batch/job** name. |
+| **When / repro** | Steps, or “intermittent”; **first seen** date/build if known. |
+| **Correlators** | `external_ref_number`, LAN, `account_id`, `stan`, **tenant**, **timestamp** (no secrets/PII beyond IDs). |
+| **Evidence** | Log snippet path, **SQL you ran** (schema + result shape), CRR/Kafka topic if known. |
+| **Scope** | “Code change allowed” vs “analysis only”; **deadline** (hotfix vs proper fix). |
+| **Already tried** | Config flips, retries, script names—avoids repeating work. |
+
+**Minimal viable prompt** (when in a hurry):  
+`Symptom + error code + one correlator + service guess + env` — then the agent can ask **one or two** targeted follow-ups.
+
+## For the agent — when the ask is thin or fuzzy
+
+1. **Infer safely**: Use **`system_brain/`** (flows, edge_cases, runbooks) and **orchestration/processor names** from symptom keywords; use **`.cursorrules` + domain rules** for constraints (contracts, ExecutionContext, money).
+2. **Restate briefly**: One short paragraph: “I understand you want X; I’ll verify via Y (files/DB/logs).” If **money or API contract** is involved, name that risk explicitly.
+3. **Ask only high-value questions** — prefer **one batch** over ping-pong: e.g. “Confirm schema `mfi_accounting` and one sample `external_ref_number`?” not ten yes/no messages.
+4. **Do not assume implementation** when the user asked **only** for analysis or options—match **analyse vs implement** (`discuss-before-updating.mdc`: no code edits until they clearly ask).
+5. **Tier the response** for production-style issues: **L0** quick mitigation, **L1** root fix (`architect-thinking.mdc` — Tiered solution approach) so intent (“stop bleeding” vs “fix properly”) is visible even if the user didn’t use those words.
+
+## Feature / enhancement prompts
+
+Add: **user story or rule** (“who / what / why”), **affected modules**, **non-goals**, **compatibility** (“must not break LOS”), and **whether** behaviour is behind a flag. The agent maps that to impact + contract checks (`api-contract-safety.mdc`, `no-flow-break-impact-check.mdc`).

@@ -1,0 +1,78 @@
+flowchart TB
+  subgraph ACC["⭐ accounting-v2 (LMS) — HIGH-TOUCH"]
+    ACCSVC["novopay-platform-accounting-v2<br/>Spring Boot + Batch + Kafka consumers"]
+  end
+
+  GW["novopay-platform-api-gateway<br/>REST edge, STAN, session"]
+  LOS["novopay-mfi-los<br/>origination + disburse producer"]
+  ACT["novopay-platform-actor"]
+  PAY["novopay-platform-payments"]
+  TSK["novopay-platform-task"]
+  MDM["novopay-platform-masterdata-management"]
+  AUT["novopay-platform-authorization"]
+  APR["novopay-platform-approval"]
+  AUD["novopay-platform-audit"]
+  NOT["novopay-platform-notifications"]
+  DMS["novopay-platform-dms"]
+  BAT["novopay-platform-batch"]
+  RPT["trustt-platform-reporting"]
+  WEB["novopay-platform-webapp<br/>(Angular — not Gradle svc in table)"]
+
+  EXT["External clients / LOS field apps"]
+  YB[(Yugabyte / per-service schemas)]
+  RD[(Redis — gateway + service caches)]
+
+  EXT -->|HTTP REST| GW
+  WEB -->|HTTP REST| GW
+  GW -->|HTTP REST forward| ACCSVC
+  GW -->|HTTP REST forward| LOS
+  GW -->|HTTP REST forward| ACT
+  GW -->|HTTP REST forward| PAY
+  GW -->|HTTP REST forward| TSK
+  GW -->|HTTP REST forward| MDM
+  GW -->|HTTP REST forward| AUT
+  GW -->|HTTP REST forward| APR
+  GW -->|HTTP REST forward| DMS
+
+  GW -->|Kafka: api_gateway_request/response_| AUD
+  GW -->|Kafka: telemetry_perf_log_| AUD
+
+  ACCSVC <-->|HTTP NovopayInternalAPIClient| ACT
+  ACCSVC <-->|HTTP NovopayInternalAPIClient| PAY
+  ACCSVC <-->|HTTP NovopayInternalAPIClient| MDM
+  ACCSVC <-->|HTTP NovopayInternalAPIClient| TSK
+  LOS <-->|HTTP NovopayInternalAPIClient| ACCSVC
+
+  LOS -->|Kafka Event disburse_loan_api_| ACCSVC
+  ACCSVC -->|Kafka Event los_lms_disbursement_sync ⚠️1 ⚠️2| LOS
+
+  ACCSVC -->|Kafka Event bulk_collection_data_| PAY
+  PAY -->|Kafka bulk_collection_data_failed_| ACCSVC
+  PAY -->|Kafka collection_*| TSK
+  PAY -->|Kafka update_collection_task_details_| PAY
+  TSK -->|Kafka collection_task_creation_| PAY
+
+  ACCSVC --> BAT
+  RPT -->|Kafka posidex_*| LOS
+  RPT -->|Kafka posidex_*| ACT
+
+  NOT -->|Kafka alerts/notification_*| EXT
+
+  ACCSVC --- YB
+  LOS --- YB
+  ACT --- YB
+  PAY --- YB
+  AUD --- YB
+  ACCSVC --- RD
+  LOS --- RD
+  GW --- RD
+
+  subgraph LEG["Legend — four disbursement sync / Redis ⚠️ (see gaps-and-risks.md)"]
+    L1["⚠️1 ⚠️2 Accounting sync payload missing entity_type vs LOS DisbursementSyncService"]
+    L2["⚠️3 LOS DisburseLoanAPIUtil Redis in-flight key — no TTL"]
+    L3["⚠️4 LmsMessageBrokerConsumer dl Redis key — no TTL"]
+  end
+
+  style ACC fill:#ffe6cc,stroke:#cc6600,stroke-width:2px
+  style ACCSVC fill:#ffe6cc,stroke:#cc6600
+  style LEG fill:#f5f5f5,stroke:#999
