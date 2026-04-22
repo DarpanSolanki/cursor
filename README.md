@@ -31,3 +31,12 @@ rsync -a "/path/to/sliProd-knowledge-sync/docs/" "./docs/"
 
 - This repository is documentation/knowledge only.
 - Source code changes must continue in their respective service repositories.
+
+## Sync Rule (Mandatory)
+
+Whenever any tracked knowledge artifact in this repository is updated (`.cursor/`, `system_brain/`, `.cursorrules`, `AGENTS.md`, `docs/`):
+
+1. Commit the change in this repo.
+2. Push `main` to `origin` immediately.
+
+This keeps machine-to-machine bootstrap state always current.
