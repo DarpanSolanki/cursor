@@ -157,6 +157,26 @@ When stopping mid-task, leave **concrete state** so another session can continue
 
 ---
 
+## Knowledge sync push discipline (mandatory)
+
+When this workspace (or its knowledge-sync mirror repo) updates any tracked knowledge artifact:
+
+- `.cursor/**`
+- `system_brain/**`
+- `.cursorrules`
+- `AGENTS.md`
+- `docs/**` (knowledge/validation docs)
+
+then complete all three before closing the task:
+
+1. commit the knowledge update in the knowledge-sync repository,
+2. push `main` to `origin`,
+3. confirm push completion in the response.
+
+No deferred push for these artifacts; sync must remain current for machine migration/bootstrap.
+
+---
+
 ## Debugging production issues (RCA discipline)
 
 BUG FIXING, COMPREHENSION & RCA
