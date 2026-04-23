@@ -1,0 +1,31 @@
+---
+description: "Disbursement testing playbook with simulator + CRR proof"
+globs:
+  - "scripts/disburse_loan_sanity.py"
+  - "scripts/disburse_loan_sanity_*.json"
+  - "docs/disbursement-sanity/**"
+alwaysApply: false
+---
+
+# Disbursement testing playbook
+
+When user asks for disbursement testing:
+
+1. Use simulator-backed runs (`--simulator-profile success` unless user asks failure/unknown).
+2. Prefer suite command from `scripts/disburse_loan_sanity.py` with `--reset-before`.
+3. Do not call testing complete without DB evidence:
+   - `mfi_accounting.loan_account` status movement
+   - `mfi_accounting.client_request_response_log` rows/deltas
+4. If API success but status stuck at `LAN_CREATED` and CRR is empty, classify as runtime blocker, not PASS.
+5. For Kafka-entry full-flavour suite, default to two-customer strategy so S7 (fresh second ref) does not collide with active-loan dedupe:
+   - `KAFKA_ENTRY_TEST_CUSTOMER_ID=<primary>`
+   - `KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=<secondary>`
+   - Use product-specific payload + mode:
+     - JLG (`product_id=2`): force `KAFKA_ENTRY_FORCE_DISBURSEMENT_MODE=ACCTWB`
+     - INDL (`product_id=45`): keep payload NEFT mode (`OTHBACCT`)
+     - SHG (`product_id=44`): verify parent + child and CLMT queue rows
+6. Use `docs/disbursement-sanity/PROCESS.md` as the default execution process and reporting template.
+7. Never stage/push local system artifacts (tmp init scripts, local logs, lock files, one-off runner outputs).
+8. Default execution command for user asks like "run disbursement for JLG/INDL/SHG":
+   - all products: `/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh`
+   - single product demo: `/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh JLG|INDL|SHG`
