@@ -1,64 +1,189 @@
 ---
-description: "Run disburseLoan sanity suite (commands + log tail path)"
+description: "Run evidence-driven disburseLoan sanity (simulator+DB)"
 globs:
   - "scripts/disburse_loan_sanity.py"
   - "scripts/disburse_loan_sanity_*.json"
   - "docs/disbursement-sanity/**"
+  - "docs/disbursement-reset-recipes/**"
+  - "scripts/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
+  - "scripts/reset_disburse_loan_replay_mfi_from_json.py"
 alwaysApply: false
 ---
 
-# DisburseLoan sanity suite (local)
+# DisburseLoan sanity suite (local evidence-first)
 
-## Log tailing (during suite run)
+Use this whenever user asks for full disbursement validation, replay checks, payment reinitiation behavior, or CRR/loan-status proof.
 
-- Tail this file for Accounting flow logs:
-  - `/home/darpan/Documents/sliProdLogs/mfi/accounting-mfi.log`
+## Mandatory preflight
 
-## What the suite verifies (shareable, no internal lingo)
+Before running scenarios, confirm:
 
-- **Fresh request**: one disburseLoan call with `function_sub_code=DEFAULT` that should create the loan once and attempt the bank leg.
-- **On Retry**: subsequent calls for the same loan (same `external_ref_number`) to ensure **idempotency** (no duplicate LAN, no duplicate fund transfer) and safe recovery from `UNKNOWN`.
-- **Stage-based retry**: calls with `function_sub_code` set to a known stage (`LAN_CREATED`, `LOAN_BOOKED`, `DTFC_SUCCESS`) to validate safe continuation.
-- **Evidence**: suite checks DB counters like installments/dues and `client_request_response_log` (CRR) to ensure bank/GL legs are not duplicated.
+1. Accounting API is up at `http://localhost:8002/accounting`.
+2. Simulator is up at `http://localhost:8018` (bank API mock target).
+3. Kafka is up on `localhost:9092` when validating async legs.
+4. DB reachable (`yugabyte` / schema `mfi_accounting`).
 
-## Disbursement status lifecycle (reference)
-
-- **Non-child loans**: `LAN_CREATED` → `LOAN_BOOKED` → `DTFC_SUCCESS` → `COMPLETED`
-- **Child-flow loans**: `LAN_CREATED` → `LOAN_BOOKED` → `DTFC_SUCCESS` → `PARENT_SUCCESS` → `CHILD_SUCCESS` → `COMPLETED`
-
-## Recommended full suite run
-
-From workspace root (`/home/darpan/Documents/sliProd`):
+Quick checks:
 
 ```bash
-rm -f /tmp/disburse_loan_sanity.lock
-python3 scripts/disburse_loan_sanity.py \
-  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
-  --stage-suite full \
-  --simulator-profile none \
-  --http-timeout-s 30 \
-  --wait-timeout-s 180 \
-  --poll-s 2.0
+curl -s http://localhost:8002/accounting/actuator/health
+curl -s http://localhost:8018/simulate/getAllResponses
+ss -ltn | awk '/:9092 / {print}'
 ```
 
-## Fast run (minimal)
+## Golden run commands
+
+Run from workspace root (`/home/darpan/Documents/sliProd`).
+
+### Wrapper shortcuts (preferred for demos/manual verification)
+
+```bash
+/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh
+/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh JLG
+/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh INDL
+/home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh SHG
+```
+
+### Minimal (smoke + replay guard)
 
 ```bash
 rm -f /tmp/disburse_loan_sanity.lock
 python3 scripts/disburse_loan_sanity.py \
   --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
   --stage-suite minimal \
-  --simulator-profile none \
+  --simulator-profile success \
+  --reset-before \
+  --reset-target-disb-status LAN_CREATED \
+  --http-timeout-s 30 \
+  --wait-timeout-s 120 \
+  --poll-s 2.0
+```
+
+### Full (all stage/replay permutations)
+
+```bash
+rm -f /tmp/disburse_loan_sanity.lock
+python3 scripts/disburse_loan_sanity.py \
+  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
+  --stage-suite full \
+  --simulator-profile success \
+  --reset-before \
+  --reset-target-disb-status LAN_CREATED \
   --http-timeout-s 30 \
   --wait-timeout-s 180 \
   --poll-s 2.0
 ```
 
-## Artifacts
+### Kafka-entry full flavours (default matrix, one-command each)
 
-- Suite writes reports under:
-  - `docs/disbursement-sanity/`
+Use two customers so the fresh-second-ref lane (S7) does not hit active-loan dedupe after S1.
 
-## Reading the report
+Important local product-mode constraints:
+- `product_id=2` (JLG): use `ACCTWB` (not `OTHBACCT` in this local DB)
+- `product_id=45` (INDL): NEFT v1 path (`OTHBACCT`) is valid
+- `product_id=44` (SHG): parent + child flow; child CLMT rows should be present
 
-- The `.txt` report is **L1-style**: TC01..TCxx with **Action / Expected behaviour / Actual** (counters + statuses), designed to be shareable to anyone without explaining "replay/resume".
+Common classpath bootstrap:
+
+```bash
+cd /home/darpan/Documents/sliProd/novopay-platform-accounting-v2
+CP=$(./gradlew -q --init-script tmp-printcp.init.gradle printTestRuntimeClasspath)
+```
+
+JLG full suite (S1..S7, ACCTWB):
+
+```bash
+KAFKA_ENTRY_TEST_CUSTOMER_ID=10002173 \
+KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002197 \
+KAFKA_ENTRY_FORCE_DISBURSEMENT_MODE=ACCTWB \
+KAFKA_ENTRY_SCENARIO_START=1 \
+KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
+  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_4495972134234554346565.json
+```
+
+INDL full suite (S1..S7, NEFT v1):
+
+```bash
+KAFKA_ENTRY_TEST_CUSTOMER_ID=10002221 \
+KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002215 \
+KAFKA_ENTRY_SCENARIO_START=1 \
+KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
+  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_370164.json
+```
+
+SHG full suite (S1..S7, parent+child):
+
+```bash
+KAFKA_ENTRY_TEST_CUSTOMER_ID=10002185 \
+KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002179 \
+KAFKA_ENTRY_SCENARIO_START=1 \
+KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
+  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_shg_41333333.json
+```
+
+### Customer selection guard (before run)
+
+Pick two `ACTIVE` customers that do not already have an `ACTIVE` loan for the target product:
+
+```sql
+WITH p AS (SELECT id FROM mfi_accounting.loan_product WHERE product_id = :product_id LIMIT 1)
+SELECT c.id
+FROM mfi_actor.customer c
+LEFT JOIN mfi_accounting.loan_account la
+  ON la.customer_id = c.id
+ AND la.loan_product_id = (SELECT id FROM p)
+ AND la.loan_status = 'ACTIVE'
+ AND la.is_deleted = false
+WHERE c.status = 'ACTIVE'
+  AND c.is_deleted = false
+  AND la.account_id IS NULL
+ORDER BY c.id DESC
+LIMIT 20;
+```
+
+## Required evidence to report
+
+Always report these with scenario outcome:
+
+1. Loan state (`loan_status`, `disbursement_status`, `external_ref_number`, `account_number`).
+2. CRR deltas by transaction type (`DISBURSEMENT_NEFT`, `DISBURSEMENT_MFT`, `DISB_GL_CBS_INTEGRATION`, inquiries).
+3. Duplicate safety proof (replay produces no unexpected new non-archived CRR rows).
+
+Reference SQL:
+
+```sql
+SELECT la.account_id, a.account_number, la.external_ref_number, la.loan_status, la.disbursement_status, la.updated_on
+FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.account a ON a.id = la.account_id
+WHERE a.account_number = :lan;
+
+SELECT transaction_type, status, count(*) AS rows, max(system_date) AS latest
+FROM mfi_accounting.client_request_response_log
+WHERE loan_account_number = :lan
+GROUP BY transaction_type, status
+ORDER BY latest DESC;
+```
+
+## Known blocker signature (do not claim PASS)
+
+If output shows:
+
+- HTTP success (`code=0`) but
+- loan stuck at `LAN_CREATED`, and
+- CRR counts remain empty (`crr_counts={}` / no non-archived CRR rows),
+
+then suite is blocked by runtime/config path; mark as **environment blocker**, not functional pass.
+
+## Logs and artifacts
+
+- Accounting log tail: `/home/darpan/Documents/sliProdLogs/mfi/accounting-mfi.log`
+- Suite outputs: `docs/disbursement-sanity/`
+- Reset recipe outputs: `docs/disbursement-reset-recipes/`
+
+## Non-negotiable rule
+
+Do not call disbursement testing "complete" without DB evidence from both `loan_account` and `client_request_response_log`.
+Never stage or push local/system artifacts (`tmp-*`, local logs, lock files, runner temp outputs).

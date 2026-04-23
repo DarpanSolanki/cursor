@@ -170,3 +170,5 @@ HTTP **`reverseTransaction`** / **`postManualJournalEntry`** → posting engine 
 **Wave 7 revalidation (2026-04-22):** full disbursement audit confirms E6/E7 mismatch is still active in current runtime code (`LmsMessageBrokerConsumer.sendResultMessageToKafka` omits `entity_type`) and correlation is still partial (`stan` absent). See reopened/new gaps **GAP-070..073**.
 
 **Wave 8 payment-reinit execution validation (2026-04-22):** parent disbursement reinit scenarios confirm lane typing and traceability on accounting disbursement path (`DISBURSEMENT_MFT_REINIT` / `DISBURSEMENT_NEFT_REINIT`) with monotonic reference progression across repeated explicit attempts; this strengthens money-path confidence inside node `SVC-ACC` for parent reinit flow while E6/E7 contract mismatch remains unresolved.
+
+**Wave 9 disbursement demo execution setup (2026-04-23):** local operator wrapper `scripts/run_disbursement_full_matrix.sh` now provides one-command product-scoped validation (`JLG`/`INDL`/`SHG`/`ALL`) with DB-backed terminal-state checks and SHG CLMT queue evidence; this standardizes manual demo/verification entry for MONEY PATH: Loan disbursement.
