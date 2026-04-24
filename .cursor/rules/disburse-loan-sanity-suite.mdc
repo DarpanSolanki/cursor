@@ -81,7 +81,7 @@ Use two customers so the fresh-second-ref lane (S7) does not hit active-loan ded
 Important local product-mode constraints:
 - `product_id=2` (JLG): use `ACCTWB` (not `OTHBACCT` in this local DB)
 - `product_id=45` (INDL): NEFT v1 path (`OTHBACCT`) is valid
-- `product_id=44` (SHG): parent + child flow; child CLMT rows should be present
+- `product_id=44` (SHG): parent + child flow; **`CLB` + `CLMT`** rows on `loan_account_events_queue` for parent `parent_account_id` (wrapper prints `SHG CLB evidence` / `SHG CLMT evidence`)
 
 Common classpath bootstrap:
 
@@ -90,36 +90,36 @@ cd /home/darpan/Documents/sliProd/novopay-platform-accounting-v2
 CP=$(./gradlew -q --init-script tmp-printcp.init.gradle printTestRuntimeClasspath)
 ```
 
-JLG full suite (S1..S7, ACCTWB):
+JLG full suite (S1..S8, ACCTWB):
 
 ```bash
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002173 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002197 \
 KAFKA_ENTRY_FORCE_DISBURSEMENT_MODE=ACCTWB \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_4495972134234554346565.json
 ```
 
-INDL full suite (S1..S7, NEFT v1):
+INDL full suite (S1..S8, NEFT v1):
 
 ```bash
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002221 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002215 \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_370164.json
 ```
 
-SHG full suite (S1..S7, parent+child):
+SHG full suite (S1..S8, parent+child). **S8** soft-deletes all `CLB`/`CLMT` rows for the parent in DB, then `DEFAULT` replay on the primary ref (matrix asserts `S8_queue_soft_delete_replay` and existing CLB/CLMT evidence gates).
 
 ```bash
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002185 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002179 \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_shg_41333333.json
 ```
@@ -187,3 +187,5 @@ then suite is blocked by runtime/config path; mark as **environment blocker**, n
 
 Do not call disbursement testing "complete" without DB evidence from both `loan_account` and `client_request_response_log`.
 Never stage or push local/system artifacts (`tmp-*`, local logs, lock files, runner temp outputs).
+Suite sign-off must validate **external-call policy** end-to-end for the scenario: each expected bank/integration leg appears in CRR (or equivalent trace) when the state machine requires it, and no **extra** leg runs when the state is already terminal or inquiry would be redundant. That includes parent and child paths (MFT, MFT inquiry, NEFT v1/v2 + inquiries, GL–CBS where in scope), not only payment reinit. For explicit payment reinit after MFT failure, additionally prove: no spurious transfer on latest SUCCESS reinit CRR; inquiry-before-retry when latest `DISBURSEMENT_MFT_REINIT` is non-success.
+Any disbursement-flow code change must pass real bank API QA validation before release.

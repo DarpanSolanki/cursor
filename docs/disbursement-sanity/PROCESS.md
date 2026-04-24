@@ -16,6 +16,8 @@ Single-product demo run:
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh SHG
 ```
 
+`run_disbursement_full_matrix.sh` and the default `KAFKA_ENTRY_SCENARIO_LIMIT` now run **eight** Kafka-entry scenarios. **S8** simulates ops resetting group disbursement queue data: it sets `is_deleted = true` on all `CLB` and `CLMT` rows for the parent `loan_account.account_id`, then sends a `DEFAULT` replay on the primary external ref so the disburse path can recreate active queue rows. Payloads without `member_details` (INDL) run **S8** as a terminal idempotency replay only.
+
 ## 1) Preconditions
 
 - Accounting service running on `http://localhost:8002/accounting`
@@ -77,7 +79,7 @@ KAFKA_ENTRY_TEST_CUSTOMER_ID=10002173 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002197 \
 KAFKA_ENTRY_FORCE_DISBURSEMENT_MODE=ACCTWB \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_4495972134234554346565.json
 ```
@@ -88,7 +90,7 @@ INDL (`product_id=45`, NEFT v1 payload):
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002221 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002215 \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_370164.json
 ```
@@ -99,7 +101,7 @@ SHG (`product_id=44`, parent + child with CLMT evidence):
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002185 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002179 \
 KAFKA_ENTRY_SCENARIO_START=1 \
-KAFKA_ENTRY_SCENARIO_LIMIT=7 \
+KAFKA_ENTRY_SCENARIO_LIMIT=8 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_shg_41333333.json
 ```
@@ -149,7 +151,7 @@ ORDER BY latest DESC;
 - Status progression reaches expected terminal state for scenario
 - CRR rows appear for required bank/GL legs
 - Replay scenarios do not create unexpected duplicate non-archived CRR rows
-- SHG: `loan_account_events_queue` contains `CLMT` rows for the parent account and they progress to completed states
+- SHG: `loan_account_events_queue` contains **`CLB`** (Child Loan Booking) and **`CLMT`** (Child Loan Money Transfer) rows for the parent `parent_account_id` (same id as parent `loan_account.account_id`). The matrix checks CLB counts vs parent `disbursement_status`: `COMPLETED` ⇒ all CLB terminal (`C`); `CHILD_SUCCESS` ⇒ at least one CLB still `P`; `PARENT_SUCCESS` ⇒ CLB rows exist.
 
 ## 5) Blocker signature (do not mark pass)
 
@@ -171,3 +173,12 @@ then this is an environment/runtime flow blocker, not a passed disbursement flow
 
 - Do not stage/push local/system files from test execution (example: `tmp-printcp.init.gradle`, local log tails, lock files, ad-hoc temp payloads).
 - Before commit, verify using `git status --short` from the module and unstage any system artifact immediately.
+
+## 8) External bank / integration call policy (full disbursement)
+
+- Test cases must assert **correct external usage for the whole flow**, not only “no double call” or “reinit path only.”
+- For each scenario (JLG / INDL / SHG, parent and child), map expected legs from the state machine, then verify in `client_request_response_log` (and loan/queue state) that:
+  - **required** calls happened (e.g. MFT, MFT inquiry when recovering from non-success, NEFT v1/v2 stage + inquiry, child `DISBURSEMENT_EXTREF*` where applicable, GL–CBS when in scope)
+  - **forbidden** calls did not happen (e.g. inquiry or transfer on already-terminal success, wrong lane for current `disbursement_mode`)
+- Payment reinit after MFT failure is a **subset** of this: over-call vs under-call on reinit must still pass alongside the broader leg checklist.
+- Release discipline: disbursement-flow fixes can be implemented quickly locally, but release requires mandatory QA with real bank API coverage.
