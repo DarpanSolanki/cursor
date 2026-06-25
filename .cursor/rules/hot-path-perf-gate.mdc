@@ -1,0 +1,41 @@
+---
+description: "Workspace-wide hot-path perf — mandatory on any fix touching loops, processors, services, batch, consumers (not batch-only)"
+alwaysApply: true
+globs: ["**/*.java", "**/orchestration/**/*.xml"]
+---
+
+# Hot-path performance gate (workspace-wide)
+
+Applies to **every** money/service hot path — batch, API processors, services, Kafka consumers, orchestration-driven flows. **Not** batch-only. Pairs with `cursor-bundle/memory/feedback_significant_perf_with_fix.md`.
+
+## Mandatory scan (same PR as the fix)
+
+Before closing any fix that touches a **loop**, **per-item handler**, or **high-volume path**:
+
+1. **N+1** — DAO / repository / HTTP / cache call inside `for`/`while` or per Kafka message → **one preload per scope** (loan, chunk, request) + Java filter.
+2. **Repeated full scan** — same list filtered/summed every iteration (e.g. per-day overdue base) → **precompute once** (sorted + pointers, or day map) before the loop.
+3. **Duplicate fetch** — same `(loanId, installmentId)` read twice in one flow → derive from one in-memory list.
+4. **Hit-only cache** — map that only stores hits → add miss sentinel / `noOpenIds` set.
+5. **Query ladder** — reuse + Java first; new `@Query` only when preload cannot work (grep callers).
+
+## Significant vs skip
+
+| Do in same change | Skip |
+|-------------------|------|
+| Batch day loop O(days×rows) → linear precompute | Cold API 2→1 query merge |
+| Consumer N+1 → bulk preload per partition/chunk | `stream()` vs `for` on &lt;10 rows |
+| Processor loop re-fetching same entity | Rename-only refactor |
+
+## Agent output (every fix proposal / ship note)
+
+```text
+Significant perf in scope: Yes (<what>) | No — none material in this path
+Hot-path scan: PASS | WARN (<findings>) — run: scripts/bin/hot-path-scan.sh --from-pending
+```
+
+## Automation
+
+- **Autopilot** runs `hot-path-scan.sh` on FIX+SHIP / FEATURE / money `CODE/DAO`.
+- **Ship-loop** prints scan WARN on money tier (non-blocking unless `HOT_PATH_SCAN_STRICT=1`).
+
+Batch-specific precedents: `.cursor/rules/batch-hot-path-perf.mdc`.

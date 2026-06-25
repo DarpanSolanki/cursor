@@ -1,0 +1,44 @@
+---
+description: "Batch inner-loop perf — precedents; workspace gate: hot-path-perf-gate.mdc (always-on)"
+globs: ["**/batchnew/**/*.java", "**/*BatchService.java", "**/*ItemProcessor.java", "**/*ItemReader.java", "**/*ItemWriter.java"]
+alwaysApply: false
+---
+
+# Batch hot-path performance gate
+
+**Workspace-wide rule (always on):** `.cursor/rules/hot-path-perf-gate.mdc` — applies to processors, services, consumers, APIs, not only this file.
+
+When editing a **batch service**, **item processor**, or **daily/segment loop** on a money path:
+
+## Mandatory scan (same PR as the fix)
+
+1. **Partial caches** — maps that only store hits (`if (found != null) map.put(...)`) cause repeated DAO calls on misses. Use a miss set/sentinel: distinguish *not checked* vs *checked, none found*.
+2. **N+1 inside loops** — any DAO/repository call inside `while`/`for` over days, installments, or chunk rows → collapse to **one preload per loan** (`findAllByLoanAccountId` + Java) or chunk bulk (`IN` list) before the loop.
+3. **Duplicate reads** — same `(loanAccountId, installmentId)` queried for open row **and** seed carry → derive both from one in-memory list.
+4. **Query ladder** — step 1 (reuse + Java) first on batch hot paths; step 3 only when preload cannot satisfy (document why).
+
+## Significant vs defer
+
+| Do in same change | Defer (name in PR/gaps) |
+|-------------------|-------------------------|
+| Per-loan preload + miss cache in service you edit | Chunk-scoped bulk across all IDs in Spring Batch chunk (needs listener/composite processor) |
+| Remove O(days) repeated queries | New repository `@Query` when `findAllBy*` + filter suffices |
+
+## Precedent — DPI accrual calc (`DpiAccrualCalculationBatchService`)
+
+- **Miss cache:** `noOpenInstallmentIds` in the daily loop.
+- **Day loop:** `precomputeDaySnapshots` — sorted dues + moving pointers → O(windowDays + dueRows), not O(windowDays × dueRows) per-day full scan for anchor/base.
+- **Chunk preload:** `findOpenUnpostedByLoanAccountIds` (calc + booking), `findAccruedUnbilledByLoanAccountIds` (billing), `findMaxEndDateByLoanAccountIds` (calc window). Filters in `DpiAccrualRowFilters`.
+
+## Precedent — DPI accrual booking (`DpiAccrualBookingBatchService`)
+
+- **Posting gate:** one `getAllActiveLoanDueDetailsByAccId` → `Set<Long> dueDayKeys`; no `getLoanDueDetailsForDueDate` per accrual row.
+
+## Agent checklist (append to impact note)
+
+- [ ] Inner loop scanned for DAO calls
+- [ ] Hit-only maps checked for miss-cache gap
+- [ ] Preload scope stated (per-loan vs chunk)
+- [ ] `verify-dpi` or relevant batch sanity re-run after perf change
+
+Pairs with: `feedback_significant_perf_with_fix.md`, `reuse-queries-java-filter.mdc`, `minimal-fix-impact-gate.mdc`.

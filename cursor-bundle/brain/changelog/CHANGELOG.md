@@ -5,6 +5,12 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 
+## 2026-06-25 | acct 80c3f6723 | accounting-v2 | feature/delayed_payment_interest | kg-flow | DPI batch perf: precompute snapshots + due-day preload
+apiName dpiAccrualCalculation dpiAccrualBooking — DpiAccrualCalculationBatchService precomputeDaySnapshots before day loop (sorted dues + pointers); DpiAccrualBookingBatchService loadDueDayKeys Set membership replaces getLoanDueDetailsForDueDate per accrual row
+
+---
+
+
 ## 2026-06-25 | acct 5ec2da58f | accounting-v2 | feature/delayed_payment_interest | kg-flow | DPI go-live UD: post-go-live base, maturity skip, accrual posting calendar
 apiName dpiAccrualCalculation dpiAccrualBooking — postGoLiveDueDays filters overdueBase and anchor INT; skip when maturity_date < goLiveDate; DpiAccrualBookingBatchService isAccrualPostingDate mirrors interest accrual (dayBefore endDate); DPICalculationService.computeOverdueDate public; dpic.ud_compliance PASS
 

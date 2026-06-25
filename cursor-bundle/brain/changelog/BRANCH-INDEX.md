@@ -6,7 +6,7 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 
 | Branch | Latest | Service | Sha | Tag |
 |--------|--------|---------|-----|-----|
-| `feature/delayed_payment_interest` | 2026-06-25 | accounting-v2 | `5ec2da58f` | kg-flow |
+| `feature/delayed_payment_interest` | 2026-06-25 | accounting-v2 | `80c3f6723` | kg-flow |
 | `mfi_integration_v3.3.1.2` | 2026-06-24 | accounting-v2 | `60c8d0f74f` | kg-flow |
 | `fix/sdcp-10199-parent-last-child-dfc-closure` | 2026-06-22 | accounting-v2 | `09c3d9ef7a` | kg-flow |
 | `mfi_integration_v3.3.1.1` | 2026-06-19 | accounting-v2 | `7d13ec7c4` | kg-flow |
@@ -14,6 +14,7 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 ## kg-flow by branch (for KG / reference enrichment)
 
 ### `feature/delayed_payment_interest`
+- 2026-06-25 `80c3f6723` — DPI batch perf: precompute snapshots + due-day preload
 - 2026-06-25 `5ec2da58f` — DPI go-live UD: post-go-live base, maturity skip, accrual posting calendar
 - 2026-06-23 `8053210a5` — DPI billing next-EMI due_date + aggregated bill per anchor
 - 2026-06-23 `346d9efe6` — DPI client ref numeric format like interest jobs
@@ -25,7 +26,6 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 - 2026-06-23 `ebfdb51f10` — DPI accrual preload: findAllByLoanAccountIds + Java reduce
 - 2026-06-22 `e9f8d3348` — DPI accrual narrow sub-batched chunk preload
 - 2026-06-22 `498979676` — DPI accrual calc perf: preload + miss cache
-- 2026-06-22 `d920c1caf8` — DPI accrual installment_id — latest overdue INT EMI anchor
 
 ### `fix/sdcp-10199-parent-last-child-dfc-closure`
 - 2026-06-22 `09c3d9ef7a` — SDCP-10199 parent zero OS on last-child DFC

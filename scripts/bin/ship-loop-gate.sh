@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# Tiered ship loop: workspace validate | service build+health | money full ntest.
+# Usage:
+#   ship-loop-gate.sh --from-pending
+#   ship-loop-gate.sh --api getLoanAccountOverviewDetails [--api ...]
+#   ship-loop-gate.sh --from-pending --skip-gate
+#   ship-loop-gate.sh --tier workspace|service|money
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PENDING="$ROOT/.cursor/.pending-ship-work.json"
+PASSED="$ROOT/.cursor/.ship-loop-passed.json"
+FROM_PENDING=0
+SKIP_GATE=0
+TIER=""
+APIS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --from-pending) FROM_PENDING=1; shift ;;
+    --skip-gate) SKIP_GATE=1; shift ;;
+    --tier) TIER="$2"; shift 2 ;;
+    --api) APIS+=("$2"); shift 2 ;;
+    -h|--help)
+      head -8 "$0" | tail -7
+      exit 0
+      ;;
+    *) echo "Unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+_read_pending() {
+  python3 - <<'PY' "$PENDING"
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+if not p.is_file():
+    print(json.dumps({}))
+    sys.exit(0)
+print(p.read_text(encoding="utf-8"))
+PY
+}
+
+PENDING_JSON="$(_read_pending)"
+
+# Single Python call: tier, apis, ntest cases, repos
+_IMPACT_JSON="$(python3 "$ROOT/scripts/lib/resolve_ship_impact.py" --json \
+  --root "$ROOT" --pending "$PENDING" \
+  ${TIER:+--tier "$TIER"} \
+  $( [[ "$FROM_PENDING" -eq 1 ]] && echo --from-pending ) \
+  $( for a in "${APIS[@]}"; do printf ' --api %q' "$a"; done ) 2>/dev/null || echo '{}')"
+
+TIER="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tier') or 'workspace')" 2>/dev/null || echo workspace)"
+mapfile -t APIS < <(echo "$_IMPACT_JSON" | python3 -c "import json,sys; [print(a) for a in json.load(sys.stdin).get('apis') or []]" 2>/dev/null || true)
+mapfile -t _SMART_CASES < <(echo "$_IMPACT_JSON" | python3 -c "import json,sys; [print(c) for c in json.load(sys.stdin).get('ntest_cases') or []]" 2>/dev/null || true)
+PENDING_FILES="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('pending_files') or 0)" 2>/dev/null || echo 0)"
+_TESTING_PATHS="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('testing_paths_touched') or 0)" 2>/dev/null || echo 0)"
+
+if [[ "$PENDING_FILES" -eq 0 && ${#APIS[@]} -eq 0 && "$FROM_PENDING" -eq 1 ]]; then
+  echo "ship-loop-gate: no pending ship work — edit a ship-path file or pass --api / --tier" >&2
+  exit 2
+fi
+
+echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} files=$PENDING_FILES ==="
+
+if [[ "$TIER" == "money" && "$PENDING_FILES" -gt 0 ]]; then
+  _HPS="$(bash "$ROOT/scripts/bin/hot-path-scan.sh" --from-pending 2>/dev/null || true)"
+  echo "$_HPS"
+  if [[ "${HOT_PATH_SCAN_STRICT:-}" == "1" ]] && [[ "$_HPS" == *"WARN:"* ]]; then
+    echo "ship-loop-gate: hot-path-scan STRICT — fix DAO-in-loop or document false positive" >&2
+    exit 1
+  fi
+fi
+
+if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+  _IMPACT_SCOPED="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if d.get('impact_scoped') or d.get('dpi_scoped') else 'no')" 2>/dev/null || echo no)"
+  echo "→ smart ntest (impact-scoped=${_IMPACT_SCOPED}): ${_SMART_CASES[*]}"
+fi
+[[ ${#APIS[@]} -gt 0 ]] && echo "→ KG-resolved apis: ${APIS[*]}"
+
+_run_ntest() {
+  local case_id="$1"
+  local label="${2:-}"
+  echo "→ ntest run $case_id${label:+ ($label)}"
+  bash "$ROOT/scripts/bin/ntest.sh" run "$case_id" || return 1
+}
+
+_run_api_tests() {
+  local api
+  local ops_fail_ok=1
+  [[ "$TIER" == "money" ]] && ops_fail_ok=0
+  for api in "${APIS[@]}"; do
+    echo "→ agent-ops before-test $api"
+    if ! bash "$ROOT/scripts/bin/agent-ops.sh" before-test "$api"; then
+      [[ "$ops_fail_ok" -eq 0 ]] && return 1
+    fi
+    local case_id
+    case_id="$(python3 "$ROOT/scripts/lib/infer_ship_apis.py" --registry-case "$api" 2>/dev/null || true)"
+    if [[ -n "$case_id" ]]; then
+      _run_ntest "$case_id" "api=$api" || return 1
+    else
+      echo "→ ntest auto $api"
+      bash "$ROOT/scripts/bin/ntest.sh" auto "$api" || return 1
+    fi
+  done
+}
+
+_run_smart_cases() {
+  local case_id
+  for case_id in "${_SMART_CASES[@]}"; do
+    [[ -n "$case_id" ]] || continue
+    _run_ntest "$case_id" "flow-scoped" || return 1
+  done
+}
+
+_build_repos() {
+  mapfile -t REPOS < <(echo "$PENDING_JSON" | python3 -c "
+import json, sys
+from pathlib import Path
+root = Path('$ROOT')
+d = json.loads(sys.stdin.read() or '{}')
+repos = set(d.get('repos') or [])
+for r in repos:
+    if (root / r / 'build.gradle').is_file() or (root / r / 'build.gradle.kts').is_file():
+        print(r)
+" 2>/dev/null)
+  if [[ ${#REPOS[@]} -eq 0 && ${#APIS[@]} -gt 0 ]]; then
+    REPOS=("novopay-platform-accounting-v2")
+  fi
+  local repo
+  for repo in "${REPOS[@]}"; do
+    local rdir="$ROOT/$repo"
+    [[ -d "$rdir" ]] || continue
+    echo "→ gradlew build -x test ($repo)"
+    (cd "$rdir" && ./gradlew build -x test -q) || return 1
+  done
+}
+
+_run_case_list() {
+  local tier_label="$1"
+  shift
+  local case_id already
+  for case_id in "$@"; do
+    [[ -n "$case_id" ]] || continue
+    already=0
+    for api in "${APIS[@]}"; do
+      local mapped
+      mapped="$(python3 "$ROOT/scripts/lib/infer_ship_apis.py" --registry-case "$api" 2>/dev/null || true)"
+      [[ "$mapped" == "$case_id" ]] && already=1 && break
+    done
+    [[ "$already" -eq 1 ]] && continue
+    _run_ntest "$case_id" "$tier_label" || return 1
+  done
+}
+
+case "$TIER" in
+  workspace)
+    echo "→ workspace tier: KG + registry validate"
+    if [[ "${WORKSPACE_CLOSE_KG_DONE:-}" != "1" ]]; then
+      python3 "$ROOT/cursor-bundle/kg/bin/kg.py" validate >/dev/null
+    else
+      echo "→ kg validate skipped (already done in workspace-close)"
+    fi
+    python3 "$ROOT/scripts/testing/ntest.py" validate
+    if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+      mapfile -t _WS_CASES < <(python3 - <<'PY' "$ROOT" "${_SMART_CASES[@]}"
+import json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+reg = json.loads((root / "scripts/testing/registry.json").read_text(encoding="utf-8"))
+for cid in sys.argv[2:]:
+    if (reg.get(cid) or {}).get("smoke_tier") == "money":
+        continue
+    print(cid)
+PY
+)
+      if [[ ${#_WS_CASES[@]} -gt 0 ]]; then
+        echo "→ workspace tier: flow-scoped ntest (${#_WS_CASES[@]} case(s))"
+        _run_case_list "flow-scoped" "${_WS_CASES[@]}" || exit 1
+      fi
+    elif [[ "$_TESTING_PATHS" == "1" ]]; then
+      echo "→ testing paths touched — quick smoke (no pending apis resolved)"
+      bash "$ROOT/scripts/bin/ntest.sh" smoke --quick || exit 1
+    fi
+    ;;
+  service)
+    _build_repos || exit 1
+    if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+      _run_smart_cases || exit 1
+    elif [[ ${#APIS[@]} -gt 0 ]]; then
+      _run_api_tests || exit 1
+    else
+      mapfile -t _HEALTH < <(echo "$PENDING_JSON" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+seen=set()
+for c in d.get('health_cases') or []:
+    if c not in seen:
+        seen.add(c); print(c)
+repos=d.get('repos') or []
+svc_map={'novopay-platform-accounting-v2':'health.accounting','novopay-platform-actor':'health.actor','novopay-platform-task':'health.task','novopay-platform-payments':'health.payments'}
+for r in repos:
+    h=svc_map.get(r)
+    if h and h not in seen:
+        seen.add(h); print(h)
+" 2>/dev/null)
+      if [[ ${#_HEALTH[@]} -gt 0 ]]; then
+        echo "→ service tier: health probe(s) for touched repo(s)"
+        _run_case_list "health" "${_HEALTH[@]}" || exit 1
+      else
+        echo "→ service tier: quick smoke (no flow resolved)"
+        bash "$ROOT/scripts/bin/ntest.sh" smoke --quick || exit 1
+      fi
+    fi
+    ;;
+  money)
+    _build_repos || exit 1
+    if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+      _run_smart_cases || exit 1
+    elif [[ ${#APIS[@]} -gt 0 ]]; then
+      _run_api_tests || exit 1
+    else
+      echo "→ money tier: build OK — running health + quick smoke fallback"
+      mapfile -t _HEALTH < <(echo "$PENDING_JSON" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for c in d.get('health_cases') or ['health.accounting']:
+    print(c)
+" 2>/dev/null)
+      [[ ${#_HEALTH[@]} -gt 0 ]] && _run_case_list "health" "${_HEALTH[@]}" || true
+      bash "$ROOT/scripts/bin/ntest.sh" smoke --quick || exit 1
+    fi
+  # Auto-escalation: deep phase (path-aware, not manual verify-dpi)
+  mapfile -t _DEEP_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase deep --list 2>/dev/null || true)
+  if [[ ${#_DEEP_CASES[@]} -gt 0 ]]; then
+    echo "→ auto deep phase: ${_DEEP_CASES[*]}"
+    _run_case_list "deep" "${_DEEP_CASES[@]}" || exit 1
+  fi
+  if [[ "${SHIP_CLOSE_RELEASE_TESTS:-}" == "1" ]]; then
+    mapfile -t _RELEASE_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase release --list 2>/dev/null || true)
+    if [[ ${#_RELEASE_CASES[@]} -gt 0 ]]; then
+      echo "→ auto release phase (push gate): ${_RELEASE_CASES[*]}"
+      SHIP_TEST_PHASES=release python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --run --phases release || exit 1
+    fi
+  fi
+    ;;
+  *)
+    echo "Unknown tier: $TIER" >&2
+    exit 2
+    ;;
+esac
+
+if [[ -f "$ROOT/.cursor/.pending-kg-rebuild" ]]; then
+  echo "→ reminder: cursor-bundle/kg/bin/changelog-add.sh --kg-flow + .cursor/changelog.md"
+fi
+
+if [[ "$SKIP_GATE" -eq 0 && "${SHIP_LOOP_SKIP_KNOWLEDGE_GATE:-}" != "1" ]]; then
+  profile="$(python3 "$ROOT/scripts/lib/ship_push_gate.py" --close-profile 2>/dev/null || echo minimal)"
+  echo "→ ship-knowledge-gate.sh --profile $profile"
+  bash "$ROOT/scripts/bin/ship-knowledge-gate.sh" --profile "$profile" || exit 1
+fi
+
+python3 - <<'PY' "$ROOT" "$TIER" "${APIS[@]}"
+import json, sys, datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts/lib"))
+from ship_push_gate import fingerprints_for_files
+
+root = Path(sys.argv[1])
+tier = sys.argv[2]
+apis = sys.argv[3:]
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+passed = {"passed_at": now, "tier": tier, "apis": apis, "repos": [], "file_fingerprints": {}}
+p = root / ".cursor/.pending-ship-work.json"
+if p.is_file():
+    try:
+        pending = json.loads(p.read_text(encoding="utf-8"))
+        passed["repos"] = pending.get("repos") or []
+        passed["tier"] = pending.get("tier") or tier
+        files = pending.get("files") or []
+        passed["file_fingerprints"] = pending.get("file_fingerprints") or fingerprints_for_files(root, files)
+        pending["ship_loop_passed_at"] = now
+        p.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
+    except Exception:
+        pass
+(root / ".cursor/.ship-loop-passed.json").write_text(
+    json.dumps(passed, indent=2) + "\n", encoding="utf-8"
+)
+(root / ".cursor/.pending-ship-nudge").unlink(missing_ok=True)
+# workspace-close clears pending after knowledge gate; standalone ship-loop clears here
+import os
+if os.environ.get("SHIP_LOOP_SKIP_KNOWLEDGE_GATE") != "1":
+    p.unlink(missing_ok=True)
+label = ", ".join(apis) if apis else f"tier={tier}"
+print(f"ship-loop PASS at {now} ({label})")
+PY
+
+echo "=== ship-loop-gate: PASS ==="

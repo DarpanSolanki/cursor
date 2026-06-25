@@ -1,0 +1,37 @@
+---
+description: "Mandatory before any fix: minimal write-path first; justify read-path; existing prod rows; no stacked over-fixes"
+alwaysApply: true
+---
+
+# Minimal fix + impact gate
+
+Before **proposing or implementing** any bug fix (especially money/foreclosure/repayment/state), run the gate in `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`.
+
+## Hard rules
+
+1. **Prefer write-path / create-path guard** when the root cause is duplicate or invalid **new** rows. Do not add read-path “pick latest / resolve” unless write guard alone is insufficient.
+
+2. **If user prefers minimal** — state clearly whether read-path change is **redundant** (forward traffic) vs **only for existing dirty DB** (ops patch instead).
+
+3. **Existing production data** — create guard does not fix rows already in DB. Impact analysis **must** say: manual patch / replay needed for named LANs, or justify a **narrow** read fallback.
+
+4. **Challenge stacked fixes** — guard + resolve + refactor in one PR needs explicit justification per layer. Default: **one minimal layer** + prod patch plan.
+
+5. **No new issues** — grep call sites; concurrent create/race; retry/replay; happy-path regression. Document in impact / dev testing.
+
+6. **Reuse queries (mandatory)** — Read `.cursor/skills/reuse-queries-java-filter/SKILL.md` before any `*Repository.java` / `*DAOService.java` edit. Ladder: reuse + Java → extend existing (no perf degrade) → new `@Query` last.
+
+7. **Significant perf (along the way)** — In the same fix scope, include **significant** perf wins (batch N+1, hot-path duplicate fetch); skip **slight** gains. See `cursor-bundle/memory/feedback_significant_perf_with_fix.md` and **`.cursor/rules/hot-path-perf-gate.mdc`** (workspace-wide, not batch-only).
+
+## Output (required in proposal or release impact)
+
+```text
+Minimal fix: <one line>
+Read-path change needed: Yes (why) | No — existing data via patch/replay
+Existing prod LANs: <list or none>
+Regression checked: <paths>
+Significant perf in scope: Yes (<what>) | No — none material in this path
+Hot-path scan: PASS | WARN — scripts/bin/hot-path-scan.sh --from-pending
+```
+
+Pairs with `no-flow-break-impact-check.mdc`, `discuss-before-updating.mdc`, and `hot-path-perf-gate.mdc`.
