@@ -1,0 +1,1102 @@
+{
+  "_meta": "Registry for ntest. Learnings: cursor-bundle/brain/testing/learnings.jsonl (`ntest learn`). Before tests: kg-ensure-fresh.sh. DPIC demo: ntest run dpic.demo.phase1",
+  "_correlators": {
+    "ACCOUNT_NUMBER": "6004044425",
+    "USER_ID": "103",
+    "OFFICE_ID": "6",
+    "JOB_TIME": "1782563400000",
+    "LOAN_ACCOUNT_ID": "8060160",
+    "DEMO_LAN": "6004044425",
+    "CUSTOMER_ID": "10002233",
+    "FORECLOSURE_DATE": "1784984400000",
+    "FORECLOSURE_LAN": "6000000262",
+    "FORECLOSURE_RECEIPT": "412700000001537",
+    "FORECLOSURE_AMOUNT": "5324.00",
+    "FORECLOSURE_PREPAY_DATE": "1725148800000"
+  },
+  "dpic.overview_api": {
+    "type": "api",
+    "quick": true,
+    "smoke_tier": "service",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "restructuring"
+    ],
+    "title": "getLoanAccountOverviewDetails \u2014 DPI amounts",
+    "service": "accounting",
+    "api": "getLoanAccountOverviewDetails",
+    "request": {
+      "account_number_list": [
+        "${ACCOUNT_NUMBER}"
+      ]
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30223",
+      "paths": [
+        "account_overview_list[0].amount_details.dpi_paid_amount",
+        "account_overview_list[0].amount_details.dpi_waived_amount",
+        "account_overview_list[0].amount_details.total_accrued_dpi_amount"
+      ]
+    },
+    "print": [
+      "account_overview_list[0].amount_details.dpi_overdue_amount",
+      "account_overview_list[0].amount_details.dpi_due_amount",
+      "account_overview_list[0].amount_details.dpi_paid_amount",
+      "account_overview_list[0].amount_details.total_accrued_dpi_amount"
+    ]
+  },
+  "dpic.restructuring_bpi_api": {
+    "type": "api",
+    "quick": true,
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "restructuring"
+    ],
+    "title": "getLoanAccountBPIAmount \u2014 bpi_amount + bpd_amount (restructuring)",
+    "service": "accounting",
+    "api": "getLoanAccountBPIAmount",
+    "request": {
+      "loan_account_number": "${ACCOUNT_NUMBER}",
+      "bpi_end_date": "${JOB_TIME}"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "paths": [
+        "bpi_amount",
+        "bpd_amount"
+      ]
+    },
+    "print": [
+      "bpi_amount",
+      "bpd_amount"
+    ]
+  },
+  "dpic.summary_api": {
+    "type": "api",
+    "quick": true,
+    "smoke_tier": "service",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "restructuring"
+    ],
+    "title": "getLoanAccountSummaryDetails \u2014 Loan 360 dpi_details block",
+    "service": "accounting",
+    "api": "getLoanAccountSummaryDetails",
+    "request": {
+      "account_number": "${ACCOUNT_NUMBER}"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30225",
+      "paths": [
+        "dpi_details.accrued_amount",
+        "dpi_details.overdue_amount",
+        "dpi_details.paid_amount",
+        "dpi_details.current_due_amount"
+      ],
+      "any_path_gt": {
+        "paths": [
+          "dpi_details.accrued_amount",
+          "dpi_details.current_due_amount"
+        ],
+        "value": "0"
+      }
+    },
+    "print": [
+      "dpi_details.accrued_amount",
+      "dpi_details.overdue_amount",
+      "dpi_details.current_due_amount"
+    ]
+  },
+  "dpic.foreclosure_sim": {
+    "type": "api",
+    "quick": true,
+    "tags": [
+      "dpi"
+    ],
+    "title": "fetchLoanForeclosureSimulationDetails \u2014 billed_dpi + bpd_amount",
+    "service": "accounting",
+    "api": "fetchLoanForeclosureSimulationDetails",
+    "request": {
+      "account_number": "${ACCOUNT_NUMBER}",
+      "foreclosure_date": "${FORECLOSURE_DATE}"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30360",
+      "paths": [
+        "foreclosure_simulation_details.billed_dpi",
+        "foreclosure_simulation_details.bpd_amount",
+        "foreclosure_simulation_details.balance_principal"
+      ]
+    },
+    "print": [
+      "foreclosure_simulation_details.billed_dpi",
+      "foreclosure_simulation_details.bpd_amount",
+      "foreclosure_simulation_details.balance_principal"
+    ]
+  },
+  "dpic.foreclosure_details_api": {
+    "type": "api",
+    "quick": true,
+    "tags": [
+      "dpi",
+      "foreclosure"
+    ],
+    "title": "getLoanForeclosureDetails \u2014 billed_dpi_details + bpd_details",
+    "service": "accounting",
+    "api": "getLoanForeclosureDetails",
+    "request": {
+      "account_number_list": [
+        "${ACCOUNT_NUMBER}"
+      ]
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30366",
+      "paths": [
+        "loan_foreclosure_details_list[0].billed_dpi_details.due_amount",
+        "loan_foreclosure_details_list[0].bpd_details.due_amount"
+      ],
+      "any_path_gt": {
+        "paths": [
+          "loan_foreclosure_details_list[0].billed_dpi_details.due_amount",
+          "loan_foreclosure_details_list[0].bpd_details.due_amount"
+        ],
+        "value": "0"
+      }
+    },
+    "print": [
+      "loan_foreclosure_details_list[0].billed_dpi_details.due_amount",
+      "loan_foreclosure_details_list[0].bpd_details.due_amount"
+    ],
+    "note": "Use dpic.foreclosure_details_flow (restore first) when billed_dpi may be 0 after repayment"
+  },
+  "dpic.foreclosure_details_flow": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "foreclosure"
+    ],
+    "title": "getLoanForeclosureDetails after EOD restore (billed_dpi > 0)",
+    "cmd": "bash scripts/dpic/run_dpi_foreclosure_details_api.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.repayment_e2e": {
+    "type": "flow",
+    "api": "loanRepayment",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "repayment"
+    ],
+    "title": "loanRepayment \u2014 billed DPI appropriation + dpi_amount on payment row",
+    "cmd": "bash scripts/dpic/run_dpi_repayment_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.repayment_reversal_e2e": {
+    "type": "flow",
+    "api": "loanAccountTransactionReversal",
+    "ship_auto": true,
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "repayment",
+      "reversal"
+    ],
+    "title": "loanRepayment then reversal \u2014 DPI dues restored",
+    "cmd": "bash scripts/dpic/run_dpi_repayment_reversal_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Requires task :8019 + actor :8003; run dpic.repayment_e2e first if no open repayment"
+  },
+  "dpic.extended_regression": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "integration"
+    ],
+    "title": "DPI extended regression \u2014 all consumer flows (batch, APIs, repay, reversal, waiver)",
+    "cmd": "bash scripts/dpic/run_dpi_extended_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000",
+      "FORECLOSURE_DATE": "1784984400000"
+    },
+    "note": "Preflight + phased restore; TRIAL part-prep + REAL ICF GL legs; skips reversal if task down"
+  },
+  "dpic.regression_preflight": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "preflight"
+    ],
+    "title": "DPI extended regression preflight \u2014 DB, catalogues, services, registry",
+    "cmd": "bash scripts/dpic/run_dpi_regression_preflight.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425"
+    }
+  },
+  "dpic.part_prepayment_bpi_api": {
+    "type": "api",
+    "tags": [
+      "dpi",
+      "part-prepayment"
+    ],
+    "title": "getPartPrepaymentBPIAmount \u2014 bpd_amount for rescheduling date",
+    "service": "accounting",
+    "api": "getPartPrepaymentBPIAmount",
+    "request": {
+      "loan_account_number": "${ACCOUNT_NUMBER}",
+      "rescheduling_effective_date": "${JOB_TIME}"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "paths": [
+        "bpd_amount"
+      ],
+      "any_path_gt": {
+        "paths": [
+          "bpd_amount"
+        ],
+        "value": "0"
+      }
+    },
+    "print": [
+      "bpd_amount",
+      "bpi_amount"
+    ]
+  },
+  "dpic.part_prepayment_details_api": {
+    "type": "api",
+    "tags": [
+      "dpi",
+      "part-prepayment"
+    ],
+    "title": "getLoanAccountPartPrepaymentDetails \u2014 live bpd_amount (PENDING row)",
+    "service": "accounting",
+    "api": "getLoanAccountPartPrepaymentDetails",
+    "request": {
+      "loan_account_number": "${ACCOUNT_NUMBER}",
+      "status": "PENDING"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30308",
+      "paths": [
+        "loan_part_prepayment_details.bpd_amount"
+      ],
+      "any_path_gt": {
+        "paths": [
+          "loan_part_prepayment_details.bpd_amount"
+        ],
+        "value": "0"
+      }
+    },
+    "print": [
+      "loan_part_prepayment_details.bpd_amount",
+      "loan_part_prepayment_details.bpi_amount"
+    ]
+  },
+  "dpic.part_prepayment_bpi_flow": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "part-prepayment"
+    ],
+    "title": "getPartPrepaymentBPIAmount after EOD restore",
+    "cmd": "bash scripts/dpic/run_dpi_part_prepayment_bpi_api.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.part_prepayment_details_flow": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "part-prepayment"
+    ],
+    "title": "getLoanAccountPartPrepaymentDetails \u2014 seed PENDING + bpd_amount",
+    "cmd": "bash scripts/dpic/run_dpi_part_prepayment_details_flow.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.part_prepayment_write_e2e": {
+    "type": "flow",
+    "api": "loanAccountPartPrepayment",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "part-prepayment"
+    ],
+    "title": "loanAccountPartPrepayment TRIAL \u2014 postTransaction + DPI GL legs",
+    "cmd": "bash scripts/dpic/run_dpi_part_prepayment_write_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000",
+      "PART_PREP_NET": "5000"
+    }
+  },
+  "dpic.foreclosure_write_e2e": {
+    "type": "flow",
+    "api": "individualChildLoanForeclosure",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "foreclosure"
+    ],
+    "title": "individualChildLoanForeclosure APPROVE \u2014 DPI GL partition legs",
+    "cmd": "bash scripts/dpic/run_dpi_foreclosure_write_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "ICF_LAN": "6004044425",
+      "FORECLOSURE_DATE": "1784984400000",
+      "ICF_FORECLOSURE_DATE": "1784984400000",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.child_repayment_e2e": {
+    "type": "flow",
+    "api": "childLoanRepayment",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "repayment",
+      "jlg"
+    ],
+    "title": "childLoanRepayment \u2014 JLG child billed DPI appropriation",
+    "cmd": "bash scripts/dpic/run_dpi_child_repayment_e2e.sh",
+    "env": {
+      "CHILD_LOAN_ACCOUNT_ID": "8048470",
+      "CHILD_ACCOUNT_NUMBER": "6004029335",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.npa_dpi_movement_e2e": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "npa"
+    ],
+    "title": "loanAccountAssetCriteriaJob \u2014 REGULAR_TO_NPA DPI GL movement",
+    "cmd": "bash scripts/dpic/run_dpi_npa_movement_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Requires actor :8003; seeds NPA DPI catalogue 1331/1332 for product 6367; restores fixture after"
+  },
+  "actor.user_basic": {
+    "type": "api",
+    "quick": true,
+    "title": "getUserBasicDetails \u2014 user + office",
+    "service": "actor",
+    "api": "getUserBasicDetails",
+    "request": {
+      "user_id": "${USER_ID}"
+    },
+    "defaults": {
+      "USER_ID": "103"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "000",
+      "paths": [
+        "user_basic_details",
+        "office_details",
+        "user_basic_details.role_name"
+      ],
+      "path_eq": {
+        "user_basic_details.id": "${USER_ID}",
+        "user_basic_details.status": "ACTIVE"
+      }
+    },
+    "print": [
+      "user_basic_details.first_name",
+      "office_details.office_name"
+    ]
+  },
+  "accounting.loan_basic": {
+    "type": "api",
+    "title": "getLoanAccountBasicDetails \u2014 LAN basic loan fields",
+    "service": "accounting",
+    "api": "getLoanAccountBasicDetails",
+    "request": {
+      "account_number": "${ACCOUNT_NUMBER}"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30224",
+      "paths": [
+        "external_ref_number",
+        "loan_approved_amount",
+        "loan_net_disbursed_amount",
+        "product_scheme_code"
+      ],
+      "path_eq": {
+        "loan_approved_amount": "50000.000000"
+      }
+    },
+    "print": [
+      "external_ref_number",
+      "loan_approved_amount",
+      "product_scheme_code"
+    ]
+  },
+  "actor.office_by_ids": {
+    "type": "api",
+    "title": "getOfficeCodeAndNameByIds \u2014 office lookup by id",
+    "service": "actor",
+    "api": "getOfficeCodeAndNameByIds",
+    "request": {
+      "ids": [
+        "${OFFICE_ID}"
+      ]
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "40029",
+      "paths": [
+        "office_list[0].office_details.office_name",
+        "office_list[0].office_details.office_code",
+        "office_list[0].office_details.id"
+      ],
+      "path_eq": {
+        "office_list[0].office_details.id": "${OFFICE_ID}"
+      }
+    },
+    "print": [
+      "office_list[0].office_details.office_name",
+      "office_list[0].office_details.office_code"
+    ]
+  },
+  "dpic.restructuring_smoke": {
+    "type": "flow",
+    "quick": true,
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "restructuring"
+    ],
+    "title": "DPI restructuring API smoke \u2014 overview + BPI + Loan 360",
+    "cmd": "bash scripts/dpic/run_restructuring_api_smoke.sh"
+  },
+  "dpic.grace_e2e": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "batch"
+    ],
+    "title": "DPI grace period E2E \u2014 accrual starts after grace gate",
+    "cmd": "bash scripts/dpic/run_grace_dpi_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "DEMO_LAN": "6004044425",
+      "JOB_TIME": "1779712200000",
+      "FIRST_EMI_DUE_DATE": "2026-05-18"
+    }
+  },
+  "dpic.multi_emi_installment_e2e": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "batch"
+    ],
+    "title": "DPI multi-EMI overdue \u2014 accrual rows stamp latest overdue INT installment_id",
+    "cmd": "bash scripts/dpic/run_multi_emi_installment_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "DEMO_LAN": "6004044425",
+      "JOB_TIME": "1782563400000",
+      "GRACE_DAYS": "3"
+    }
+  },
+  "dpic.integration_smoke": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "integration"
+    ],
+    "title": "DPI integration \u2014 overview/BPI/Loan360 + foreclosure + cross-EOD replay",
+    "cmd": "bash scripts/dpic/run_dpi_integration_smoke.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "JOB_TIME": "1781699400000"
+    }
+  },
+  "dpic.batch_perf_10k": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "batch",
+      "perf"
+    ],
+    "title": "DPI batch perf \u2014 10k synthetic LANs, calc (+ optional full EOD)",
+    "cmd": "bash scripts/dpic/run_dpi_batch_perf_e2e.sh",
+    "env": {
+      "SCENARIO": "chunk10000",
+      "FULL_EOD": "0",
+      "HISTORY_ROWS_PER_LOAN": "50",
+      "FORCE_CHUNK": "500",
+      "JOB_TIME": "1781699400000"
+    },
+    "note": "FULL_EOD=1 + seed_dpi_gl for booking/billing at scale; report under scripts/scratch/dpi-batch-perf/"
+  },
+  "dpic.dpi_regression": {
+    "type": "flow",
+    "title": "Full DPI regression \u2014 restructuring APIs + foreclosure sim + EOD + grace",
+    "cmd": "bash scripts/dpic/run_dpi_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "JOB_TIME": "1781699400000"
+    }
+  },
+  "dpic.dpi_max_regression": {
+    "type": "flow",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "title": "DPI max regression \u2014 multi-EMI + grace + EOD + post-EOD SQL + APIs + idempotent replay",
+    "cmd": "bash scripts/dpic/run_dpi_max_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "JOB_TIME": "1782563400000",
+      "MULTI_EMI_JOB_TIME": "1782563400000",
+      "GRACE_JOB_TIME": "1779712200000"
+    }
+  },
+  "dpic.demo.status": {
+    "type": "flow",
+    "title": "DPIC demo \u2014 show LAN + phase readiness",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh status"
+  },
+  "dpic.preflight": {
+    "type": "flow",
+    "title": "DPIC preflight \u2014 DB + product EMI + services",
+    "cmd": "bash scripts/dpic/run_preflight.sh"
+  },
+  "dpic.setup": {
+    "type": "flow",
+    "title": "DPIC one-time DB setup (product 6367)",
+    "cmd": "bash scripts/dpic/run_setup.sh"
+  },
+  "dpic.demo.phase1": {
+    "type": "flow",
+    "title": "DPIC demo phase 1 \u2014 disburse + fast EOD jobs",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh phase1"
+  },
+  "dpic.demo.phase2": {
+    "type": "flow",
+    "title": "DPIC demo phase 2 \u2014 GET APIs (DPI response keys)",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh phase2"
+  },
+  "dpic.demo.phase3": {
+    "type": "flow",
+    "title": "DPIC demo phase 3 \u2014 loanRepayment",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh phase3"
+  },
+  "dpic.demo.phase4": {
+    "type": "flow",
+    "title": "DPIC demo phase 4 \u2014 loan transaction reversal (INITIATE + APPROVE)",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh phase4"
+  },
+  "dpic.demo.all": {
+    "type": "flow",
+    "title": "DPIC demo \u2014 all 4 phases (automation only, not live presentation)",
+    "cmd": "bash scripts/dpic/demo/run_demo.sh all"
+  },
+  "dpic.demo_verify": {
+    "type": "flow",
+    "title": "DPIC \u2014 ntest API verify (uses scripts/scratch/dpic_demo_state.env)",
+    "cmd": "bash scripts/dpic/run_demo_api_verify.sh"
+  },
+  "dpic.full": {
+    "type": "flow",
+    "title": "DPIC setup \u2192 disburse \u2192 EOD (legacy happy path)",
+    "cmd": "bash scripts/dpic/run_full_happy_path.sh",
+    "env": {
+      "JOB_TIME": "1781267400000"
+    }
+  },
+  "dpic.disburse": {
+    "type": "flow",
+    "title": "DPIC disburseLoan",
+    "cmd": "bash scripts/dpic/run_disburse.sh"
+  },
+  "dpic.ud_compliance": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "quick": false,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "regression"
+    ],
+    "title": "DPI UD compliance \u2014 full profile (manual verify-dpi / release only)",
+    "cmd": "bash scripts/dpic/run_dpi_ud_compliance.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "GRACE_JOB_TIME": "1779712200000",
+      "MULTI_EMI_JOB_TIME": "1782563400000",
+      "DPI_UD_PROFILE": "full",
+      "DPI_UD_CERTIFY": "1"
+    },
+    "note": "Ship-loop uses scoped cases (batch.dpi_* + dpic.grace/go_live/multi); not auto-injected"
+  },
+  "dpic.go_live_ud": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "ud"
+    ],
+    "title": "DPI go-live + maturity + posting calendar only",
+    "cmd": "bash scripts/dpic/run_dpi_go_live_ud_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "JOB_TIME": "1782563400000"
+    }
+  },
+  "dpic.posting_calendar_regression": {
+    "type": "flow",
+    "api": "dpiAccrualBooking",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "regression"
+    ],
+    "title": "DPI posting calendar QA regression (15th EMI, month-end replay)",
+    "cmd": "bash scripts/dpic/run_dpi_posting_calendar_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "GO_LIVE_DDMM": "15-04-2026",
+      "GO_LIVE_ISO": "2026-04-15",
+      "END_DATE": "2026-06-01"
+    }
+  },
+  "dpic.billing_ud_next_emi": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "billing"
+    ],
+    "title": "DPI billing UD \u00a75.4 \u2014 due on next EMI, aggregated txn",
+    "cmd": "bash scripts/dpic/run_dpi_billing_ud_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Runs EOD then verify_dpi_billing_ud.sql; ship guard for billing path"
+  },
+  "dpic.dpi_sanity": {
+    "type": "flow",
+    "quick": true,
+    "smoke_tier": "money",
+    "tags": [
+      "dpi"
+    ],
+    "title": "DPI sanity \u2014 full UD profile (not ship-loop default)",
+    "cmd": "bash scripts/dpic/run_dpi_ud_compliance.sh",
+    "env": {
+      "JOB_TIME": "1781699400000",
+      "LOAN_ACCOUNT_ID": "8060160",
+      "DPI_UD_PROFILE": "full",
+      "DPI_UD_CERTIFY": "1"
+    }
+  },
+  "dpic.eod_dpi": {
+    "type": "flow",
+    "quick": true,
+    "tags": [
+      "dpi",
+      "batch"
+    ],
+    "title": "DPI EOD only (calc + booking + billing)",
+    "cmd": "bash scripts/dpic/run_eod_dpi_only.sh",
+    "env": {
+      "JOB_TIME": "1781699400000",
+      "LOAN_ACCOUNT_ID": "8060160"
+    },
+    "note": "Prefer dpic.certify_scenarios for fresh LAN; correlators sync from certified_fixtures.json"
+  },
+  "dpic.certify_scenarios": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "certify",
+      "disburse"
+    ],
+    "title": "DPI certification \u2014 fixture mode (pre_emi fresh LAN; overdue on demo 8060160)",
+    "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh",
+    "env": {
+      "ANCHOR_DATE": "2026-06-23"
+    },
+    "note": "Writes scripts/dpic/certified_fixtures.json; never patches one LAN for all scenarios"
+  },
+  "dpic.verify_certified": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "certify"
+    ],
+    "title": "Re-run DPI jobs on certified_fixtures.json (no new disburse)",
+    "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh --verify-only"
+  },
+  "dpic.cross_eod_replay_134497": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "quick": false,
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "regression",
+      "134497"
+    ],
+    "title": "DPI cross-EOD replay guard \u2014 no duplicate client_ref (134497)",
+    "cmd": "bash scripts/dpic/run_dpi_cross_eod_replay_guard.sh",
+    "env": {
+      "JOB_TIME": "1782563400000",
+      "LOAN_ACCOUNT_ID": "8060160"
+    },
+    "note": "WS-006: replays EOD on same job_time without txn reset; guards 346d9efe6 client_ref fix"
+  },
+  "foreclosure.dpi_waiver_smoke": {
+    "type": "flow",
+    "api": "loanDeathForeclosure",
+    "smoke_tier": "money",
+    "tags": [
+      "foreclosure",
+      "dpi",
+      "death"
+    ],
+    "title": "Death FC + child ICF DPI waiver smoke (sim + SQL legs)",
+    "cmd": "bash scripts/dcf_sanity/run_dfc_dpi_waiver_smoke.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "ICF_LAN": "6004044425",
+      "FORECLOSURE_DATE": "1784984400000",
+      "ICF_FORECLOSURE_DATE": "1784984400000"
+    },
+    "note": "WS-007: dpic.foreclosure_sim + foreclosure.individual_child + DPI accrual/due SQL"
+  },
+  "dcf.principal_split_sim": {
+    "type": "flow",
+    "api": "loanDeathForeclosure",
+    "smoke_tier": "money",
+    "tags": [
+      "foreclosure",
+      "death",
+      "dcf"
+    ],
+    "title": "DCF GL BLD/UNBLD principal split + SDCP-10494 outstanding simulation",
+    "cmd": "bash scripts/dcf_sanity/run_dcf_principal_split_simulation.sh",
+    "env": {
+      "DCF_SIM_QA3": "1"
+    },
+    "note": "S07/S11/S12/S13 matrix — writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
+  },
+  "disbursement.quick": {
+    "type": "flow",
+    "api": "disburseLoan",
+    "quick": true,
+    "ship_auto": true,
+    "smoke_tier": "money",
+    "tags": [
+      "disburse"
+    ],
+    "title": "JLG disburseLoan \u2014 default_clean (script bank, no simulator)",
+    "cmd": "bash scripts/bin/disburse-quick.sh"
+  },
+  "disbursement.jlg": {
+    "type": "flow",
+    "title": "JLG disburseLoan regression",
+    "cmd": "make -C scripts jlg"
+  },
+  "disbursement.shg": {
+    "type": "flow",
+    "title": "SHG disburseLoan regression",
+    "cmd": "make -C scripts shg"
+  },
+  "batch.dpi_calc": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "title": "dpiAccrualCalculation EOD batch",
+    "service": "accounting",
+    "api": "dpiAccrualCalculation",
+    "batch_job_name": "dpiAccrualCalculation",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.dpi_booking": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "title": "dpiAccrualBooking EOD batch",
+    "service": "accounting",
+    "api": "dpiAccrualBooking",
+    "batch_job_name": "dpiAccrualBooking",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.dpi_billing": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "title": "dpiBilling EOD batch",
+    "service": "accounting",
+    "api": "dpiBilling",
+    "batch_job_name": "dpiBilling",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.dpd_calc": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "title": "loanAccountDpdCalcJob",
+    "service": "accounting",
+    "api": "loanAccountDpdCalcJob",
+    "expect": {
+      "status": "SUCCESS"
+    }
+  },
+  "batch.interest_accrual_calc": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "interest",
+      "batch",
+      "eod"
+    ],
+    "title": "interestAccrualCalculation EOD batch",
+    "service": "accounting",
+    "api": "interestAccrualCalculation",
+    "batch_job_name": "interestAccrualCalculation",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.interest_accrual_posting": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "interest",
+      "batch",
+      "eod"
+    ],
+    "title": "interestAccrualPosting EOD batch",
+    "service": "accounting",
+    "api": "interestAccrualPosting",
+    "batch_job_name": "interestAccrualPosting",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.loan_account_billing": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "billing",
+      "batch",
+      "eod"
+    ],
+    "title": "loanAccountBillingJob EOD batch",
+    "service": "accounting",
+    "api": "loanAccountBillingJob",
+    "batch_job_name": "loanAccountBillingJob",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "accounting.eod_core_batches": {
+    "type": "flow",
+    "smoke_tier": "service",
+    "ship_auto": true,
+    "tags": [
+      "eod",
+      "batch",
+      "interest",
+      "billing"
+    ],
+    "title": "Core accounting EOD batches (DPD + billing + interest calc/post)",
+    "cmd": "bash scripts/accounting/run_core_eod_batches.sh",
+    "env": {
+      "JOB_TIME": "1781267400000"
+    }
+  },
+  "accounting.read_smoke": {
+    "type": "flow",
+    "smoke_tier": "service",
+    "ship_auto": true,
+    "tags": [
+      "read",
+      "inquiry"
+    ],
+    "title": "Accounting read APIs smoke (overview + summary + basic)",
+    "cmd": "bash scripts/accounting/run_read_api_smoke.sh"
+  },
+  "health.accounting": {
+    "type": "health",
+    "quick": true,
+    "smoke_tier": "smoke",
+    "title": "Accounting API probe (getLoanAccountBasicDetails)",
+    "service": "accounting"
+  },
+  "si.fetch_failed_presentation_list": {
+    "type": "api",
+    "smoke_tier": "money",
+    "tags": [
+      "standing-instructions",
+      "si"
+    ],
+    "title": "fetchFailedSIPresentationList \u2014 failed SI presentation list (actor user 21)",
+    "service": "accounting",
+    "api": "fetchFailedSIPresentationList",
+    "request": {
+      "page_size": "10",
+      "offset": "0"
+    },
+    "defaults": {
+      "user_id": "21"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "30014"
+    }
+  },
+  "health.actor": {
+    "type": "health",
+    "title": "Actor API probe (getUserBasicDetails)",
+    "service": "actor"
+  },
+  "health.task": {
+    "type": "health",
+    "title": "Task API probe (getTaskList)",
+    "service": "task"
+  },
+  "health.payments": {
+    "type": "health",
+    "title": "Payments API probe (getCollectionList)",
+    "service": "payments"
+  },
+  "foreclosure.setup": {
+    "type": "flow",
+    "title": "Foreclosure local setup \u2014 schema align + accounting/payments services",
+    "cmd": "bash scripts/bin/foreclosure-local-setup.sh --restart"
+  },
+  "foreclosure.cancel_collections": {
+    "type": "api",
+    "title": "cancelCollections \u2014 payments closure hook for foreclosure LAN",
+    "service": "payments",
+    "api": "cancelCollections",
+    "request": {
+      "account_number": "${FORECLOSURE_LAN}",
+      "remarks": "Foreclosed"
+    },
+    "expect": {
+      "status": "SUCCESS",
+      "code": "000"
+    }
+  },
+  "foreclosure.loan_prepayment_real": {
+    "type": "flow",
+    "title": "loanPrepayment APPROVE REAL \u2014 use foreclosure.sdcp10255_e2e (needs setup + headers)",
+    "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh",
+    "note": "Alias for full E2E; standalone ntest auto loanPrepayment lacks APPROVE/REAL headers"
+  },
+  "foreclosure.sdcp10255_e2e": {
+    "type": "flow",
+    "title": "SDCP-10255 full local E2E \u2014 duplicate pending, fix, REAL, payments sync",
+    "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh"
+  },
+  "foreclosure.individual_child": {
+    "type": "flow",
+    "api": "individualChildLoanForeclosure",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "foreclosure",
+      "dpi"
+    ],
+    "title": "individualChildLoanForeclosure APPROVE REAL \u2014 simulation-built payload (UpdateDueDetails DPI path)",
+    "cmd": "bash scripts/testing/foreclosure/individual-child-foreclosure-e2e.sh"
+  },
+  "workspace.doctor": {
+    "type": "flow",
+    "title": "Workspace doctor \u2014 KG + DB + registry (quick)",
+    "cmd": "bash scripts/bin/workspace-doctor.sh --quick"
+  },
+  "workspace.doctor.full": {
+    "type": "flow",
+    "title": "Workspace doctor \u2014 full smoke (KG CLI + hooks)",
+    "cmd": "bash scripts/bin/workspace-doctor.sh --full"
+  },
+  "workspace.doctor.services": {
+    "type": "flow",
+    "title": "Workspace doctor \u2014 quick + service HTTP checks",
+    "cmd": "bash scripts/bin/workspace-doctor.sh --services"
+  }
+}

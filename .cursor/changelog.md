@@ -3,6 +3,20 @@
 # Format: [DATE] | [TYPE] | [Summary] | [.cursor/ files updated]
 # Types: INITIAL_SCAN | BUG_FIX | FEATURE | SCHEMA | EVENT | GAP_RESOLVED | REFACTOR
 
+[2026-06-29] | WORKSPACE | Ship-loop fix: `expand_path_cases` required path match for PATH_TRIGGERED cases (was pulling foreclosure + DPI e2e on read-only overview edits); cross_eod default JOB_TIME=1782563400000 | resolve_ship_cases.py, test_resolve_ship_cases.py, run_dpi_cross_eod_replay_guard.sh
+
+[2026-06-25] | FEATURE | Collections DPI split: exclude DPI from EMI due / total overdue / emi_overdue in `getLoanAccountOverviewDetails` + `loanRecurringPaymentBatchApi`; separate `dpi_due` / `dpi_overdue` / `dpi_due_amount` unchanged | GetLoanAccountOverviewDetailsProcessor.java, LoanRecurringPaymentBatchProcessor.java
+
+[2026-06-26] | BUG_FIX | SDCP-10497 DPI accrual posting — gate on businessDate; pushed 6ec669b0e3 feature/delayed_payment_interest | DpiAccrualBookingBatchService.java
+
+[2026-06-26] | WORKSPACE | DPI ship-gap hardening (SDCP-10497): `dpic.posting_calendar_regression` + `cross_eod_replay_134497` mandatory in `resolve_dpi_cases` / money impact; `ship_auto` on guard cases; `dpi-booking-posting-guard.sh` in ship-loop; release phase always includes posting guards; `test_resolve_ship_cases.py`; gaps + edge case doc | resolve_ship_cases.py, ship_test_plan.py, ship-loop-gate.sh, resolve_ship_impact.py, registry.json, gaps-and-risks.md, system_brain/edge_cases/dpi_posting_calendar_ship_gap_sdcp10497.md
+
+[2026-06-26] | WORKSPACE | DPI money-proof upgrade: `verify_dpi_billing_ud.sql` wired via `run_dpi_billing_ud_verify.sh` + `dpic.billing_ud_next_emi`; `dpi-money-proof.sh`; EOD auto post-verify; `dpi-money-proof-gate.mdc`; backlog WS-016..020 | scripts/dpic/*, scripts/bin/dpi-money-proof.sh, agent-ops.sh, MEMORY.md, workspace-backlog.json
+
+[2026-06-26] | WORKSPACE | Accounting ALL-flow coverage (not money-only): `accounting_flow_domains.json` (18 domains / ~358 apis); ship-loop service+money domain guards; `accounting-flow-coverage.sh`, `accounting-flow-proof.sh`, core EOD batch registry, read smoke; rule `accounting-full-flow-gate.mdc` | scripts/lib/accounting_flow_domains.*, resolve_ship_cases.py, ship_test_plan.py, registry.json
+
+[2026-06-26] | BUG_FIX | SDCP-10199 last-child SHG DCF: waive future parent dues, settle installments, close parent account; overdue waiver pending BA | DeathForeclosureInsuranceWriter.java, brain CHANGELOG kg-flow
+
 [2026-06-25] | REFACTOR | DPI batch L1 perf — precomputeDaySnapshots (calc), dueDayKeys set (booking); batch-hot-path gate updated | DpiAccrualCalculationBatchService, DpiAccrualBookingBatchService, batch-hot-path-perf.mdc
 
 [2026-06-25] | FEATURE | Super machine full test automation — ship_test_plan (impact/deep/release), post-commit ship-test-auto, money close auto release phase, agent-ops verify-dpi wired | ship_test_plan.py, ship-loop-gate.sh, workspace-close.sh, hooks, feedback_super_machine_automation.md
@@ -214,5 +228,7 @@
 [2026-04-23] | FEATURE | Disbursement sanity process locked for repeatable Kafka-entry full-flavour testing: default two-customer env strategy (`KAFKA_ENTRY_TEST_CUSTOMER_ID` + `...SECONDARY...`) documented in playbook/rules and process doc with one-command run + customer-picker SQL; added explicit local git hygiene guidance to avoid staging/pushing system artifacts from local runs. | .cursor/rules/disburse-loan-sanity-suite.mdc, .cursor/rules/disbursement-testing-playbook.mdc, docs/disbursement-sanity/PROCESS.md, changelog.md
 [2026-04-23] | FEATURE | Disbursement playbook matrix updated for one-shot all-flavour runs: explicit JLG/INDL/SHG Kafka-entry commands, product-mode constraints (JLG `ACCTWB`), mandatory secondary-customer S7 lane, and SHG CLMT queue evidence requirement; customer picker generalized to `:product_id`. | .cursor/rules/disburse-loan-sanity-suite.mdc, .cursor/rules/disbursement-testing-playbook.mdc, docs/disbursement-sanity/PROCESS.md, changelog.md
 [2026-06-25] | WORKSPACE | Hot-path perf gate workspace-wide: `hot-path-perf-gate.mdc` (alwaysApply) — processors/services/consumers/APIs, not batch globs only; `scripts/lib/hot_path_scan.py` + `hot-path-scan.sh` (DAO-in-loop, helper-from-loop, stream-in-loop); wired autopilot FIX+SHIP/FEATURE/CODE+DAO + money `ship-loop-gate` WARN (`HOT_PATH_SCAN_STRICT=1` to block). | hot-path-perf-gate.mdc, batch-hot-path-perf.mdc, minimal-fix-impact-gate.mdc, hot_path_scan.py, workspace_autopilot.py, ship-loop-gate.sh, rule_inventory.md
+
+[2026-06-29] | BUG_FIX | DCF GL billed/unbilled principal split when reporting date follows death: run reporting-date billing sync before `getUnpaidBilledPrincipalForDeathForeClosure` and BLD_PRIN/UNBLD_PRIN split; death-date billing before outstanding unchanged (SDCP-10494). accounting-v2 `b0a3757f3` on `mfi_integration_v3.3.1.2` | changelog.md
 
 [2026-04-23] | FEATURE | Disbursement demo setup improved for direct asks: wrapper now supports product-scoped runs (`JLG`/`INDL`/`SHG`/`ALL`) while preserving DB-backed verification summary; rules/process docs updated to make this the default execution path when user asks to run disbursement by product. | scripts/run_disbursement_full_matrix.sh, .cursor/rules/disburse-loan-sanity-suite.mdc, .cursor/rules/disbursement-testing-playbook.mdc, docs/disbursement-sanity/PROCESS.md, changelog.md
