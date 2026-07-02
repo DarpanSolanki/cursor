@@ -128,13 +128,37 @@
         "fill RCA"
       ],
       "requires": [
-        "fix-rca-email"
+        "fix-rca-email",
+        "minimal-fix"
       ],
       "reads": [],
       "writes": [],
       "scripts": [
         "scripts/bin/jira-fix-adf.py"
       ]
+    },
+    {
+      "id": "minimal-fix",
+      "path": ".cursor/skills/minimal-fix/SKILL.md",
+      "triggers": [
+        "minimal fix",
+        "overkill",
+        "dedupe",
+        "stacked fix",
+        "SDCP fix"
+      ],
+      "requires": [
+        "super-agent"
+      ],
+      "reads": [
+        "cursor-bundle/memory/feedback_minimal_fix_impact_gate.md"
+      ],
+      "writes": [],
+      "feeds": [
+        "jira-fix-update",
+        "release-details"
+      ],
+      "scripts": []
     },
     {
       "id": "query-index-perf-gate",

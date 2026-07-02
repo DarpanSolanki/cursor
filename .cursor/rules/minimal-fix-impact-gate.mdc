@@ -21,6 +21,8 @@ Before **proposing or implementing** any bug fix (especially money/foreclosure/r
 
 6. **Reuse queries (mandatory)** — Read `.cursor/skills/reuse-queries-java-filter/SKILL.md` before any `*Repository.java` / `*DAOService.java` edit. Ladder: reuse + Java → extend existing (no perf degrade) → new `@Query` last.
 
+8. **Minimal-fix skill** — Read `.cursor/skills/minimal-fix/SKILL.md` when user says minimal, no overkill, or when tempted to add dedupe on multiple layers. Document **Layers dropped**.
+
 7. **Significant perf (along the way)** — In the same fix scope, include **significant** perf wins (batch N+1, hot-path duplicate fetch); skip **slight** gains. See `cursor-bundle/memory/feedback_significant_perf_with_fix.md` and **`.cursor/rules/hot-path-perf-gate.mdc`** (workspace-wide, not batch-only).
 
 ## Output (required in proposal or release impact)

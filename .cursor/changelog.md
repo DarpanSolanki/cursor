@@ -3,6 +3,8 @@
 # Format: [DATE] | [TYPE] | [Summary] | [.cursor/ files updated]
 # Types: INITIAL_SCAN | BUG_FIX | FEATURE | SCHEMA | EVENT | GAP_RESOLVED | REFACTOR
 
+[2026-07-02] | WORKSPACE | Minimal-fix skill + SDCP-10590 precedent: one root-cause layer, no stacked dedupe; interest accrual ships reader LPAC + batch save(List) only | .cursor/skills/minimal-fix/SKILL.md, feedback_minimal_fix_impact_gate.md, minimal-fix-impact-gate.mdc, jira-fix-update/SKILL.md, skills-manifest.json
+
 [2026-06-29] | WORKSPACE | Ship-loop fix: `expand_path_cases` required path match for PATH_TRIGGERED cases (was pulling foreclosure + DPI e2e on read-only overview edits); cross_eod default JOB_TIME=1782563400000 | resolve_ship_cases.py, test_resolve_ship_cases.py, run_dpi_cross_eod_replay_guard.sh
 
 [2026-06-25] | FEATURE | Collections DPI split: exclude DPI from EMI due / total overdue / emi_overdue in `getLoanAccountOverviewDetails` + `loanRecurringPaymentBatchApi`; separate `dpi_due` / `dpi_overdue` / `dpi_due_amount` unchanged | GetLoanAccountOverviewDetailsProcessor.java, LoanRecurringPaymentBatchProcessor.java

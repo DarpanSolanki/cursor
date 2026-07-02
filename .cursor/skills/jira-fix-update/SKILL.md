@@ -27,6 +27,8 @@ After a code fix is shipped (or ready for QA), update the JIRA ticket with **bus
 
 **Do not** duplicate release mail Special notes (SQL, masterdata) into RCA/Impact/Dev unless the user asks.
 
+**Minimal fix (mandatory):** Read `.cursor/skills/minimal-fix/SKILL.md`. Impact Analysis **must** include: what is **not** changed, whether read-path dedupe was **rejected**, and post-deploy SQL for existing poison rows (not code guards for dirty data).
+
 ## When to run
 
 - User says update JIRA / fill RCA / hand off ticket

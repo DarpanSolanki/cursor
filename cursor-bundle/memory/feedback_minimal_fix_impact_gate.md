@@ -47,3 +47,11 @@ If the first idea was “guard + resolve”, **re-evaluate**: explain why resolv
 - **Minimal fix:** Reject or skip **creating** a second PENDING request for the same loan.
 - **Resolve on read:** Not required for **new** loans after guard. Still need **IA/data patch** for LAN 6000048598 (and any other pre-existing duplicates).
 - **Do not** broadly change every `findOne` to `findLatest` without justification.
+
+## Calibrated example — SDCP-10590 (interest accrual)
+
+- **RCA:** (1) LPAC join without `is_deleted` → double loan pick in one batch run. (2) QA replay of calc batch → second insert same period.
+- **Minimal fix:** Reader `lpac.is_deleted = false` on calc + posting readers; **batch-only** `save(List)` insert guard (`id != null` always saves for EOD update).
+- **Resolve on read:** **Not shipped** — booking `findDistinct*` rejected as overkill; existing QA2 dupes → post-deploy cleanup SQL.
+- **Do not** add dedupe on `saveInterestAccrualDetailsEntity`, booking loops, and `save(List)` in the same PR without justification.
+- **Skill:** `.cursor/skills/minimal-fix/SKILL.md`
