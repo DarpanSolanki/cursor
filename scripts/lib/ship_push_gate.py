@@ -11,6 +11,26 @@ ROOT = Path(__file__).resolve().parents[2]
 TIER_RANK = {"workspace": 0, "service": 1, "money": 2}
 
 
+def file_fingerprint(root: Path, rel_path: str) -> str:
+    p = Path(rel_path)
+    if not p.is_absolute():
+        p = root / rel_path
+    if not p.is_file():
+        return ""
+    st = p.stat()
+    return f"{st.st_size}:{int(st.st_mtime)}"
+
+
+def fingerprints_for_files(root: Path, files: list[str]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for rel in files or []:
+        key = rel.replace("\\", "/")
+        fp = file_fingerprint(root, key)
+        if fp:
+            out[key] = fp
+    return out
+
+
 def load_json(path: Path) -> dict:
     if not path.is_file():
         return {}
