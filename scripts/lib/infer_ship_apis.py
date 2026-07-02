@@ -275,7 +275,7 @@ def touches_dpi(paths: list[str] | None, apis: list[str]) -> bool:
     if BATCH_DPI_APIS.intersection(apis):
         return True
     if touches_dpi_blob and path_blob and paths:
-        return touches_dpi_blob(path_blob(paths))
+        return touches_dpi_blob(path_blob(paths), set(apis))
     if not paths:
         return False
     blob = " ".join(p.replace("\\", "/").lower() for p in paths)
