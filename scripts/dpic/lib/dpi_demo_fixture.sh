@@ -135,3 +135,27 @@ if g <= m:
 print(f"OK: {label} ({got} > {min_s})")
 PY
 }
+
+dpi_evict_go_live_cache() {
+  local product_code="${1:-}"
+  echo "  dpi: evict go-live cache (product=${product_code:-*}) — restart accounting"
+  bash "$DPI_FIXTURE_ROOT/scripts/bin/novopay-service.sh" ensure accounting --compile 2>/dev/null \
+    || bash "$DPI_FIXTURE_ROOT/scripts/bin/novopay-service.sh" ensure accounting
+}
+
+# Args: go_live_ddmm (DD-MM-YYYY) product_code (code_master data_sub_type)
+dpi_set_go_live_and_refresh() {
+  local go_live_ddmm="${1:?go_live DD-MM-YYYY}"
+  local product_code="${2:?product code}"
+  echo "  dpi: set DPI_GO_LIVE_DATE=$go_live_ddmm product=$product_code"
+  dpi_pg -v ON_ERROR_STOP=1 -v go_live_value="$go_live_ddmm" -v go_live_sub_type="$product_code" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/upsert_dpi_go_live.sql" >/dev/null
+  dpi_evict_go_live_cache "$product_code"
+  dpi_restart_masterdata
+  dpi_ensure_accounting
+}
+
+dpi_restart_masterdata() {
+  echo "  dpi: restart masterdata (refresh bulk master go-live)"
+  dpi_ensure_masterdata
+}
