@@ -45,12 +45,29 @@ _DPI_BOOKING_GUARD_CASES = frozenset(
     {
         "dpic.posting_calendar_regression",
         "dpic.cross_eod_replay_134497",
+        "dpic.eod_txn_regression",
     }
 )
 
 _DPI_BILLING_GUARD_CASES = frozenset(
     {
         "dpic.billing_ud_next_emi",
+        "dpic.post_maturity_billing",
+        "dpic.post_maturity_billing_catchup",
+    }
+)
+
+# One consolidated flow for money-tier workspace-close (replaces individual guard cases)
+_DPI_SHIP_CLOSE_VERIFY = "dpic.ship_close_verify"
+_DPI_GUARD_CASES_IN_SHIP_CLOSE = frozenset(
+    {
+        "dpic.posting_calendar_regression",
+        "dpic.cross_eod_replay_134497",
+        "dpic.eod_txn_regression",
+        "dpic.billing_ud_next_emi",
+        "dpic.post_maturity_billing",
+        "dpic.post_maturity_billing_catchup",
+        "dpic.grace_e2e",
     }
 )
 
@@ -192,7 +209,21 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "replay_dpi_booking",
             "isaccrualpostingdate",
         ),
-        "dpic.npa_dpi_movement_e2e": ("npa", "assetclassif", "dpimovement"),
+        "dpic.eod_txn_regression": (
+            "dpiaccrualbooking",
+            "dpibilling",
+            "eod_txn",
+            "verify_dpi_eod_txn",
+            "month_end_job_time",
+            "setup_qa1_month_end",
+        ),
+        "dpic.npa_dpi_movement_e2e": (
+            "assetclassif",
+            "dpimovement",
+            "loanaccountassetcriteria",
+            "regular_to_npa",
+            "npatoregular",
+        ),
         "foreclosure.loan_prepayment_real": ("loanprepayment", "sdcp10255"),
         "foreclosure.sdcp10255_e2e": ("sdcp10255", "sdcp-10255"),
         "dcf.principal_split_sim": (
@@ -227,8 +258,19 @@ def expand_path_cases(blob: str, apis: set[str], reg: dict) -> list[str]:
         if cid in PATH_TRIGGERED_CASES:
             out.append(cid)
 
-    if any(x in blob for x in ("disburse", "disbursement", "neft", "dtfc", "clmt")):
-        if "disburseLoan" in apis or "disburse" in blob:
+    if any(
+        x in blob
+        for x in (
+            "disburseloan",
+            "/disbursement/",
+            "disbursement_details",
+            "disburseloanapi",
+            "neft",
+            "dtfc",
+            "clmt",
+        )
+    ):
+        if "disburseLoan" in apis:
             add("disbursement.quick")
 
     if any(x in blob for x in ("dpdcalc", "loanaccountdpd", "dpd_calc")):
@@ -308,17 +350,20 @@ def resolve_dpi_cases(
             add("dpic.go_live_ud")
     if billing:
         add("batch.dpi_billing")
+        add("dpic.post_maturity_billing")
+        add("dpic.post_maturity_billing_catchup")
 
     if calc or booking or billing:
-        for cid in _DPI_BOOKING_GUARD_CASES:
-            add(cid)
-    if booking or billing:
-        for cid in _DPI_BILLING_GUARD_CASES:
-            add(cid)
+        add(_DPI_SHIP_CLOSE_VERIFY)
 
     merged: list[str] = []
+    ship_close = _DPI_SHIP_CLOSE_VERIFY in scoped
     for cid in scoped + base:
         if cid in _DPI_FULL_SUITE_CASES:
+            continue
+        if ship_close and cid in _DPI_GUARD_CASES_IN_SHIP_CLOSE:
+            continue
+        if ship_close and cid == "disbursement.quick":
             continue
         if cid not in merged:
             merged.append(cid)
@@ -334,7 +379,6 @@ def touches_dpi_blob(blob: str, apis: set[str]) -> bool:
         "dpiaccrual",
         "dpibilling",
         "dpicalculation",
-        "scripts/dpic/",
     )
     return any(h in blob for h in hints)
 

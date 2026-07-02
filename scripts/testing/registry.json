@@ -8,7 +8,7 @@
     "LOAN_ACCOUNT_ID": "8060160",
     "DEMO_LAN": "6004044425",
     "CUSTOMER_ID": "10002233",
-    "FORECLOSURE_DATE": "1784984400000",
+    "FORECLOSURE_DATE": "1782563400000",
     "FORECLOSURE_LAN": "6000000262",
     "FORECLOSURE_RECEIPT": "412700000001537",
     "FORECLOSURE_AMOUNT": "5324.00",
@@ -518,9 +518,7 @@
     "cmd": "bash scripts/dpic/run_grace_dpi_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
-      "DEMO_LAN": "6004044425",
-      "JOB_TIME": "1779712200000",
-      "FIRST_EMI_DUE_DATE": "2026-05-18"
+      "DEMO_LAN": "6004044425"
     }
   },
   "dpic.multi_emi_installment_e2e": {
@@ -640,13 +638,17 @@
     "title": "DPIC \u2014 ntest API verify (uses scripts/scratch/dpic_demo_state.env)",
     "cmd": "bash scripts/dpic/run_demo_api_verify.sh"
   },
-  "dpic.full": {
+  "dpic.full_gate": {
     "type": "flow",
-    "title": "DPIC setup \u2192 disburse \u2192 EOD (legacy happy path)",
-    "cmd": "bash scripts/dpic/run_full_happy_path.sh",
-    "env": {
-      "JOB_TIME": "1781267400000"
-    }
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "gate"
+    ],
+    "title": "DPI full gate — fresh LAN + dual billing + fixture + certify",
+    "cmd": "bash scripts/dpic/run_dpi_full_gate.sh"
   },
   "dpic.disburse": {
     "type": "flow",
@@ -702,14 +704,74 @@
       "ud",
       "regression"
     ],
-    "title": "DPI posting calendar QA regression (15th EMI, month-end replay)",
+    "title": "DPI posting calendar QA regression (milestone jumps, 15th EMI)",
     "cmd": "bash scripts/dpic/run_dpi_posting_calendar_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
       "GO_LIVE_DDMM": "15-04-2026",
       "GO_LIVE_ISO": "2026-04-15",
-      "END_DATE": "2026-06-01"
+      "END_DATE": "2026-07-19"
     }
+  },
+  "dpic.jump_regression": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "regression"
+    ],
+    "title": "DPI business-date jump regression (milestones + single-hop parity)",
+    "cmd": "bash scripts/dpic/run_dpi_jump_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "GO_LIVE_DDMM": "15-03-2026",
+      "GO_LIVE_ISO": "2026-03-15",
+      "END_DATE": "2026-06-02"
+    }
+  },
+  "dpic.emi_first_anchor_regression": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "regression"
+    ],
+    "title": "DPI EMI due on 1st \u2014 Jun-30 month-end accrual not dropped (anchor segStart)",
+    "cmd": "bash scripts/dpic/run_dpi_emi_first_anchor_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "GO_LIVE_DDMM": "15-04-2026",
+      "GO_LIVE_ISO": "2026-04-15",
+      "END_DATE": "2026-07-01"
+    }
+  },
+  "dpic.eod_txn_regression": {
+    "type": "flow",
+    "api": "dpiAccrualBooking",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "regression"
+    ],
+    "title": "DPI EOD txn regression \u2014 regular 1327/1330 + NPA 1328/1329, month-end job_time, partitions",
+    "cmd": "bash scripts/dpic/run_dpi_eod_txn_regression.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "MONTH_END_JOB_TIME": "1782844200000",
+      "NEXT_EMI_JOB_TIME": "1782930600000"
+    },
+    "note": "Ship guard for dpiAccrualBooking/dpiBilling \u2014 QA1-class Jul-1 job_time + txn_master + partition chain"
   },
   "dpic.billing_ud_next_emi": {
     "type": "flow",
@@ -726,9 +788,115 @@
     "cmd": "bash scripts/dpic/run_dpi_billing_ud_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
-      "JOB_TIME": "1782563400000"
+      "JOB_TIME": "1784464200000",
+      "END_DATE": "2026-07-19"
     },
     "note": "Runs EOD then verify_dpi_billing_ud.sql; ship guard for billing path"
+  },
+  "dpic.post_maturity_billing": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "billing",
+      "post_maturity"
+    ],
+    "title": "DPI post-maturity billing — maturity monthly anchor after last EMI",
+    "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "MATURITY_ISO": "2026-05-02",
+      "BILLING_ANCHOR_ISO": "2026-06-02"
+    },
+    "note": "Simulates calc+booking+billing on anchor day; evidence in scripts/dpic/last_post_maturity_billing.env"
+  },
+  "dpic.post_maturity_billing_catchup": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ud",
+      "billing",
+      "post_maturity",
+      "catchup"
+    ],
+    "title": "DPI post-maturity catch-up — late billing run bills passed monthly anchors",
+    "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_catchup_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "MATURITY_ISO": "2026-05-02",
+      "ACCRUAL_THROUGH_ISO": "2026-06-30",
+      "BILLING_RUN_ISO": "2026-06-20",
+      "EXPECTED_DUE_ANCHOR_ISO": "2026-06-02"
+    },
+    "note": "Late billing run bills passed monthly anchors; June-period accrual waits for next anchor (QA1 Jul-04 shape on 15th-maturity loans)"
+  },
+  "dpic.ship_close_verify": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "ship"
+    ],
+    "title": "DPI ship-close consolidated verify (fixtures; subsumes calendar/eod/cross/grace/billing UD)",
+    "cmd": "bash scripts/dpic/run_dpi_ship_close_verify.sh"
+  },
+  "dpic.release_gate": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "release"
+    ],
+    "title": "DPI pre-release gate — fresh LAN + dual billing + schema contract + certify",
+    "cmd": "bash scripts/dpic/run_dpi_release_gate.sh"
+  },
+  "dpic.qa_verify": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "verify"
+    ],
+    "title": "DPI QA verify — schema + pipeline + posting checklist on fixture LAN",
+    "cmd": "bash scripts/dpic/lib/run_dpi_qa_verify.sh 8060160 2026-07-19"
+  },
+  "dpic.dual_billing": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch"
+    ],
+    "title": "DPI dual billing — two due rows + two GL billing txns via schedule date jumps",
+    "cmd": "bash scripts/dpic/run_dpi_dual_billing_e2e.sh"
+  },
+  "dpic.push_release": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_scope": "release",
+    "tags": [
+      "dpi",
+      "ship",
+      "release"
+    ],
+    "title": "DPI push release \u2014 fresh disburse + column contract on proof LAN",
+    "cmd": "bash scripts/dpic/run_dpi_fresh_disburse_e2e.sh"
   },
   "dpic.dpi_sanity": {
     "type": "flow",
@@ -801,7 +969,7 @@
     "title": "DPI cross-EOD replay guard \u2014 no duplicate client_ref (134497)",
     "cmd": "bash scripts/dpic/run_dpi_cross_eod_replay_guard.sh",
     "env": {
-      "JOB_TIME": "1782563400000",
+      "JOB_TIME": "1784464200000",
       "LOAN_ACCOUNT_ID": "8060160"
     },
     "note": "WS-006: replays EOD on same job_time without txn reset; guards 346d9efe6 client_ref fix"
@@ -840,7 +1008,25 @@
     "env": {
       "DCF_SIM_QA3": "1"
     },
-    "note": "S07/S11/S12/S13 matrix — writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
+    "note": "S07/S11/S12/S13 matrix \u2014 writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
+  },
+  "dcf.insurance_reupload_index_audit": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "service",
+    "tags": [
+      "foreclosure",
+      "death",
+      "dcf",
+      "insurance",
+      "perf"
+    ],
+    "title": "DCF insurance RE_UPLOAD — index coverage + EXPLAIN audit (read-only DB)",
+    "cmd": "bash scripts/dcf_sanity/run_dcf_insurance_reupload_index_audit.sh",
+    "env": {
+      "DCF_INDEX_AUDIT_DB": "qa4"
+    },
+    "note": "Profiles claimForReUpload, reader filter, lookup by death_foreclosure_details_id; WARN ok at small scale"
   },
   "disbursement.quick": {
     "type": "flow",
