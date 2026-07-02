@@ -26,6 +26,39 @@ except ImportError:
     resolve_apis_for_path = None  # type: ignore
     resolve_apis_for_paths = None  # type: ignore
 
+try:
+    from resolve_ship_cases import (  # noqa: E402
+        path_blob,
+        resolve_ship_cases,
+        touches_dpi_blob,
+    )
+except ImportError:
+    resolve_ship_cases = None  # type: ignore
+    touches_dpi_blob = None  # type: ignore
+    path_blob = None  # type: ignore
+
+BATCH_DPI_APIS = frozenset({"dpiAccrualCalculation", "dpiAccrualBooking", "dpiBilling"})
+
+DPI_PATH_HINTS = (
+    "/loan/dpi/",
+    "/dpiaccrual",
+    "/dpibilling",
+    "scripts/dpic/",
+    "dpiAccrualCalculation",
+    "dpiAccrualBooking",
+    "dpiBilling",
+)
+
+_DPI_FULL_SUITE_CASES = frozenset(
+    {
+        "dpic.ud_compliance",
+        "dpic.dpi_sanity",
+        "dpic.extended_regression",
+        "dpic.dpi_max_regression",
+        "dpic.dpi_regression",
+    }
+)
+
 TIER_RANK = {"workspace": 0, "service": 1, "money": 2}
 
 EXPLICIT: list[tuple[str, str]] = [
@@ -238,6 +271,89 @@ def health_cases_for_repos(repos: list[str], reg: dict | None = None) -> list[st
     return sorted(out)
 
 
+def touches_dpi(paths: list[str] | None, apis: list[str]) -> bool:
+    if BATCH_DPI_APIS.intersection(apis):
+        return True
+    if touches_dpi_blob and path_blob and paths:
+        return touches_dpi_blob(path_blob(paths))
+    if not paths:
+        return False
+    blob = " ".join(p.replace("\\", "/").lower() for p in paths)
+    return any(h.lower() in blob for h in DPI_PATH_HINTS)
+
+
+def registry_cases_for_api_list(apis: list[str], reg: dict | None = None) -> list[str]:
+    reg = reg if reg is not None else load_registry()
+    out: list[str] = []
+    for api in apis:
+        cid = registry_case_for_api(api, reg)
+        if cid and cid not in out:
+            out.append(cid)
+    return out
+
+
+def filter_dpi_batch_cases(
+    cases: list[str],
+    apis: list[str],
+    paths: list[str] | None = None,
+    tier: str = "workspace",
+) -> list[str]:
+    if tier != "money":
+        return cases
+    if not touches_dpi(paths, apis):
+        return cases
+    skip = {"dpic.overview_api", "dpic.certify_scenarios"}
+    out = [c for c in cases if c not in skip]
+    if "dpic.ud_compliance" not in out and BATCH_DPI_APIS.intersection(apis):
+        out.insert(0, "dpic.ud_compliance")
+    if resolve_ship_cases and paths:
+        try:
+            scoped = resolve_ship_cases(paths, apis, tier)
+            if scoped:
+                out = list(dict.fromkeys(scoped + out))
+        except Exception:
+            pass
+    return out
+
+
+def strip_money_cases_for_workspace(
+    cases: list[str], tier: str, reg: dict | None = None
+) -> list[str]:
+    if tier != "workspace":
+        return cases
+    reg = reg if reg is not None else load_registry()
+    out: list[str] = []
+    for cid in cases:
+        meta = reg.get(cid) or {}
+        if meta.get("smoke_tier") == "money":
+            continue
+        out.append(cid)
+    return out
+
+
+def ntest_cases_for_impact(
+    paths: list[str], apis: list[str], tier: str
+) -> list[str]:
+    reg = load_registry()
+    cases = registry_cases_for_api_list(apis, reg)
+    if resolve_ship_cases and paths:
+        try:
+            scoped = resolve_ship_cases(paths, apis, tier, reg)
+            if scoped:
+                cases = list(dict.fromkeys(scoped))
+        except TypeError:
+            try:
+                scoped = resolve_ship_cases(paths, apis, tier)
+                if scoped:
+                    cases = list(dict.fromkeys(scoped))
+            except Exception:
+                pass
+        except Exception:
+            pass
+    cases = filter_dpi_batch_cases(cases, apis, paths, tier)
+    return strip_money_cases_for_workspace(cases, tier, reg)
+
+
 def git_diff_paths(repo: str) -> list[str]:
     rdir = ROOT / repo
     if not (rdir / ".git").is_dir():
@@ -318,6 +434,7 @@ def build_impact(paths: list[str]) -> dict:
 
     cases = [registry_case_for_api(a, reg) for a in apis]
     cases = [c for c in cases if c]
+    ntest_cases = ntest_cases_for_impact(paths, apis, tier)
     smoke_money = smoke_cases_for_tier("money", reg) if tier == "money" else []
     smoke_service = smoke_cases_for_tier("smoke", reg) if tier in ("money", "service") else []
     health = health_cases_for_repos(repos, reg) if tier in ("money", "service") and not apis else []
@@ -327,6 +444,10 @@ def build_impact(paths: list[str]) -> dict:
         "apis": apis,
         "repos": repos,
         "registry_cases": cases,
+        "ntest_cases": ntest_cases,
+        "dpi_scoped": touches_dpi(paths, apis),
+        "impact_scoped": bool(paths),
+        "accounting_scoped": any("novopay-platform-accounting" in p for p in paths),
         "smoke_money_cases": smoke_money,
         "smoke_service_cases": smoke_service,
         "health_cases": health,
