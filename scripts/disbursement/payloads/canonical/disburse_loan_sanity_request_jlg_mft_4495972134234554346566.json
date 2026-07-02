@@ -1,0 +1,123 @@
+{
+  "request": {
+    "action_performed": {
+      "performed_by": null,
+      "performed_on": null
+    },
+    "group_details": {
+      "is_primary_sig": "false",
+      "group_id": "397489",
+      "primary_sig_lan": null
+    },
+    "interest_details": {
+      "interest_rate": "15.000000"
+    },
+    "member_details": null,
+    "disbursement_details": {
+      "disbursement_mode": "ACCTWB",
+      "external_ref_number": "4495972134234554346566",
+      "expected_disbursement_date": null,
+      "client_reference_number": "{{$timestamp}}"
+    },
+    "repayment_details": {
+      "number_of_installments": "24",
+      "repayment_mode": "DIRDR",
+      "first_repayment_date": null,
+      "first_interest_payment_date": null
+    },
+    "disbursement_repayment_account_details": [
+      {
+        "external_account_number": "50100869629538",
+        "external_account_type": "SAVINGS",
+        "routing_type": "ROUT_TYP_IFSC",
+        "routing_value": "HDFC0000240",
+        "account_holder_name": "Madhuben Sanjaybhai Vaghari",
+        "bank_name": "HDFC BANK",
+        "purpose": [
+          {
+            "code": "DSBR_ACCT",
+            "purpose_code": "DSBR_ACCT",
+            "value": "Disbursement Account"
+          }
+        ]
+      },
+      {
+        "account_number": "50100869620843",
+        "product_type": "SAVINGS",
+        "purpose": [
+          {
+            "code": "REP_ACCT",
+            "purpose_code": "REP_ACCT",
+            "value": "Repayment Account"
+          }
+        ],
+        "account_holder_name": "GANESH JLG AITHOR"
+      }
+    ],
+    "charges_details": [
+      {
+        "charge_name": "",
+        "charge_type": "Flat",
+        "charge_value": "0",
+        "charge_inclusive_of_tax": "false",
+        "charge_code": "",
+        "tax_components": [],
+        "base_amount": "50000.00",
+        "charge_identifier": "PROC_FEE",
+        "total_tax_amount": "0",
+        "charge_label": "",
+        "charge_value_without_tax": "0"
+      },
+      {
+        "stamp_duty_charges": "600.00",
+        "charge_type": "FLAT",
+        "poa": "0.00",
+        "charge_value": "600.000000",
+        "is_sdc_applicable": "true",
+        "charge_identifier": "STAMP_DUTY",
+        "stamping_type": "SHCIL"
+      }
+    ],
+    "loan_details": {
+      "account_number": "",
+      "employee_ref_code": "OFF604483",
+      "loan_amount": "50000",
+      "requested_amount": "100000.00",
+      "office_id": "2",
+      "sanction_date": "1774008782898",
+      "servicing_emp_id": "2",
+      "product_id": "2",
+      "is_pre_emi_applicable": null,
+      "vtc_id": "679207",
+      "customer_id": "10000305",
+      "stamp_duty_amount": "150.00",
+      "approved_amount": "50000.00",
+      "sourcing_emp_id": "2"
+    },
+    "insurance_details": []
+  },
+  "headers": {
+    "device_id": null,
+    "actor_type": "CUSTOMER",
+    "operation_mode": "SELF",
+    "sim_number": null,
+    "channel_code": "WEB",
+    "locale": null,
+    "function_sub_code": "DEFAULT",
+    "function_code": "DEFAULT",
+    "end_channel_code": null,
+    "run_mode": "REAL",
+    "location_accuracy": null,
+    "user_id": "3",
+    "stan": "500004946309989",
+    "origination_channel": null,
+    "user_handle_value": null,
+    "client_ip": null,
+    "location": null,
+    "battery_percentage": null,
+    "channel_type": null,
+    "tenant_code": "mfi",
+    "client_code": "NOVOPAY",
+    "transmission_datetime": "1774075507393"
+  }
+}
