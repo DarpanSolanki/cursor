@@ -85,6 +85,17 @@ if mapper_files and all(any(m in f for m in dpi_dirs) for f in mapper_files):
 else:
     print('full')
 " 2>/dev/null || echo skip)"
+# DPI money-tier ship: audit scope follows apis, not stale pending mapper fingerprints
+if [[ "$_BATCH_SKIP_MODE" == "full" && ${#APIS[@]} -gt 0 ]]; then
+  _all_dpi_apis=1
+  for _a in "${APIS[@]}"; do
+    case "$_a" in
+      dpiAccrualCalculation|dpiAccrualBooking|dpiBilling) ;;
+      *) _all_dpi_apis=0; break ;;
+    esac
+  done
+  [[ "$_all_dpi_apis" -eq 1 ]] && _BATCH_SKIP_MODE="dpi-only"
+fi
 if [[ "$_BATCH_SKIP_MODE" != "skip" ]]; then
   echo "→ batch write-skip contract audit ($_BATCH_SKIP_MODE)"
   if [[ "$_BATCH_SKIP_MODE" == "dpi-only" ]]; then
