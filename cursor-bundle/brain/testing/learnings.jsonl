@@ -1,0 +1,9 @@
+{"ts": "2026-06-17T00:00:00Z", "api": "*", "kind": "meta", "text": "Generic ntest learnings — append via ntest learn / test-learn.sh after verified runs."}
+{"ts": "2026-06-17T00:00:01Z", "api": "disburseLoan", "kind": "gotcha", "text": "client_reference_number must be a numeric string — not Postman {{$timestamp}} literal"}
+{"ts": "2026-06-17T00:00:02Z", "api": "disburseLoan", "kind": "gotcha", "text": "expected_disbursement_date null can break processors parsing epoch long — set aligned epoch ms"}
+{"ts": "2026-06-17T00:00:03Z", "api": "disburseLoan", "kind": "correlator", "correlator": "ACCOUNT_NUMBER", "text": "Use LAN from phase1 demo or scripts/scratch/dpic_demo_state.env after dpic demo phase1"}
+{"ts": "2026-06-17T00:00:04Z", "api": "dpiAccrualBooking", "kind": "batch", "correlator": "JOB_TIME", "text": "BATCH APIs need op_code + job_time in request; align JOB_TIME to EOD business date epoch ms"}
+{"ts": "2026-06-17T00:00:05Z", "api": "dpiAccrualCalculation", "kind": "batch", "correlator": "JOB_TIME", "text": "Run after interest accrual jobs in LMS-EOD-BOD (priorities 14-16 before DPI 17-19)"}
+{"ts": "2026-06-17T00:00:06Z", "api": "*", "kind": "canned_sql", "canned": "01-loan-status-by-lan", "text": "Loan status / disbursement_status / DPI fields — scripts/db-local.sh --canned 01-loan-status-by-lan"}
+{"ts": "2026-06-17T00:00:07Z", "api": "*", "kind": "canned_sql", "canned": "11-accruals-by-lan", "text": "DPI accrual rows — scripts/db-local.sh --canned 11-accruals-by-lan --param account_number=$ACCOUNT_NUMBER"}
+{"ts": "2026-06-17T00:00:08Z", "api": "*", "kind": "setup", "text": "Before money-path ntest: scripts/bin/kg-ensure-fresh.sh && correlators from registry _correlators or dpic_demo_state.env"}

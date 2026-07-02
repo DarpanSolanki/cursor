@@ -1,0 +1,2 @@
+death_foreclosure_details_id,loan_account_number,claim_status,date_of_event,outstanding_loan_balance,payment_amount_for_nominee,claim_number,fr_reasons,fr_comments
+REPLACE_DFD_ID,REPLACE_LAN,Claim Closed,REPLACE_EVENT_DATE,REPLACE_OUTSTANDING,REPLACE_BALANCE_CLAIM,REPLACE_CLAIM_NUM,,

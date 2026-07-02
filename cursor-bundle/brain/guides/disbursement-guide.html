@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disbursement Guide — LMS Accounting</title>
+
+<!-- Tailwind CSS via CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50:  '#fef7f0',
+            100: '#fce8d4',
+            200: '#f9cfa8',
+            300: '#f5af72',
+            400: '#ef8a43',
+            500: '#e26f24',
+            600: '#c2581a',
+            700: '#9c4218',
+            800: '#7d361a',
+            900: '#682e18'
+          }
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+        }
+      }
+    }
+  };
+</script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<!-- Mermaid (flow diagrams) -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+
+<!-- Prism (SQL highlight) -->
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+<!-- Alpine.js (lightweight reactivity) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  html { scroll-padding-top: 80px; }
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .mono, code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Reading progress bar */
+  #progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: linear-gradient(90deg, #e26f24, #c2581a);
+    width: 0%; z-index: 100;
+    transition: width 0.1s ease-out;
+  }
+
+  /* Sidebar nav */
+  .nav-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 6px;
+    color: rgb(82 82 91); font-size: 13px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-link:hover { background: rgb(244 244 245); color: rgb(24 24 27); }
+  .nav-link.active {
+    background: rgb(254 247 240); color: rgb(194 88 26);
+    font-weight: 600; border-left-color: rgb(226 111 36);
+  }
+  .dark .nav-link { color: rgb(161 161 170); }
+  .dark .nav-link:hover { background: rgb(39 39 42); color: rgb(244 244 245); }
+  .dark .nav-link.active {
+    background: rgba(226, 111, 36, 0.15); color: rgb(245 175 114);
+    border-left-color: rgb(226 111 36);
+  }
+  .nav-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: rgb(161 161 170);
+    width: 18px; text-align: right;
+  }
+  .nav-link.active .nav-num { color: rgb(226 111 36); }
+
+  /* Section anchor hover */
+  h2.section-h, h3.section-h { scroll-margin-top: 80px; position: relative; }
+  h2.section-h .anchor, h3.section-h .anchor {
+    position: absolute; left: -28px; top: 50%; transform: translateY(-50%);
+    opacity: 0; color: rgb(161 161 170); font-size: 18px;
+    transition: opacity 0.15s;
+  }
+  h2.section-h:hover .anchor, h3.section-h:hover .anchor { opacity: 1; }
+
+  /* Mermaid theming */
+  .mermaid { background: transparent; text-align: center; }
+  .mermaid svg { max-width: 100%; height: auto; margin: 0 auto; }
+
+  /* Status badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 9px; border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid; white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+  .badge-green { background: rgb(220 252 231); color: rgb(22 101 52); border-color: rgb(187 247 208); }
+  .badge-amber { background: rgb(254 243 199); color: rgb(133 77 14); border-color: rgb(252 211 77); }
+  .badge-red   { background: rgb(254 226 226); color: rgb(153 27 27); border-color: rgb(252 165 165); }
+  .badge-blue  { background: rgb(219 234 254); color: rgb(30 64 175); border-color: rgb(147 197 253); }
+  .badge-gray  { background: rgb(228 228 231); color: rgb(63 63 70);  border-color: rgb(212 212 216); }
+  .badge-purple { background: rgb(243 232 255); color: rgb(107 33 168); border-color: rgb(216 180 254); }
+  .badge-brand { background: rgb(252 232 212); color: rgb(124 54 26); border-color: rgb(245 175 114); }
+  .dark .badge-green { background: rgba(34,197,94,0.15); color: rgb(134 239 172); border-color: rgba(34,197,94,0.35); }
+  .dark .badge-amber { background: rgba(245,158,11,0.15); color: rgb(252 211 77); border-color: rgba(245,158,11,0.35); }
+  .dark .badge-red   { background: rgba(239,68,68,0.15); color: rgb(252 165 165); border-color: rgba(239,68,68,0.35); }
+  .dark .badge-blue  { background: rgba(59,130,246,0.15); color: rgb(147 197 253); border-color: rgba(59,130,246,0.35); }
+  .dark .badge-gray  { background: rgba(113,113,122,0.2); color: rgb(212 212 216); border-color: rgba(113,113,122,0.4); }
+  .dark .badge-purple { background: rgba(168,85,247,0.15); color: rgb(216 180 254); border-color: rgba(168,85,247,0.35); }
+  .dark .badge-brand { background: rgba(226,111,36,0.18); color: rgb(245 175 114); border-color: rgba(226,111,36,0.4); }
+
+  /* Code block copy button */
+  .code-wrap { position: relative; }
+  .code-wrap .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(255,255,255,0.08); color: rgb(244 244 245);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 4px;
+    z-index: 2;
+  }
+  .code-wrap .copy-btn:hover { background: rgba(255,255,255,0.18); }
+  .code-wrap .copy-btn.done { background: rgb(22 101 52); border-color: rgb(22 101 52); }
+
+  /* Callout */
+  .callout { border-left: 3px solid; padding: 12px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px; }
+  .callout-info { border-left-color: rgb(59 130 246); background: rgb(239 246 255); }
+  .callout-warn { border-left-color: rgb(239 68 68); background: rgb(254 242 242); }
+  .callout-tip  { border-left-color: rgb(34 197 94); background: rgb(240 253 244); }
+  .callout-brand { border-left-color: rgb(226 111 36); background: rgb(254 247 240); }
+  .dark .callout-info { background: rgba(59,130,246,0.1); color: rgb(219 234 254); }
+  .dark .callout-warn { background: rgba(239,68,68,0.1); color: rgb(254 226 226); }
+  .dark .callout-tip  { background: rgba(34,197,94,0.1); color: rgb(220 252 231); }
+  .dark .callout-brand { background: rgba(226,111,36,0.12); color: rgb(252 232 212); }
+  .callout strong { font-weight: 700; }
+
+  /* Tabs */
+  .tabs-bar { display: flex; gap: 4px; border-bottom: 1px solid rgb(228 228 231); margin-bottom: 0; }
+  .dark .tabs-bar { border-color: rgb(63 63 70); }
+  .tab-btn {
+    padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; border-bottom: none;
+    border-radius: 6px 6px 0 0; margin-bottom: -1px;
+    color: rgb(82 82 91); background: transparent;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover { color: rgb(24 24 27); background: rgb(244 244 245); }
+  .tab-btn.active {
+    background: white; color: rgb(194 88 26);
+    border-color: rgb(228 228 231); border-bottom-color: white;
+    font-weight: 600;
+  }
+  .dark .tab-btn { color: rgb(161 161 170); }
+  .dark .tab-btn:hover { color: rgb(244 244 245); background: rgb(39 39 42); }
+  .dark .tab-btn.active {
+    background: rgb(24 24 27); color: rgb(245 175 114);
+    border-color: rgb(63 63 70); border-bottom-color: rgb(24 24 27);
+  }
+  .tab-panel { display: none; padding: 22px 4px 0; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: white; border: 1px solid rgb(228 228 231);
+    border-radius: 12px; padding: 20px;
+    transition: all 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: rgb(212 212 216); }
+  .dark .card { background: rgb(24 24 27); border-color: rgb(63 63 70); }
+  .dark .card:hover { border-color: rgb(82 82 91); }
+
+  /* Filter chip */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: 999px;
+    background: rgb(244 244 245); color: rgb(82 82 91);
+    border: 1px solid rgb(228 228 231);
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    cursor: pointer; user-select: none;
+    transition: all 0.15s;
+  }
+  .chip:hover { background: rgb(228 228 231); color: rgb(24 24 27); }
+  .chip.active {
+    background: rgb(24 24 27); color: white;
+    border-color: rgb(24 24 27);
+  }
+  .dark .chip { background: rgb(39 39 42); color: rgb(161 161 170); border-color: rgb(63 63 70); }
+  .dark .chip:hover { background: rgb(63 63 70); color: rgb(244 244 245); }
+  .dark .chip.active { background: rgb(245 175 114); color: rgb(24 24 27); border-color: rgb(245 175 114); }
+
+  /* Walker */
+  .walker-step {
+    background: rgb(250 250 250); border: 1px solid rgb(228 228 231);
+    border-radius: 10px; padding: 18px 22px; margin: 12px 0;
+  }
+  .dark .walker-step { background: rgb(24 24 27); border-color: rgb(63 63 70); }
+  .walker-btn {
+    cursor: pointer; text-align: left; width: 100%;
+    background: white; border: 1px solid rgb(228 228 231);
+    color: rgb(24 24 27); padding: 11px 16px; border-radius: 7px;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .walker-btn:hover { border-color: rgb(226 111 36); background: rgb(254 247 240); color: rgb(194 88 26); }
+  .dark .walker-btn { background: rgb(39 39 42); border-color: rgb(63 63 70); color: rgb(244 244 245); }
+  .dark .walker-btn:hover { border-color: rgb(226 111 36); background: rgba(226,111,36,0.12); color: rgb(245 175 114); }
+
+  /* Table */
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data-table th {
+    text-align: left; padding: 10px 12px; background: rgb(250 250 250);
+    border-bottom: 2px solid rgb(228 228 231);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: rgb(113 113 122);
+  }
+  table.data-table td { padding: 10px 12px; border-bottom: 1px solid rgb(228 228 231); vertical-align: top; }
+  table.data-table tr:hover td { background: rgb(250 250 250); }
+  .dark table.data-table th { background: rgb(39 39 42); border-color: rgb(63 63 70); color: rgb(161 161 170); }
+  .dark table.data-table td { border-color: rgb(39 39 42); color: rgb(228 228 231); }
+  .dark table.data-table tr:hover td { background: rgb(39 39 42); }
+
+  /* Inline code */
+  :not(pre) > code {
+    background: rgb(244 244 245); color: rgb(194 88 26);
+    padding: 1px 6px; border-radius: 3px; font-size: 0.85em;
+    border: 1px solid rgb(228 228 231); white-space: nowrap;
+  }
+  .dark :not(pre) > code { background: rgb(39 39 42); color: rgb(245 175 114); border-color: rgb(63 63 70); }
+
+  /* Print */
+  @media print {
+    #sidebar, #topbar, .copy-btn, .walker, .tabs-bar, #search-bar, #progress-bar { display: none !important; }
+    .tab-panel { display: block !important; }
+    main { padding: 0 !important; max-width: 100% !important; }
+    .card { break-inside: avoid; }
+  }
+</style>
+</head>
+
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased">
+
+<div id="progress-bar"></div>
+
+<!-- TOP BAR -->
+<header id="topbar" class="sticky top-0 z-40 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
+  <div class="max-w-screen-2xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <button id="mobile-nav-toggle" class="md:hidden p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <i data-lucide="landmark" class="w-4 h-4 text-white"></i>
+        </div>
+        <div>
+          <div class="text-sm font-bold leading-tight">Disbursement Guide</div>
+          <div class="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight mono">mfi_integration_v3.3.1.0.1</div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 max-w-md hidden md:block">
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+        <input id="search-bar" type="text" placeholder="Search guide (Ctrl/⌘ + K)..."
+               class="w-full pl-10 pr-3 py-2 text-sm rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="window.print()" title="Print" class="p-2 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <i data-lucide="printer" class="w-4 h-4"></i>
+      </button>
+      <button id="theme-toggle" title="Toggle dark mode" class="p-2 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+        <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-screen-2xl mx-auto px-4 md:px-8 flex gap-8 pt-6">
+
+  <!-- SIDEBAR NAV -->
+  <aside id="sidebar" class="hidden md:block w-64 shrink-0">
+    <nav class="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 pb-8">
+      <div class="text-[10px] uppercase tracking-widest font-bold text-zinc-400 mb-2 px-2">Contents</div>
+      <ol class="space-y-0.5">
+        <li><a href="#overview" class="nav-link"><span class="nav-num">01</span><span>Overview</span></a></li>
+        <li><a href="#tables" class="nav-link"><span class="nav-num">02</span><span>Where data lives</span></a></li>
+        <li><a href="#statuses" class="nav-link"><span class="nav-num">03</span><span>Status catalog</span></a></li>
+        <li><a href="#single-loan" class="nav-link"><span class="nav-num">04</span><span>Single loan flow</span></a></li>
+        <li><a href="#group-loan" class="nav-link"><span class="nav-num">05</span><span>Group loan flow</span></a></li>
+        <li><a href="#neft-v2" class="nav-link"><span class="nav-num">06</span><span>NEFT v2 mechanics</span></a></li>
+        <li><a href="#callbacks" class="nav-link"><span class="nav-num">07</span><span>Bank callbacks</span></a></li>
+        <li><a href="#los-lms" class="nav-link"><span class="nav-num">08</span><span>LOS ↔ LMS contract</span></a></li>
+        <li><a href="#manual-disbursement" class="nav-link"><span class="nav-num">09</span><span>Manual Disbursement task</span></a></li>
+        <li><a href="#lar-task" class="nav-link"><span class="nav-num">10</span><span>LAR task (cash)</span></a></li>
+        <li><a href="#mode-update" class="nav-link"><span class="nav-num">11</span><span>Update mode details</span></a></li>
+        <li><a href="#reinitiation" class="nav-link"><span class="nav-num">12</span><span>Payment reinitiation</span></a></li>
+        <li><a href="#maker-checker" class="nav-link"><span class="nav-num">13</span><span>Maker–checker</span></a></li>
+        <li><a href="#cancellation" class="nav-link"><span class="nav-num">14</span><span>Cancellation &amp; reversal</span></a></li>
+        <li><a href="#failure-modes" class="nav-link"><span class="nav-num">15</span><span>Bank failure modes</span></a></li>
+        <li><a href="#idempotency" class="nav-link"><span class="nav-num">16</span><span>Idempotency &amp; replay</span></a></li>
+        <li><a href="#debugging" class="nav-link"><span class="nav-num">17</span><span>Debug stuck LANs</span></a></li>
+        <li><a href="#diagnostic" class="nav-link"><span class="nav-num">18</span><span>Diagnostic walker</span></a></li>
+        <li><a href="#queries" class="nav-link"><span class="nav-num">19</span><span>Diagnostic SQL</span></a></li>
+        <li><a href="#glossary" class="nav-link"><span class="nav-num">20</span><span>Glossary</span></a></li>
+      </ol>
+      <div class="mt-6 px-2 py-3 text-[11px] text-zinc-500 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 leading-relaxed">
+        Business flows · single HTML · open in any browser. Verified on
+        <span class="mono text-zinc-700 dark:text-zinc-300">mfi_integration_v3.3.1.0.1</span>.
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 min-w-0 pb-20 max-w-4xl">
+
+    <!-- HERO -->
+    <section class="relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-brand-50 via-white to-zinc-50 dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-900 mb-8">
+      <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-brand-100 dark:bg-brand-900/20 rounded-full blur-3xl opacity-60"></div>
+      <div class="relative p-8 md:p-10">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="badge badge-brand"><i data-lucide="book-open" class="w-3 h-3"></i> OPERATIONS &amp; DEBUG</span>
+          <span class="text-xs text-zinc-500 mono">v3.3.1.0.1</span>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Disbursement — end-to-end business guide</h1>
+        <p class="text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mb-6">
+          Every flow a Loan Account (LAN) can take from approval to terminal state — what tables hold what, what each status means, how the system behaves under bank failures, and where to look first when a LAN is stuck.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="#statuses" class="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-semibold transition">
+            <i data-lucide="list" class="w-4 h-4"></i> Status catalog
+          </a>
+          <a href="#diagnostic" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold transition">
+            <i data-lucide="stethoscope" class="w-4 h-4"></i> Stuck LAN walker
+          </a>
+          <a href="#queries" class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm font-semibold transition">
+            <i data-lucide="database" class="w-4 h-4"></i> Canned SQL
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+          <div>
+            <div class="text-2xl font-bold text-brand-600 dark:text-brand-400">3</div>
+            <div class="text-xs text-zinc-500 dark:text-zinc-400">Bank rails</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-brand-600 dark:text-brand-400">5</div>
+            <div class="text-xs text-zinc-500 dark:text-zinc-400">disbursement_status values</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-brand-600 dark:text-brand-400">8</div>
+            <div class="text-xs text-zinc-500 dark:text-zinc-400">Core tables</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-brand-600 dark:text-brand-400">5</div>
+            <div class="text-xs text-zinc-500 dark:text-zinc-400">Idempotency layers</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 01. OVERVIEW -->
+    <!-- ============================================================ -->
+    <section id="overview" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">01</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#overview" class="anchor">#</a>Overview</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">What disbursement <em>is</em> — two systems (LOS and LMS Accounting), three rails, three entry points, one converging state machine.</p>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#overview-systems" class="anchor">#</a><span id="overview-systems">Two systems, two state machines</span></h3>
+      <p class="text-sm leading-relaxed mb-3">A loan's disbursement is owned by <strong>two services</strong> that talk over Kafka:</p>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="briefcase" class="w-4 h-4 text-blue-500"></i>
+            <h4 class="text-sm font-bold">LOS — Loan Origination</h4>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Owns approval, operator tasks (Manual Disbursement, LAR, Payment Reinitiation), the retry decision, and Kafka push to accounting.</p>
+          <div class="text-xs mono text-zinc-500">Tables: <code>disburse_loan_process</code>, <code>loan_app</code>, <code>group_details</code>, <code>loan_app_task_details</code></div>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="landmark" class="w-4 h-4 text-brand-500"></i>
+            <h4 class="text-sm font-bold">LMS Accounting</h4>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Owns the bank-rail state machine (NEFT v2 / MFT), CRR audit, posting, and async callbacks.</p>
+          <div class="text-xs mono text-zinc-500">Tables: <code>loan_account</code>, <code>loan_account_events_queue</code>, <code>client_request_response_log</code></div>
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#overview-rails" class="anchor">#</a><span id="overview-rails">Three money rails</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Rail</th><th>What it is</th><th>Latency</th><th>Single or multi-call?</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-blue">NEFT v2</span> <span class="text-[10px] text-zinc-400">(default)</span></td><td>Two-stage bank API (NEF → NEI) for transfers out to other banks</td><td>Async — bank confirms via callback within minutes</td><td>Multi-call (stage 1 + stage 2)</td></tr>
+          <tr><td><span class="badge badge-purple">MFT</span></td><td>Single-shot fund transfer (in-bank or trusted partner)</td><td>Async — single callback</td><td>Single-call</td></tr>
+          <tr><td><span class="badge badge-gray">NEFT v1</span> <span class="text-[10px] text-zinc-400">(deprecated)</span></td><td>Older single-step NEFT</td><td>Async — single callback</td><td>Single-call (fallback only)</td></tr>
+          <tr><td><span class="badge badge-green">CASH</span></td><td>Field officer delivers cash; recorded via LAR task</td><td>Synchronous</td><td>No bank API</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#overview-entries" class="anchor">#</a><span id="overview-entries">Three ways disbursement starts in LMS</span></h3>
+      <p class="text-sm mb-3">Three doors all enter the same orchestration <code>disburseLoan</code>:</p>
+      <ol class="list-decimal list-inside text-sm space-y-1 mb-3">
+        <li><strong>Kafka async</strong> (production happy path) — LOS publishes to <code>disburse_loan_api_&lt;tenant&gt;</code>.</li>
+        <li><strong>HTTP sync</strong> — operator triggers from Trustt UI.</li>
+        <li><strong>HTTP async</strong> — internal retries / maker-checker resubmits.</li>
+      </ol>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#overview-big-picture" class="anchor">#</a><span id="overview-big-picture">The big picture</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart LR
+  A[LOS approves loan] --> B{LOS:<br/>disburse_loan_process<br/>status=IN_PROGRESS}
+  B -->|Kafka push| C[disburse_loan_api topic]
+  C --> D[LMS consumer]
+  D --> E[disburseLoan<br/>orchestration]
+  E --> F[loan_account row<br/>status=ACTIVE<br/>disbursement_status=DTFC_SUCCESS]
+  F --> G[Bank call<br/>NEFT v2 / MFT]
+  G -->|callback| H[disbursement_status=COMPLETED]
+  H -->|Kafka publish| I[los_lms_disbursement_sync]
+  I --> J[LOS marks<br/>disburse_loan_process<br/>COMPLETED]
+
+  classDef los fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+  classDef lms fill:#fce8d4,stroke:#c2581a,color:#7c361a;
+  classDef terminal fill:#dcfce7,stroke:#16a34a,color:#166534;
+  class A,B,C,J los
+  class D,E,F,G lms
+  class H,I terminal
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <strong>Mental model:</strong> the <code>disbursement_status</code> column on <code>loan_account</code> (in LMS) is the single thread of truth for parent-level progress. <code>disburse_loan_process.status</code> (in LOS) is the single source of truth for whether LOS thinks the loan is in flight or done. They are synchronized via the <code>los_lms_disbursement_sync</code> Kafka topic — when they diverge, that's where to look.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 02. TABLES -->
+    <!-- ============================================================ -->
+    <section id="tables" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">02</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#tables" class="anchor">#</a>Where data lives</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Twelve tables across LMS and LOS hold everything disbursement-related. Memorise the four marked <span class="badge badge-brand">primary truth</span> — they cover 95% of debugging.</p>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#tables-lms" class="anchor">#</a><span id="tables-lms">LMS Accounting tables</span></h3>
+
+      <div class="space-y-4">
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <h4 class="font-bold text-sm mono">loan_account</h4>
+            <span class="badge badge-brand">primary truth</span>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Loan-specific properties of LOAN-type accounts. <strong>This is where every investigation starts.</strong></p>
+          <table class="data-table"><tbody>
+            <tr><td class="mono text-xs">loan_status</td><td class="text-xs"><span class="badge badge-gray">APPROVED</span> / <span class="badge badge-green">ACTIVE</span> / <span class="badge badge-blue">CLOSED</span> / <span class="badge badge-red">LOCK</span> / <span class="badge badge-amber">DISB_CNCL</span></td></tr>
+            <tr><td class="mono text-xs">disbursement_status</td><td class="text-xs">The bank-leg stage — DTFC_SUCCESS / NEFT_STAGE_*_PENDING / NEFT_STAGE_*_SUCCESS / COMPLETED / PARENT_SUCCESS / CHILD_SUCCESS</td></tr>
+            <tr><td class="mono text-xs">external_ref_number</td><td class="text-xs">Primary correlation key with LOS</td></tr>
+            <tr><td class="mono text-xs">disbursed_amount</td><td class="text-xs">Money paid out; set when loan goes ACTIVE</td></tr>
+            <tr><td class="mono text-xs">parent_account_id</td><td class="text-xs">Set on SHG/JLG children; NULL on parent / single loans</td></tr>
+            <tr><td class="mono text-xs">reinit_disbursement_status</td><td class="text-xs">Stage tracker for payment reinitiation (parent stays COMPLETED) <span class="badge badge-purple">3.3.1.0.1+</span></td></tr>
+            <tr><td class="mono text-xs">reinit_external_error_code / message</td><td class="text-xs">Error captured during reinitiation</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <h4 class="font-bold text-sm mono">loan_account_events_queue</h4>
+            <span class="badge badge-amber">most concurrency-fraught</span>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Async fan-out queue. For disbursement, two row types matter:</p>
+          <ul class="text-xs list-disc list-inside mb-2 space-y-0.5">
+            <li><strong>CLMT</strong> — one row per SHG/JLG child; per-child bank-leg state.</li>
+            <li><strong>CLB</strong> — one row per child to create the child <code>loan_account</code> after money landed.</li>
+          </ul>
+          <table class="data-table"><tbody>
+            <tr><td class="mono text-xs">event_type</td><td class="text-xs">CLMT / CLB / REP / FCL / WAIVER / RSTCRE / REOPN / TXNREV / PRTPRE / REBK / CANCL / LEAR</td></tr>
+            <tr><td class="mono text-xs">event_status</td><td class="text-xs"><span class="badge badge-amber">P</span> pending / <span class="badge badge-green">C</span> completed</td></tr>
+            <tr><td class="mono text-xs">data (JSON)</td><td class="text-xs">For CLMT: contains per-child <code>disbursement_status</code>, <code>net_disbursed_amount</code>, <code>external_error_code/message</code></td></tr>
+            <tr><td class="mono text-xs">filler_2</td><td class="text-xs">Child <code>external_ref_number</code></td></tr>
+            <tr><td class="mono text-xs">filler_3</td><td class="text-xs">UTR (canonical column post 3.2.8.4.1)</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <h4 class="font-bold text-sm mono">client_request_response_log (CRR)</h4>
+            <span class="badge badge-brand">primary truth</span>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Every outgoing bank/external API call gets exactly one row. <strong>Single most important debugging table after loan_account.</strong></p>
+          <table class="data-table"><tbody>
+            <tr><td class="mono text-xs">transaction_type</td><td class="text-xs">Deterministic key — <code>DISBURSEMENT_NEFT_NEF</code> / <code>DISBURSEMENT_NEFT_NEI</code> / <code>DISBURSEMENT_MFT</code> / <code>NEFT_TRANSACTION_INQUIRY</code> / child <code>...EXTREF&lt;n&gt;...</code> / <code>..._REINIT</code></td></tr>
+            <tr><td class="mono text-xs">client_reference_number</td><td class="text-xs">External ref sent to bank (the bank-side dedup key)</td></tr>
+            <tr><td class="mono text-xs">status</td><td class="text-xs"><span class="badge badge-green">SUCCESS</span> / <span class="badge badge-red">FAIL</span> / <span class="badge badge-amber">UNKNOWN</span></td></tr>
+            <tr><td class="mono text-xs">request / response</td><td class="text-xs">Full JSON payloads — <strong>read these first</strong> when debugging</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">loan_disbursement_mode_details</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">How money is paid: <code>disbursement_mode</code> (OTHBACCT/ACCTWB/OTHACWB/CASH), <code>beneficiary_account_number</code>, <code>beneficiary_ifsc</code>, <code>utr_number</code>, <code>payment_status</code>.</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">bank_service_call_retry</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">Async retry queue. UNKNOWN bank responses land here; the <code>accountingBankServiceRetryJob</code> picks them up.</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">loan_disbursement_transaction</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">History row per attempted disbursement; tracks gross breakdown, upfront interest, fees. Informational.</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">account</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">Every Trustt account. <code>account_number</code> is the 10-digit LAN; <code>parent_account_id</code> links children to parents.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-8 mb-3"><a href="#tables-los" class="anchor">#</a><span id="tables-los">LOS tables</span></h3>
+
+      <div class="space-y-4">
+        <div class="card">
+          <div class="flex items-start justify-between mb-2">
+            <h4 class="font-bold text-sm mono">disburse_loan_process</h4>
+            <span class="badge badge-brand">primary truth (LOS-side)</span>
+          </div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400 mb-2">LOS's view of the disbursement lifecycle. One row per loan-app / group disbursement attempt.</p>
+          <table class="data-table"><tbody>
+            <tr><td class="mono text-xs">entity_type</td><td class="text-xs">INDIVIDUAL / GROUP</td></tr>
+            <tr><td class="mono text-xs">entity_id</td><td class="text-xs"><code>loan_app_id</code> (individual) or <code>group_id</code> (SHG/JLG)</td></tr>
+            <tr><td class="mono text-xs">status</td><td class="text-xs">NOT_STARTED(0) / IN_PROGRESS(1) / COMPLETED(2) / REINITIATE(3) / FAILED(5) / NEW_TASK_INITIATED(9) / CHILD_SUCCESS(11) / LAR_TASK_INITIATED(12) / LAR_TASK_CREATION_FAILED(13)</td></tr>
+            <tr><td class="mono text-xs">flow</td><td class="text-xs">DEFAULT / MANUAL_DISBURSEMENT / PAYMENT_REINITIATION</td></tr>
+            <tr><td class="mono text-xs">retry_count</td><td class="text-xs">Increments on each failure; max retries trigger manual disbursement / LAR task creation</td></tr>
+            <tr><td class="mono text-xs">reinitiate_value</td><td class="text-xs">PARENT_SUCCESS / REINITIATE_BANK / partial-state replay marker</td></tr>
+            <tr><td class="mono text-xs">failure_reason</td><td class="text-xs">Latest error message / bank error</td></tr>
+            <tr><td class="mono text-xs">loan_account_number</td><td class="text-xs">LAN — populated after first accounting call returns</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">loan_app</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">Individual loan application. <code>status</code> column tracks: DISBURSEMENT_PENDING → MANUAL_DISBURSEMENT_PENDING → MANUAL_DISBURSEMENT_CHECKER_PENDING → PAYMENT_REINITIATION_PENDING → DISBURSEMENT_COMPLETED.</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">group_details</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">SHG/JLG group. <code>group_status</code> mirrors loan_app.status but at group level. Children stored in <code>loan_app</code> with linkage.</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">loan_app_task_details / group_task_details</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">Operator-task rows: <code>task_type</code> (MANUAL_DISBURSEMENT_MAKER, MANUAL_DISBURSEMENT_CHECKER, POST_DISBURSEMENT_DOCUMENT_UPLOAD, NTB_PAYMENT_REINITIATION, NTB_PAYMENT_REINITIATION_CHECKER), <code>task_status</code> (PENDING / IN_PROGRESS / COMPLETED).</p>
+          </div>
+          <div class="card">
+            <h4 class="font-bold text-sm mono mb-2">loan_document</h4>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400">LAR document upload lives here — <code>document_category=GROUP_DISBURSEMENT</code>, <code>document_description=LAR Document</code>, DMS code + file name.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-8 mb-3"><a href="#tables-redis" class="anchor">#</a><span id="tables-redis">Redis lock keys</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Key pattern</th><th>Purpose</th><th>DB</th></tr></thead>
+        <tbody>
+          <tr><td class="mono text-xs">dl&lt;productId&gt;_&lt;externalRefNumber&gt;</td><td class="text-xs">Kafka consumer's in-progress lock — prevents duplicate processing of the same disburse message</td><td class="mono text-xs">ACCOUNTING (5)</td></tr>
+          <tr><td class="mono text-xs">child_disbursement_inflight_&lt;lan&gt;|&lt;txnType&gt;</td><td class="text-xs">Cross-pod SETNX gate — prevents two pods firing the same child bank leg in parallel; 10-min TTL</td><td class="mono text-xs">ACCOUNTING (5)</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-warn">
+        <strong>Known gap:</strong> the <code>dl*</code> key has no TTL. If accounting JVM dies between setting the key and processing, the key stays stale until ops clears it. Symptom: replays show <code>LOCK_CACHE_IN_PROGRESS</code> skip; loan never disburses. Fix: <code>redis-cli -n 5 DEL dl&lt;...&gt;</code>.
+      </div>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 03. STATUS CATALOG -->
+    <!-- ============================================================ -->
+    <section id="statuses" class="mb-12" x-data="statusFilter()">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">03</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#statuses" class="anchor">#</a>Status catalog</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Every value any disbursement-related status column can take — across LOS and LMS. What it means, what the next move is, terminal or not.</p>
+
+      <div class="flex flex-wrap gap-3 items-center mb-4">
+        <div class="relative flex-1 min-w-[220px]">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+          <input type="text" x-model="q" placeholder="Filter status..."
+                 class="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span class="chip" :class="cat==='all' && 'active'" @click="cat='all'">All</span>
+          <span class="chip" :class="cat==='lms_loan_status' && 'active'" @click="cat='lms_loan_status'">LMS loan_status</span>
+          <span class="chip" :class="cat==='lms_disbursement_status' && 'active'" @click="cat='lms_disbursement_status'">disbursement_status</span>
+          <span class="chip" :class="cat==='lms_event_status' && 'active'" @click="cat='lms_event_status'">event_status</span>
+          <span class="chip" :class="cat==='crr' && 'active'" @click="cat='crr'">CRR status</span>
+          <span class="chip" :class="cat==='los' && 'active'" @click="cat='los'">LOS status</span>
+        </div>
+      </div>
+
+      <div class="card !p-0 overflow-x-auto">
+        <table class="data-table">
+          <thead><tr><th>Status</th><th>Column</th><th>Meaning</th><th>Next move</th><th>Terminal?</th></tr></thead>
+          <tbody>
+            <!-- LMS loan_status -->
+            <tr x-show="show('lms_loan_status', 'APPROVED ACTIVE LOCK DISB_CNCL CLOSED WRITOFF FORECLOSURE_FREEZE')"><td><span class="badge badge-gray">APPROVED</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">LOS approved; bank-leg not yet attempted</td><td class="text-xs">System fires disburseLoan; if stuck &gt;1h check Kafka / Redis lock</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_loan_status', 'ACTIVE')"><td><span class="badge badge-green">ACTIVE</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">Money committed; loan is live</td><td class="text-xs">Servicing now owns the loan</td><td class="text-xs">—</td></tr>
+            <tr x-show="show('lms_loan_status', 'LOCK')"><td><span class="badge badge-red">LOCK</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">CRR save failed; loan locked to prevent damage</td><td class="text-xs">Ops manual reset after root cause</td><td class="text-xs">No (manual)</td></tr>
+            <tr x-show="show('lms_loan_status', 'DISB_CNCL')"><td><span class="badge badge-amber">DISB_CNCL</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">Disbursement cancelled before money went out</td><td class="text-xs">Can be re-disbursed via reverse flow</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_loan_status', 'CLOSED')"><td><span class="badge badge-blue">CLOSED</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">Loan fully closed (foreclosure / EMI complete)</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+            <tr x-show="show('lms_loan_status', 'WRITOFF')"><td><span class="badge badge-amber">WRITOFF</span></td><td class="text-xs">LMS loan_account.loan_status</td><td class="text-xs">Written off</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+
+            <!-- LMS disbursement_status -->
+            <tr x-show="show('lms_disbursement_status', 'DTFC_SUCCESS')"><td><span class="badge badge-gray">DTFC_SUCCESS</span></td><td class="text-xs">disbursement_status</td><td class="text-xs">Loan-creation accounting done; bank call not yet fired (or NDF-rolled-back)</td><td class="text-xs">Bank call fires automatically</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'NEFT_STAGE_1_PENDING')"><td><span class="badge badge-amber">NEFT_STAGE_1_PENDING</span></td><td class="text-xs">disbursement_status</td><td class="text-xs">NEF sent to bank; awaiting response/callback</td><td class="text-xs">Wait or run inquiry; NDF auto-rolls back to DTFC_SUCCESS</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'NEFT_STAGE_1_SUCCESS')"><td><span class="badge badge-blue">NEFT_STAGE_1_SUCCESS</span></td><td class="text-xs">disbursement_status</td><td class="text-xs">Bank confirmed NEF; NEI fires next</td><td class="text-xs">Wait; re-fire disburseLoan if &gt;30 min</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'NEFT_STAGE_2_PENDING')"><td><span class="badge badge-amber">NEFT_STAGE_2_PENDING</span></td><td class="text-xs">disbursement_status</td><td class="text-xs">NEI sent; awaiting callback</td><td class="text-xs">Wait; inquiry if &gt;1h; escalate bank ops if &gt;6h</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'COMPLETED')"><td><span class="badge badge-green">COMPLETED</span></td><td class="text-xs">disbursement_status</td><td class="text-xs">Bank-leg success; money delivered</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'PARENT_SUCCESS')"><td><span class="badge badge-purple">PARENT_SUCCESS</span></td><td class="text-xs">disbursement_status (group)</td><td class="text-xs">SHG/JLG parent bank-leg done; children in flight</td><td class="text-xs">System rolls forward as children complete</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'CHILD_SUCCESS')"><td><span class="badge badge-purple">CHILD_SUCCESS</span></td><td class="text-xs">disbursement_status (group)</td><td class="text-xs">All CLMTs done; CLB still pending</td><td class="text-xs">CLB batch picks up</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_disbursement_status', 'reinit')"><td><span class="badge badge-purple">reinit_*</span></td><td class="text-xs">reinit_disbursement_status</td><td class="text-xs">Parallel state machine for payment reinitiation; parent disbursement_status stays COMPLETED</td><td class="text-xs">Same per-stage actions as primary state machine</td><td class="text-xs">No</td></tr>
+
+            <!-- LMS event_status -->
+            <tr x-show="show('lms_event_status', 'P pending')"><td><span class="badge badge-amber">P</span></td><td class="text-xs">loan_account_events_queue.event_status</td><td class="text-xs">Event pending</td><td class="text-xs">Wait for orchestration / batch</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('lms_event_status', 'C completed')"><td><span class="badge badge-green">C</span></td><td class="text-xs">loan_account_events_queue.event_status</td><td class="text-xs">Event completed</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+
+            <!-- CRR -->
+            <tr x-show="show('crr', 'SUCCESS')"><td><span class="badge badge-green">SUCCESS</span></td><td class="text-xs">CRR.status</td><td class="text-xs">Bank accepted</td><td class="text-xs">State progresses</td><td class="text-xs">—</td></tr>
+            <tr x-show="show('crr', 'FAIL')"><td><span class="badge badge-red">FAIL</span></td><td class="text-xs">CRR.status</td><td class="text-xs">Bank explicitly refused (definitive)</td><td class="text-xs">External-ref counter <strong>bumps</strong>; NDF triggers DTFC_SUCCESS rollback</td><td class="text-xs">—</td></tr>
+            <tr x-show="show('crr', 'UNKNOWN')"><td><span class="badge badge-amber">UNKNOWN</span></td><td class="text-xs">CRR.status</td><td class="text-xs">Result not knowable (timeout, malformed response)</td><td class="text-xs">External-ref counter <strong>reuses</strong>; inquiry job picks up</td><td class="text-xs">—</td></tr>
+
+            <!-- LOS -->
+            <tr x-show="show('los', 'DisburseLoanProcessStatus NOT_STARTED')"><td><span class="badge badge-gray">NOT_STARTED (0)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LOS hasn't fired disburseLoan yet</td><td class="text-xs">Auto-fires on flow trigger</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'IN_PROGRESS')"><td><span class="badge badge-amber">IN_PROGRESS (1)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LOS has pushed to Kafka; awaiting LMS sync</td><td class="text-xs">Wait for los_lms_disbursement_sync</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'COMPLETED')"><td><span class="badge badge-green">COMPLETED (2)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LMS reported SUCCESS</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+            <tr x-show="show('los', 'REINITIATE')"><td><span class="badge badge-purple">REINITIATE (3)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">Partial-state signal received; LOS will replay with reinit flag</td><td class="text-xs">Auto-handled — wait</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'FAILED')"><td><span class="badge badge-red">FAILED (5)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LMS reported failure</td><td class="text-xs">Retry within budget; otherwise manual task</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'NEW_TASK_INITIATED Manual Disbursement')"><td><span class="badge badge-amber">NEW_TASK_INITIATED (9)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">Manual Disbursement task created (retries exhausted)</td><td class="text-xs">Operator completes task</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'CHILD_SUCCESS group')"><td><span class="badge badge-purple">CHILD_SUCCESS (11)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">Group parent done; child loans being processed</td><td class="text-xs">Wait for all children</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'LAR_TASK_INITIATED')"><td><span class="badge badge-amber">LAR_TASK_INITIATED (12)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LAR task created for SHG/JLG (retries exhausted on children)</td><td class="text-xs">Field officer + operator deliver cash via LAR doc upload</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'LAR_TASK_CREATION_FAILED')"><td><span class="badge badge-red">LAR_TASK_CREATION_FAILED (13)</span></td><td class="text-xs">disburse_loan_process.status</td><td class="text-xs">LAR task could not be created</td><td class="text-xs">Investigate LOS logs; retry creation</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'loan_app DISBURSEMENT_PENDING')"><td><span class="badge badge-gray">DISBURSEMENT_PENDING</span></td><td class="text-xs">loan_app.status / group_status</td><td class="text-xs">Awaiting first disbursement attempt</td><td class="text-xs">Auto</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'MANUAL_DISBURSEMENT_PENDING')"><td><span class="badge badge-amber">MANUAL_DISBURSEMENT_PENDING</span></td><td class="text-xs">loan_app.status / group_status</td><td class="text-xs">Waiting on operator (Maker)</td><td class="text-xs">Maker submits</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'MANUAL_DISBURSEMENT_CHECKER_PENDING')"><td><span class="badge badge-amber">MANUAL_DISBURSEMENT_CHECKER_PENDING</span></td><td class="text-xs">loan_app.status / group_status</td><td class="text-xs">Waiting on Checker approval</td><td class="text-xs">Checker approves → triggers disburseLoan</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'PAYMENT_REINITIATION_PENDING')"><td><span class="badge badge-amber">PAYMENT_REINITIATION_PENDING</span></td><td class="text-xs">loan_app.status / group_status</td><td class="text-xs">Reinit task awaiting maker action</td><td class="text-xs">Maker submits, Checker approves</td><td class="text-xs">No</td></tr>
+            <tr x-show="show('los', 'DISBURSEMENT_COMPLETED')"><td><span class="badge badge-green">DISBURSEMENT_COMPLETED</span></td><td class="text-xs">loan_app.status / group_status</td><td class="text-xs">Disbursement closed on LOS side</td><td class="text-xs">None</td><td class="text-xs">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <strong>The forward-only rule:</strong> with one well-defined exception (NDF rollback), <code>disbursement_status</code> only moves forward: DTFC_SUCCESS → NEFT_STAGE_1_PENDING → NEFT_STAGE_1_SUCCESS → NEFT_STAGE_2_PENDING → COMPLETED. Backward writes are rejected by the CAS layer. If you ever observe a backward move outside of NDF, investigate.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 04. SINGLE LOAN FLOW -->
+    <!-- ============================================================ -->
+    <section id="single-loan" class="mb-12" x-data="{ tab: 'neft2' }">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">04</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#single-loan" class="anchor">#</a>Single loan flow</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Individual (INDL) loan disbursement across the four rails.</p>
+
+      <div class="tabs-bar">
+        <button class="tab-btn" :class="tab==='neft2' && 'active'" @click="tab='neft2'"><i data-lucide="git-branch" class="w-3.5 h-3.5"></i> NEFT v2 (default)</button>
+        <button class="tab-btn" :class="tab==='mft' && 'active'" @click="tab='mft'"><i data-lucide="zap" class="w-3.5 h-3.5"></i> MFT</button>
+        <button class="tab-btn" :class="tab==='neft1' && 'active'" @click="tab='neft1'"><i data-lucide="archive" class="w-3.5 h-3.5"></i> NEFT v1</button>
+        <button class="tab-btn" :class="tab==='cash' && 'active'" @click="tab='cash'"><i data-lucide="banknote" class="w-3.5 h-3.5"></i> CASH</button>
+      </div>
+
+      <div class="tab-panel" :class="tab==='neft2' && 'active'">
+        <h3 class="font-bold text-base mb-2">NEFT v2 — two-stage bank API</h3>
+        <p class="text-sm mb-4">Two stages: <strong>NEF</strong> (Initiate) books the payment into the bank's outbound batch; <strong>NEI</strong> (Submit) submits the batch for settlement. Async callback per stage.</p>
+        <div class="card !p-4 mb-3">
+          <div class="mermaid">
+flowchart TD
+  A[ACTIVE<br/>DTFC_SUCCESS] -->|NEF call| B(NEFT_STAGE_1_PENDING)
+  B -.->|bank callback codstatus=P| C[NEFT_STAGE_1_SUCCESS]
+  B -.->|NDF in response| A
+  C -->|NEI call| D(NEFT_STAGE_2_PENDING)
+  D -.->|bank callback P or N| E([COMPLETED<br/>UTR persisted])
+  E --> F[Kafka: los_lms_disbursement_sync]
+
+  classDef pending fill:#fef3c7,stroke:#f59e0b,color:#854d0e;
+  classDef success fill:#dbeafe,stroke:#3b82f6,color:#1e40af;
+  classDef terminal fill:#dcfce7,stroke:#16a34a,color:#166534;
+  classDef start fill:#e4e4e7,stroke:#71717a,color:#27272a;
+  class A start
+  class B,D pending
+  class C success
+  class E,F terminal
+          </div>
+        </div>
+        <h4 class="font-bold text-xs uppercase tracking-wider text-zinc-500 mt-4 mb-2">What an operator sees at each step</h4>
+        <table class="data-table">
+          <thead><tr><th>Time</th><th>loan_status</th><th>disbursement_status</th><th>CRR row</th><th>UTR?</th></tr></thead>
+          <tbody>
+            <tr><td>T+0s</td><td>APPROVED</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>T+1s</td><td>ACTIVE</td><td>DTFC_SUCCESS</td><td>—</td><td>No</td></tr>
+            <tr><td>T+3s</td><td>ACTIVE</td><td>NEFT_STAGE_1_PENDING</td><td>NEF row pending</td><td>No</td></tr>
+            <tr><td>T+30s</td><td>ACTIVE</td><td>NEFT_STAGE_1_SUCCESS</td><td>NEF row SUCCESS</td><td>No</td></tr>
+            <tr><td>T+31s</td><td>ACTIVE</td><td>NEFT_STAGE_2_PENDING</td><td>+ NEI pending</td><td>No</td></tr>
+            <tr><td>T+90s</td><td>ACTIVE</td><td>COMPLETED</td><td>+ NEI SUCCESS</td><td><strong>Yes</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout-tip">
+          <strong>Happy-path latency</strong> 60–180 seconds for INDL. If LAN sits at <code>NEFT_STAGE_1_PENDING</code> for &gt;15 min the bank is slow, the callback is lost, or the bank returned NDF.
+        </div>
+      </div>
+
+      <div class="tab-panel" :class="tab==='mft' && 'active'">
+        <h3 class="font-bold text-base mb-2">MFT — single-call rail</h3>
+        <p class="text-sm mb-4">One bank API call, one callback. In-bank / trusted-partner payments — settles in seconds.</p>
+        <div class="card !p-4 mb-3">
+          <div class="mermaid">
+flowchart LR
+  A[ACTIVE<br/>DTFC_SUCCESS] -->|MFT call| B(CRR: DISBURSEMENT_MFT)
+  B -.->|SUCCESS| C([COMPLETED<br/>UTR])
+  B -.->|UNKNOWN| D[MFT_TRANSACTION_INQUIRY]
+  D -.->|bank confirms SUCCESS| C
+  D -.->|bank confirms FAIL| A
+
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  classDef pending fill:#fef3c7,stroke:#f59e0b;
+  class A start
+  class C terminal
+  class B,D pending
+          </div>
+        </div>
+        <p class="text-sm">If the MFT response is <code>UNKNOWN</code> (timeout), the system fires <code>MFT_TRANSACTION_INQUIRY</code> — the external-ref counter handles this specially so a transport-FAIL doesn't issue a second payment with a fresh ref while the bank may have already processed the first.</p>
+      </div>
+
+      <div class="tab-panel" :class="tab==='neft1' && 'active'">
+        <h3 class="font-bold text-base mb-2">NEFT v1 — deprecated</h3>
+        <p class="text-sm mb-4">Single-step NEFT, predecessor of NEFT v2. Disabled in production via <code>USE_NEFT_V1=false</code>. Flow identical to MFT: <code>DTFC_SUCCESS → NEFT call → COMPLETED</code>. CRR row carries <code>DISBURSEMENT_NEFT</code>.</p>
+      </div>
+
+      <div class="tab-panel" :class="tab==='cash' && 'active'">
+        <h3 class="font-bold text-base mb-2">CASH — no bank API</h3>
+        <p class="text-sm mb-4">Cash delivered by field officer; no bank API call, no CRR row, no UTR. For SHG/JLG children, this path is reached via the <strong>LAR task</strong> (see §10).</p>
+        <div class="card !p-4">
+          <div class="mermaid">
+flowchart LR
+  A[ACTIVE<br/>DTFC_SUCCESS] --> B[postTransaction<br/>CASH entry]
+  B --> C([COMPLETED])
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A start
+  class C terminal
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 05. GROUP LOAN FLOW -->
+    <!-- ============================================================ -->
+    <section id="group-loan" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">05</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#group-loan" class="anchor">#</a>Group loan flow</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">SHG (Self-Help Group) / JLG (Joint Liability Group) — one parent loan, N members. Parent is the loan-of-record; members receive money.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#group-roles" class="anchor">#</a><span id="group-roles">Roles</span></h3>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2"><i data-lucide="users" class="w-4 h-4 text-purple-500"></i><h4 class="text-sm font-bold">Parent</h4></div>
+          <p class="text-xs">One <code>account</code> + one <code>loan_account</code> row. Holds the consolidated transfer; the bookkeeping anchor. <code>disbursement_status</code> moves DTFC_SUCCESS → PARENT_SUCCESS → CHILD_SUCCESS → COMPLETED.</p>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2"><i data-lucide="user" class="w-4 h-4 text-blue-500"></i><h4 class="text-sm font-bold">Child (member)</h4></div>
+          <p class="text-xs">One <code>account</code> + one <code>loan_account</code> per member with <code>parent_account_id</code> set. Receives bank-rail money (NEFT/MFT) <em>or</em> cash via LAR.</p>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2"><i data-lucide="list-checks" class="w-4 h-4 text-amber-500"></i><h4 class="text-sm font-bold">CLMT queue row</h4></div>
+          <p class="text-xs"><code>loan_account_events_queue</code> with <code>event_type=CLMT</code>. Per-child bank-leg state tracker — the source of truth per child. Inner <code>data.disbursement_status</code> follows the same ladder as a single loan.</p>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-2 mb-2"><i data-lucide="file-plus" class="w-4 h-4 text-green-500"></i><h4 class="text-sm font-bold">CLB queue row</h4></div>
+          <p class="text-xs"><code>event_type=CLB</code>. Creates the child <code>loan_account</code> row after CLMT done. Drained by <code>childLoanEventProcessingBatchJob</code> (every 2h).</p>
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#group-rollup" class="anchor">#</a><span id="group-rollup">Two-tier state machine</span></h3>
+      <p class="text-sm mb-3">The parent's <code>disbursement_status</code> rolls up from the children's CLMT progress:</p>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart TD
+  P0[Parent: DTFC_SUCCESS] -->|parent bank call| P1[Parent: NEFT_STAGE_*_PENDING]
+  P1 -->|parent callback success| P2[Parent: PARENT_SUCCESS]
+  P2 -.->|all CLMT event_status=C| P3[Parent: CHILD_SUCCESS]
+  P3 -->|CLB batch creates child loan_account rows| P4([Parent: COMPLETED])
+
+  subgraph children[Per-child CLMT state machine]
+    direction LR
+    C0[DTFC_SUCCESS] --> C1(NEFT_STAGE_1_PENDING) --> C2[NEFT_STAGE_1_SUCCESS] --> C3(NEFT_STAGE_2_PENDING) --> C4([COMPLETED])
+  end
+
+  P2 -.- children
+
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef pending fill:#fef3c7,stroke:#f59e0b;
+  classDef pinkSuccess fill:#f3e8ff,stroke:#a855f7,color:#581c87;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class P0,C0 start
+  class P1,C1,C3 pending
+  class P2,P3 pinkSuccess
+  class C2 pending
+  class P4,C4 terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#group-stuck" class="anchor">#</a><span id="group-stuck">Where it can get stuck</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Symptom</th><th>Most likely cause</th></tr></thead>
+        <tbody>
+          <tr><td>Parent at <code>PARENT_SUCCESS</code> for &gt;1h</td><td>One or more CLMT rows still <code>event_status=P</code> — drill into children</td></tr>
+          <tr><td>Parent at <code>CHILD_SUCCESS</code> for hours</td><td>CLB batch hasn't picked up. Check <code>childLoanEventProcessingBatchJob</code> (runs every 2h)</td></tr>
+          <tr><td>Some children missing entirely</td><td>CLMT INSERT failed pre-fix; re-fire <code>disburseLoan</code> — prep-block creates them</td></tr>
+          <tr><td>Child CLMT stuck at <code>NEFT_STAGE_2_PENDING</code></td><td>Callback never arrived, or async-callback overwritten — both closed on 3.3.1.0.1+</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-info">
+        <strong>The parent–child rollup is idempotent.</strong> Multiple concurrent callbacks each compute the same target parent state — last-writer doesn't matter because every writer agrees.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 06. NEFT v2 MECHANICS -->
+    <!-- ============================================================ -->
+    <section id="neft-v2" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">06</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#neft-v2" class="anchor">#</a>NEFT v2 mechanics</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Why NEFT v2 is two-stage, what each leg does, and where the inquiry leg fits.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#neft-why" class="anchor">#</a><span id="neft-why">Why two stages?</span></h3>
+      <p class="text-sm mb-3">The bank's NEFT v2 product is a <strong>batch protocol</strong>. Stage 1 (NEF) <em>books</em> the payment into the bank's outbound batch. Stage 2 (NEI) <em>submits</em> the batch for actual settlement. Between the two stages, the bank holds the booking but hasn't fired the wire yet — which is why a NEI call without an existing booking returns NDF ("batch details not found").</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#neft-legs" class="anchor">#</a><span id="neft-legs">Four legs in flight</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Leg</th><th>Direction</th><th>CRR transaction_type</th><th>When it fires</th></tr></thead>
+        <tbody>
+          <tr><td>NEF (Initiate)</td><td>System → Bank</td><td><code>DISBURSEMENT_NEFT_NEF</code></td><td>From DTFC_SUCCESS</td></tr>
+          <tr><td>NEI (Submit)</td><td>System → Bank</td><td><code>DISBURSEMENT_NEFT_NEI</code></td><td>From NEFT_STAGE_1_SUCCESS</td></tr>
+          <tr><td>Inquiry</td><td>System → Bank</td><td><code>NEFT_TRANSACTION_INQUIRY</code></td><td>When prior leg status is uncertain</td></tr>
+          <tr><td>Bank callback</td><td>Bank → System</td><td>(no CRR row — handled by callback processor)</td><td>Async, bank-driven</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#neft-double-debit" class="anchor">#</a><span id="neft-double-debit">Double-debit guard</span></h3>
+      <p class="text-sm mb-3">Before issuing NEI, the system asks: <em>has a SUCCESS NEI CRR already been written?</em> If yes, NEI is skipped. Combined with deterministic external-ref counters and bank-side dedup, this prevents the same money going out twice.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#neft-ndf" class="anchor">#</a><span id="neft-ndf">NDF rollback — the only backward transition</span></h3>
+      <p class="text-sm mb-3">When the bank's NEF returns NDF — usually because the bank didn't actually create a batch on its side — the loan would otherwise sit forever at <code>NEFT_STAGE_1_PENDING</code>. On 3.3.1.0.1+ the system detects NDF in the raw response and performs a deliberate <strong>backward CAS</strong>:</p>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart LR
+  A[NEFT_STAGE_1_PENDING<br/>+ NDF in CRR response] -->|backward CAS<br/>race-safe| B[DTFC_SUCCESS]
+  B -->|re-fire disburseLoan| C[fresh NEF<br/>new external_ref]
+  classDef fail fill:#fee2e2,stroke:#ef4444,color:#991b1b;
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef action fill:#dbeafe,stroke:#3b82f6;
+  class A fail
+  class B start
+  class C action
+        </div>
+      </div>
+      <p class="text-sm">This is the only race-safe backward transition in the state machine. Applied symmetrically to CLMT rows for SHG/JLG.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 07. CALLBACKS -->
+    <!-- ============================================================ -->
+    <section id="callbacks" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">07</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#callbacks" class="anchor">#</a>Bank callbacks</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">How the system listens for bank-side outcomes and reconciles them with in-flight rows.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#cb-shape" class="anchor">#</a><span id="cb-shape">Callback shape</span></h3>
+      <p class="text-sm mb-3">Bank delivers async callbacks via HTTPS POST. Each callback contains a list of payments (one batch can carry many) keyed by <strong>PAYMENTREFNO</strong> = the external-ref the system sent. Each payment carries a <strong>codstatus</strong>:</p>
+      <table class="data-table">
+        <thead><tr><th>codstatus</th><th>Meaning</th><th>System action</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-green">P</span></td><td>Successful — settled</td><td>Transition target state forward (STAGE_1_SUCCESS or COMPLETED)</td></tr>
+          <tr><td><span class="badge badge-blue">N</span></td><td>In-progress at bank (NEI accepted, settlement underway)</td><td>For NEI: transition to COMPLETED (NEI accepted is sufficient evidence)</td></tr>
+          <tr><td><span class="badge badge-red">R</span></td><td>Rejected</td><td>Mark CLMT row failed; populate error fields</td></tr>
+          <tr><td><span class="badge badge-red">Z</span></td><td>Reversed by bank</td><td>Mark failed; clear UTR if previously set</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#cb-routing" class="anchor">#</a><span id="cb-routing">Routing — parent vs child</span></h3>
+      <p class="text-sm mb-3">The callback processor first asks: <em>is the PAYMENTREFNO a parent CRR ref?</em></p>
+      <ul class="text-sm list-disc list-inside space-y-1 mb-3">
+        <li><strong>Yes</strong> → parent path: directly transition <code>loan_account.disbursement_status</code>.</li>
+        <li><strong>No</strong> → look up CRR by client_reference_number. If <code>transaction_type</code> contains <code>_EXTREF</code> → child path: locate the CLMT row, transition the per-child <code>disbursement_status</code> in its <code>data</code> JSON.</li>
+      </ul>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#cb-orch-lag" class="anchor">#</a><span id="cb-orch-lag">Orchestration-commit-lag retry</span></h3>
+      <p class="text-sm mb-3">Bank callbacks arrive on Tomcat worker threads independently of accounting orchestration commits. The callback can race ahead of the CLMT row INSERT — under READ COMMITTED, the callback's <code>SELECT</code> would return null. Defence: child callback lookups go through a 5-attempt retry with linear backoff (100/200/300/400ms; ~1s total). The structural fix on 3.3.1.0.1 (CLMT prep-block split that commits CLMT rows in their own <em>REQUIRES_NEW</em> transaction before any bank call fires) closed the root cause; the retry remains as defence-in-depth.</p>
+
+      <div class="callout callout-warn">
+        <strong>Late-failure semantics:</strong> a FAIL callback that arrives after the row is already at SUCCESS is <strong>dropped</strong> with a log line. Bank's confirmed success cannot be retroactively cancelled by a duplicate-FAIL retry. Operationally rare — but if you see "stuck contradictory state" with conflicting bank callbacks, this is why.
+      </div>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 08. LOS ↔ LMS CONTRACT -->
+    <!-- ============================================================ -->
+    <section id="los-lms" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">08</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#los-lms" class="anchor">#</a>LOS ↔ LMS contract</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">The two Kafka topics, one HTTP endpoint, and one Redis lock that connect LOS to accounting. When the two diverge, this is where to look.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#contract-topics" class="anchor">#</a><span id="contract-topics">Kafka topics</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Topic</th><th>Direction</th><th>Payload</th><th>Producer</th><th>Consumer</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono text-xs">disburse_loan_api_&lt;tenant&gt;</td>
+            <td class="text-xs">LOS → LMS</td>
+            <td class="text-xs">Pipe-delimited: <code>apiName | requestJSON | cacheKey</code><br>example: <code>disburseLoan | {...} | disburseLoan44_123456</code></td>
+            <td class="text-xs"><code>LosMessageKafkaProducer</code> via <code>DisburseLoanAPIUtil</code></td>
+            <td class="text-xs"><code>LmsMessageBrokerConsumer</code> on LMS</td>
+          </tr>
+          <tr>
+            <td class="mono text-xs">los_lms_disbursement_sync</td>
+            <td class="text-xs">LMS → LOS</td>
+            <td class="text-xs">JSON: <code>{external_ref_number, status, error_code, error_message, tenant_code, timestamp}</code></td>
+            <td class="text-xs"><code>LmsMessageBrokerConsumer.sendResultMessageToKafka</code></td>
+            <td class="text-xs"><code>DisbursementSyncConsumer</code> on LOS</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-warn">
+        <strong>Known drift:</strong> on this branch the sync payload does NOT include <code>entity_type</code> or <code>stan</code>. LOS's <code>DisbursementSyncService</code> still skips when <code>entity_type</code> is missing — operationally this means some sync messages get silently dropped on the LOS side. Open gap in <code>gaps-and-risks.md</code>.
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#contract-cachekey" class="anchor">#</a><span id="contract-cachekey">The cache key contract</span></h3>
+      <p class="text-sm mb-3">The third pipe-delimited field is the Redis cache key that <strong>both sides agree on</strong> for idempotency:</p>
+      <ul class="text-sm list-disc list-inside space-y-1">
+        <li>LOS builds it: <code>"disburseLoan" + product_id + "_" + external_ref_number</code>.</li>
+        <li>LOS sets it in Redis ACCOUNTING DB (5) when it pushes to Kafka (value: <code>"in_progress"</code>).</li>
+        <li>LMS sets a sibling key <code>dl + cacheKey</code> as its in-progress lock.</li>
+        <li>LMS cleans both up on completion in a <code>finally</code> block.</li>
+      </ul>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#contract-fsc" class="anchor">#</a><span id="contract-fsc">function_sub_code matrix</span></h3>
+      <p class="text-sm mb-3">The <code>function_sub_code</code> field in the disburseLoan request tells LMS which scenario it's processing:</p>
+      <table class="data-table">
+        <thead><tr><th>function_sub_code</th><th>Set by</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>DEFAULT</code></td><td>LOS — happy-path</td><td>First-time disbursement</td></tr>
+          <tr><td><code>REINITIATE_BANK</code></td><td>LOS — Payment Reinitiation task approval</td><td>Re-fire bank rail (parent stays COMPLETED; reinit columns track)</td></tr>
+          <tr><td><code>PARENT_SUCCESS</code></td><td>LOS — group child retry trigger</td><td>Parent done; retry pending children</td></tr>
+          <tr><td><code>ENQUIRY</code></td><td>LOS — pre-disbursement check</td><td>Query LMS for current state without firing bank</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#contract-handshake" class="anchor">#</a><span id="contract-handshake">End-to-end handshake</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+sequenceDiagram
+  participant LOS
+  participant Kafka
+  participant LMS
+  participant Bank
+  LOS->>LOS: disburse_loan_process IN_PROGRESS
+  LOS->>Kafka: disburse_loan_api (apiName|JSON|cacheKey)
+  Kafka->>LMS: consume
+  LMS->>LMS: Redis dl* lock set
+  LMS->>LMS: loan_account ACTIVE / DTFC_SUCCESS
+  LMS->>Bank: NEFT NEF / MFT
+  Bank-->>LMS: async callback
+  LMS->>LMS: disbursement_status COMPLETED
+  LMS->>Kafka: los_lms_disbursement_sync
+  Kafka->>LOS: consume
+  LOS->>LOS: disburse_loan_process COMPLETED
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#contract-divergence" class="anchor">#</a><span id="contract-divergence">When LOS and LMS diverge</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Symptom</th><th>What it means</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>LMS = COMPLETED · LOS = IN_PROGRESS</td><td>Sync message lost or LOS consumer dropped it</td><td>Re-publish manually to <code>los_lms_disbursement_sync</code></td></tr>
+          <tr><td>LMS = no row · LOS = IN_PROGRESS</td><td>Kafka message lost / consumer skipped (Redis dl* lock?)</td><td>Clear stale dl* key; re-publish to <code>disburse_loan_api</code></td></tr>
+          <tr><td>LMS = COMPLETED · LOS = FAILED</td><td>LMS reported FAIL initially; later succeeded via retry but sync drifted</td><td>Update LOS-side manually after verifying LMS state</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 09. MANUAL DISBURSEMENT TASK -->
+    <!-- ============================================================ -->
+    <section id="manual-disbursement" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">09</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#manual-disbursement" class="anchor">#</a>Manual Disbursement task</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">When automated retries fail repeatedly, LOS creates a maker–checker task so an operator can manually correct beneficiary details (or override) and fire disbursement again.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#manual-trigger" class="anchor">#</a><span id="manual-trigger">When the task is created</span></h3>
+      <p class="text-sm mb-3">Trigger: LOS's <code>DisburseLoanProcessor</code> / <code>DisburseGroupLoanProcessor</code> hits <code>retry_count &gt; maxRetryCount</code>. The processor calls <code>CreateUpdateOpsTaskProcessor.createOpsTask()</code> with <code>function_code=CREATE</code> and the task is materialised in two flavors:</p>
+      <table class="data-table">
+        <thead><tr><th>Task type</th><th>Role</th><th>What the operator does</th></tr></thead>
+        <tbody>
+          <tr><td><code>MANUAL_DISBURSEMENT_MAKER</code></td><td>Maker</td><td>Enters/corrects beneficiary account details, IFSC, name. Submits.</td></tr>
+          <tr><td><code>MANUAL_DISBURSEMENT_CHECKER</code></td><td>Checker</td><td>Reviews maker's entry and approves or rejects.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#manual-states" class="anchor">#</a><span id="manual-states">State transitions</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart TD
+  A[disburse_loan_process<br/>status=IN_PROGRESS<br/>retry_count exhausted] -->|task creation| B[disburse_loan_process<br/>status=NEW_TASK_INITIATED 9<br/>flow=MANUAL_DISBURSEMENT]
+  A --> A2[loan_app.status<br/>DISBURSEMENT_PENDING<br/>→ MANUAL_DISBURSEMENT_PENDING]
+  B --> C[Maker submits task]
+  C --> D[loan_app.status<br/>MANUAL_DISBURSEMENT_CHECKER_PENDING]
+  D --> E{Checker decision}
+  E -->|approve| F[processApproveOperation<br/>disburse_loan_process IN_PROGRESS<br/>flow=MANUAL_DISBURSEMENT]
+  F --> G[Kafka push to<br/>disburse_loan_api]
+  G --> H[LMS disburseLoan]
+  E -->|reject| I[task back to maker]
+
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef task fill:#fef3c7,stroke:#f59e0b;
+  classDef approve fill:#dbeafe,stroke:#3b82f6;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A,A2 start
+  class B,C,D,I task
+  class E approve
+  class F,G,H terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#manual-data" class="anchor">#</a><span id="manual-data">Data trail</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Table</th><th>Column</th><th>Value during MD</th></tr></thead>
+        <tbody>
+          <tr><td><code>disburse_loan_process</code></td><td><code>status</code></td><td>NEW_TASK_INITIATED(9) → IN_PROGRESS(1) on checker approve</td></tr>
+          <tr><td><code>disburse_loan_process</code></td><td><code>flow</code></td><td><code>MANUAL_DISBURSEMENT</code></td></tr>
+          <tr><td><code>loan_app</code> / <code>group_details</code></td><td><code>status</code> / <code>group_status</code></td><td>MANUAL_DISBURSEMENT_PENDING → MANUAL_DISBURSEMENT_CHECKER_PENDING → DISBURSEMENT_COMPLETED</td></tr>
+          <tr><td><code>loan_app_task_details</code> / <code>group_task_details</code></td><td><code>task_type</code> / <code>task_status</code></td><td>MANUAL_DISBURSEMENT_MAKER + CHECKER rows; PENDING → COMPLETED</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#manual-on-completion" class="anchor">#</a><span id="manual-on-completion">What happens on checker approval</span></h3>
+      <p class="text-sm mb-3">Checker calls disburseLoan API with <code>function_code=APPROVE</code> on LOS side. <code>processApproveOperation()</code> updates the disburse_loan_process row and invokes <code>DisburseLoanAPIUtil.callDisburseLoanAPI()</code>, which:</p>
+      <ol class="text-sm list-decimal list-inside space-y-1">
+        <li>Serialises the request as <code>apiName | JSON | cacheKey</code>.</li>
+        <li>Pushes to <code>disburse_loan_api_&lt;tenant&gt;</code>.</li>
+        <li>Sets Redis dl* key as in-progress.</li>
+        <li>LMS consumer picks it up and runs the standard disburseLoan flow.</li>
+      </ol>
+
+      <div class="callout callout-info">
+        <strong>Operator's perspective:</strong> the Manual Disbursement task UI shows pre-populated borrower details and the previous failure reason. The operator can amend beneficiary fields (account number, IFSC) before submitting. After checker approval, money goes out via the same NEFT v2 / MFT rails — no special LMS code path.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 10. LAR TASK -->
+    <!-- ============================================================ -->
+    <section id="lar-task" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">10</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#lar-task" class="anchor">#</a>LAR task — cash to children</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">For SHG/JLG group loans where bank-rail delivery to children has exhausted retries, the LAR (Loan Account Receipt) task lets a Field Officer deliver cash to members and an operator records it.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#lar-trigger" class="anchor">#</a><span id="lar-trigger">When the task is created</span></h3>
+      <p class="text-sm mb-3">Trigger: parent group loan reaches <code>retry_count &gt; maxRetryCount + childLoanMaxRetryCount</code>. LOS's <code>CreateUpdateOpsTaskProcessor.processLARTask()</code> runs with <code>function_code=CREATE_LAR</code>. The task type is <code>POST_DISBURSEMENT_DOCUMENT_UPLOAD</code>.</p>
+      <p class="text-sm mb-3">Before creating the task, LOS calls <code>loanAccountStatusEnquiryAPIUtil.callLoanStatusEnquiryAPI()</code> with <code>function_sub_code=ENQUIRY</code> to ask LMS for the current state of each child. <strong>Children already COMPLETED are skipped</strong> — only pending children land in the LAR list.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#lar-state" class="anchor">#</a><span id="lar-state">State transitions</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart TD
+  A[Group disburse_loan_process<br/>retry_count exhausted] --> B[processLARTask<br/>function_code=CREATE_LAR]
+  B --> C[disburse_loan_process<br/>status=LAR_TASK_INITIATED 12]
+  C --> D[loan_document<br/>category=GROUP_DISBURSEMENT<br/>description=LAR Document]
+  D --> E[POST_DISBURSEMENT_DOCUMENT_UPLOAD<br/>task created]
+  E --> F[Field officer delivers cash<br/>operator uploads LAR doc]
+  F --> G[submitLARTask<br/>function_code=SUBMIT_LAR]
+  G --> H[updateChildLoansDisbursementModeToCash<br/>HTTP to LMS for each child]
+  H --> I[disburse_loan_process<br/>status=LAN_FETCH_IN_PROGRESS]
+  I --> J[Re-fire disburseLoan<br/>children now CASH mode]
+  J --> K([Children COMPLETED via CASH])
+
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef task fill:#fef3c7,stroke:#f59e0b;
+  classDef api fill:#dbeafe,stroke:#3b82f6;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A start
+  class B,C,D,E,F,G task
+  class H,I,J api
+  class K terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#lar-data" class="anchor">#</a><span id="lar-data">Data trail</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Table</th><th>What lands here</th></tr></thead>
+        <tbody>
+          <tr><td><code>disburse_loan_process</code></td><td><code>status=LAR_TASK_INITIATED(12)</code> → after submit: <code>LAN_FETCH_IN_PROGRESS</code></td></tr>
+          <tr><td><code>loan_document</code></td><td>LAR PDF — <code>document_category=GROUP_DISBURSEMENT</code>, <code>document_description=LAR Document</code>, DMS code, file number, file name</td></tr>
+          <tr><td><code>loan_app_task_details</code> / <code>group_task_details</code></td><td>Task row with <code>task_type=POST_DISBURSEMENT_DOCUMENT_UPLOAD</code></td></tr>
+          <tr><td>LMS: <code>loan_disbursement_mode_details</code></td><td><code>disbursement_mode=CASH</code> set per child via the update API</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#lar-submit" class="anchor">#</a><span id="lar-submit">What happens on LAR submit</span></h3>
+      <ol class="text-sm list-decimal list-inside space-y-1 mb-3">
+        <li>Operator uploads LAR document via task UI.</li>
+        <li>LOS calls <code>submitLARTask()</code> → task moves to COMPLETED.</li>
+        <li>For each pending child, LOS calls <code>accountingUtil.callUpdateLoanAccountPreDisbursementDetails()</code> (HTTP, not Kafka) to set <code>disbursement_mode=CASH</code> on the child.</li>
+        <li>disburse_loan_process status moves to <code>LAN_FETCH_IN_PROGRESS</code>.</li>
+        <li>Disbursement re-fires via the standard path — but now each child's mode is CASH, so LMS records a cash-disbursement posting per child (no bank API).</li>
+        <li>Group's disburse_loan_process transitions to <code>COMPLETED</code> when all children succeed.</li>
+      </ol>
+
+      <div class="callout callout-info">
+        <strong>LAR is not payment reinitiation.</strong> Reinitiation re-fires the bank rail at the parent level. LAR converts child rails to CASH and records cash delivery at the child level. They can co-exist on the same group loan.
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#lar-debug" class="anchor">#</a><span id="lar-debug">Common LAR-stuck scenarios</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>Group at <code>LAR_TASK_INITIATED</code> for days, no task in UI</td><td>Document generation failed; <code>LAR_TASK_CREATION_FAILED(13)</code></td><td>Check LOS logs for <code>GenerateLARDocumentProcessor</code> error; retry create</td></tr>
+          <tr><td>Task submitted, children still not COMPLETED</td><td>Mode-update call to LMS failed for one or more children</td><td>Check accounting log for <code>updateLoanAccountPreDisbursementDetails</code>; re-fire</td></tr>
+          <tr><td>Mode updated to CASH but disburseLoan not fired</td><td>Group's disburse_loan_process stuck at <code>LAN_FETCH_IN_PROGRESS</code></td><td>Inspect LOS retry budget; manually trigger DisburseGroupLoanProcessor</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 11. UPDATE DISBURSEMENT MODE -->
+    <!-- ============================================================ -->
+    <section id="mode-update" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">11</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#mode-update" class="anchor">#</a>Update disbursement mode details</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">When the customer changes their bank account between approval and payout, the <code>updateLoanDisbursementModeDetails</code> API amends payout details.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#mode-changes" class="anchor">#</a><span id="mode-changes">What it changes</span></h3>
+      <p class="text-sm mb-3">Rewrites the <code>loan_disbursement_mode_details</code> row:</p>
+      <ul class="text-sm list-disc list-inside space-y-1 mb-3">
+        <li><strong>disbursement_mode</strong> — e.g. OTHBACCT (NEFT-out) ↔ ACCTWB (CASA in-bank) ↔ CASH</li>
+        <li><strong>beneficiary_account_number</strong> / <strong>beneficiary_ifsc</strong> / <strong>beneficiary_name</strong></li>
+        <li>Per-child fields if a group loan</li>
+      </ul>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#mode-when" class="anchor">#</a><span id="mode-when">When it is allowed</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Loan state</th><th>Allowed?</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>APPROVED (not yet disbursed)</td><td><span class="badge badge-green">Yes</span></td><td>Bank call hasn't fired</td></tr>
+          <tr><td>ACTIVE · DTFC_SUCCESS</td><td><span class="badge badge-green">Yes</span></td><td>Loan exists but bank-leg not yet attempted</td></tr>
+          <tr><td>ACTIVE · NEFT_STAGE_*_PENDING / SUCCESS</td><td><span class="badge badge-red">No</span></td><td>Bank call in flight — risk of double-debit. Cancel + reinitiate instead.</td></tr>
+          <tr><td>ACTIVE · COMPLETED</td><td><span class="badge badge-red">No</span></td><td>Money already out. Use reverse flow or payment reinitiation.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-tip">
+        <strong>If the loan is mid-bank-leg:</strong> don't try to update the mode. Use cancellation (§14) to bring the loan back to DTFC_SUCCESS or DISB_CNCL, update mode, then re-fire.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 12. PAYMENT REINITIATION -->
+    <!-- ============================================================ -->
+    <section id="reinitiation" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">12</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#reinitiation" class="anchor">#</a>Payment reinitiation</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Sending money a <em>second</em> time — when the first disbursement landed in the wrong place, was returned, or has been clawed back. Parent loans only.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-vs-normal" class="anchor">#</a><span id="reinit-vs-normal">How it differs from a normal disbursement</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Aspect</th><th>Normal</th><th>Reinitiation</th></tr></thead>
+        <tbody>
+          <tr><td>Trigger</td><td><code>function_sub_code=DEFAULT</code></td><td><code>function_sub_code=REINITIATE_BANK</code> + <code>payment_reinitiation_update=true</code></td></tr>
+          <tr><td>Primary state column</td><td><code>disbursement_status</code></td><td><code>reinit_disbursement_status</code> <span class="badge badge-purple">3.3.1.0.1+</span></td></tr>
+          <tr><td>Parent loan_status</td><td>APPROVED → ACTIVE</td><td>stays ACTIVE</td></tr>
+          <tr><td>Parent disbursement_status</td><td>DTFC_SUCCESS → COMPLETED</td><td><strong>stays COMPLETED</strong></td></tr>
+          <tr><td>CRR transaction_type</td><td>e.g. <code>DISBURSEMENT_NEFT_NEF</code></td><td>same with <code>_REINIT</code> suffix</td></tr>
+          <tr><td>Children?</td><td>Yes (SHG/JLG)</td><td><strong>No</strong> — children use LAR cash task</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-why" class="anchor">#</a><span id="reinit-why">Why a separate state column?</span></h3>
+      <p class="text-sm mb-3">The parent's primary <code>disbursement_status</code> records the <em>original</em> disbursement outcome — flipping it would erase that history. The reinit columns track the re-fire independently; debug forensics keep both: "first attempt completed; second attempt at NEFT_STAGE_2_PENDING".</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-flow" class="anchor">#</a><span id="reinit-flow">Flow — NEFT v2 reinit</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart TD
+  A[Parent COMPLETED<br/>reinit_disbursement_status NULL] -->|REINITIATE_BANK| B[NEF reinit<br/>CRR: DISBURSEMENT_NEFT_NEF_REINIT]
+  B --> C[reinit_disbursement_status<br/>NEFT_STAGE_1_PENDING]
+  C -->|NEF callback| D[reinit_disbursement_status<br/>NEFT_STAGE_1_SUCCESS]
+  D --> E[NEI reinit<br/>CRR: DISBURSEMENT_NEFT_NEI_REINIT]
+  E --> F[reinit_disbursement_status<br/>NEFT_STAGE_2_PENDING]
+  F -->|NEI callback| G([reinit_disbursement_status<br/>COMPLETED])
+
+  classDef start fill:#dcfce7,stroke:#16a34a;
+  classDef pending fill:#fef3c7,stroke:#f59e0b;
+  classDef success fill:#dbeafe,stroke:#3b82f6;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A start
+  class C,F pending
+  class D success
+  class B,E success
+  class G terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-mft" class="anchor">#</a><span id="reinit-mft">Flow — MFT reinit (single-step)</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart LR
+  A[Parent COMPLETED] --> B[MFT reinit<br/>CRR: DISBURSEMENT_MFT_REINIT]
+  B --> C([reinit_disbursement_status<br/>COMPLETED])
+  classDef start fill:#dcfce7,stroke:#16a34a;
+  classDef action fill:#dbeafe,stroke:#3b82f6;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A start
+  class B action
+  class C terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-bulk" class="anchor">#</a><span id="reinit-bulk">Bulk reinitiation from file</span></h3>
+      <p class="text-sm mb-3">LOS supports bulk payment reinitiation via a batch file. The <code>file_staging_payment_reinitiation</code> table holds inbound rows; <code>PaymentReinitiationMakerReader</code> picks them up and creates maker–checker tasks:</p>
+      <ul class="text-sm list-disc list-inside space-y-1 mb-3">
+        <li>Maker task type: <code>NTB_PAYMENT_REINITIATION</code></li>
+        <li>Checker task type: <code>NTB_PAYMENT_REINITIATION_CHECKER</code></li>
+        <li>On checker approval: <code>disburse_loan_process.status=IN_PROGRESS</code>, <code>flow=PAYMENT_REINITIATION</code></li>
+        <li>Kafka push with <code>function_sub_code=REINITIATE_BANK</code></li>
+      </ul>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#reinit-children" class="anchor">#</a><span id="reinit-children">What happens to children?</span></h3>
+      <p class="text-sm mb-3">For SHG/JLG, child loans do <strong>not</strong> use bank-rail reinitiation. Cash is delivered via the <strong>LAR task</strong> (§10). Parent stays COMPLETED; only the parent-level reinit state moves.</p>
+
+      <div class="callout callout-info">
+        <strong>Reinit columns to watch:</strong> <code>loan_account.reinit_disbursement_status</code>, <code>reinit_external_error_code</code>, <code>reinit_external_error_message</code>. CRR rows filtered by <code>transaction_type LIKE '%_REINIT'</code>.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 13. MAKER-CHECKER -->
+    <!-- ============================================================ -->
+    <section id="maker-checker" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">13</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#maker-checker" class="anchor">#</a>Maker–checker</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Two-step approval for disbursements above a threshold or under tenant policy.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#mc-when" class="anchor">#</a><span id="mc-when">When it applies</span></h3>
+      <p class="text-sm mb-3">Each tenant configures whether disbursement requires maker–checker. When enabled, the first <code>disburseLoan</code> call (<code>function_code=DEFAULT, run_mode=REAL</code>) does <strong>not</strong> disburse — it submits an approval task instead. Response code <code>30220</code>.</p>
+
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart TD
+  M[Maker: disburseLoan<br/>function_code=DEFAULT] --> P[Pending application<br/>tag=disburseLoan_submitApplication]
+  P --> C{Checker action}
+  C -->|approve| A[disburseLoan<br/>function_code=APPROVE]
+  C -->|reject| R[Maker can RESUBMIT]
+  A --> D[Normal disbursement<br/>flow proceeds]
+  R --> M2[Maker: disburseLoan<br/>function_code=RESUBMIT]
+  M2 --> P2[New pending application]
+
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef pending fill:#fef3c7,stroke:#f59e0b;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class M,M2 start
+  class P,P2,C,R pending
+  class A,D terminal
+        </div>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#mc-stuck" class="anchor">#</a><span id="mc-stuck">When "maker-checker stuck"</span></h3>
+      <p class="text-sm">If a loan stays at <code>loan_status=APPROVED</code> and there is no Kafka activity, the loan may be pending in maker–checker. Check <code>mfi_approval.application</code> for a row tagged <code>disburseLoan_submitApplication</code> with status pending. Checker action releases the loan.</p>
+
+      <div class="callout callout-info">
+        <strong>Two distinct maker–checker layers:</strong> (1) LMS-side disburseLoan submitApplication for tenant-policy compliance; (2) LOS-side Manual Disbursement / Payment Reinitiation tasks (§9, §12). They use different tables and different approval queues.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 14. CANCELLATION -->
+    <!-- ============================================================ -->
+    <section id="cancellation" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">14</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#cancellation" class="anchor">#</a>Cancellation &amp; reversal</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Stopping a disbursement that hasn't gone out, or clawing back one that has.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#cancel-vs-reverse" class="anchor">#</a><span id="cancel-vs-reverse">Two distinct flows</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Flow</th><th>When</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Disbursement cancellation</strong></td><td>Bank-leg not yet completed</td><td><code>loan_status → DISB_CNCL</code>; loan returns to "not disbursed". Can be re-fired later.</td></tr>
+          <tr><td><strong>Reverse / refund</strong></td><td>Money already out, customer returns it / wrong account</td><td>Recorded as a separate reverse transaction; original disbursement entries reversed.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#cancel-flow" class="anchor">#</a><span id="cancel-flow">Cancellation flow</span></h3>
+      <div class="card !p-4 mb-3">
+        <div class="mermaid">
+flowchart LR
+  A[ACTIVE · DTFC_SUCCESS<br/>or NEFT_STAGE_1_PENDING<br/>no money committed] --> B[Cancel request<br/>CANCL event]
+  B --> C[loan_status=DISB_CNCL]
+  C -.->|update mode + re-fire| D[Re-disbursement]
+  classDef start fill:#e4e4e7,stroke:#71717a;
+  classDef action fill:#fef3c7,stroke:#f59e0b;
+  classDef fail fill:#fee2e2,stroke:#ef4444;
+  classDef terminal fill:#dcfce7,stroke:#16a34a;
+  class A start
+  class B action
+  class C fail
+  class D terminal
+        </div>
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>Cancellation is not safe</strong> once the bank has confirmed the payment. If <code>disbursement_status</code> is past <code>NEFT_STAGE_2_PENDING</code>, the bank may have moved money; cancellation here is a forensics ticket, not an operational fix. Use reverse/refund instead.
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#redisburse" class="anchor">#</a><span id="redisburse">Re-disbursement after cancellation</span></h3>
+      <p class="text-sm">A <code>DISB_CNCL</code> loan can be re-disbursed: operator updates disbursement mode if needed, then re-fires <code>disburseLoan</code>. The deterministic external-ref counter handles fresh ref allocation.</p>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 15. FAILURE MODES -->
+    <!-- ============================================================ -->
+    <section id="failure-modes" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">15</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#failure-modes" class="anchor">#</a>Bank failure modes</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">What can go wrong on the bank side, what the system records, and what happens next.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#fail-taxonomy" class="anchor">#</a><span id="fail-taxonomy">Failure taxonomy</span></h3>
+      <div class="card !p-0 overflow-x-auto">
+        <table class="data-table">
+          <thead><tr><th>Failure</th><th>What you see</th><th>CRR status</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td>Connection refused</td><td>HTTP error before any bank response</td><td><span class="badge badge-red">FAIL</span></td><td>Counter bumps next attempt — fresh external-ref</td></tr>
+            <tr><td>Read timeout</td><td>Request sent, no response in time</td><td><span class="badge badge-amber">UNKNOWN</span></td><td>Counter <strong>reuses</strong> — same ref; inquiry job picks up</td></tr>
+            <tr><td>HTTP 4xx / 5xx</td><td>Bank returned error status</td><td><span class="badge badge-red">FAIL</span></td><td>Counter bumps</td></tr>
+            <tr><td>Bank <code>replyCode ≠ 0</code></td><td>Bank explicitly rejected (e.g. invalid IFSC)</td><td><span class="badge badge-red">FAIL</span></td><td>Counter bumps; error code in CRR</td></tr>
+            <tr><td>NDF on inquiry</td><td>Bank says "batch not found"</td><td><span class="badge badge-red">FAIL</span></td><td>Backward CAS NEFT_STAGE_1_PENDING → DTFC_SUCCESS; retry fires fresh NEF</td></tr>
+            <tr><td>Malformed response (parser NPE)</td><td>Bank returned non-JSON / partial</td><td><span class="badge badge-red">FAIL</span> (CRR locally persisted)</td><td>NDF detection on raw response if signature matches; else IS_BANK_CALL_FAILED set</td></tr>
+            <tr><td>Callback <code>codstatus=R</code></td><td>Bank rejected after accept</td><td>(callback path)</td><td>CLMT marked failed; operator re-fires or LAR</td></tr>
+            <tr><td>Callback <code>codstatus=Z</code></td><td>Reversed by bank</td><td>—</td><td>Same as R; UTR cleared</td></tr>
+            <tr><td>Callback never arrives</td><td>Stuck at PENDING &gt;30 min</td><td>—</td><td>Inquiry job re-checks; manually fire <code>accountingBankServiceRetryJob</code></td></tr>
+            <tr><td>Crash mid-flow</td><td>JVM died after bank call before commit</td><td>(possibly written, possibly not)</td><td>Replay via Kafka or retry job — deterministic external-ref prevents double-debit</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#fail-replay" class="anchor">#</a><span id="fail-replay">Replay matrix — when can disburseLoan be safely re-fired?</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Current state</th><th>Re-fire safe?</th><th>What re-fire does</th></tr></thead>
+        <tbody>
+          <tr><td>DTFC_SUCCESS</td><td><span class="badge badge-green">Yes</span></td><td>Fresh NEF (or MFT); deterministic ref + bank dedup prevent doubles</td></tr>
+          <tr><td>NEFT_STAGE_1_PENDING + last CRR FAIL with NDF</td><td><span class="badge badge-green">Yes</span></td><td>Rollback to DTFC_SUCCESS first, then fresh NEF</td></tr>
+          <tr><td>NEFT_STAGE_1_PENDING + last CRR UNKNOWN</td><td><span class="badge badge-amber">Caution</span></td><td>Fires inquiry first; doesn't blindly resend</td></tr>
+          <tr><td>NEFT_STAGE_1_SUCCESS</td><td><span class="badge badge-green">Yes</span></td><td>Fires NEI (skipped if SUCCESS NEI CRR exists)</td></tr>
+          <tr><td>NEFT_STAGE_2_PENDING</td><td><span class="badge badge-amber">Caution</span></td><td>Fires inquiry; NEI gated by double-debit guard</td></tr>
+          <tr><td>COMPLETED</td><td><span class="badge badge-gray">No-op</span></td><td>Consumer skips with <code>ALREADY_ACTIVE</code></td></tr>
+          <tr><td>COMPLETED + REINITIATE_BANK flag</td><td><span class="badge badge-green">Yes (reinit path)</span></td><td>Reinit fires; reinit_disbursement_status column tracks</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 16. IDEMPOTENCY -->
+    <!-- ============================================================ -->
+    <section id="idempotency" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">16</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#idempotency" class="anchor">#</a>Idempotency &amp; replay safety</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Five layers prevent a duplicate disbursement message from sending money twice.</p>
+
+      <div class="grid md:grid-cols-2 gap-3 mb-4">
+        <div class="card !p-4">
+          <div class="flex items-center gap-2 mb-1"><span class="badge badge-brand">L1</span><h4 class="font-bold text-sm">Kafka consumer Redis lock</h4></div>
+          <p class="text-xs">The <code>dl&lt;productId&gt;_&lt;extRef&gt;</code> key blocks a duplicate Kafka message from entering the orchestration.</p>
+        </div>
+        <div class="card !p-4">
+          <div class="flex items-center gap-2 mb-1"><span class="badge badge-brand">L2</span><h4 class="font-bold text-sm">Single-thread queue processing</h4></div>
+          <p class="text-xs">For SHG/JLG, one CLMT row is processed by exactly one orchestration thread.</p>
+        </div>
+        <div class="card !p-4">
+          <div class="flex items-center gap-2 mb-1"><span class="badge badge-brand">L3</span><h4 class="font-bold text-sm">Cross-pod Redis SETNX</h4></div>
+          <p class="text-xs">For child bank calls, atomic <code>SET … PX … NX</code> with 10-min TTL prevents two pods firing the same leg in parallel.</p>
+        </div>
+        <div class="card !p-4">
+          <div class="flex items-center gap-2 mb-1"><span class="badge badge-brand">L4</span><h4 class="font-bold text-sm">Deterministic external-ref</h4></div>
+          <p class="text-xs">FAIL bumps the counter (fresh ref next call); SUCCESS or UNKNOWN reuses the same ref. Application-level idempotency contract.</p>
+        </div>
+        <div class="card !p-4 md:col-span-2">
+          <div class="flex items-center gap-2 mb-1"><span class="badge badge-brand">L5</span><h4 class="font-bold text-sm">Bank-side dedup on external-ref</h4></div>
+          <p class="text-xs">Bank refuses a second payment with the same ref. Outside our system; the final line of defence.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <strong>The counter rule — "FAIL bumps, SUCCESS/UNKNOWN reuses."</strong>
+        <br>If latest CRR is FAIL, next attempt uses a fresh ref (counter + 1). If SUCCESS or UNKNOWN, next attempt reuses the same ref.
+        <br>That's how a timeout-then-retry doesn't accidentally double-credit: the timed-out call may have actually settled at the bank, so reusing the ref lets the bank dedup the retry. Only after a definitive FAIL does the system know it's safe to ask the bank for a brand-new payment.
+      </div>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#idemp-mft-unknown" class="anchor">#</a><span id="idemp-mft-unknown">MFT UNKNOWN special-case</span></h3>
+      <p class="text-sm">If the latest MFT inquiry is UNKNOWN <em>and</em> its counter matches the latest MFT payment counter, the system forces "lastFailed = false" even if the latest payment CRR row is FAIL. Rationale: the FAIL might be transport-only; bumping would issue a NEW payment while the bank may already have processed the first one. NEFT v2 has a different inquiry path and is unaffected.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 17. DEBUGGING -->
+    <!-- ============================================================ -->
+    <section id="debugging" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">17</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#debugging" class="anchor">#</a>Debug stuck disbursement</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Symptom → state column read → action. Use this as a flat checklist; the interactive walker in §18 will guide you.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#debug-60s" class="anchor">#</a><span id="debug-60s">The 60-second triage</span></h3>
+      <ol class="text-sm list-decimal list-inside space-y-1.5 mb-3">
+        <li><strong>LMS:</strong> read <code>loan_account</code> — <code>loan_status</code> and <code>disbursement_status</code>. Note <code>updated_on</code> — how long stuck?</li>
+        <li><strong>LMS:</strong> latest CRR rows — what is the most recent <code>status</code> for <code>DISBURSEMENT_*</code>?</li>
+        <li><strong>LMS:</strong> for group loans, list CLMT rows — which children are pending, what is their inner <code>data.disbursement_status</code>?</li>
+        <li><strong>LMS:</strong> Redis — is the <code>dl*</code> key present? For hours?</li>
+        <li><strong>LMS:</strong> retry queue — <code>bank_service_call_retry</code> for active retries.</li>
+        <li><strong>LOS:</strong> <code>disburse_loan_process</code> — what status / flow / retry_count?</li>
+        <li><strong>LOS:</strong> any open tasks (<code>loan_app_task_details</code> / <code>group_task_details</code>)?</li>
+      </ol>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#debug-per-status" class="anchor">#</a><span id="debug-per-status">Per-status playbook</span></h3>
+      <table class="data-table">
+        <thead><tr><th>State</th><th>&lt;15 min</th><th>&gt;1h</th></tr></thead>
+        <tbody>
+          <tr><td>APPROVED (no loan_account row)</td><td>Check Kafka lag, Redis <code>dl*</code>, maker-checker</td><td>Clear stale Redis lock, replay Kafka, check LOS disburse_loan_process status</td></tr>
+          <tr><td>DTFC_SUCCESS</td><td>Wait — bank call firing</td><td>Re-fire <code>disburseLoan</code>; check <code>accountingBankServiceRetryJob</code></td></tr>
+          <tr><td>NEFT_STAGE_1_PENDING</td><td>Wait</td><td>Read latest NEF CRR. NDF → re-fire (auto-rollback). UNKNOWN → run inquiry. Lost callback → trigger retry job</td></tr>
+          <tr><td>NEFT_STAGE_1_SUCCESS</td><td>Wait — NEI firing</td><td>Re-fire; double-debit guard handles already-issued NEI</td></tr>
+          <tr><td>NEFT_STAGE_2_PENDING</td><td>Wait</td><td>Run inquiry; escalate to bank ops if &gt;6h</td></tr>
+          <tr><td>PARENT_SUCCESS (group)</td><td>Wait — children running</td><td>Drill into CLMT rows; per-child playbook</td></tr>
+          <tr><td>CHILD_SUCCESS (group)</td><td>Wait — CLB batch</td><td>Manually fire <code>childLoanEventProcessingBatchJob</code></td></tr>
+          <tr><td>LOCK</td><td>Investigate root CRR error</td><td>Ops manual reset after fix</td></tr>
+          <tr><td>LOS = NEW_TASK_INITIATED / LAR_TASK_INITIATED</td><td>Operator task pending</td><td>Check task UI, assignee, escalation</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#debug-skips" class="anchor">#</a><span id="debug-skips">The four Kafka-consumer skip reasons</span></h3>
+      <table class="data-table">
+        <thead><tr><th>Skip reason</th><th>Meaning</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><code>ALREADY_ACTIVE</code></td><td>Duplicate event for COMPLETED loan</td><td>Ignore (unless reinit, which bypasses this skip)</td></tr>
+          <tr><td><code>LOCK_LOAN_STATUS</code></td><td>Loan in LOCK</td><td>Investigate root cause; clear LOCK; replay</td></tr>
+          <tr><td><code>LOCK_CACHE_IN_PROGRESS</code></td><td>Stale Redis <code>dl*</code> key</td><td>Delete key; replay. <strong>Most common production gotcha.</strong></td></tr>
+          <tr><td><code>NONE</code></td><td>No skip — orchestration runs</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-info">
+        <strong>"It's stuck and I have no idea why":</strong> jump to the interactive diagnostic walker (§18). It mirrors the questions an experienced engineer asks.
+      </div>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- 18. DIAGNOSTIC WALKER -->
+    <!-- ============================================================ -->
+    <section id="diagnostic" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">18</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#diagnostic" class="anchor">#</a>Diagnostic walker</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Click your way to the next action. Answers branch based on what you see in the database.</p>
+
+      <div class="card !p-0 overflow-hidden">
+        <div class="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="stethoscope" class="w-4 h-4 text-brand-500"></i>
+            <span class="text-sm font-bold">Stuck-LAN diagnostic</span>
+          </div>
+          <button onclick="walkerReset()" class="text-xs flex items-center gap-1 px-3 py-1 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition">
+            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+          </button>
+        </div>
+        <div class="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+          <div id="walker-trail" class="text-[11px] mono text-zinc-500"></div>
+        </div>
+        <div class="p-5" id="walker-content"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 19. DIAGNOSTIC SQL -->
+    <!-- ============================================================ -->
+    <section id="queries" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">19</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#queries" class="anchor">#</a>Diagnostic SQL</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Canned queries for scenarios that come up most. Replace <code>?</code> with the 10-digit LAN.</p>
+
+      <h3 class="section-h text-base font-bold mt-4 mb-3"><a href="#sql-q1" class="anchor">#</a><span id="sql-q1">Q1 — Loan-level snapshot (LMS)</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT a.account_number, la.loan_status, la.disbursement_status,
+       la.reinit_disbursement_status, la.disbursed_amount,
+       la.external_ref_number, la.created_on, la.updated_on
+  FROM mfi_accounting.loan_account la
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE a.account_number = ?;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q2" class="anchor">#</a><span id="sql-q2">Q2 — CRR rail for one LAN</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT id, transaction_type, client_reference_number, status,
+       LEFT(response, 200) AS response_preview,
+       system_date, business_date
+  FROM mfi_accounting.client_request_response_log
+ WHERE loan_account_number = ?
+   AND transaction_type LIKE 'DISBURSEMENT%'
+ ORDER BY id DESC LIMIT 20;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q3" class="anchor">#</a><span id="sql-q3">Q3 — Children of a SHG/JLG parent</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT q.id, q.event_type, q.event_status,
+       q.data::jsonb-&gt;&gt;'disbursement_status'   AS child_disb_status,
+       q.data::jsonb-&gt;&gt;'net_disbursed_amount'  AS amount,
+       q.data::jsonb-&gt;&gt;'external_error_code'   AS error_code,
+       q.filler_2 AS child_ext_ref, q.filler_3 AS utr,
+       q.created_on, q.updated_on
+  FROM mfi_accounting.loan_account_events_queue q
+  JOIN mfi_accounting.account a ON a.id = q.parent_account_id
+ WHERE a.account_number = ?
+   AND q.event_type IN ('CLMT', 'CLB')
+   AND q.is_deleted = false
+ ORDER BY q.id;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q4" class="anchor">#</a><span id="sql-q4">Q4 — Disbursement mode &amp; UTR</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT ldmd.disbursement_mode, ldmd.beneficiary_account_number,
+       ldmd.beneficiary_ifsc, ldmd.beneficiary_name,
+       ldmd.utr_number, ldmd.payment_status
+  FROM mfi_accounting.loan_disbursement_mode_details ldmd
+  JOIN mfi_accounting.loan_account la ON la.id = ldmd.loan_account_id
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE a.account_number = ?;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q5" class="anchor">#</a><span id="sql-q5">Q5 — Active retries in the bank-service queue</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT bscr.id, bscr.retry_count, bscr.next_retry_time,
+       bscr.transaction_type, bscr.status
+  FROM mfi_accounting.bank_service_call_retry bscr
+  JOIN mfi_accounting.loan_account la ON la.id = bscr.loan_account_id
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE a.account_number = ?
+ ORDER BY bscr.id DESC LIMIT 10;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q6" class="anchor">#</a><span id="sql-q6">Q6 — LANs stuck in PENDING for &gt; N minutes</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT a.account_number, la.disbursement_status, la.updated_on,
+       NOW() - la.updated_on AS stuck_for
+  FROM mfi_accounting.loan_account la
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE la.disbursement_status IN
+       ('NEFT_STAGE_1_PENDING', 'NEFT_STAGE_2_PENDING')
+   AND la.updated_on &lt; NOW() - INTERVAL '30 minutes'
+ ORDER BY la.updated_on;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q7" class="anchor">#</a><span id="sql-q7">Q7 — Recent NDF responses (3.3.1.0.1+)</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT id, loan_account_number, transaction_type, status,
+       LEFT(response, 300) AS response_preview, system_date
+  FROM mfi_accounting.client_request_response_log
+ WHERE (response ILIKE '%"errorCode":"NDF"%'
+        OR response ILIKE '%Batch details not found%')
+   AND system_date &gt; NOW() - INTERVAL '24 hours'
+ ORDER BY id DESC;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q8" class="anchor">#</a><span id="sql-q8">Q8 — Reinitiation in flight</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT a.account_number, la.disbursement_status, la.reinit_disbursement_status,
+       la.reinit_external_error_code, la.reinit_external_error_message,
+       la.updated_on
+  FROM mfi_accounting.loan_account la
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE la.reinit_disbursement_status IS NOT NULL
+   AND la.reinit_disbursement_status &lt;&gt; 'COMPLETED'
+ ORDER BY la.updated_on;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q9" class="anchor">#</a><span id="sql-q9">Q9 — LOS-side: open Manual Disbursement / LAR tasks</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT dlp.entity_type, dlp.entity_id, dlp.status, dlp.flow,
+       dlp.retry_count, dlp.failure_reason,
+       dlp.loan_account_number, dlp.started_on
+  FROM mfi_los.disburse_loan_process dlp
+ WHERE dlp.status IN (9, 12, 13)  -- NEW_TASK_INITIATED, LAR_TASK_INITIATED, LAR_TASK_CREATION_FAILED
+ ORDER BY dlp.started_on DESC LIMIT 50;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q10" class="anchor">#</a><span id="sql-q10">Q10 — LOS ↔ LMS divergence (LAN COMPLETED on LMS but not on LOS)</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">-- LMS side: COMPLETED
+SELECT a.account_number, la.disbursement_status, la.updated_on
+  FROM mfi_accounting.loan_account la
+  JOIN mfi_accounting.account a ON a.id = la.account_id
+ WHERE la.disbursement_status = 'COMPLETED'
+   AND a.account_number = ?;
+
+-- LOS side: still IN_PROGRESS?
+SELECT dlp.status, dlp.flow, dlp.failure_reason, dlp.completed_on
+  FROM mfi_los.disburse_loan_process dlp
+ WHERE dlp.loan_account_number = ?;</code></pre></div>
+
+      <h3 class="section-h text-base font-bold mt-6 mb-3"><a href="#sql-q11" class="anchor">#</a><span id="sql-q11">Q11 — LOS task lifecycle for a loan_app</span></h3>
+      <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)"><i data-lucide="copy" class="w-3 h-3"></i>Copy</button><pre><code class="language-sql">SELECT t.task_type, t.task_status, t.task_id, t.created_on, t.updated_on
+  FROM mfi_los.loan_app_task_details t
+ WHERE t.loan_app_id = ?
+   AND t.task_type IN ('MANUAL_DISBURSEMENT_MAKER', 'MANUAL_DISBURSEMENT_CHECKER',
+                       'NTB_PAYMENT_REINITIATION', 'NTB_PAYMENT_REINITIATION_CHECKER',
+                       'POST_DISBURSEMENT_DOCUMENT_UPLOAD')
+ ORDER BY t.created_on DESC;</code></pre></div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 20. GLOSSARY -->
+    <!-- ============================================================ -->
+    <section id="glossary" class="mb-12">
+      <div class="flex items-baseline gap-3 mb-2">
+        <span class="mono text-sm text-zinc-400">20</span>
+        <h2 class="section-h text-2xl font-bold tracking-tight"><a href="#glossary" class="anchor">#</a>Glossary</h2>
+      </div>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-6">Acronyms and abbreviations used across this guide and in operator logs.</p>
+
+      <div class="grid md:grid-cols-2 gap-3">
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">LAN</div><div class="text-xs">Loan Account Number — 10-digit natural key (e.g. <code>6009683725</code>).</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">LOS</div><div class="text-xs">Loan Origination System — upstream service that approves loans and triggers disbursement.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">LMS</div><div class="text-xs">Loan Management System — accounting service that owns money-out and the bank state machine.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">NEFT</div><div class="text-xs">National Electronic Funds Transfer — bank rail for cross-bank transfers. v2 is two-stage; v1 is legacy.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">NEF / NEI</div><div class="text-xs">NEFT v2 stage 1 (Initiate) / stage 2 (Submit). Two separate bank API calls.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">MFT</div><div class="text-xs">Multi-Function Transfer — single-call bank rail for in-bank / trusted-partner payments.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">NDF</div><div class="text-xs">"No Data Found" / "Batch Details Not Found" — bank inquiry response.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">UTR</div><div class="text-xs">Unique Transaction Reference — bank-issued ref for a settled payment.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">CRR</div><div class="text-xs">Client Request Response Log — per-bank-call audit table.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">CLMT</div><div class="text-xs">Child Loan Money Transfer — queue row tracking a single SHG/JLG child's bank-leg state.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">CLB</div><div class="text-xs">Child Loan Booking — queue row that creates the child <code>loan_account</code> after CLMT done.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">LAR / LEAR</div><div class="text-xs">Loan Account Receipt — cash-delivery task path for SHG/JLG child members.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">SHG / JLG</div><div class="text-xs">Self-Help Group / Joint Liability Group — group loan product types.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">INDL</div><div class="text-xs">Individual — single-borrower loan product type.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">DTFC_SUCCESS</div><div class="text-xs">Disbursement Transaction From Customer — initial state after loan-creation accounting completes.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">CAS</div><div class="text-xs">Compare-And-Swap — atomic SQL UPDATE that only succeeds if the row is in an expected "from" state.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">codstatus</div><div class="text-xs">Bank callback's per-payment status: P (settled), N (in-progress), R (rejected), Z (reversed).</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">External-ref</div><div class="text-xs">Deterministic ref sent to bank. FAIL bumps the counter; SUCCESS/UNKNOWN reuses it.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">Maker–Checker</div><div class="text-xs">Two-step approval: one user submits, another approves.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">Replay / Re-fire</div><div class="text-xs">Re-publishing the disburseLoan request (Kafka or HTTP). Safe in the states marked "yes" in the replay matrix.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">disburse_loan_process</div><div class="text-xs">LOS-side primary lifecycle table; tracks per-LAN disbursement attempt status and flow.</div></div>
+        <div class="card !p-4"><div class="font-mono font-bold text-sm text-brand-600 mb-1">function_sub_code</div><div class="text-xs">Field on disburseLoan request: DEFAULT / REINITIATE_BANK / PARENT_SUCCESS / ENQUIRY — selects scenario.</div></div>
+      </div>
+    </section>
+
+<!-- SECTIONS-INSERT-HERE -->
+
+  </main>
+</div>
+
+<script>
+/* ============== Lucide icons ============== */
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.lucide) lucide.createIcons();
+});
+
+/* ============== Theme toggle ============== */
+(function() {
+  const root = document.documentElement;
+  const stored = localStorage.getItem('disb-guide-theme');
+  if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    root.classList.add('dark');
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      root.classList.toggle('dark');
+      localStorage.setItem('disb-guide-theme', root.classList.contains('dark') ? 'dark' : 'light');
+      reInitMermaid();
+    });
+  });
+})();
+
+/* ============== Mermaid ============== */
+function isDark() { return document.documentElement.classList.contains('dark'); }
+function reInitMermaid() {
+  if (!window.mermaid) return;
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark() ? 'dark' : 'default',
+    securityLevel: 'loose',
+    flowchart: { curve: 'basis', padding: 16 },
+    themeVariables: isDark() ? {
+      background: '#0a0a0a',
+      primaryColor: '#27272a',
+      primaryTextColor: '#e4e4e7',
+      primaryBorderColor: '#52525b',
+      lineColor: '#71717a',
+      secondaryColor: '#3f3f46'
+    } : {}
+  });
+  document.querySelectorAll('.mermaid').forEach((el, i) => {
+    if (!el.dataset.originalSrc) el.dataset.originalSrc = el.textContent;
+    el.removeAttribute('data-processed');
+    el.innerHTML = el.dataset.originalSrc;
+  });
+  mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(reInitMermaid, 100);
+});
+
+/* ============== Progress bar ============== */
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const scrolled = h.scrollTop;
+  const total = h.scrollHeight - h.clientHeight;
+  const pct = total > 0 ? (scrolled / total) * 100 : 0;
+  const bar = document.getElementById('progress-bar');
+  if (bar) bar.style.width = pct + '%';
+}, { passive: true });
+
+/* ============== Sidebar active link on scroll ============== */
+(function() {
+  const sections = () => document.querySelectorAll('section[id]');
+  const links = () => document.querySelectorAll('nav.sidebar ol a, #sidebar a.nav-link');
+  function update() {
+    let active = null;
+    sections().forEach(sec => {
+      const rect = sec.getBoundingClientRect();
+      if (rect.top < 140) active = sec.id;
+    });
+    links().forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+    });
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  document.addEventListener('DOMContentLoaded', update);
+})();
+
+/* ============== Search bar (Ctrl/⌘ + K) ============== */
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const sb = document.getElementById('search-bar');
+    if (sb) sb.focus();
+  }
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const sb = document.getElementById('search-bar');
+  if (!sb) return;
+  let lastMatch = null;
+  sb.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const q = sb.value.trim().toLowerCase();
+    if (!q) return;
+    document.querySelectorAll('mark.search-hit').forEach(m => {
+      const t = document.createTextNode(m.textContent);
+      m.parentNode.replaceChild(t, m);
+    });
+    const walker = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT, null);
+    let node, firstHit = null;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement.closest('script, style, pre code')) continue;
+      const idx = node.textContent.toLowerCase().indexOf(q);
+      if (idx === -1) continue;
+      const before = node.textContent.slice(0, idx);
+      const hit = node.textContent.slice(idx, idx + q.length);
+      const after = node.textContent.slice(idx + q.length);
+      const mark = document.createElement('mark');
+      mark.className = 'search-hit';
+      mark.style.cssText = 'background:#fef08a;color:#713f12;padding:0 2px;border-radius:2px';
+      mark.textContent = hit;
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      frag.appendChild(mark);
+      if (after) frag.appendChild(document.createTextNode(after));
+      node.parentNode.replaceChild(frag, node);
+      if (!firstHit) firstHit = mark;
+    }
+    if (firstHit) firstHit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+});
+
+/* ============== Status filter (Alpine) ============== */
+function statusFilter() {
+  return {
+    q: '',
+    cat: 'all',
+    show(rowCat, rowText) {
+      const catOk = this.cat === 'all' || this.cat === rowCat;
+      const qOk = !this.q || rowText.toLowerCase().indexOf(this.q.toLowerCase()) !== -1;
+      return catOk && qOk;
+    }
+  };
+}
+
+/* ============== Copy code ============== */
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre code') || btn.parentElement.querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i>Copied';
+    btn.classList.add('done');
+    if (window.lucide) lucide.createIcons();
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('done'); if (window.lucide) lucide.createIcons(); }, 1400);
+  });
+}
+
+/* ============== Mobile nav ============== */
+document.addEventListener('DOMContentLoaded', () => {
+  const toggle = document.getElementById('mobile-nav-toggle');
+  const sidebar = document.getElementById('sidebar');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', () => {
+      sidebar.classList.toggle('hidden');
+      sidebar.classList.toggle('block');
+    });
+  }
+});
+
+/* ============== Diagnostic walker ============== */
+const WALK = {
+  start: {
+    q: "Does the loan have a row in loan_account on LMS?",
+    opts: [
+      { label: "Yes — there is a loan_account row", icon: "check", next: "has_row" },
+      { label: "No — LAN does not exist in loan_account", icon: "x", next: "no_row" }
+    ]
+  },
+  no_row: {
+    q: "No loan_account row — the LMS Kafka consumer was skipped before the orchestration ran. What does LOS show?",
+    opts: [
+      { label: "LOS disburse_loan_process status = IN_PROGRESS for hours", icon: "clock", next: "kafka_lost" },
+      { label: "LOS disburse_loan_process status = NEW_TASK_INITIATED (9)", icon: "user", result: { tone: "amber", title: "Manual Disbursement task open on LOS",
+        body: "LOS retried <code>maxRetryCount</code> times and gave up. A MANUAL_DISBURSEMENT_MAKER task is waiting in the operator queue.<br><br>Check <code>loan_app_task_details</code> / <code>group_task_details</code> for the open task. Maker submits → Checker approves → disburseLoan re-fires." } },
+      { label: "LOS disburse_loan_process status = LAR_TASK_INITIATED (12)", icon: "package", result: { tone: "amber", title: "LAR task open (SHG/JLG)",
+        body: "Group bank-rail retries exhausted. A POST_DISBURSEMENT_DOCUMENT_UPLOAD task is open. Field officer must deliver cash; operator uploads the LAR document via the task UI. Children's disbursement_mode flips to CASH; disbursement re-fires." } },
+      { label: "LOS disburse_loan_process status = NOT_STARTED / no row", icon: "alert-circle", result: { tone: "warn", title: "LOS hasn't even tried",
+        body: "Loan is still in LOS upstream. Check <code>loan_app.status</code> — it should be DISBURSEMENT_PENDING. If it isn't, maker-checker or approval prerequisites are blocking. Look at LOS workflow logs for the loan_app_id." } }
+    ]
+  },
+  kafka_lost: {
+    q: "LOS pushed to Kafka but LMS shows nothing. Most likely Redis lock stale or message lost.",
+    opts: [
+      { label: "Check Redis for stale dl* lock key", icon: "key", result: { tone: "amber", title: "Most likely: LOCK_CACHE_IN_PROGRESS",
+        body: "Redis ACCOUNTING DB (5) holds a stale <code>dl&lt;productId&gt;_&lt;externalRefNumber&gt;</code> key from a previous attempt that crashed before cleanup.<br><br><b>Fix:</b><br><code>redis-cli -n 5 KEYS '*disburseLoan&lt;productId&gt;_&lt;externalRefNumber&gt;*'</code><br><code>redis-cli -n 5 DEL &lt;each-key&gt;</code><br>Then re-publish to <code>disburse_loan_api_&lt;tenant&gt;</code>." } },
+      { label: "Check LMS consumer lag in Kafka", icon: "activity", result: { tone: "amber", title: "Consumer lag",
+        body: "If LMS consumer is far behind on <code>disburse_loan_api_&lt;tenant&gt;</code>, message will eventually be picked up. See <code>kafka-consumer-lag.md</code> runbook." } },
+      { label: "Message format issue (pipe contract)", icon: "alert-triangle", result: { tone: "warn", title: "Cross-deploy skew",
+        body: "If LOS producer and LMS consumer are on different versions, the pipe-delimited contract (<code>api|json|cacheKey</code>) can break. Read accounting-mfi.log for parse errors on the disburse_loan_api topic." } }
+    ]
+  },
+  has_row: {
+    q: "What is loan_status on LMS?",
+    opts: [
+      { label: "ACTIVE", icon: "play", next: "active" },
+      { label: "APPROVED", icon: "pause", next: "approved" },
+      { label: "LOCK", icon: "lock", result: { tone: "warn", title: "LOCK_LOAN_STATUS",
+        body: "Loan locked — typically because a CRR save failed during a previous bank call. Investigate the underlying CRR persistence error first (DB connectivity? retry-exhausted?). Once fixed, ops resets loan_status manually." } },
+      { label: "DISB_CNCL", icon: "x-circle", result: { tone: "amber", title: "Disbursement cancelled",
+        body: "Loan was cancelled before money went out. If unintentional, re-fire disburseLoan after restoring intent (update mode if needed)." } }
+    ]
+  },
+  approved: {
+    q: "loan_status = APPROVED but no progress. Is disbursement_status set?",
+    opts: [
+      { label: "Yes — has a disbursement_status", icon: "arrow-right", next: "active" },
+      { label: "No — disbursement_status is null", icon: "alert-circle", result: { tone: "warn", title: "Pre-bank-leg",
+        body: "Orchestration never moved past DTFC creation. Causes: orchestration error logged, LMS-side maker-checker pending, or duplicate Kafka skip. Read accounting-mfi.log for the external_ref_number; check Redis dl* lock." } }
+    ]
+  },
+  active: {
+    q: "What is disbursement_status?",
+    opts: [
+      { label: "DTFC_SUCCESS", icon: "circle", next: "dtfc" },
+      { label: "NEFT_STAGE_1_PENDING", icon: "loader", next: "stage1_pending" },
+      { label: "NEFT_STAGE_1_SUCCESS", icon: "check-circle", next: "stage1_success" },
+      { label: "NEFT_STAGE_2_PENDING", icon: "loader", next: "stage2_pending" },
+      { label: "PARENT_SUCCESS / CHILD_SUCCESS (group)", icon: "users", next: "group_parent" },
+      { label: "COMPLETED", icon: "check", next: "completed" }
+    ]
+  },
+  dtfc: {
+    q: "Loan at DTFC_SUCCESS. What is the latest CRR for this LAN?",
+    opts: [
+      { label: "No CRR row yet", icon: "alert-circle", result: { tone: "amber", title: "Bank call hasn't fired",
+        body: "Check accounting log for the most recent <code>disburseLoan</code> orchestration entry. If &gt; 30 min stale, re-fire <code>disburseLoan</code>. If retry job hasn't picked it up, manually trigger <code>accountingBankServiceRetryJob</code>." } },
+      { label: "Latest CRR is FAIL", icon: "x", result: { tone: "warn", title: "Bank explicitly rejected",
+        body: "Read the response body in CRR. If <code>NDF</code> / <code>Batch details not found</code>, rollback already happened — re-fire disburseLoan and a fresh NEF runs with a new external_ref. If bank validation error (invalid IFSC etc.), fix disbursement mode first." } },
+      { label: "Latest CRR is UNKNOWN", icon: "help-circle", result: { tone: "amber", title: "Transport uncertain",
+        body: "The bank call returned indeterminate result. Retry job will fire an inquiry. Don't manually re-fire — deterministic external-ref counter will reuse the same ref on inquiry." } }
+    ]
+  },
+  stage1_pending: {
+    q: "Stuck at NEFT_STAGE_1_PENDING. Latest NEF CRR shows what?",
+    opts: [
+      { label: "FAIL, response mentions NDF / Batch details not found", icon: "rotate-ccw", result: { tone: "amber", title: "NDF auto-rollback path",
+        body: "System will (or already did) backward-CAS the LAN to DTFC_SUCCESS. <b>Re-fire disburseLoan</b> — a fresh NEF will issue with a new external_ref. No manual data patch needed." } },
+      { label: "FAIL, other error code", icon: "alert-triangle", result: { tone: "warn", title: "Hard bank rejection",
+        body: "Read the bank error code in CRR.response. Likely cause: bad beneficiary IFSC, wrong account number, KYC flag at bank. Fix the underlying data (updateLoanDisbursementModeDetails) then re-fire disburseLoan." } },
+      { label: "UNKNOWN (timeout / transport)", icon: "clock", result: { tone: "amber", title: "Run inquiry / let retry job",
+        body: "<code>accountingBankServiceRetryJob</code> will fire <code>NEFT_TRANSACTION_INQUIRY</code>. Wait or trigger manually. Deterministic external-ref reuses the same ref." } },
+      { label: "SUCCESS but disbursement_status still PENDING", icon: "alert-circle", result: { tone: "warn", title: "Async callback lost",
+        body: "Sync NEF response succeeded but async bank callback (or its processing) was lost. Re-fire disburseLoan — system runs inquiry, detects SUCCESS, transitions to NEFT_STAGE_1_SUCCESS." } }
+    ]
+  },
+  stage1_success: {
+    q: "Stuck at NEFT_STAGE_1_SUCCESS. NEI call should fire next.",
+    opts: [
+      { label: "Re-fire disburseLoan", icon: "play", result: { tone: "amber", title: "Re-fire is safe",
+        body: "System will issue NEI. If a SUCCESS NEI CRR already exists, double-debit guard skips re-fire and waits for callback." } },
+      { label: "Latest NEI CRR is FAIL", icon: "x", result: { tone: "warn", title: "NEI hard rejection",
+        body: "Read the bank error. May be transient. Confirm bank availability, then re-fire disburseLoan." } }
+    ]
+  },
+  stage2_pending: {
+    q: "Stuck at NEFT_STAGE_2_PENDING. Inquiry will tell you bank-side status.",
+    opts: [
+      { label: "Re-fire disburseLoan (will run inquiry)", icon: "play", result: { tone: "amber", title: "Inquiry path",
+        body: "System fires <code>NEFT_TRANSACTION_INQUIRY</code>. If bank reports SUCCESS, row transitions to COMPLETED. If UNKNOWN, wait or escalate to bank ops." } },
+      { label: "Latest inquiry CRR is SUCCESS but row stuck", icon: "alert-circle", result: { tone: "warn", title: "Callback lost mid-flight",
+        body: "Async callback may have dropped or written before CLMT row commit. Re-fire disburseLoan; inquiry replays. Structural fix on 3.3.1.0.1 prevents recurrence for new disbursements." } }
+    ]
+  },
+  group_parent: {
+    q: "Parent at PARENT_SUCCESS or CHILD_SUCCESS. Drill into children — which is stuck?",
+    opts: [
+      { label: "All CLMT rows event_status=P, children at DTFC_SUCCESS", icon: "loader", result: { tone: "amber", title: "Children not yet started",
+        body: "Bank calls per child haven't fired. Check that prep-block created CLMT rows correctly (<code>data.net_disbursed_amount</code> present?). Re-fire disburseLoan if needed." } },
+      { label: "Some CLMTs stuck at NEFT_STAGE_*_PENDING", icon: "alert-triangle", result: { tone: "warn", title: "Apply per-child playbook",
+        body: "Treat each stuck CLMT as its own NEFT v2 case — check child CRR rows (<code>transaction_type LIKE '%_EXTREF&lt;n&gt;_NEFT_%'</code>) and apply the diagnostic above for the per-child <code>disbursement_status</code>." } },
+      { label: "All CLMTs done (C) but parent stuck at CHILD_SUCCESS", icon: "clock", result: { tone: "amber", title: "CLB batch pending",
+        body: "Child loan_account rows are created by the CLB batch (<code>childLoanEventProcessingBatchJob</code>, every 2h). Wait, or trigger the batch manually." } },
+      { label: "Many children failed, retries exhausted", icon: "package", result: { tone: "amber", title: "Time for LAR cash task",
+        body: "If LOS's disburse_loan_process status is <code>LAR_TASK_INITIATED(12)</code>, operator must upload the LAR document and field officer delivers cash. See §10." } }
+    ]
+  },
+  completed: {
+    q: "disbursement_status = COMPLETED. What is the actual problem?",
+    opts: [
+      { label: "LOS still shows IN_PROGRESS", icon: "git-pull-request", result: { tone: "amber", title: "Sync message divergence",
+        body: "Check accounting log for <code>sendResultMessageToKafka</code> exception. Check <code>los_lms_disbursement_sync</code> topic. If missing, manually republish with correct payload. If present but LOS not consuming, see kafka-consumer-lag runbook." } },
+      { label: "Need to send money again (reinitiation)", icon: "rotate-cw", result: { tone: "amber", title: "Use the reinit flow",
+        body: "Send disburseLoan with <code>function_sub_code=REINITIATE_BANK</code>. The reinit_disbursement_status column tracks the second attempt. Parent disbursement_status stays COMPLETED. See §12." } },
+      { label: "Money landed in wrong account — refund needed", icon: "undo-2", result: { tone: "warn", title: "Reverse / refund flow",
+        body: "Use reverse transaction flow. Original disbursement entries reversed; customer's outstanding goes back to pre-disbursement state. See <code>claude/accounting/05-flows.md</code>." } }
+    ]
+  }
+};
+
+let walkerHistory = [];
+function walkerRender(stateKey) {
+  const state = WALK[stateKey];
+  walkerHistory.push(stateKey);
+  document.getElementById('walker-trail').innerHTML = '→ ' + walkerHistory.map(k => '<span class="text-zinc-700 dark:text-zinc-300">' + k + '</span>').join(' → ');
+  const content = document.getElementById('walker-content');
+  let html = '<div class="walker-step"><h4 class="font-bold text-sm mb-3 flex items-start gap-2"><i data-lucide="help-circle" class="w-4 h-4 text-brand-500 mt-0.5 shrink-0"></i><span>' + state.q + '</span></h4><div class="space-y-2">';
+  state.opts.forEach((opt, i) => {
+    const ic = opt.icon || 'chevron-right';
+    html += '<button class="walker-btn" data-idx="' + i + '"><span class="flex items-center gap-3"><i data-lucide="' + ic + '" class="w-4 h-4 text-zinc-400"></i><span>' + opt.label + '</span></span><i data-lucide="chevron-right" class="w-4 h-4 text-zinc-400"></i></button>';
+  });
+  html += '</div></div>';
+  content.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+  content.querySelectorAll('.walker-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      const opt = state.opts[idx];
+      if (opt.next) walkerRender(opt.next);
+      else if (opt.result) renderResult(opt.label, opt.result);
+    });
+  });
+}
+function renderResult(picked, r) {
+  walkerHistory.push(picked);
+  document.getElementById('walker-trail').innerHTML = '→ ' + walkerHistory.map(k => '<span class="text-zinc-700 dark:text-zinc-300">' + k + '</span>').join(' → ');
+  const tone = r.tone || 'tip';
+  const toneCls = { 'tip': 'callout-tip', 'amber': 'callout-brand', 'warn': 'callout-warn', 'info': 'callout-info' }[tone] || 'callout-tip';
+  const ic = { 'tip': 'check-circle', 'amber': 'alert-triangle', 'warn': 'alert-octagon', 'info': 'info' }[tone] || 'check-circle';
+  document.getElementById('walker-content').innerHTML =
+    '<div class="callout ' + toneCls + '"><div class="flex items-start gap-3"><i data-lucide="' + ic + '" class="w-5 h-5 mt-0.5 shrink-0"></i><div><strong class="block mb-1 text-sm">' + r.title + '</strong><div class="text-sm leading-relaxed">' + r.body + '</div></div></div></div>';
+  if (window.lucide) lucide.createIcons();
+}
+function walkerReset() {
+  walkerHistory = [];
+  walkerRender('start');
+}
+document.addEventListener('DOMContentLoaded', walkerReset);
+</script>
+
+</body>
+</html>

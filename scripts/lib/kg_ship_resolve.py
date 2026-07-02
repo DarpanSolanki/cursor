@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""Resolve changed file paths → apiName(s) via KG + grep (smart ship-loop targeting)."""
+from __future__ import annotations
+
+import re
+import sqlite3
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+KG_DB = ROOT / "cursor-bundle/kg/data/kg.db"
+
+# Path segment → primary sanity api when KG/grep yields nothing (last resort).
+DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
+    ("/loan/disbursement/", "disburseLoan"),
+    ("/disbursement/", "disburseLoan"),
+    ("/foreclos/", "fetchLoanForeclosureSimulationDetails"),
+    ("/prepayment/", "createPrepaymentDetails"),
+    ("/repayment/", "loanRepayment"),
+    ("/repay/", "loanRepayment"),
+    ("/interest/accrual", "interestAccrualCalculation"),
+    ("/dpi", "getLoanAccountOverviewDetails"),
+    ("/billing/", "dpiBilling"),
+)
+
+# Prefer these when multiple requests share a util (bank-call util → disburse first).
+API_PRIORITY: tuple[str, ...] = (
+    "disburseLoan",
+    "loanRepayment",
+    "fetchLoanForeclosureSimulationDetails",
+    "createPrepaymentDetails",
+    "getLoanAccountOverviewDetails",
+    "getLoanAccountBPIAmount",
+    "getLoanAccountSummaryDetails",
+)
+
+
+def _kg_conn() -> sqlite3.Connection | None:
+    if not KG_DB.is_file():
+        return None
+    try:
+        return sqlite3.connect(KG_DB)
+    except sqlite3.Error:
+        return None
+
+
+def _repo_dir(repo: str) -> Path | None:
+    d = ROOT / repo
+    return d if (d / ".git").is_dir() or (d / "src").is_dir() else None
+
+
+def processor_bean_from_java_name(class_name: str) -> str:
+    if class_name.endswith("Processor"):
+        return class_name[0].lower() + class_name[1:]
+    return ""
+
+
+def requests_for_processor_bean(bean: str, conn: sqlite3.Connection | None = None) -> list[str]:
+    if not bean:
+        return []
+    own = conn is None
+    if own:
+        conn = _kg_conn()
+    if not conn:
+        return []
+    pid = f"processor:{bean}"
+    rows = conn.execute(
+        "SELECT src_id FROM edges WHERE dst_id=? AND src_id LIKE 'request:%' AND rel='invokes'",
+        (pid,),
+    ).fetchall()
+    if own:
+        conn.close()
+    return sorted({r[0].split(":", 1)[1] for r in rows})
+
+
+def requests_for_batch_job(job_name: str, conn: sqlite3.Connection | None = None) -> list[str]:
+    """Batch job names often match apiName (dpiAccrualCalculation, etc.)."""
+    own = conn is None
+    if own:
+        conn = _kg_conn()
+    if not conn:
+        return [job_name] if job_name else []
+    nid = f"batch_job:{job_name}"
+    row = conn.execute("SELECT id FROM nodes WHERE id=? OR label=?", (nid, job_name)).fetchone()
+    if own:
+        conn.close()
+    return [job_name] if row or job_name else []
+
+
+def _grep_java_referencing(class_name: str, repo_dir: Path) -> list[str]:
+    src = repo_dir / "src/main/java"
+    if not src.is_dir():
+        return []
+    out = subprocess.run(
+        ["rg", "-l", class_name, str(src)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    beans: list[str] = []
+    for line in out.stdout.strip().splitlines():
+        if not line:
+            continue
+        stem = Path(line).stem
+        bean = processor_bean_from_java_name(stem)
+        if bean:
+            beans.append(bean)
+    return sorted(set(beans))
+
+
+def _orchestration_processors_in_file(path: Path) -> list[str]:
+    if path.suffix != ".xml" or "orchestration" not in str(path):
+        return []
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return []
+    beans: list[str] = []
+    for m in re.finditer(r'<Processor\s+bean="([^"]+)"', text):
+        beans.append(m.group(1))
+    for m in re.finditer(r'<Request\s+name="([^"]+)"', text):
+        beans.append(m.group(1))  # some flows use request name as entry
+    return sorted(set(beans))
+
+
+def _domain_hint_api(path: str) -> str | None:
+    s = path.replace("\\", "/").lower()
+    for needle, api in DOMAIN_PRIMARY_API:
+        if needle in s:
+            return api
+    return None
+
+
+def _rank_apis(apis: list[str]) -> list[str]:
+    order = {a: i for i, a in enumerate(API_PRIORITY)}
+    return sorted(apis, key=lambda a: (order.get(a, 999), a))
+
+
+def resolve_apis_for_path(path: str) -> list[str]:
+    """KG + grep: map one changed path to affected request apiName(s)."""
+    p = Path(path)
+    if not p.is_absolute():
+        p = ROOT / path
+    s = str(p)
+    apis: set[str] = set()
+
+    # Repo-relative for grep
+    repo = None
+    for part in p.parts:
+        if part.startswith("novopay-") or part.startswith("trustt-"):
+            repo = part
+            break
+    repo_dir = _repo_dir(repo) if repo else None
+
+    stem = p.stem
+    conn = _kg_conn()
+
+    # *Processor.java
+    bean = processor_bean_from_java_name(stem)
+    if bean:
+        apis.update(requests_for_processor_bean(bean, conn))
+
+    # *BatchService / *ItemWriter / *Consumer
+    for suffix, kind in (
+        ("BatchService", "batch"),
+        ("ItemWriter", "batch"),
+        ("Consumer", "kafka"),
+    ):
+        if stem.endswith(suffix):
+            job = stem[0].lower() + stem[1:]
+            apis.update(requests_for_batch_job(job, conn))
+            hint = _domain_hint_api(s)
+            if hint:
+                apis.add(hint)
+
+    # Util / service / bank-call — grep → processors → requests
+    if repo_dir and stem not in (bean,):
+        for ref_bean in _grep_java_referencing(stem, repo_dir):
+            apis.update(requests_for_processor_bean(ref_bean, conn))
+
+    # Orchestration XML — processors in file → requests; Request name if single entry
+    for b in _orchestration_processors_in_file(p):
+        if b[0].islower():  # bean name
+            apis.update(requests_for_processor_bean(b, conn))
+        else:
+            apis.add(b)  # Request name
+
+    # MessageBroker / consumer config
+    if "MessageBroker" in stem or p.name == "MessageBroker.xml":
+        hint = _domain_hint_api(s) or "disburseLoan"
+        apis.add(hint)
+
+    if conn:
+        conn.close()
+
+    if not apis:
+        hint = _domain_hint_api(s)
+        if hint:
+            apis.add(hint)
+
+    return _rank_apis(list(apis))
+
+
+def resolve_apis_for_paths(paths: list[str]) -> list[str]:
+    out: list[str] = []
+    for p in paths:
+        for api in resolve_apis_for_path(p):
+            if api not in out:
+                out.append(api)
+    return _rank_apis(out)

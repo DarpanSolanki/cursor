@@ -1,0 +1,29 @@
+{
+  "id": "actor.user_basic_details",
+  "title": "getUserBasicDetails — user + office in response (actor :8003)",
+  "service": "actor",
+  "api_name": "getUserBasicDetails",
+  "payload": "payloads/actor/getUserBasicDetails_default.json",
+  "vars": {
+    "user_id": "${USER_ID}"
+  },
+  "defaults": {
+    "USER_ID": "103"
+  },
+  "assertions": [
+    { "type": "http_status", "name": "http_2xx" },
+    { "type": "response_status", "name": "api_success", "status": "SUCCESS", "code": "000" },
+    { "type": "path_exists", "name": "user_basic_details", "path": "user_basic_details" },
+    { "type": "path_exists", "name": "office_details", "path": "office_details" },
+    { "type": "path_equals", "name": "user_id_matches", "path": "user_basic_details.id", "value": "${USER_ID}" },
+    { "type": "path_equals", "name": "user_status_active", "path": "user_basic_details.status", "value": "ACTIVE" },
+    { "type": "path_exists", "name": "role_name_present", "path": "user_basic_details.role_name" }
+  ],
+  "print_paths": [
+    "user_basic_details.id",
+    "user_basic_details.first_name",
+    "user_basic_details.role_name",
+    "office_details.office_name"
+  ],
+  "on_fail_print_body": true
+}

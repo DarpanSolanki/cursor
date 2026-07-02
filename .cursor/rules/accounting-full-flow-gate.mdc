@@ -1,0 +1,44 @@
+---
+description: "Accounting module — ALL flow domains (read, write, batch, money); not money-only"
+globs: ["novopay-platform-accounting-v2/**", "scripts/accounting/**", "scripts/dpic/**", "scripts/disbursement/**", "scripts/testing/registry.json"]
+alwaysApply: false
+---
+
+# Accounting full-flow test gate
+
+Applies to **any** change under `novopay-platform-accounting-v2` — disbursement, repayment, read APIs, batches, EOD, foreclosure, DPI, write ops.
+
+## Domain map
+
+`scripts/lib/accounting_flow_domains.json` — **18 domains**, ~358 orchestration apiNames in accounting-v2.
+
+```bash
+bash scripts/bin/accounting-flow-coverage.sh   # gap report per domain
+bash scripts/bin/accounting-flow-proof.sh      # health + read smoke + domain proofs
+```
+
+## Ship-loop (service + money tier)
+
+`resolve_ship_cases.py` + `accounting_flow_domains.py` add domain guard cases on **any** accounting touch:
+
+| Tier | Minimum |
+|------|---------|
+| **service** | `health.accounting` + per-domain impact case or read smoke |
+| **money** | domain guards + SQL proof where defined |
+
+**Not money-only:** read/inquiry, write ops, mandates/SI, EOD batches use `smoke_tier: service`.
+
+## Before declaring accounting work done
+
+1. `bash scripts/bin/accounting-flow-coverage.sh` — know which domain you touched and gap count
+2. Run ship-resolved ntest cases for that domain (not only `batch.*` SUCCESS)
+3. Money paths: row-level SQL proof (`scripts/dpic/sql/helpers/`, disburse sanity DB evidence)
+4. Read API changes: `accounting.read_smoke` or specific registry `dpic.*_api` case
+
+## Do not
+
+- Limit analysis to `smoke_tier: money` registry rows only
+- Treat batch job SUCCESS as business correctness without domain verify SQL
+- Skip `health.accounting` on service-tier processor/XML edits
+
+See also: `dpi-money-proof-gate.mdc` for DPI-specific posting calendar guards.

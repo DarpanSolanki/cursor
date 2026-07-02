@@ -1,0 +1,34 @@
+{
+  "table": "death_foreclosure_insurance_staging_details",
+  "schema": "mfi_accounting",
+  "indexes": [
+    {
+      "name": "idx_dfisd_dfc_inout_claim_status",
+      "columns": ["death_foreclosure_details_id", "inout_status", "claim_status", "status"],
+      "serves": [
+        "findOneByDeathForeclosureDetailsId",
+        "claimForReUpload",
+        "markReUploadFailed",
+        "markAccountingPending"
+      ]
+    },
+    {
+      "name": "idx_dfisd_inout_claim_id",
+      "columns": ["inout_status", "claim_status", "id"],
+      "serves": [
+        "DeathForeclosureInsuranceReader",
+        "OutBoundDeathForeclosureDocumentReader",
+        "BulkFileDeathForeclosureInsuranceOutboundReader",
+        "getCount",
+        "getCountForBusinessLogic"
+      ]
+    },
+    {
+      "name": "idx_dfisd_claim_number_status",
+      "columns": ["claim_number", "claim_status"],
+      "serves": ["getCountByClaimNumber"]
+    }
+  ],
+  "flyway": "novopay-platform-initial-setup/flyway/sli/accounting/sql/product/V000198__dfisd_staging_composite_indexes.sql",
+  "ops_script": "scripts/sql/setup/dfc_insurance_staging_indexes.sql"
+}

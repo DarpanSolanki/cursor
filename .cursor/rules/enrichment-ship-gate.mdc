@@ -1,0 +1,57 @@
+---
+description: Tiered self-learning — when to full-rebuild KG vs cases-only vs KB-only
+alwaysApply: true
+---
+
+# Enrichment tiers (smart — not every edit needs a full KG rebuild)
+
+## Decision matrix
+
+| What changed | Action | Command / artifact |
+|--------------|--------|------------------|
+| **Shipped code** in `novopay-*` / `trustt-*` (processor, orchestration XML, entity, batch) | **Tier FULL** — graph spine may have changed | `cursor-bundle/kg/bin/build.sh` or `scripts/bin/kg-switch.sh` after branch checkout |
+| **Shipped fix** — brain changelog only (behaviour note, no new apiName in code) | **Tier CASES** — precedents from CHANGELOG | `cursor-bundle/kg/bin/changelog-add.sh` (auto) or `build.sh --cases-only` / `refresh_cases.py` |
+| **KB only** — `.cursor/changelog.md`, `gaps-and-risks.md`, `accounting-module-knowledge.mdc`, demo scripts, `system_brain/` notes | **Tier SKIP** — no KG rebuild | Append/update docs only |
+| **Repo branch/sha drift** or orchestration XML newer than `kg.db` | **Tier FULL** | `kg doctor` → `kg-switch.sh` |
+| **Gap resolved / runbook** | **Tier SKIP** (unless new apiName or orchestration fact) | `gaps-and-risks.md` / `cursor-bundle/brain/runbooks/` |
+
+**Rule of thumb:** If `kg flow <apiName>` would change → FULL. If only “we fixed X before” history → CASES. If humans-only narrative → SKIP.
+
+## Shipped fix (same task turn, before push)
+
+1. **Brain changelog** — prepend with **SHA + apiName + tables** in detail line:
+   ```bash
+   cursor-bundle/kg/bin/changelog-add.sh \
+     "## YYYY-MM-DD | acct \`3966ffa3c\` | accounting-v2 | branch | title" \
+     "fetchLoanForeclosureSimulationDetails billed_dpi=0: … loan_due_details …"
+   ```
+   Names `apiName` verbatim so `kg cases <apiName>` links the precedent.
+
+2. **Agent KB** — append `.cursor/changelog.md` (one line).
+
+3. **Gaps / runbook** — only when symptom class or gap status changes (SKIP KG).
+
+`changelog-add.sh` runs **cases refresh** when watermark in sync; **full build** when code drift.
+
+## Automation
+
+| Trigger | Tier |
+|---------|------|
+| `git push` success | `enrichment-sync.sh` — FULL if watermark/orch drift; CASES if CHANGELOG newer only; else SKIP |
+| `git commit` | `.pending-kg-rebuild` flag (reminder) |
+| `git push` without brain CHANGELOG | blocked (`enrichment-audit.sh --pre-push`) |
+| Session start / workspace open | `enrichment-sync.sh` + `workspace-kg-state.md` |
+| `build.sh` cache hit + CHANGELOG newer | `refresh_cases.py` (not silent stale cases) |
+
+## End-of-task output (mandatory)
+
+```
+Knowledge updated: [brain CHANGELOG | gaps | runbook | .cursor/changelog | none]
+KG enrichment: [FULL | CASES — <reason> | SKIP — KB only]
+KG cases: [<apiName> — N precedent(s) | n/a]
+Changelog: [appended | n/a]
+```
+
+## Discuss-before-updating exception
+
+Does **not** apply to enrichment when user asked to **ship/fix** code — brain CHANGELOG is part of shipping. KB-only doc edits never require KG unless they name new orchestration facts.

@@ -1,0 +1,55 @@
+{
+  "disbursement.jlg": {
+    "title": "JLG disburseLoan regression (sanity suite)",
+    "service": "accounting",
+    "cmd": "make -C scripts jlg",
+    "notes": "Full validator + DB checks via regression_driver"
+  },
+  "disbursement.indl": {
+    "title": "INDL disburseLoan regression",
+    "service": "accounting",
+    "cmd": "make -C scripts indl"
+  },
+  "disbursement.shg": {
+    "title": "SHG disburseLoan regression",
+    "service": "accounting",
+    "cmd": "make -C scripts shg"
+  },
+  "disbursement.curl_shg": {
+    "title": "One-shot curl disburseLoan (SHG payload)",
+    "service": "accounting",
+    "cmd": "bash scripts/disbursement/runners/curl_disburse_loan_shg.sh"
+  },
+  "disbursement.neft_v2_jlg": {
+    "title": "JLG NEFT v2 local seed + sanity + terminal callbacks",
+    "service": "accounting",
+    "cmd": "bash scripts/disbursement/runners/run_jlg_neft_v2_local.sh"
+  },
+  "dpic.full": {
+    "title": "DPIC: setup → disburse → DPD → calc → booking → billing",
+    "service": "accounting",
+    "cmd": "bash scripts/dpic/run_full_happy_path.sh",
+    "env": { "JOB_TIME": "1781267400000" }
+  },
+  "dpic.setup": {
+    "title": "DPIC DB setup only (product 6367)",
+    "cmd": "bash scripts/dpic/run_setup.sh"
+  },
+  "dpic.disburse": {
+    "title": "DPIC disburseLoan only (MFT product 6367)",
+    "cmd": "bash scripts/dpic/run_disburse.sh"
+  },
+  "dpic.eod": {
+    "title": "DPIC EOD batches only (needs LOAN_ACCOUNT_ID)",
+    "cmd": "bash scripts/dpic/run_eod.sh",
+    "env": { "JOB_TIME": "1781267400000" }
+  },
+  "api.disburseLoan_dpic": {
+    "title": "Raw API: disburseLoan (DPIC payload)",
+    "cmd": "python3 scripts/testing/api-fire.py disburseLoan -f scripts/dpic/payload/disburse_mft_6367.json --watch-log"
+  },
+  "api.dpi_booking": {
+    "title": "Raw API: dpiAccrualBooking batch",
+    "cmd": "python3 scripts/testing/api-fire.py dpiAccrualBooking --batch --watch-log"
+  }
+}

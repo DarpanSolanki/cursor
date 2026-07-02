@@ -1,0 +1,27 @@
+DCF insurance task ↔ accounting sync (data patch only)
+
+Run on QA first, then prod. Read-only unless noted.
+
+  Step  File                      Action
+  ----  ------------------------  ------------------------------------------
+  1     01_pattern_b_list.sql     List Pattern B rows (expect ~4)
+  2     02_pattern_b_patch.sql    Patch B — task + FR + staging (COMMIT inside)
+  3     03_pattern_a_list.sql     List Pattern A rows (bulk remainder)
+  4     04_pattern_a_patch.sql    Patch A — DCF status only (COMMIT inside)
+  5     05_verify.sql             Must return 0 rows
+
+Pattern B (minority)
+  task_stage     = Insurance Claim Initiated
+  dcf_status     = REUPLOAD_DOCUMENTS
+  claim_status   = Pending for FR
+
+Pattern A (majority)
+  task_stage     = Re-Upload Document
+  dcf_status     = INITIATED_INSURACE_CLAIM  (spelling: INSURACE not INSURANCE)
+  claim_status   = REJECTED
+
+Example:
+  psql ... -v ON_ERROR_STOP=1 -f scripts/sql/adhoc/dcf_insurance_sync/01_pattern_b_list.sql
+
+Before COMMIT in patch files: check pattern_*_row_count and listed LANs.
+To abort: ROLLBACK; (instead of COMMIT in patch files, change COMMIT to ROLLBACK for dry run)

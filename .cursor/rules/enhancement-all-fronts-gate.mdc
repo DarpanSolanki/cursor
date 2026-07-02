@@ -1,0 +1,41 @@
+---
+description: "Mandatory multi-angle gate for enhancements, fixes, and new features — tiered L0-L3, scale/index, ops, poison data, cross-service"
+alwaysApply: true
+globs: ["**/*.java", "**/*.sql", "**/orchestration/**/*.xml"]
+---
+
+# Enhancement — all fronts gate
+
+Before proposing or shipping **any** fix, enhancement, or new capability, walk **every** front below. Output tiered options (L0 minimum) in the response.
+
+## Fronts (all required — skip only if N/A with one-line reason)
+
+| Front | Ask |
+|-------|-----|
+| **Scale** | Row volume in 6–12 months? Per-chunk/per-day query multiplier? |
+| **Index / SQL** | Every new/changed `@Query` and batch reader WHERE → `pg_indexes` + EXPLAIN; matrix in `scripts/lib/dfc_insurance_staging_query_index_matrix.json` for DFC insurance staging |
+| **Poison / partial state** | Existing prod/QA dirty rows — code guard vs one-time SQL vs both |
+| **Cross-service** | Deploy pairs, callback loops, partial commit |
+| **Idempotency / replay** | Safe retry? Staging status machine? |
+| **Ops / prod hotfix** | L0 without Flyway? Standalone SQL under `scripts/sql/setup/`? |
+| **Regression** | Adjacent batch/API paths; registry case or audit script |
+| **Contract** | Additive-only; all callers |
+
+## Tiered delivery (always present L0 + L1)
+
+| Tier | When | Example |
+|------|------|---------|
+| **L0** | Urgent prod; hours | SQL index hot-apply, claim predicate widen, config guard — **100% symptom fix for known rows** |
+| **L1** | Proper fix; same release | Flyway migration, code + index together, audit in ship loop |
+| **L2** | Scale / structural | Partial indexes, archive completed staging, batch partition tuning |
+| **L3** | Architectural | Table partition by inout_status, outbox for cross-service |
+
+## Automation
+
+- Native SQL change → `scripts/bin/query-index-perf-audit.sh` (skill: `.cursor/skills/query-index-perf-gate/SKILL.md`)
+- DFC insurance staging → `dcf.insurance_reupload_index_audit` registry case
+- Ship note must include: `Query index audit: …` and tier chosen
+
+## Agent failure mode to avoid
+
+Do **not** close a SQL/batch enhancement with only code trace — run index inventory or label **NOT VERIFIED — index audit pending**.

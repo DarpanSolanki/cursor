@@ -1,0 +1,32 @@
+---
+description: "DPI money path — mandatory SQL proof chain before ship or QA hand-off"
+globs: ["**/dpi/**/*.java", "scripts/dpic/**", "scripts/testing/registry.json"]
+alwaysApply: false
+---
+
+# DPI money-proof gate
+
+## When this applies
+
+Any change to `DpiAccrualCalculation*`, `DpiAccrualBooking*`, `DpiBilling*`, or `scripts/dpic/**` verify SQL.
+
+## Mandatory before declaring DPI fix done
+
+1. **Static:** `bash scripts/bin/dpi-booking-posting-guard.sh` (blocks `dayBefore(end_date)` regression)
+2. **SQL proof:** `bash scripts/bin/dpi-money-proof.sh` (post-EOD + billing UD)
+3. **Ship-loop:** money tier auto-runs `dpic.posting_calendar_regression`, `dpic.cross_eod_replay_134497`, `dpic.billing_ud_next_emi` when calc/booking/billing touched (`resolve_ship_cases.py`)
+4. **Full regression:** `bash scripts/bin/agent-ops.sh verify-dpi-proof` (includes cross-EOD replay)
+
+## Do not
+
+- Trust `batch.dpi_*` SUCCESS-only — row-level money is in SQL helpers under `scripts/dpic/sql/helpers/`
+- Reuse interest-accrual verify SQL for DPI booking (`value_date` and posting-day model differ)
+- Skip multi-day booking replay for go-live / 15th-EMI loans (SDCP-10497)
+
+## DPI job order (EOD)
+
+```
+dpiAccrualCalculation → dpiAccrualBooking (replay each posting day) → dpiBilling
+```
+
+Billing reads `accrual_posting_date IS NOT NULL`; bills on **next EMI** ≤ business date (or maturity monthly path — not yet in default ship guard).

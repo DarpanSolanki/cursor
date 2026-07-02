@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/kg-session-start.sh",
+        "timeout": 600
+      },
+      {
+        "command": ".cursor/hooks/intel-session-sync.sh",
+        "timeout": 60
+      },
+      {
+        "command": ".cursor/hooks/workspace-autopilot-session.sh",
+        "timeout": 20
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/after-money-path-edit.sh"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/pre-commit-kg-reminder.sh",
+        "matcher": "git\\s+commit"
+      },
+      {
+        "command": ".cursor/hooks/pre-push-checklist.sh",
+        "matcher": "git\\s+push"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": ".cursor/hooks/post-commit-kg-flag.sh",
+        "matcher": "git\\s+commit"
+      },
+      {
+        "command": ".cursor/hooks/post-push-enrichment.sh",
+        "matcher": "git\\s+push"
+      },
+      {
+        "command": ".cursor/hooks/post-checkout-kg.sh",
+        "matcher": "git\\s+(checkout|switch)"
+      },
+      {
+        "command": ".cursor/hooks/post-ntest-intel-sync.sh",
+        "matcher": "(ntest|super-agent|super-machine|capture-flow|ship-loop-gate|agent-ops|sync_engine\\.py|gradlew)"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/stop-ship-nudge.sh",
+        "loop_limit": 3
+      }
+    ]
+  }
+}

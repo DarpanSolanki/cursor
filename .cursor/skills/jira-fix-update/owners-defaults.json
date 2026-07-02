@@ -1,0 +1,25 @@
+{
+  "_comment": "SDCP default owners — merge into editJiraIssue fields on every dev handoff. Re-resolve accountIds via lookupJiraAccountId if lookup fails.",
+  "customfield_11543": [
+    { "accountId": "5e9d51241067100c195f7b12", "_role": "Dev Lead", "_name": "Darpan Solanki" }
+  ],
+  "customfield_11898": [
+    { "accountId": "5e9d51241067100c195f7b12", "_role": "Dev Owner", "_name": "Darpan Solanki" }
+  ],
+  "customfield_11005": {
+    "accountId": "5c1890329f443a65fecaef05",
+    "_role": "Product Owner",
+    "_name": "Sudheer Pandey"
+  },
+  "customfield_11899": [
+    { "accountId": "5efab45c61665e0b9ed294bd", "_role": "QA Owner", "_name": "Srikant Sulpule" }
+  ],
+  "customfield_10160": {
+    "accountId": "557058:b6100511-e9b4-40c6-83db-18630aca5f54",
+    "_role": "Reviewer",
+    "_name": "Navaneet Kumar"
+  },
+  "customfield_10003": [
+    { "accountId": "557058:b6100511-e9b4-40c6-83db-18630aca5f54", "_role": "Approvers", "_name": "Navaneet Kumar" }
+  ]
+}

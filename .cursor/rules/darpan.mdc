@@ -1,0 +1,94 @@
+---
+description: Trustt LMS pinpoint-RCA discipline — cursor-bundle brain, KG, db-tools, memory (sliProd)
+alwaysApply: true
+---
+
+# Darpan workspace discipline (sliProd + cursor-bundle)
+
+You assist with Trustt LMS bug-fix / accounting work in **`/home/darpan/Documents/sliProd/`**
+(17 Java repos under `novopay-*`, `trustt-*`). Accuracy = **pinpoint root-cause, verified against
+live evidence, never guessed.** These rules complement `.cursorrules` and `always-on.mdc`; on conflict
+the **more restrictive** wins.
+
+## Hard rules (never broken)
+
+1. **Boundary** — never write outside `/home/darpan/Documents/sliProd/`. No external sends: no Jira
+   writes, no `git push` to upstream (`khoslalabs`), no PRs, no DB writes. Reads anywhere are fine;
+   writes inside the tree are fine. If a task needs an external write: **refuse**, draft the
+   SQL/mail/comment for the human to apply, continue.
+2. **Brain-first, code-second** — answer from curated knowledge BEFORE grepping service code. Use the
+   precedence ladder in §2.
+3. **Proof-backed** — every claim/RCA/fix backed by THIS-turn evidence (`file:line`, diff hunk, or
+   command/SQL output). Four gates: evidence-before-claim · enumerate-before-summarize ·
+   widen-search-before-absent · state-uncertainty (`NOT VERIFIED — needs runtime confirmation`).
+4. **Build + author + log** — if you change code: build green in the affected repo
+   (`cd <repo> && ./gradlew build -x test`, Java 17) before proposing push; author
+   `DarpanSolanki <darpan@novopay.in>` (no Co-Authored-By); prepend a 2-line entry to
+   `.cursor/changelog.md` in the same turn. Push only with human approval, to origin
+   `DarpanSolanki/...`, never upstream.
+5. **"Built green" ≠ "done."** Status stays **"pushed; awaiting QA retest"** until QA confirms.
+6. **State-machine safety** — after a CAS transition (`ChildClmtStateMachineService.transition`,
+   `LoanAccountStateMachineService.transition`, `patchJsonFields`) on a `clmt`/`loan_account` row,
+   NEVER call setters on that entity. See `cursor-bundle/brain/rules/multi-path-state-persistence-safety.md`
+   and `.cursor/rules/multi-path-state-persistence-safety.mdc`.
+
+## Session start
+
+Run a workspace snapshot (branches drift — never assume all repos on the same branch):
+
+```bash
+for d in /home/darpan/Documents/sliProd/*/; do
+  [ -d "$d/.git" ] || continue
+  printf "%-42s %-30s %s\n" "$(basename "$d")" "$(git -C "$d" rev-parse --abbrev-ref HEAD)" "$(git -C "$d" rev-parse --short=10 HEAD)"
+done
+```
+
+Authoritative helper: `.cursor/brain/workspace-state.md`.
+
+## Precedence ladder — answer in this order; descend only when the layer above is exhausted
+
+1. **Memory** — `cursor-bundle/memory/MEMORY.md` (standing corrections, git/build conventions).
+   Read at session start; obey first.
+2. **Brain docs** — `cursor-bundle/brain/` (engines/, accounting/, platform/, flows/, runbooks/,
+   services/, rules/). Topic map: `cursor-bundle/brain/runbooks/00-INDEX.md`. Secondary/legacy:
+   `.cursor/` knowledge base and `system_brain/` (symptom-first orientation).
+3. **Local System KG** — `cursor-bundle/kg/` (SQLite, stdlib python3). Orient BEFORE grepping:
+   ```bash
+   python3 cursor-bundle/kg/bin/kg.py flow <request>
+   python3 cursor-bundle/kg/bin/kg.py crud <flow>
+   python3 cursor-bundle/kg/bin/kg.py writes <table>
+   python3 cursor-bundle/kg/bin/kg.py impact <symbol>
+   python3 cursor-bundle/kg/bin/kg.py why <request>      # silent decision-points + curated root-causes
+   python3 cursor-bundle/kg/bin/kg.py why <symptom-word> # failure-mode catalog search
+   python3 cursor-bundle/kg/bin/kg.py cases <flow>
+   python3 cursor-bundle/kg/bin/kg.py error <code>
+   python3 cursor-bundle/kg/bin/kg.py docs <flow>
+   ```
+4. **Live data (read-only)** — `cursor-bundle/db-tools/bin/db-query.sh mfi_qa3 --sql "SELECT ..."`
+   or `--canned <name>`. Never raw psql. Wrapper refuses writes and prod. Canned SQL:
+   `cursor-bundle/db-tools/canned-queries/`.
+5. **Service code** — final fallback: grep under `novopay-*/src/main/java`. Verify before any
+   state-machine / CAS / posting change.
+
+## Pinpoint-RCA method (wrong / 0 / blank / missing / stuck / duplicate / reverted)
+
+1. Name the observable precisely — screen + field + exact wrong value.
+2. Find the resolver / decision-point that PRODUCED it. Run `kg why` + `kg flow`; map symptom →
+   `file:line`. Do this BEFORE grepping.
+3. Enumerate dependencies — config/master mapping, state column, precondition API, master data — and
+   the silent branch when each is absent.
+4. VERIFY each dependency on LIVE data before concluding (`is_deleted`, status, type/sub_type). Never
+   assert code↔config/state from memory; query it. Compare to a working case.
+5. State the fix as data/config/code delta + expected post-fix value (QA-verifiable).
+
+Failure classes: config_resolution · silent_catch · null/zero/empty_default · state_gate ·
+race_condition · ordering. Runbook: `cursor-bundle/brain/runbooks/pinpoint-rca-playbook.md`.
+
+## Working defaults
+
+- Plan first for 3+ files, schema migration, multi-repo, or state-machine/CAS/posting changes.
+- Scratch files → `/tmp`, not the repo tree; delete temp files when done.
+- After user correction ("no"/"stop"/"wrong"), update `cursor-bundle/memory/` feedback + `MEMORY.md`
+  before continuing.
+- Keep knowledge current: fix the single relevant brain doc + rebuild KG when facts change on stable
+  branches — no loose markdown islands at workspace root.

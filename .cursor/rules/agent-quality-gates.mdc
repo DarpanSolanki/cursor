@@ -1,0 +1,65 @@
+---
+description: Mandatory agent quality gates — branch alignment, flow disambiguation, KG discipline, honest testing (standing upgrade 2026-06-29)
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Agent quality gates (every substantive task)
+
+Full scan narrative: `cursor-bundle/memory/feedback_agent_quality_gates_scan.md`
+
+## Gate A — Workspace truth (before grep / KG / RCA)
+
+1. Read `.cursor/workspace-kg-state.md` and `.cursor/git-workspace-state.json` (refresh: `bash scripts/bin/git-workspace-status.sh`).
+2. `python3 cursor-bundle/kg/bin/kg.py validate && kg watermark` — note **provisional** repos and built `@sha` per repo.
+3. If user/env names a **deployed branch or tag** → in **that repo**: `git fetch origin && git fetch upstream`, then read `upstream/<branch>` or tag — **not** assumed local checkout (`feedback_fetch_latest_before_checking_code.md`).
+
+**Hard stop (state aloud before continuing):**
+
+- Task is **integration/release** (DCF, disburse, LOS sync) but **any** money-path repo is on `feature/*` → run `sync_branches_v2.sh <train>` for task repos OR limit analysis to repos on the named train only.
+- Task is **DPI** → `ensure-dpi-branches.sh` + `kg-switch` (`dpi-feature-branch-gate.mdc`).
+- **Mixed trains** on disk (integration + feature/DPI across repos) → do not conclude cross-service contracts until aligned or scoped.
+
+## Gate B — Flow domain (accounting)
+
+Before editing or RCA on accounting money paths:
+
+1. Resolve **apiName** (not folder guess).
+2. `python3 cursor-bundle/kg/bin/kg.py flow <apiName>` then **read** `deploy/application/orchestration/*` for that request.
+3. Check domain: `scripts/lib/accounting_flow_domains.json` — do not conflate:
+   - `death_foreclosure` (`loanDeathForeclosure`) vs `foreclosure` (`individualChildLoanForeclosure`, simulation APIs)
+   - Outstanding/claim (death-date snapshot) vs GL legs (approve posting / billing job_time)
+   - DPI jobs vs interest accrual jobs
+4. Brain orientation: `system_brain/flows/<topic>.md` when it exists — then **verify in Java** (brain can lag branch).
+
+## Gate C — KG is not enough
+
+After `kg orient` / `kg why`:
+
+- [ ] Orchestration XML read for the request chain
+- [ ] Every processor in the changed path grepped for callers / EC keys
+- [ ] Money path: `.cursor/gaps-and-risks.md` High rows in area
+- [ ] RCA: `scripts/db-local.sh` or user-named `db-qaN.sh` — label NOT VERIFIED if not run
+
+`KG_STRICT=1` when branch drift or dirty trees possible.
+
+## Gate D — Honest testing & JIRA
+
+| Dev claims | Allowed only when |
+|------------|-------------------|
+| Result: Pass (scenario) | `ntest run` / script PASS **this session** |
+| Workbook numbers match | Simulation or read-only SQL — say so |
+| LAN xxxxx Pass | Live API/batch on that LAN after deploy/reset |
+| All scenarios Pass | Count matches list; no pending QA-only items in Dev Test |
+
+Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unrelated registry cases (e.g. `dpic.foreclosure_sim` on death-FC-only edits).
+
+## Gate E — Outputs (RCA / JIRA / release)
+
+- Diplomatic edge-case framing for RCA and QA comments (`jira-fix-update` skill).
+- Tiered L0/L1 minimum for bugs (`tiered-solution-approach.mdc`).
+- Minimal fix gate before propose (`minimal-fix-impact-gate.mdc`).
+
+## Autopilot
+
+Every substantive user message: `bash scripts/bin/workspace-autopilot.sh task "…"` — if classification changes (RCA → sync → fix), re-run gates for the **new** domain.

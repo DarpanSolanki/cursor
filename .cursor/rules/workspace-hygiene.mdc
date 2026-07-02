@@ -1,0 +1,57 @@
+---
+description: Workspace file hygiene — minimal clutter, scratch-only temps, cleanup when done
+alwaysApply: true
+---
+
+# Workspace hygiene (file + document management)
+
+**Goal:** Keep sliProd lean. Do not leave thousands of orphan files from agent sessions.
+
+## Where things belong
+
+| Kind | Location | Track in git? |
+|------|----------|----------------|
+| Stable agent knowledge | `cursor-bundle/brain/`, `.cursor/gaps-and-risks.md`, `system_brain/` (orientation only) | Yes (brain bundle) |
+| Shipped-fix precedents | `cursor-bundle/brain/changelog/CHANGELOG.md` | Yes |
+| Service QA / release artifacts | `docs/<service>/` per `docs-outside-service-repos.mdc` | Workspace only |
+| Reusable SQL / scripts | `scripts/sql/`, `scripts/bin/` | Yes |
+| **Session scratch / RCA temps** | **`scripts/scratch/<task>/`** | **No — delete when done** |
+| KG build output | `cursor-bundle/kg/data/` (cache LRU-managed) | Generated — do not hand-edit |
+| Runtime logs | `scripts/scratch/logs/` | No |
+
+## Create files only when necessary
+
+- **Do not** add markdown, analysis dumps, or “notes” files unless the user explicitly asks, or a **stable** brain/changelog/gap update is required by other rules.
+- **Do not** duplicate content across `.cursor/`, `docs/`, `system_brain/`, and `cursor-bundle/brain/` — one canonical home.
+- **Do not** drop temp files in `.cursor/`, repo roots, or service `src/` trees.
+- **Prefer** editing an existing doc/script over creating a sibling file.
+- **One-off investigation SQL** → `scripts/sql/adhoc/` only if reusable; else `scripts/scratch/<task>/` and delete after.
+
+## Temp / scratch discipline
+
+1. **Start:** If analysis needs temp files, use `scripts/scratch/<short-task-name>/` (create the subdir only then).
+2. **During:** Logs, SQL dumps, extracted log slices, diff snippets — all under that scratch dir.
+3. **End of task:** Delete the scratch subdir (or run `scripts/bin/workspace-hygiene.sh --clean`).
+4. **Never** commit scratch contents to service repos.
+
+## Session close checklist (agents)
+
+Before marking a task done:
+
+- [ ] Removed `scripts/scratch/<task>/` created for this work
+- [ ] No new files under `.cursor/` except rules/hooks when explicitly requested
+- [ ] No duplicate analysis markdown left in workspace root or `.cursor/`
+- [ ] If a fix shipped: knowledge went to **changelog + brain** (not a random new `.md`)
+- [ ] Run `scripts/bin/workspace-hygiene.sh` if unsure (audit mode)
+
+## User-facing docs
+
+- **TRD / feature analysis the user wants kept** → `docs/<service>/<feature>/` (structured, named).
+- **Ephemeral “thinking out loud”** → scratch, then delete — not `docs/`.
+
+## Audit
+
+```bash
+scripts/bin/workspace-hygiene.sh          # report clutter
+scripts/bin/workspace-hygiene.sh --clean  # remove scratch + known stale patterns
+```

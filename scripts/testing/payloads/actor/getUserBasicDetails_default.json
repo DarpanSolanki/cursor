@@ -1,0 +1,19 @@
+{
+  "headers": {
+    "tenant_code": "mfi",
+    "user_id": "{{user_id}}",
+    "client_code": "NOVOPAY",
+    "channel_code": "NOVOPAY",
+    "end_channel_code": "NOVOPAY",
+    "stan": "{{$timestamp}}",
+    "transmission_datetime": "{{$timestamp}}",
+    "operation_mode": "SELF",
+    "run_mode": "REAL",
+    "actor_type": "CUSTOMER",
+    "function_code": "DEFAULT",
+    "function_sub_code": "DEFAULT"
+  },
+  "request": {
+    "user_id": "{{user_id}}"
+  }
+}

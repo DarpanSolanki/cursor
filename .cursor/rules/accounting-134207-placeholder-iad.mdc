@@ -1,0 +1,91 @@
+---
+description: "Fix 134207 on postTransaction/disburseLoan — missing product_transaction_catalogue placeholder→IAD rows (PROC_FEE, GST, STAMP_DUTY_AMT)"
+alwaysApply: false
+---
+
+# Error 134207 — placeholder → internal account definition (DB fix)
+
+## When this applies
+
+- **Symptom**: `NovopayFatalException` **134207**; message like *"Product Transaction Catalogue, Placeholder and Internal Account Definition configuration missing."*
+- **Where**: `ExecuteTransactionRulesProcessor.resolveInternalAccountFromPlaceholderThroughProduct` after **`postTransaction`** / **`disburseLoan`** (or any flow that runs transaction rules).
+- **Log clue**: `Error while fetching InternalAccountDefinition And GLCode for product Id: X, and catalogue Id: Y and placeholder: Z` (often **`PROC_FEE`** first; next failures may be **`GST_PAYABLE`**, **`IGST`**, **`STAMP_DUTY_AMT`**, etc.).
+
+## Root cause (data, not application code)
+
+Resolution uses native query on:
+
+- `product__transaction_catalogue` (**join** `product_id` + `transaction_catalogue_id`)
+- `product_transaction_catalogue__placeholder__iad` (`product_transaction_catalogue_id` = `product__transaction_catalogue.id`, `placeholder_code`, `internal_account_definition_id`)
+
+If a **placeholder** appears in **`transaction_accounting_rule`** for that catalogue but **no** matching non-deleted row exists in **`product_transaction_catalogue__placeholder__iad`** for that product’s catalogue link → **134207**.
+
+## Fix (database only — no code change)
+
+1. **Schema**: usually **`mfi_accounting`** (set `search_path` or qualify tables).
+
+2. **Find the product–catalogue row** (example: LOAN_DISBURSEMENT is typically `transaction_catalogue_id = 1`; confirm with `transaction_catalogue`):
+
+```sql
+SET search_path TO mfi_accounting;
+SELECT ptc.id AS product_transaction_catalogue_id, ptc.product_id, ptc.transaction_catalogue_id, tc.type, tc.sub_type
+FROM product__transaction_catalogue ptc
+JOIN transaction_catalogue tc ON tc.id = ptc.transaction_catalogue_id
+WHERE ptc.product_id = :product_id AND ptc.is_deleted = false;
+```
+
+3. **List placeholders required** for that `transaction_catalogue_id`:
+
+```sql
+SELECT DISTINCT debit_account_placeholder, credit_account_placeholder, fallback_credit_placeholder
+FROM transaction_accounting_rule
+WHERE transaction_catalogue_id = :catalogue_id AND is_deleted = false;
+```
+
+4. **Compare** with existing mappings:
+
+```sql
+SELECT placeholder_code, internal_account_definition_id
+FROM product_transaction_catalogue__placeholder__iad
+WHERE product_transaction_catalogue_id = :ptc_id AND is_deleted = false;
+```
+
+5. **Insert missing rows** — **copy `internal_account_definition_id` from a working product** for the **same** `transaction_catalogue_id` (e.g. `product_id = 1` in local/dev). PROC_FEE is often IAD **71** in standard seeds; tax/stamp IDs vary by environment — **do not guess**; copy from product 1 (or golden reference product) in **that** database.
+
+Idempotent pattern (adjust `:ptc_id` and VALUES to match discovery):
+
+```sql
+INSERT INTO product_transaction_catalogue__placeholder__iad
+  (product_transaction_catalogue_id, placeholder_code, internal_account_definition_id, is_deleted)
+SELECT :ptc_id, v.placeholder_code, v.internal_account_definition_id, false
+FROM (VALUES
+  ('PROC_FEE'::varchar(32), :iad_proc_fee::bigint),
+  ('GST_PAYABLE', :iad_gst_payable),
+  ('IGST', :iad_igst),
+  ('SGST', :iad_sgst),
+  ('CGST', :iad_cgst),
+  ('UTGST', :iad_utgst),
+  ('STAMP_DUTY_AMT', :iad_stamp)
+) AS v(placeholder_code, internal_account_definition_id)
+WHERE NOT EXISTS (
+  SELECT 1 FROM product_transaction_catalogue__placeholder__iad x
+  WHERE x.product_transaction_catalogue_id = :ptc_id
+    AND x.placeholder_code = v.placeholder_code
+    AND x.is_deleted = false
+);
+```
+
+Omit any placeholder your ruleset does not use; add any extra placeholders your `DISTINCT` query returns.
+
+## Code reference (verify query contract)
+
+- `ProductTransactionCatalogueRepository.findInternalAccountDefinitionAndGLCodeByProductIdAndTransactionCatalogueId` — joins `product__transaction_catalogue` → `product_transaction_catalogue__placeholder__iad` → `internal_account_definition`.
+
+## Non-goals
+
+- **Do not** “fix” this only by changing request JSON unless the business agrees; missing rows mean **product setup is incomplete** for posting rules.
+- **Production**: prefer aligning with **initial-setup / controlled migration** after validating IAD IDs for that tenant; ad-hoc `INSERT` is **L0/local** parity.
+
+## Related workspace notes
+
+- Short narrative: `system_brain/edge_cases/accounting_134207_placeholder_iad.md`

@@ -1,0 +1,20 @@
+---
+description: "Short release/QA hand-off when user asks for release details — RCA, impact, dev testing in plain language"
+globs: []
+alwaysApply: false
+---
+
+# Release details hand-off
+
+When the user says **"release details"**, **"please release details"**, **"QA handoff"**, or similar after a fix:
+
+1. Read **`.cursor/skills/release-details/SKILL.md`** and follow its output format exactly.
+2. Verify **git state** first: `git fetch upstream origin` in the affected service repo; state whether the fix is on latest upstream tip or fork-only.
+3. Sections required (concise, simple language):
+   - **RCA** — 2–3 lines, business terms, no code.
+   - **Impact analysis** — 2–3 lines.
+   - **Dev testing** — what was done to prove success (scenarios + evidence); honest if full automated test did not run.
+4. Add **QA retest steps** and **status** (merged / fork-only / awaiting QA).
+5. **Do not write to Jira** — draft for user to paste (`darpan.mdc` boundary).
+
+Longer functional packages: `cursor-bundle/memory/feedback_qa_handoff_package.md`.

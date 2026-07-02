@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "tenant_code": "mfi",
+    "client_code": "NOVOPAY",
+    "channel_code": "WEB",
+    "user_id": "3",
+    "stan": "{{$timestamp}}",
+    "function_code": "DEFAULT",
+    "function_sub_code": "DEFAULT",
+    "run_mode": "REAL",
+    "transmission_datetime": "{{$timestamp}}"
+  },
+  "request": {
+    "account_number_list": ["{{account_number}}"]
+  }
+}

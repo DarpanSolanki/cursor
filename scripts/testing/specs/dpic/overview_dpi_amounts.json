@@ -1,0 +1,34 @@
+{
+  "id": "dpic.overview_dpi_amounts",
+  "title": "getLoanAccountOverviewDetails — DPI amount fields in response",
+  "api_name": "getLoanAccountOverviewDetails",
+  "payload": "payloads/getLoanAccountOverviewDetails_default.json",
+  "vars": {
+    "account_number": "${ACCOUNT_NUMBER}"
+  },
+  "defaults": {
+    "ACCOUNT_NUMBER": "6004039225"
+  },
+  "assertions": [
+    { "type": "http_status", "name": "http_2xx" },
+    { "type": "response_status", "name": "api_success", "status": "SUCCESS", "code": "30223" },
+    { "type": "path_exists", "name": "overview_row", "path": "account_overview_list[0]" },
+    { "type": "path_exists", "name": "dpi_paid_present", "path": "account_overview_list[0].amount_details.dpi_paid_amount" },
+    { "type": "path_exists", "name": "dpi_overdue_present", "path": "account_overview_list[0].amount_details.dpi_overdue_amount" },
+    {
+      "type": "any_path_decimal_gt",
+      "name": "dpi_amount_positive",
+      "paths": [
+        "account_overview_list[0].amount_details.dpi_due_amount",
+        "account_overview_list[0].amount_details.dpi_overdue_amount"
+      ],
+      "value": "0"
+    },
+    {
+      "type": "db_matches_path",
+      "name": "dpi_overdue_matches_db",
+      "path": "account_overview_list[0].amount_details.dpi_overdue_amount",
+      "sql": "SELECT COALESCE(SUM(CASE WHEN ldd.due_date < CURRENT_DATE OR ldd.overdue_date < CURRENT_DATE THEN ldd.due_amount - ldd.paid_amount - ldd.waived_amount ELSE 0 END), 0)::text FROM mfi_accounting.loan_due_details ldd JOIN mfi_accounting.loan_account la ON la.account_id = ldd.loan_account_id JOIN mfi_accounting.account a ON a.id = la.account_id WHERE a.account_number = ':ACCOUNT_NUMBER' AND ldd.component_type = 'DPI' AND ldd.is_deleted = false AND la.is_deleted = false"
+    }
+  ]
+}

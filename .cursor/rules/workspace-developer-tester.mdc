@@ -1,0 +1,58 @@
+---
+description: Unified dev+test loop — KG orient, ntest registry, minimal files
+alwaysApply: true
+---
+
+# Developer + tester in one workspace
+
+## Loop (any feature / bug / API)
+
+```
+orient → reproduce → assert → fix → re-smoke
+```
+
+1. **Orient (KG + brain)** — before grep or blind API fire:
+   - `scripts/bin/ntest.sh orient <apiName>` — flow, DB footprint, precedents
+   - `cursor-bundle/brain/runbooks/00-INDEX.md` if symptom matches
+   - `python3 cursor-bundle/kg/bin/kg.py why <apiName>` for silent failure points
+2. **Reproduce** — smallest surface:
+   - **API:** `ntest run <id>` or `ntest api <service> <api> --var K=V`
+   - **Flow:** `ntest run dpic.full` / `make -C scripts jlg`
+   - **DB:** `scripts/db-local.sh --canned …`
+3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring)
+4. **Fix** — service repo; tiered L0/L1 per workspace rules
+5. **Verify** — `ntest smoke` or `ntest run <id>`; prepend changelog if stable fix
+
+## One test tool — `ntest`
+
+| Command | Purpose |
+|---------|---------|
+| `ntest list` | All cases in `scripts/testing/registry.json` |
+| `ntest run <id>` | API (inline envelope + expect) or flow (shell) |
+| `ntest smoke` | Every `type:api` registry case |
+| `ntest api actor getUserBasicDetails --var USER_ID 103` | Ad-hoc, no new files |
+| `ntest orient disburseLoan` | KG before deep work |
+| `ntest logs accounting` | Error tail |
+
+**Do not** add per-API payload JSON, duplicate spec files, or new shell wrappers. **Add one row** to `registry.json`.
+
+## Registry case shape (API)
+
+```json
+"my.feature_api": {
+  "type": "api",
+  "service": "accounting|actor",
+  "api": "apiName",
+  "request": { "field": "${ENV_VAR}" },
+  "defaults": { "ENV_VAR": "value" },
+  "expect": { "status": "SUCCESS", "paths": ["..."], "path_eq": {}, "db_eq": {} }
+}
+```
+
+Payload files only when body is large (e.g. `disburseLoan` → reuse `scripts/dpic/payload/` or `disbursement/payloads/`).
+
+## Hygiene
+
+- Session scratch: `scripts/scratch/` — delete when done
+- No orphan analysis markdown; stable facts → brain/changelog
+- KG branch-correct: `scripts/bin/kg-switch.sh` after checkout

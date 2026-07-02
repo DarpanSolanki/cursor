@@ -1,0 +1,39 @@
+---
+description: Every ship-path fix must pass workspace-close (build + ntest) before push
+alwaysApply: true
+---
+
+# Ship test mandatory (all fixes — not only DPI/money)
+
+**Rule:** Any change under a service repo (`novopay-*`, `trustt-*`), workspace scripts, or orchestration must be **verified locally** before push or JIRA "ready for QA".
+
+## Agent workflow (non-negotiable)
+
+```
+edit → compile (if Java) → workspace-close.sh --from-pending → then push / release details
+```
+
+Do **not** push after `compileJava` alone. HTTP 200 on a batch trigger is **not** enough — batch cases wait for `COMPLETED`.
+
+## What enforces this
+
+| Layer | Behaviour |
+|-------|-----------|
+| **post-commit hook** | Registers `.cursor/.pending-ship-work.json` from committed ship paths |
+| **pre-push hook** | Auto `workspace-close` or **deny** until `ship_push_gate --satisfied` |
+| **push-origin.sh** | Same gate; never bypass with raw `git push` |
+| **ship-loop tiers** | workspace: validate + smoke · service: build + health/ntest · money: build + flow ntest |
+
+## Minimum test by tier
+
+- **workspace** — `kg validate` + `ntest validate` (+ flow-scoped case if resolved)
+- **service** — `gradlew build -x test` + health probe or `ntest smoke --quick`
+- **money** — build + registry case (`batch.*` preferred over certify flows) + batch `COMPLETED` when applicable
+
+## After test PASS
+
+`workspace-autopilot.sh mark-verified` or full `workspace-close` clears pending. Prefer `bash scripts/bin/push-origin.sh --repo <service>`.
+
+## Escape hatch (rare)
+
+`SHIP_PUSH_NO_AUTO_CLOSE=1` — push denied until manual `workspace-close`; use only when debugging the gate itself.

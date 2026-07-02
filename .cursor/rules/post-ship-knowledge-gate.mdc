@@ -1,0 +1,61 @@
+---
+description: Mandatory knowledge closure after shipped code — blocks "task done" on partial changelog-add only
+alwaysApply: true
+---
+
+# Post-ship knowledge gate (money / flow fixes)
+
+**Problem this fixes:** Agents push code + run `changelog-add.sh --kg-flow` then declare **done**, leaving `(pending)` in `.cursor/changelog.md`, gaps open, `accounting-flows.md` stale, and KG stale after branch checkout.
+
+**`changelog-add` alone is NOT knowledge closure.**
+
+## When this gate applies
+
+Any turn that **ships** (commit/push) or **completes** a fix touching:
+
+- accounting-v2 money paths, orchestration, batches, DPI/foreclosure/repayment/disbursement
+- API/Kafka response contracts consumed by webapp/LOS
+- platform-lib used on money paths
+
+## Mandatory checklist — ALL before "task done"
+
+| # | Action | Verify |
+|---|--------|--------|
+| 1 | `changelog-add.sh --kg-flow` with **correct commit sha** | brain CHANGELOG top row sha matches `git rev-parse HEAD` in affected repo |
+| 2 | Append `.cursor/changelog.md` | **No `(pending)`** on any line for this fix |
+| 3 | Resolve gaps | `.cursor/gaps-and-risks.md` — RESOLVED row + **GAP-0xx** narrative if gap existed or was discovered |
+| 4 | Flow docs | `.cursor/accounting-flows.md` if accounting behaviour changed |
+| 5 | Module deep ref | `.cursor/rules/accounting.mdc` if accounting-v2 behaviour changed |
+| 6 | Edge case (optional) | `system_brain/edge_cases/` one short note if symptom is searchable |
+| 7 | KG sync | `scripts/bin/kg-switch.sh` after **any** repo branch checkout; `kg-enrich.sh --cases` after kg-flow prepend |
+| 8 | Freshness | `python3 cursor-bundle/kg/bin/kg.py fresh` → must print **FRESH** before closing |
+
+## Hard stop phrases (task is NOT done if any true)
+
+- `.cursor/changelog.md` contains `(pending)` for this session's fixes
+- User asked to push and gaps doc still lists the fixed issue as **open**
+- `kg.py fresh` reports **STALE** and gate item 7 was not run
+- brain CHANGELOG kg-flow row cites wrong sha (e.g. BPD fix under earlier commit)
+
+## End-of-task output (required format)
+
+```
+Knowledge updated: [list every file touched]
+KG enrichment: [FULL | CASES | SKIP]
+KG fresh: [FRESH | STALE — blocked]
+Gaps touched: [GAP-ids RESOLVED | none]
+Changelog: [appended | n/a]
+Post-ship gate: [PASS | FAIL — <what's missing>]
+```
+
+**Do not say "pushed" or "done" with `Post-ship gate: FAIL`.**
+
+## Agent automation
+
+After push on a money-path fix, run:
+
+```bash
+scripts/bin/ship-knowledge-gate.sh
+```
+
+Fix reported failures before ending the turn.

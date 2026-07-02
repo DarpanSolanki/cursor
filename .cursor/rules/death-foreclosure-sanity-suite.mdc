@@ -1,0 +1,25 @@
+---
+description: "Death foreclosure local test harness and flow entrypoints"
+globs:
+  - "scripts/dcf_sanity.py"
+  - "scripts/dcf_sanity/**"
+  - "docs/dcf-sanity/**"
+  - "novopay-platform-accounting-v2/**/deathforeclosure/**"
+alwaysApply: false
+---
+
+# Death foreclosure sanity suite
+
+When user asks to test DCF, death foreclosure GL, or insurance approve batch:
+
+1. Read **`docs/dcf-sanity/PROCESS.md`** (flow from orchestration + writer — not assumed).
+2. Run **`python3 scripts/dcf_sanity.py --preflight`**.
+3. Loan prep: **`scripts/disburse_loan_sanity.py`** (ACTIVE loan + LIFE_INSUR).
+4. UI/batch path: `loanDeathForeclosure` STAGE_1..5 → outbound → inbound CSV → **`deathForeclosureInsuranceJob`**.
+5. Verify: **`python3 scripts/dcf_sanity.py --verify-only --lan <LAN>`** + `scripts/dcf_sanity/dcf_post_approve_verify.sql`.
+
+**Money path code:** `DeathForeclosureInsuranceWriter.calculateAmountsForTransaction` on branch `sdcp-9301-hotfix-3.3.1.0`.
+
+**GL rules:** DB catalogue **22** / Sheet15 `reference_code`s — must match writer bridge.
+
+**Do not declare PASS** without DB: `loan_status=CLOSED`, closure txn, partitions, zero pending dues, `past_due_days=0`.

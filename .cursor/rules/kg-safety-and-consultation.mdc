@@ -1,0 +1,58 @@
+---
+description: "KG is a map, not a spec — validate before use; orient before implement; code+DB are truth"
+alwaysApply: true
+---
+
+# KG safety and consultation discipline
+
+## Hard rule — KG must never drive implementation alone
+
+The knowledge graph (`cursor-bundle/kg/data/kg.db`) indexes **structure** from code and **opt-in precedents** from `brain/changelog/CHANGELOG.md` (`| kg-flow |` only). It does **not** know runtime DB state, env config, cache contents, or unmerged WIP behaviour.
+
+**Before any fix, feature, or RCA that touches money, Kafka, contracts, or multi-service flows:**
+
+1. `python3 cursor-bundle/kg/bin/kg.py validate` — must pass (integrity + min nodes/edges).
+2. `python3 cursor-bundle/kg/bin/kg.py fresh` — if STALE → `scripts/bin/kg-switch.sh` before trusting `flow`/`crud`/`why`.
+3. `python3 cursor-bundle/kg/bin/kg.py orient <request>` — spine + silent branches + precedents **with disclaimer**.
+4. **Verify in source of truth:** orchestration XML → processor `.java` → `scripts/db-local.sh` (local only).
+
+Set `KG_STRICT=1` when branch drift is possible (feature branches, dirty trees). KG answers exit 2 instead of serving stale graph data.
+
+## WIP / provisional branches
+
+When `kg watermark` shows `provisional` or `WIP <- base …`:
+
+- Treat `flow`/`crud` as **branch-local structure**, not production contract.
+- Do **not** change shared lib, Flyway on release base, or cross-service contracts from KG alone.
+- Stable brain doc edits wait until merged to release-train base (see `self-learning-kg.mdc` WIP gate).
+
+## Consultation order (single path — do not skip)
+
+| Step | What | Purpose |
+|------|------|---------|
+| 1 | `cursor-bundle/memory/MEMORY.md` | Standing corrections |
+| 2 | `cursor-bundle/brain/CANONICAL-MAP.md` | Which file owns each topic |
+| 3 | `kg orient <api>` or `kg why <api>` | Structure + failure surface |
+| 4 | `cursor-bundle/brain/runbooks/00-INDEX.md` | Symptom → runbook |
+| 5 | `.cursor/gaps-and-risks.md` | Open High gaps in area |
+| 6 | Service orchestration XML + processors | **Authoritative behaviour** |
+| 7 | `scripts/db-local.sh` | **Authoritative local state** |
+
+## Self-learning — keep KG lean and non-corrupt
+
+- **Audit:** every commit → `brain/changelog/CHANGELOG.md` (human timeline).
+- **KG precedents:** only flow fixes with `| kg-flow |` or `KG-FLOW:` detail → `changelog-add.sh --kg-flow`.
+- **Never** index full audit log, demo scripts, or `.cursor/changelog.md` into KG.
+- After `kg-flow` entry: `scripts/bin/kg-enrich.sh --cases` then `kg validate`.
+- Full rebuild (`build.sh`) on orchestration/code drift only — not for every doc tweak.
+
+## Implementation gate (mandatory sign-off before edit)
+
+- [ ] `kg validate` passed
+- [ ] `kg fresh` or `kg switch` completed if drift
+- [ ] Orchestration XML for request read (not only `kg flow` output)
+- [ ] All processors in changed path grep'd for callers
+- [ ] Money path: tiered L0/L1 proposed; adversarial check documented
+- [ ] Contract change: additive-only; all callers checked
+
+If any box fails → **stop**; KG cannot substitute for missing evidence.
