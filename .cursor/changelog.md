@@ -1,7 +1,23 @@
-# Workspace Changelog
+[2026-07-02] | WORKSPACE | Batch write-skip contract gate: audit-batch-skip-mappers.sh + ship-loop hook + batch-write-skip-contract.mdc; DPI Vo mappers stripped of redundant unwrap | scripts/bin/audit-batch-skip-mappers.sh, ship-loop-gate.sh, .cursor/rules/batch-write-skip-contract.mdc, DPI failure mappers
+[2026-07-02] | BUG_FIX | Generic force_async skip path: BatchWriterSkipItemSupport in platform-lib; GenericListenerV3 delegates; DPI mapper peels List only; ntest dpic.batch.force_async_modes | novopay-platform-lib/infra-batch, GenericListenerV3.java, DpiBatchWriterSkipItemSupport.java, scripts/dpic/run_dpi_force_async_modes.sh
+[2026-07-02] | FIX | DPI matrix E2E: purge clears DPI dues + batch_failure_audit; async DB settle poll in db_assertions + post_eod_verify; cross_eod fresh baseline fixture | purge_dpi_accruals_for_loan.sql, prepare_dpi_fixture_for_batch.sh, db_assertions.py, run_dpi_cross_eod_replay_guard.sh, run_dpi_post_eod_verify.sh
+[2026-07-02] | BUG_FIX | Push gate: GATE_PASSED outbox short-circuit, bounded workspace-close timeout, SHIP_PUSH_LOCK_PATH; kg-hot-swap duplicate kg-switch eliminated (flock pile-up); ntest validate_registry import | push-origin.sh, pre-push-checklist.sh, ship_push_gate.py, ship_push_lock.py, kg-hot-swap.sh, kg-session-sync.sh, ntest.py
+[2026-07-02] | BUG_FIX | GenericListenerV3 async write-skip: unwrap Future before fromWriter (fixes dpiAccrualBooking ClassCastException with force_async) | novopay-platform-lib/infra-batch/.../GenericListenerV3.java, accounting DpiAccrualCalculationFailureEntityMapper
+[2026-07-02] | FEATURE | DPI batch QA matrix — parameterized fixtures (DPI_SCENARIO), 6 matrix flows + 12 scenario batch cases with db_assertions; grace/multi-EMI JOB_TIME alignment; verify_grace_dpi_batch.sql | scripts/dpic/prepare_dpi_fixture_for_batch.sh, registry.json, scripts/dpic/sql/helpers/
+[2026-07-02] | FEATURE | ntest db_assertions lifecycle for DPI batch jobs — pre/post ledger snapshot + verify_dpi_* SQL hooks; fixture fixes (sync_demo_past_due, dpi_evict_go_live_cache, seed_calc_window) | scripts/testing/lib/db_assertions.py, ntest.py, registry.json, scripts/dpic/
 
-# Format: [DATE] | [TYPE] | [Summary] | [.cursor/ files updated]
-# Types: INITIAL_SCAN | BUG_FIX | FEATURE | SCHEMA | EVENT | GAP_RESOLVED | REFACTOR
+[2026-07-02] | REFACTOR | Demote branch-train to soft log; kgd silent fallback + KG_DAEMON_DISABLED | workspace-health.sh, ship-loop-gate.sh, kg_client.py, kg.py, branch_topology.py
+
+[2026-07-02] | FEATURE | Sprint 4 L3: kgd query daemon, ship state outbox (branch mix = soft log only) | kgd.py, kg_client.py, kg.py, ship_outbox.py, branch_topology.py, workspace-health.sh, ship-loop-gate.sh
+
+[2026-07-02] | FEATURE | Sprint 3 baseline modernization: hub lessons block, ntest smoke --tier workspace, requires_batch + run-guarded docs, verify 21 checks | intelligence_hub.py, ntest.py, workspace_lessons.py, workspace_autopilot.py, registry.json, ship-loop-gate.sh, enrichment-audit.sh, skills
+
+[2026-07-02] | REFACTOR | Sprint 2: parallel Phase 2b feeders, java_index_gc LRU purge, kg orient mixed-train warning, coordinator live_composite_key fix, drift-unified entrypoints, removed after-money-path-edit.sh | build.sh, java_index_gc.py, kg.py, session_coordinator.py
+[2026-07-02] | REFACTOR | Sprint 1: incremental Java index (feeder_hooks freshness), kg_build_lock shared flock, run-guarded on kg-switch/ship-loop/sync-intelligence/platform_scan, fork-base watermark cache | build_java_index.py, build.sh, kg_build_lock.sh, kg-hot-swap.sh
+[2026-07-02] | FEATURE | Native multi-branch intelligence: kg_composite all-repo HEAD fingerprint, kg-hot-swap + post-checkout hook, session_coordinator branch_drift, intelligence_hub Branch Topology section, branch_topology.py | workspace-intelligence-state.md
+[2026-07-02] | REFACTOR | Phase 1–3 workspace upgrade: build_java_index parallel feeders (52s full build), WAL PRAGMAs, run-guarded.sh, lessons roundtrip verify, ship_push_lock on post-ntest background push | cursor-bundle/kg/bin/build.sh, build_java_index.py, build_db.py
+[2026-07-02] | REFACTOR | Extreme workspace upgrade: session_coordinator (dedupe KG sync), after-ship-path-edit hook, pending-ship flock, sync-intelligence single kg-switch, intel/close path dedupe | hooks.json
+[2026-07-02] | REFACTOR | Workspace infra upgrade: KG path fixes (211 doc nodes), parallel build feeders, cache validate, KG_STRICT/drift cache, workspace_lessons self-learning, agent-ops preflight fix | none (scripts + cursor-bundle/kg)
 
 [2026-07-02] | WORKSPACE | Minimal-fix skill + SDCP-10590 precedent: one root-cause layer, no stacked dedupe; interest accrual ships reader LPAC + batch save(List) only | .cursor/skills/minimal-fix/SKILL.md, feedback_minimal_fix_impact_gate.md, minimal-fix-impact-gate.mdc, jira-fix-update/SKILL.md, skills-manifest.json
 

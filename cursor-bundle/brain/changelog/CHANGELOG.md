@@ -4,6 +4,18 @@
 
 ---
 
+
+## 2026-07-02 | acct `8a60c6591` | accounting-v2 | feature/delayed_payment_interest | kg-flow | DPI skip mapper cleanup
+| kg-flow | dpiAccrualCalculation dpiAccrualBooking dpiBilling — delete DpiBatchWriterSkipItemSupport; Vo mappers plain after GenericListenerV3 resolveSkipItem
+
+---
+
+
+## dpiAccrualBooking force_async skip
+## 2026-07-02 | lib `43144909ac` | novopay-platform-lib | feature/delayed_payment_interest | BatchWriterSkipItemSupport generic force_async skip
+
+---
+
 ## 2026-06-12 | acct `8f1be5234` | accounting-v2 | feature/delayed_payment_interest | DPIC: fix DPI accrual window start — earliest-overdue installment (mirror DPD)
 `DpiAccrualCalculationBatchService` used `getLatestLoanInstallmentDetailsEntity` (next *future* EMI, `installment_date >= businessDate`) → windowStart fell after windowEnd → every overdue loan skipped unless a prior `dpi_accrual_details` row was seeded. Now uses `getEarliestInstallmentDateWithUnpaidDpdComponents` (DPD's earliest-overdue predicate) for window start, reusing both existing queries (no new query). On top of user's `007135ba6` (min/max array order) + `6bf108847` (JTF templates). Found in user local dev-test. Build green. NOT runtime-verified.
 

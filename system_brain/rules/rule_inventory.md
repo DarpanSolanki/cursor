@@ -1,5 +1,7 @@
 # Cursor Rules Inventory (classification + intent)
 
+**2026-07-02**: **`batch-write-skip-contract.mdc`** added — `force_async` write-skip: Future resolve only in `GenericListenerV3`; Vo DPI mappers must not duplicate unwrap; gate `audit-batch-skip-mappers.sh` in ship-loop.
+
 **2026-06-25**: **`hot-path-perf-gate.mdc`** added — workspace-wide perf (processors, services, consumers, APIs), not batch-only. Automation: `scripts/bin/hot-path-scan.sh` + autopilot FIX+SHIP / ship-loop money tier.
 
 **2026-04-11 refresh**: rules consolidated. Core **`alwaysApply: true`**: `always-on.mdc`, `discuss-before-updating.mdc`, `minimal-fix-impact-gate.mdc`, `hot-path-perf-gate.mdc`, plus workspace ops rules (`internal-api-local-test-harness`, `workspace-developer-tester`, …); domain rules load via **globs**.

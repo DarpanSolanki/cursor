@@ -22,6 +22,18 @@ Output includes (human-readable order):
 | **infra-cache** / **infra-cache-gateway** | `NovopayCacheClient` / `ICacheClient`, Redis DB index enums used by services |
 | **infra-message-broker** | Kafka integration base classes, config binding to XML |
 | **infra-batch** | Batch scaffolding shared with Spring Batch jobs |
+
+### `force_async` and write-skip listeners (infra-batch)
+
+`batch_job_parameter.force_async` drives `CustomStepBuilder`: when `TRUE`, steps use `AsyncItemWriter`, which passes a **`Future`** to `SkipListener.onSkipInWrite`, not writer type `O`. When `FALSE`, the sync delegate item is passed through.
+
+- **Generic fix:** `BatchWriterSkipItemSupport.resolveSkipItem()` unwraps `Future`; `firstFromList(List)` for list-chunk writers.
+- **Wiring:** `GenericListenerV3` implements `SkipListener<I,Object>`, calls `resolveSkipItem` before `BatchFailureEntityMapper.fromWriter`.
+- **Job mappers:** must not re-unwrap `Future`; Vo-typed mappers use direct null-safe field access; list-typed mappers null-check before `get(0)`.
+- **Workspace gate:** `scripts/bin/audit-batch-skip-mappers.sh` (ship-loop when DPI batch / `infra-batch` skip paths change). Rule: `.cursor/rules/batch-write-skip-contract.mdc`.
+
+Local verify both modes: `ntest run dpic.batch.force_async_modes` (toggles `mfi_batch.batch_job_parameter.force_async`).
+
 | **infra-accounting** / **infra-actor** / … | Service-specific **client** DTOs and executors consumed by other services |
 | **infra-transaction-*** | Partner-specific payment/bank execution (HDFC, IndusInd, CCAvenue, Paytm, Veri5, MATM Payswiff) |
 | **infra-transaction-interface** | Shared transaction executor abstractions (encryption, REST JSON services) |

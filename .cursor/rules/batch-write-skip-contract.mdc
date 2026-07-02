@@ -1,0 +1,46 @@
+---
+description: "Batch write-skip contract — platform Future resolve vs job mapper responsibilities (force_async)"
+globs: ["**/GenericListenerV3.java", "**/BatchWriterSkipItemSupport.java", "**/*FailureEntityMapper.java", "**/batchnew/dpi/**"]
+alwaysApply: false
+---
+
+# Batch write-skip contract (`force_async`)
+
+## Problem this prevents
+
+When `batch_job_parameter.force_async=TRUE`, `AsyncItemWriter` passes a **`Future`** to `SkipListener.onSkipInWrite`, not writer type `O`. Fixing only one job mapper (e.g. booking) while leaving Vo mappers with redundant `unwrap()` — or a job-local `DpiBatchWriterSkipItemSupport` — duplicates platform logic and drifts on the next job.
+
+## Single contract
+
+| Layer | Owns | Must NOT |
+|-------|------|----------|
+| **platform-lib** `GenericListenerV3` | `BatchWriterSkipItemSupport.resolveSkipItem(item)` then `fromWriter(O)` | Cast `SkipListener<I,O>` on raw skip item |
+| **Vo-typed mapper** (calc, billing, penal VO) | Null-safe field read on `O` | `Future`, `resolveSkipItem`, `DpiBatchWriterSkipItemSupport`, `unwrap()` |
+| **List-typed mapper** (booking, interest posting) | `item == null \|\| item.isEmpty()` then `item.get(0)` | Future unwrap (listener already resolved) |
+
+## DPI jobs (mandatory pairing)
+
+All three use `GenericListenerV3` in `*BatchConfigService`:
+
+- `dpiAccrualCalculation` → `DpiAccrualCalculationFailureEntityMapper` (`DpiAccrualCalculationVo`)
+- `dpiAccrualBooking` → `DpiAccrualBookingFailureEntityMapper` (`List<DpiAccrualBookingVo>`)
+- `dpiBilling` → `DpiBillingFailureEntityMapper` (`DpiBillingVo`)
+
+After platform fix, **calc and billing mappers stay plain Vo mappers** — no async-specific code.
+
+## Ship gate (automated)
+
+When pending ship touches DPI batch mappers, `infra-batch` skip support, or `GenericListenerV3`:
+
+```bash
+bash scripts/bin/audit-batch-skip-mappers.sh --dpi-only   # DPI path
+bash scripts/bin/audit-batch-skip-mappers.sh              # full accounting mappers
+```
+
+Wired in `scripts/bin/ship-loop-gate.sh`.
+
+## Verify both async modes
+
+```bash
+ntest run dpic.batch.force_async_modes
+```

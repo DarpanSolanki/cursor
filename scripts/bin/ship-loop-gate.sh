@@ -7,6 +7,12 @@
 #   ship-loop-gate.sh --tier workspace|service|money
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+if [[ "${RUN_GUARDED_ACTIVE:-}" != "1" ]]; then
+  exec bash "$ROOT/scripts/bin/run-guarded.sh" --source ship-loop-gate.sh -- \
+    env RUN_GUARDED_ACTIVE=1 bash "$0" "$@"
+fi
+
 PENDING="$ROOT/.cursor/.pending-ship-work.json"
 PASSED="$ROOT/.cursor/.ship-loop-passed.json"
 FROM_PENDING=0
@@ -61,6 +67,42 @@ if [[ "$PENDING_FILES" -eq 0 && ${#APIS[@]} -eq 0 && "$FROM_PENDING" -eq 1 ]]; t
 fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} files=$PENDING_FILES ==="
+
+# Batch write-skip contract: platform GenericListenerV3 vs job mappers must stay aligned
+_BATCH_SKIP_MODE="$(echo "$PENDING_JSON" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+files = d.get('files') or []
+mapper_files = [f for f in files if 'FailureEntityMapper' in f or 'DpiBatchWriterSkipItemSupport' in f]
+infra_files = [f for f in files if any(t in f for t in (
+    'infra-batch/', 'GenericListenerV3', 'BatchWriterSkipItemSupport'))]
+dpi_dirs = ('batchnew/dpi/', 'DpiAccrual', 'DpiBilling')
+if not mapper_files and not infra_files:
+    print('skip')
+    raise SystemExit
+if mapper_files and all(any(m in f for m in dpi_dirs) for f in mapper_files):
+    print('dpi-only')
+else:
+    print('full')
+" 2>/dev/null || echo skip)"
+if [[ "$_BATCH_SKIP_MODE" != "skip" ]]; then
+  echo "→ batch write-skip contract audit ($_BATCH_SKIP_MODE)"
+  if [[ "$_BATCH_SKIP_MODE" == "dpi-only" ]]; then
+    bash "$ROOT/scripts/bin/audit-batch-skip-mappers.sh" --dpi-only || exit 1
+  else
+    bash "$ROOT/scripts/bin/audit-batch-skip-mappers.sh" || exit 1
+  fi
+fi
+
+_BRANCH_NOTE="$(python3 - <<'PY' "$ROOT"
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts/lib"))
+from branch_topology import active_branch_mix_note
+print(active_branch_mix_note() or "")
+PY
+)"
+[[ -n "$_BRANCH_NOTE" ]] && echo "$_BRANCH_NOTE"
 
 if [[ "$TIER" == "money" && "$PENDING_FILES" -gt 0 ]]; then
   _HPS="$(bash "$ROOT/scripts/bin/hot-path-scan.sh" --from-pending 2>/dev/null || true)"
@@ -178,8 +220,8 @@ PY
         _run_case_list "flow-scoped" "${_WS_CASES[@]}" || exit 1
       fi
     elif [[ "$_TESTING_PATHS" == "1" ]]; then
-      echo "→ testing paths touched — quick smoke (no pending apis resolved)"
-      bash "$ROOT/scripts/bin/ntest.sh" smoke --quick || exit 1
+      echo "→ testing paths touched — workspace tier smoke"
+      bash "$ROOT/scripts/bin/ntest.sh" smoke --tier workspace || exit 1
     fi
     ;;
   service)
@@ -265,6 +307,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(sys.argv[1]) / "scripts/lib"))
 from ship_push_gate import fingerprints_for_files
+from ship_push_lock import update_pending_ship
+from ship_outbox import record_gate_passed, log_outbox_error
 
 root = Path(sys.argv[1])
 tier = sys.argv[2]
@@ -272,6 +316,7 @@ apis = sys.argv[3:]
 now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 passed = {"passed_at": now, "tier": tier, "apis": apis, "repos": [], "file_fingerprints": {}}
 p = root / ".cursor/.pending-ship-work.json"
+pending = {}
 if p.is_file():
     try:
         pending = json.loads(p.read_text(encoding="utf-8"))
@@ -279,15 +324,26 @@ if p.is_file():
         passed["tier"] = pending.get("tier") or tier
         files = pending.get("files") or []
         passed["file_fingerprints"] = pending.get("file_fingerprints") or fingerprints_for_files(root, files)
-        pending["ship_loop_passed_at"] = now
-        p.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
+
+        def _mark_passed(data: dict) -> dict:
+            data["ship_loop_passed_at"] = now
+            return data
+
+        update_pending_ship(root, _mark_passed, pending_path=p)
     except Exception:
         pass
+try:
+    record_gate_passed(
+        tier=passed.get("tier") or tier,
+        apis=list(passed.get("apis") or apis),
+        extra={"repos": passed.get("repos") or [], "file_fingerprints": passed.get("file_fingerprints") or {}},
+    )
+except Exception as ex:
+    log_outbox_error(ex, "record_gate_passed")
 (root / ".cursor/.ship-loop-passed.json").write_text(
     json.dumps(passed, indent=2) + "\n", encoding="utf-8"
 )
 (root / ".cursor/.pending-ship-nudge").unlink(missing_ok=True)
-# workspace-close clears pending after knowledge gate; standalone ship-loop clears here
 import os
 if os.environ.get("SHIP_LOOP_SKIP_KNOWLEDGE_GATE") != "1":
     p.unlink(missing_ok=True)
