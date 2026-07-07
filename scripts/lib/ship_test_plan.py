@@ -31,20 +31,21 @@ from resolve_ship_cases import (  # noqa: E402
 PENDING = ROOT / ".cursor/.pending-ship-work.json"
 
 
-def _paths_from_pending(root: Path) -> tuple[list[str], list[str], str]:
+def _paths_from_pending(root: Path) -> tuple[list[str], list[str], str, list[str]]:
     if not PENDING.is_file():
-        return [], [], "workspace"
+        return [], [], "workspace", []
     try:
         data = json.loads(PENDING.read_text(encoding="utf-8"))
     except Exception:
-        return [], [], "workspace"
+        return [], [], "workspace", []
     files = data.get("files") or []
     paths = [str(root / f) if not str(f).startswith("/") else str(f) for f in files]
     apis = list(data.get("apis") or [])
     tier = data.get("tier") or "workspace"
+    explicit = list(data.get("registry_cases") or data.get("ntest_cases") or [])
     if paths and not apis:
         apis = build_impact(paths).get("apis") or []
-    return paths, apis, tier
+    return paths, apis, tier, explicit
 
 
 def _dedupe(seq: list[str]) -> list[str]:
@@ -71,7 +72,11 @@ def _foreclosure_write_touch(blob: str) -> bool:
 
 
 def _death_touch(blob: str) -> bool:
-    return any(h in blob for h in ("deathforeclosure", "death_foreclosure", "dcf_", "/death/"))
+    return any(h in blob for h in ("deathforeclosure", "death_foreclosure", "/death/"))
+
+
+def _dcf_dpi_waiver_touch(blob: str) -> bool:
+    return any(h in blob for h in ("dpi", "dpic", "waiver", "dpiwaiver"))
 
 
 def case_env(case_id: str, reg: dict) -> dict[str, str]:
@@ -91,13 +96,14 @@ def build_test_plan(
     apis: list[str],
     tier: str,
     reg: dict | None = None,
+    explicit_impact: list[str] | None = None,
 ) -> dict[str, Any]:
     reg = reg if reg is not None else load_registry()
     apis = _focus_apis_for_paths(paths, apis) if paths else list(apis)
     api_set = set(apis)
     blob = path_blob(paths)
 
-    impact = resolve_ship_cases(paths, apis, tier, reg, focus_apis=_focus_apis_for_paths)
+    impact = list(explicit_impact) if explicit_impact else resolve_ship_cases(paths, apis, tier, reg, focus_apis=_focus_apis_for_paths)
     deep: list[str] = []
     release: list[str] = []
 
@@ -128,7 +134,7 @@ def build_test_plan(
                 ):
                     deep.append(cid)
 
-    if _death_touch(blob):
+    if _death_touch(blob) and _dcf_dpi_waiver_touch(blob):
         cid = "foreclosure.dpi_waiver_smoke"
         if cid not in impact and cid in reg:
             deep.append(cid)
@@ -216,13 +222,14 @@ def main() -> int:
     paths = list(args.path)
     apis: list[str] = []
     tier = "workspace"
+    explicit: list[str] = []
     if args.from_pending:
-        paths, apis, tier = _paths_from_pending(ROOT)
+        paths, apis, tier, explicit = _paths_from_pending(ROOT)
     elif paths:
         apis = resolve_apis_smart(paths)
         tier = build_impact(paths).get("tier") or "workspace"
 
-    plan = build_test_plan(paths, apis, tier)
+    plan = build_test_plan(paths, apis, tier, explicit_impact=explicit or None)
 
     if args.json and not args.run:
         print(json.dumps(plan, indent=2))
