@@ -1,0 +1,38 @@
+"""Lightweight disburseLoan preflight — accounting health probe for disburse-quick.sh."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+from urllib.error import URLError
+from urllib.request import urlopen
+
+
+@dataclass
+class PreflightResult:
+    ok: bool
+    blocker: str | None = None
+    details: list[dict[str, Any]] = field(default_factory=list)
+
+
+def run(
+    *,
+    accounting_base_url: str = "http://localhost:8002",
+    accounting_context_path: str = "/accounting",
+    simulator_host: str = "localhost",
+    simulator_port: int = 8018,
+) -> PreflightResult:
+    details: list[dict[str, Any]] = []
+    health_url = f"{accounting_base_url.rstrip('/')}{accounting_context_path}/actuator/health"
+    try:
+        with urlopen(health_url, timeout=8) as resp:
+            ok = resp.status == 200
+        details.append({"check": "accounting_health", "ok": ok, "actual": health_url})
+        if not ok:
+            return PreflightResult(ok=False, blocker=f"accounting health not 200: {health_url}", details=details)
+    except (URLError, OSError) as exc:
+        details.append({"check": "accounting_health", "ok": False, "actual": str(exc)})
+        return PreflightResult(ok=False, blocker=str(exc), details=details)
+
+    sim_url = f"http://{simulator_host}:{simulator_port}"
+    details.append({"check": "simulator_optional", "ok": True, "actual": f"skipped ({sim_url})"})
+    return PreflightResult(ok=True, details=details)
