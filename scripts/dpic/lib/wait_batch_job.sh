@@ -28,7 +28,7 @@ FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
 JOIN mfi_batch.batch_job_execution_params p ON p.job_execution_id = bje.job_execution_id
 WHERE bji.job_name = :'job_name'
-  AND p.parameter_name = 'job_time'
+  AND p.parameter_name IN ('job_time', 'time')
   AND p.parameter_value LIKE '%' || :'job_time' || '%'
   AND EXTRACT(EPOCH FROM bje.create_time)::bigint >= :'run_started'::bigint
 ORDER BY bje.job_execution_id DESC
@@ -41,7 +41,7 @@ FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
 JOIN mfi_batch.batch_job_execution_params p ON p.job_execution_id = bje.job_execution_id
 WHERE bji.job_name = :'job_name'
-  AND p.parameter_name = 'job_time'
+  AND p.parameter_name IN ('job_time', 'time')
   AND p.parameter_value LIKE '%' || :'job_time' || '%'
   AND bje.create_time > NOW() - INTERVAL '10 minutes'
 ORDER BY bje.job_execution_id DESC

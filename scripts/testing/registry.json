@@ -1028,6 +1028,29 @@
     },
     "note": "Profiles claimForReUpload, reader filter, lookup by death_foreclosure_details_id; WARN ok at small scale"
   },
+  "dcf.group_parent_last_child_e2e": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "shg",
+      "sdcp-10199"
+    ],
+    "title": "SHG group parent last-child DFC e2e (SDCP-10199)",
+    "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-11-02"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "note": "Synced fixture 6000137433; backup/restore via dcf_fixture_backup.py; penal reconcile SQL if billed>accrued"
+  },
   "disbursement.quick": {
     "type": "flow",
     "api": "disburseLoan",

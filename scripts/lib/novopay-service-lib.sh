@@ -198,6 +198,10 @@ nps_start_service() {
   echo "  $svc: bootRun profile=$profile (log $bl)"
   (
     cd "$dir"
+    if [[ "$svc" == "accounting" ]]; then
+      export MESSAGE_BROKER_XML_PATH="$dir/deploy/application/messagebroker"
+      export SPRING_APPLICATION_JSON='{"message.broker.bootstrap.servers":"127.0.0.1:9092"}'
+    fi
     nohup ./gradlew bootRun --args="--spring.profiles.active=${profile}" >>"$bl" 2>&1 &
     echo $! >"$pf"
   )
