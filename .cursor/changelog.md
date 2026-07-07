@@ -250,3 +250,5 @@
 [2026-06-29] | BUG_FIX | DCF GL billed/unbilled principal split when reporting date follows death: run reporting-date billing sync before `getUnpaidBilledPrincipalForDeathForeClosure` and BLD_PRIN/UNBLD_PRIN split; death-date billing before outstanding unchanged (SDCP-10494). accounting-v2 `b0a3757f3` on `mfi_integration_v3.3.1.2` | changelog.md
 
 [2026-04-23] | FEATURE | Disbursement demo setup improved for direct asks: wrapper now supports product-scoped runs (`JLG`/`INDL`/`SHG`/`ALL`) while preserving DB-backed verification summary; rules/process docs updated to make this the default execution path when user asks to run disbursement by product. | scripts/run_disbursement_full_matrix.sh, .cursor/rules/disburse-loan-sanity-suite.mdc, .cursor/rules/disbursement-testing-playbook.mdc, docs/disbursement-sanity/PROCESS.md, changelog.md
+
+[2026-07-07] | CONFIG | Enable NEFT v2 on `mfi_integration_v3.4.2.3` by flipping `DisbursementBankCallConstants.USE_NEFT_V1=false` (accounting-v2 routing flag; lib already contains NEFT v2 implementation). | `novopay-platform-accounting-v2/.../DisbursementBankCallConstants.java`, changelog.md
