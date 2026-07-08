@@ -1,8 +1,6 @@
 -- Wipe all DPI accrual rows, DPI dues, DPI GL txns, and batch failure audit (local dev only).
 \set ON_ERROR_STOP on
 
-BEGIN;
-
 -- Restore portfolio / fixture state before dropping backup tables (when present).
 DO $$
 BEGIN
@@ -17,9 +15,7 @@ BEGIN
 
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'mfi_accounting' AND tablename = '_grace_e2e_psfd_backup') THEN
     UPDATE mfi_accounting.product_scheme_frequency_details psfd
-    SET grace_period = b.grace_period,
-        updated_on = NOW(),
-        updated_by = 'LOCAL_DPI_PURGE_RESTORE'
+    SET grace_period = b.grace_period
     FROM mfi_accounting._grace_e2e_psfd_backup b
     WHERE psfd.id = b.psfd_id;
   END IF;
@@ -44,8 +40,8 @@ BEGIN
   END IF;
 END $$;
 
--- Collect DPI txn ids before wiping accrual refs.
-CREATE TEMP TABLE _dpi_txn_purge_ids ON COMMIT DROP AS
+DROP TABLE IF EXISTS _dpi_txn_purge_ids;
+CREATE TEMP TABLE _dpi_txn_purge_ids AS
 SELECT DISTINCT tm.id
 FROM mfi_accounting.transaction_master tm
 WHERE tm.client_reference_number LIKE '%\_DPI\_%' ESCAPE '\'
@@ -60,12 +56,6 @@ WHERE tm.client_reference_number LIKE '%\_DPI\_%' ESCAPE '\'
      SELECT billing_transaction_ref_number
      FROM mfi_accounting.dpi_accrual_details
      WHERE billing_transaction_ref_number IS NOT NULL
-   )
-   OR tm.reference_number IN (
-     SELECT transaction_reference_number
-     FROM mfi_accounting.loan_due_details
-     WHERE component_type = 'DPI'
-       AND transaction_reference_number IS NOT NULL
    );
 
 DELETE FROM mfi_accounting.loan_due_details__loan_account_payments_details lapd
@@ -87,13 +77,11 @@ WHERE transaction_id IN (SELECT id FROM _dpi_txn_purge_ids);
 DELETE FROM mfi_accounting.transaction_master
 WHERE id IN (SELECT id FROM _dpi_txn_purge_ids);
 
-TRUNCATE mfi_accounting.dpi_accrual_details;
+DELETE FROM mfi_accounting.dpi_accrual_details;
 
 DELETE FROM mfi_accounting.batch_failure_audit
-WHERE context_key IN ('loan_account_id', 'account_id')
-  AND context_value ~ '^[0-9]+$';
-
-COMMIT;
+WHERE job_name IN ('dpiAccrualCalculation', 'dpiAccrualBooking', 'dpiBilling')
+   OR context_type IN ('loan_account_id', 'account_id');
 
 \echo '=== purge_local_dpi_all done ==='
 SELECT COUNT(*) AS dpi_accrual_rows FROM mfi_accounting.dpi_accrual_details;

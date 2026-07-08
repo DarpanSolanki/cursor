@@ -47,6 +47,16 @@ ORDER BY table_schema, table_name;
 
 4. Use password only at runtime (interactive/env var), never persist it in rules/files/commits.
 
+## Agent local DB writes (sanctioned)
+
+When the user asks to purge/reset/fix **local** fixture data, agents **may write** to local Yugabyte — not via `db-local.sh` (read-only), but via:
+
+- `scripts/bin/db-local-write.sh --file <sql>` (localhost:5433 only; refuses remote hosts)
+- `scripts/bin/purge-local-dpi.sh` (full DPI wipe)
+- Existing `scripts/dpic/**` helpers that use `dpi_pg` / `psql` against `127.0.0.1:5433`
+
+**Never** write to QA/UAT/prod hosts from agent sessions. Remote investigation uses `cursor-bundle/db-tools/bin/db-query.sh` (read-only).
+
 ## Why (fintech)
 
 Money and audit trails live in the DB; code paths without verified state are a common source of wrong RCA.

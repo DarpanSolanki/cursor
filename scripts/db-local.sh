@@ -18,6 +18,18 @@ PGPORT="${PGPORT:-5433}"
 PGUSER="${PGUSER:-yugabyte}"
 PGPASSWORD="${PGPASSWORD:-yugabyte}"
 PGDATABASE="${PGDATABASE:-yugabyte}"
+
+# If shell profile points at QA/UAT, still use local Yugabyte for investigations.
+case "$PGHOST" in
+  127.0.0.1|localhost|::1) ;;
+  *)
+    PGHOST=127.0.0.1
+    PGUSER=yugabyte
+    PGPASSWORD=yugabyte
+    PGDATABASE=yugabyte
+    PGPORT=5433
+    ;;
+esac
 export PGPASSWORD
 
 SQL=""

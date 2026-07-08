@@ -14,7 +14,8 @@ the **more restrictive** wins.
 
 1. **Boundary** — never write outside `/home/darpan/Documents/sliProd/`. External writes are restricted:
    - Allowed: Jira edits/comments via Atlassian MCP when the user explicitly requests (“update/enrich Jira”).
-   - Not allowed: `git push` to upstream (`khoslalabs`), PRs to upstream, DB writes, or any prod writes.
+   - Allowed: **local Yugabyte writes** on `127.0.0.1` / `localhost` port `5433` only — via `scripts/bin/db-local-write.sh`, `scripts/bin/purge-local-dpi.sh`, or existing `scripts/dpic/**` helpers (`dpi_pg`, `purge_local_dpi_all.sql`). User permission or explicit local test/purge request is enough; do not ask again.
+   - Not allowed: `git push` to upstream (`khoslalabs`), PRs to upstream, **remote QA/UAT/prod DB writes**, or ad-hoc `psql` to non-local hosts.
    Reads anywhere are fine; writes inside the tree are fine.
 2. **Brain-first, code-second** — answer from curated knowledge BEFORE grepping service code. Use the
    precedence ladder in §2.
