@@ -1,3 +1,5 @@
+- 2026-07-08 acct 66e830670 (3.4.2.1): SDCP-10199 parent last-child DFC — asset classification refresh while ACTIVE before CLOSED (SEC NPA reset, mirror child closure); e2e asserts STD + npa_ageing_days=0. dcf.group_parent_last_child_e2e PASS LAN 6000137433.
+- 2026-07-08: Webapp local — sidebar loan-account menu uncommented; notifications real svc :8015; gateway/authorization post-login APIs verified; singleStepLogin kept.
 - 2026-07-08 acct e919e3b33 (3.4.2.1): SDCP-10199 L1 core — parent schedule reduction = futurePrincipal − futureUnpaidBilled (not all billed); new getUnpaidFutureBilledPrincipalForDeathForeClosure; reverted generic processor clamp. dcf.group_parent_last_child_e2e PASS.
 - 2026-07-08 acct 63f2314c1 (3.4.2.1): SDCP-10199 guard negative parent RSCH netAmount on first-child group DFC — clamp part-prepayment principal to zero; skip PRIN appropriation when pending<=0; e2e negative-PRIN assertion. Tested dcf.group_parent_last_child_e2e PASS LAN 6000137433.
 - 2026-07-08: Webapp local single-step login (singleStepLogin); fix login.service error swallow; SQL local_setup_webapp_login_contact_verified.sql for 220402 bypass.

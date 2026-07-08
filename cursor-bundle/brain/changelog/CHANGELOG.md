@@ -5,6 +5,12 @@
 ---
 
 
+## 2026-07-08 | acct `66e830670` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | parent DFC asset classification on closure
+KG-FLOW: finalizeParentClosureOnLastChildDfc runs DPD + asset criteria + classification while parent ACTIVE (SEC NPA reset) before CLOSED; fixes stale DOUB_1 on Loan 360. Tables: loan_account, asset_classification_slabs.
+
+---
+
+
 ## 2026-07-08 | acct `e919e3b33` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 schedule reduction formula L1
 Core fix: parent first-child RSCH scheduleReduction = futurePrincipal - getUnpaidFutureBilledPrincipalForDeathForeClosure(child, deathDate) not minus all unpaid billed. Root cause: overdue billed (due<death) was double-subtracted → -3710 PRIN. Reverted GenerateRepaymentScheduleProcessor clamp.
 

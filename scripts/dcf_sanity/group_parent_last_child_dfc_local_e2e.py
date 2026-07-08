@@ -459,7 +459,23 @@ WHERE la.la_account_number='{parent_lan}' AND ldd.is_deleted=false;
     print(f"  parent partitions: {parts}")
     if not ref:
         raise AssertionError(f"parent {parent_lan} missing RSCH_DEATH_FORECLOSURE txn")
-    print(f"  parent PRIN paid={prin_paid} waived={prin_waived} pending={prin_pending}")
+    asset_class = psql(f"""
+SELECT acs.classification FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.asset_classification_slabs acs ON acs.id = la.asset_classification_slabs_id
+WHERE la.la_account_number='{parent_lan}';
+""") or ""
+    npa_days = psql(f"""
+SELECT COALESCE(npa_ageing_days,0) FROM mfi_accounting.loan_account
+WHERE la_account_number='{parent_lan}';
+""") or "0"
+    if asset_class != "STD":
+        raise AssertionError(
+            f"parent {parent_lan} asset classification {asset_class!r} expected STD after closure"
+        )
+    if int(npa_days) != 0:
+        raise AssertionError(f"parent {parent_lan} npa_ageing_days {npa_days} expected 0 after closure")
+    print(f"  parent PRIN paid={prin_paid} waived={prin_waived} pending={prin_pending} "
+          f"classification={asset_class} npa_ageing_days={npa_days}")
 
 
 def discover_fresh_fixture() -> tuple[str, str, str, str]:
