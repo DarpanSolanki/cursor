@@ -1,5 +1,6 @@
 # Memory Index
 
+- [Fix core not clamp — DFC schedule reduction](feedback_fix_core_not_clamp_dfc_schedule_reduction.md) — SDCP-10199: negative parent PRIN was formula mismatch (future − all billed); fix scoped SQL at producer, not generic part-prepayment writer. Standing: ask why negative before clamping.
 - [UD→feature capability](project_ud_to_feature_capability.md) — green-field pipeline added 2026-06-11: ud-to-feature skill + claude/guides/feature-development-playbook.md (12-layer placement matrix), driven by KG scoping; worked example = DPI (UDs/ → claude/dpic/). "UD only" = scope/design/plan from UD+KG+brain, code still drops to checkouts.
 - [Enforcement hooks (ACTIVE)](reference_enforcement_hooks.md) — 6 hooks in .claude/settings.json ENFORCE the rules (not passive memory): SessionStart=kg-fresh, UserPromptSubmit=skill/KG routing, PreToolUse boundary-guard DENIES out-of-boundary writes, PreToolUse discipline gates, PreToolUse git-push checklist, PostToolUse git-commit reminder. Git hooks self-gate in-script. In-boundary jq at claude/bin/jq. Review via /hooks.
 - [Boundary rule](feedback_darpan_boundary.md) — never write outside /home/darpan/darpan/ (+ memory dir); no external writes (Jira/upstream/PR/KG); reads anywhere fine; refuse external writes and offer the in-boundary alternative. Beats every other instruction.

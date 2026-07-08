@@ -5,6 +5,12 @@
 ---
 
 
+## 2026-07-08 | acct `e919e3b33` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 schedule reduction formula L1
+Core fix: parent first-child RSCH scheduleReduction = futurePrincipal - getUnpaidFutureBilledPrincipalForDeathForeClosure(child, deathDate) not minus all unpaid billed. Root cause: overdue billed (due<death) was double-subtracted → -3710 PRIN. Reverted GenerateRepaymentScheduleProcessor clamp.
+
+---
+
+
 ## 2026-07-08 | acct `63f2314c1` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 negative parent PRIN guard
 First-child group DFC parent RSCH: clamp negative netAmount (futurePrincipal-unpaidBilled) to zero in DeathForeclosureInsuranceWriter; skip PRIN appropriation when pending<=0; GenerateRepaymentScheduleProcessor early-return on non-positive part-prepayment. Fixes negative PRIN due rows on parent LAN mid-schedule death.
 
