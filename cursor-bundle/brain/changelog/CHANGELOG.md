@@ -7,15 +7,17 @@
 
 ## dpiAccrualCalculation
 ## 2026-07-08 | acct `a66900048` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI seals due/month-end only (grace day-walk)
+KG-FLOW: dpiAccrualCalculation seals like interest — EMI due + month-end only; grace gates daily base/anchor; mid-slice amounts day-walked into one row (no overdue-date seal). Reverts 46f115199 overdue boundaries. Tables: dpi_accrual_details.
 
 ---
 
 
 ## dpiAccrualCalculation
-## 2026-07-08 | acct `46f115199` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI per-EMI grace base/anchor + overdue boundaries
-KG-FLOW: dpiAccrualCalculation admits PRIN/INT only after computeOverdueDate; segment boundaries include overdue dates so EMI2 past grace re-anchors. Tables: dpi_accrual_details, loan_due_details. Scripts: dpic.grace_dpi / grace_overlap_e2e / multi_emi_installment_e2e.
+## 2026-07-08 | acct `46f115199` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI per-EMI grace base/anchor + overdue boundaries (superseded for seals)
+KG-FLOW: Per-EMI grace admit retained; overdue-date *seal* boundaries superseded by a66900048 (interest-parity seals only). Tables: dpi_accrual_details, loan_due_details.
 
 ---
+
 
 
 ## dpiAccrualCalculation SHG parent child parity
