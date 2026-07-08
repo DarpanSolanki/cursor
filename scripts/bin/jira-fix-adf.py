@@ -71,6 +71,68 @@ def micro_service_field(option_ids: list[str]) -> list[dict[str, str]]:
     return [{"id": oid} for oid in option_ids]
 
 
+def load_mentions() -> dict[str, str]:
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[2]
+        / ".cursor/skills/jira-fix-update/mentions.json"
+    )
+    raw = json.loads(path.read_text())
+    return {k: v for k, v in raw.items() if not k.startswith("_")}
+
+
+def mention_node(account_id: str, text: str) -> dict[str, Any]:
+    return {"type": "mention", "attrs": {"id": account_id, "text": text}}
+
+
+def _paragraph_with_mentions(line: str, mentions: dict[str, str]) -> dict[str, Any]:
+    """Turn '@Name ...' tokens into ADF mention nodes. Longest name first so
+    'Sudheer Pandey' wins over 'Sudheer'. Unknown @tokens stay plain text."""
+    import re
+
+    names = sorted(mentions.keys(), key=len, reverse=True)
+    alt = "|".join(re.escape(n) for n in names)
+    pattern = re.compile(r"@(" + alt + r")\b", re.IGNORECASE)
+    lower = {k.lower(): v for k, v in mentions.items()}
+
+    content: list[dict[str, Any]] = []
+    pos = 0
+    for m in pattern.finditer(line):
+        if m.start() > pos:
+            content.append(text_node(line[pos : m.start()]))
+        name = m.group(1)
+        content.append(mention_node(lower[name.lower()], f"@{name}"))
+        content.append(text_node(" "))
+        pos = m.end()
+        if pos < len(line) and line[pos] == " ":
+            pos += 1
+    if pos < len(line):
+        content.append(text_node(line[pos:]))
+    if not content:
+        content = [text_node(line)]
+    return {"type": "paragraph", "content": content}
+
+
+def comment_doc(text: str, mentions: dict[str, str] | None = None) -> dict[str, Any]:
+    """Build a comment ADF doc. Blank lines separate paragraphs; @Name tokens
+    that match the mentions map become real mention nodes (markdown @ does not tag)."""
+    if mentions is None:
+        mentions = load_mentions()
+    blocks: list[dict[str, Any]] = []
+    buf: list[str] = []
+    for ln in text.splitlines():
+        if ln.strip() == "":
+            if buf:
+                blocks.append(_paragraph_with_mentions(" ".join(buf).strip(), mentions))
+                buf = []
+            continue
+        buf.append(ln.rstrip())
+    if buf:
+        blocks.append(_paragraph_with_mentions(" ".join(buf).strip(), mentions))
+    return doc(*(blocks or [paragraph(text)]))
+
+
 # Option ids — keep in sync with fields-reference.md
 MICRO = {
     "accounting": "11843",
@@ -109,11 +171,32 @@ def load_default_owners() -> dict[str, Any]:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: jira-fix-adf.py <rca|impact|dev|prepost|micro|owners> ...", file=sys.stderr)
+        print("Usage: jira-fix-adf.py <rca|impact|dev|scenario_titles|test_result|prepost|micro|owners|comment|aitdp_remarks> ...", file=sys.stderr)
         sys.exit(1)
     cmd = sys.argv[1]
     if cmd == "rca" and len(sys.argv) == 5:
         print(json.dumps(rca_doc(sys.argv[2], sys.argv[3], sys.argv[4])))
+    elif cmd == "impact":
+        bullets = sys.argv[2:]
+        if not bullets:
+            print("Usage: jira-fix-adf.py impact <bullet> ...", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(impact_doc(bullets)))
+    elif cmd == "dev":
+        scenarios = sys.argv[2:]
+        if not scenarios:
+            print("Usage: jira-fix-adf.py dev <scenario> ...", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(dev_scenarios_doc(scenarios)))
+    elif cmd == "scenario_titles":
+        titles = sys.argv[2:]
+        print(json.dumps(dev_scenarios_doc(titles)))
+    elif cmd == "test_result":
+        text = sys.argv[2] if len(sys.argv) > 2 else "All dev scenarios: Pass."
+        print(json.dumps(doc(paragraph(text))))
+    elif cmd == "aitdp_remarks":
+        text = sys.argv[2] if len(sys.argv) > 2 else sys.stdin.read().strip()
+        print(json.dumps(doc(paragraph(text))))
     elif cmd == "prepost":
         pre = sys.argv[2] if len(sys.argv) > 2 else "NA"
         post = sys.argv[3] if len(sys.argv) > 3 else "NA"
@@ -124,6 +207,9 @@ def main() -> None:
         print(json.dumps(micro_service_field(ids)))
     elif cmd == "owners":
         print(json.dumps(load_default_owners(), indent=2))
+    elif cmd == "comment":
+        raw = sys.argv[2] if len(sys.argv) > 2 else sys.stdin.read()
+        print(json.dumps(comment_doc(raw)))
     else:
         print("See .cursor/skills/jira-fix-update/SKILL.md", file=sys.stderr)
         sys.exit(1)

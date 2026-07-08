@@ -14,11 +14,32 @@ getJiraIssueTypeMetaWithFields(cloudId=novopay.atlassian.net, projectIdOrKey=SDC
 |--------------|-----------|------|-------|
 | RCA | `customfield_11137` | textarea → ADF | Business language; 3 short paragraphs |
 | Impact Analysis Details | `customfield_11138` | textarea → ADF | Bullet list; 4 items typical |
-| Dev Test Details | `customfield_11901` | textarea → ADF | **Dev scenarios only** + Result per item |
+| Dev Test Details | `customfield_11901` | textarea → ADF | Scenarios + **post-test DB evidence** (status, amounts) — see evidence section below |
 | Test scenarios executed | `customfield_11937` | textarea → ADF | Short labels; mirror dev scenarios |
 | Test results (Pass/Fail) | `customfield_11938` | textarea → ADF | One line summary |
 | MICRO Service | `customfield_11337` | multicheckboxes | `[{"id": "<optionId>"}]` — see mapping below |
 | Pre Deploymenet and Post Deployment Script | `customfield_11336` | textarea → ADF | **One field** — use Pre/Post sub-lines; `NA` when none |
+| JIRA As per AI TDP Temp | `customfield_11477` | multicheckboxes | Yes `12039` / No `12040` / Not Applicable `12709` |
+| AITDP Effectiveness as % | `customfield_11676` | float | 0–100; honest estimate — never the `1` placeholder |
+| AITDP Remarks | `customfield_11677` | textarea → ADF | How the AI tool was used + what dev verified — never just "Used Cursor" |
+
+## AITDP fields (mandatory, honest)
+
+AI Tool Development Productivity metrics — audited. Fill all three:
+
+- `customfield_11477` = `[{"id": "12039"}]` (Yes) when an AI tool was used.
+- `customfield_11676` = realistic effectiveness % (dev's call — ask the user for the number, recommend one; do not guess a placeholder).
+- `customfield_11677` = ADF describing what the tool did (RCA, code, testing, handoff) and what the developer verified manually. No internal identifiers, no emoji.
+
+## Dev test evidence (post-test DB check)
+
+Mandatory for money-path / loan-closure fixes. After `ntest run` or flow script **Pass**, query observable outcomes and add one Dev Test Details item.
+
+**Include:** dev test loan account number(s), loan status, principal paid/waived/pending, total outstanding, posting amounts (functional words — not table/column/txn codes).
+
+**DCF group:** `scripts/dcf_sanity/group_dfc_dev_proof.sql` with `-v parent_lan=… -v child1_lan=… -v child2_lan=…`
+
+**Skill:** `.cursor/skills/jira-fix-update/SKILL.md` § Dev test evidence
 
 ## MICRO Service option IDs
 
