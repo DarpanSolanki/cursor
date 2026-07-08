@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-SDCP-10199 — real local e2e: JLG parent + 2 children through deathForeclosureInsuranceJob.
+SDCP-10199 — real local e2e: SHG/group parent + 2 children through deathForeclosureInsuranceJob.
 
 Drives production-shaped insurance batches (outbound → inbound patch → approve job).
 Verifies DB: loan status, dues paid/waived, DEATH_FORECLOSURE + RSCH_DEATH_FORECLOSURE postings.
 
 Usage:
-  python3 scripts/dcf_sanity/jlg_parent_last_child_dfc_local_e2e.py
+  python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py
   PARENT_LAN=6003973025 CHILD1_LAN=6003973329 CHILD2_LAN=6003973330 python3 ...
 
 Requires: local accounting up, mfi_batch schema, target loans ACTIVE with LIFE_INSUR.
@@ -437,6 +437,14 @@ WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='PRIN' AND ldd.
         raise AssertionError(f"parent PRIN pending {prin_pending} != 0")
     if prin_waived != 0:
         raise AssertionError(f"parent PRIN waived {prin_waived} != 0 (insurance must pay PRIN)")
+    neg_prin = psql(f"""
+SELECT COUNT(*) FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+  AND (ldd.due_amount < 0 OR ldd.paid_amount < 0 OR ldd.waived_amount < 0);
+""") or "0"
+    if int(neg_prin) > 0:
+        raise AssertionError(f"parent {parent_lan} has {neg_prin} negative PRIN due row(s)")
     all_pending = Decimal(psql(f"""
 SELECT COALESCE(SUM(due_amount-paid_amount-waived_amount),0)
 FROM mfi_accounting.loan_due_details ldd
@@ -518,7 +526,7 @@ def main() -> int:
     # Non-last child must run first: last-child detection counts ACTIVE siblings only.
     children_in_order = [child2, child1]
 
-    print("=== SDCP-10199 JLG parent last-child DFC local e2e (real batches) ===")
+    print("=== SDCP-10199 group parent last-child DFC local e2e (real batches) ===")
     print(f"parent={parent} child1={child1} child2={child2} death_date={death_date}")
 
     # Retest-on-same-LANs provision (dcf_fixture_backup.py):
@@ -573,7 +581,7 @@ def main() -> int:
         print("\n--- PARENT last-child assertions ---")
         assert_parent_last_child(parent)
 
-        print("\n=== PASS: SDCP-10199 JLG parent last-child DFC local e2e ===")
+        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e ===")
         return 0
     finally:
         if snapshot_enabled:

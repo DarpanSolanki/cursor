@@ -5,6 +5,30 @@
 ---
 
 
+## 2026-07-08 | acct `63f2314c1` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 negative parent PRIN guard
+First-child group DFC parent RSCH: clamp negative netAmount (futurePrincipal-unpaidBilled) to zero in DeathForeclosureInsuranceWriter; skip PRIN appropriation when pending<=0; GenerateRepaymentScheduleProcessor early-return on non-positive part-prepayment. Fixes negative PRIN due rows on parent LAN mid-schedule death.
+
+---
+
+
+## 2026-07-08 | acct `82cb142e7` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10295 interest billed original + outstanding
+getLoanAccountSummaryDetails interest_details: original_amount=billed interest (loan_account_billing_details non-reversed EXISTS), current_due_amount(Outstanding)=billed-(paid+waived+writtenoff). New LoanDueDetailsRepository.getBilledInterestAmount; GetLoanAccountSummaryDetailsProcessor.populateInterestOriginalAndOutstanding; response template original_amount mapTo interest_original_amount.
+
+---
+
+
+## deathForeclosureInsuranceJob
+## 2026-07-07 | acct `74d566432` | accounting-v2 | fix/sdcp-10199-parent-last-child-dfc-v2 | SDCP-10199 last-child parent closure
+
+---
+
+
+## deathForeclosureInsuranceJob RSCH_DEATH_FORECLOSURE
+## 2026-07-07 | acct `74d566432` | accounting-v2 | fix/sdcp-10199-parent-last-child-dfc-closure | SDCP-10199 last-child parent closure
+
+---
+
+
 ## 2026-07-02 | acct `8a60c6591` | accounting-v2 | feature/delayed_payment_interest | kg-flow | DPI skip mapper cleanup
 | kg-flow | dpiAccrualCalculation dpiAccrualBooking dpiBilling — delete DpiBatchWriterSkipItemSupport; Vo mappers plain after GenericListenerV3 resolveSkipItem
 

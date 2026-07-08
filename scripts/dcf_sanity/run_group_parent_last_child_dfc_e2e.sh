@@ -14,5 +14,5 @@ echo "parent=$PARENT_LAN child1=$CHILD1_LAN child2=$CHILD2_LAN death_date=$DEATH
 
 bash "$ROOT/scripts/dcf_sanity/ensure_dcf_local_stack.sh"
 
-python3 "$ROOT/scripts/dcf_sanity/jlg_parent_last_child_dfc_local_e2e.py"
+python3 "$ROOT/scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py"
 echo "=== PASS: dcf.group_parent_last_child_e2e ==="

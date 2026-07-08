@@ -59,7 +59,7 @@
       "loan_prep": "product-70 parent + 2 insured ACTIVE children; penal billed must match penal_interest_accrual_details",
       "expected_txn_types": ["DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE"],
       "expected_db": { "parent_loan_status": "CLOSED", "parent_prin_waived": 0, "parent_prin_pending": 0, "all_pending": 0 },
-      "local_e2e": "PARENT_LAN=6000137433 CHILD1_LAN=6000137440 CHILD2_LAN=6000137441 DEATH_DATE=2025-11-02 python3 scripts/dcf_sanity/jlg_parent_last_child_dfc_local_e2e.py",
+      "local_e2e": "PARENT_LAN=6000137433 CHILD1_LAN=6000137440 CHILD2_LAN=6000137441 DEATH_DATE=2025-11-02 python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",
       "fixture_backup": "python3 scripts/dcf_sanity/dcf_fixture_backup.py snapshot|restore 6000137433",
       "note": "Non-last child: parent stays ACTIVE + RSCH reschedule. Last child: parent PRIN paid (not waived). Phantom PINT rows (billed>accrued) are fixture data — run local_setup_dcf_fixture_penal_reconcile.sql"
     },
