@@ -35,11 +35,14 @@ if profile_wants grace || profile_wants multi || profile_wants go-live; then
 fi
 
 if profile_wants grace; then
-  JOB_TIME="$GRACE_JOB_TIME" bash "$ROOT/scripts/dpic/run_grace_dpi_e2e.sh" || fail "grace_e2e"
+  # Grace calendar LAN (8057160 / due 2026-05-14) — do not inherit 8060160 fixture defaults.
+  LOAN_ACCOUNT_ID=8057160 FIRST_EMI_DUE_DATE=2026-05-14 \
+    JOB_TIME="$GRACE_JOB_TIME" bash "$ROOT/scripts/dpic/run_grace_dpi_e2e.sh" || fail "grace_e2e"
 fi
 
 if profile_wants multi; then
-  JOB_TIME="$MULTI_EMI_JOB_TIME" bash "$ROOT/scripts/dpic/run_multi_emi_installment_e2e.sh" || fail "multi_emi"
+  LOAN_ACCOUNT_ID=8057160 DEMO_LAN=6004041325 ACCOUNT_NUMBER=6004041325 \
+    JOB_TIME="$MULTI_EMI_JOB_TIME" bash "$ROOT/scripts/dpic/run_multi_emi_installment_e2e.sh" || fail "multi_emi"
 fi
 
 if profile_wants go-live; then

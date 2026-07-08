@@ -6,6 +6,12 @@
 
 
 ## dpiAccrualCalculation
+## 2026-07-08 | acct `a66900048` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI seals due/month-end only (grace day-walk)
+
+---
+
+
+## dpiAccrualCalculation
 ## 2026-07-08 | acct `46f115199` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI per-EMI grace base/anchor + overdue boundaries
 KG-FLOW: dpiAccrualCalculation admits PRIN/INT only after computeOverdueDate; segment boundaries include overdue dates so EMI2 past grace re-anchors. Tables: dpi_accrual_details, loan_due_details. Scripts: dpic.grace_dpi / grace_overlap_e2e / multi_emi_installment_e2e.
 
