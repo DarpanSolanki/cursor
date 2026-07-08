@@ -77,9 +77,12 @@ bash "$ROOT/scripts/bin/agent-ops.sh" ensure accounting --compile 2>/dev/null ||
 
 if profile_ge quick; then
   run_step posting_guards bash "$ROOT/scripts/bin/dpi-booking-posting-guard.sh"
-  run_step grace_e2e bash "$DPIC/run_grace_dpi_e2e.sh"
-  run_step grace_overlap_e2e bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
-  run_step two_emi_full_chain bash "$DPIC/run_dpi_two_emi_full_chain.sh"
+  run_step grace_e2e env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
+    bash "$DPIC/run_grace_dpi_e2e.sh"
+  run_step grace_overlap_e2e env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
+    bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
+  run_step two_emi_full_chain env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
+    bash "$DPIC/run_dpi_two_emi_full_chain.sh"
 fi
 
 if profile_ge standard; then
