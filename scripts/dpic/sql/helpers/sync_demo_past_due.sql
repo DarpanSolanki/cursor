@@ -11,8 +11,8 @@ SET past_due_days = GREATEST(0, sub.dpd),
 FROM (
   SELECT :loan_account_id::bigint AS account_id,
          COALESCE(
-           (DATE_TRUNC('day', TO_TIMESTAMP(:business_date_ms::bigint / 1000.0))
-            - MIN(lid.installment_date::date))::int,
+           (DATE_TRUNC('day', TO_TIMESTAMP(:business_date_ms::bigint / 1000.0))::date
+            - MIN(lid.installment_date::date)),
            0
          ) AS dpd
   FROM mfi_accounting.loan_installment_details lid

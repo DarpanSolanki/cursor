@@ -517,8 +517,25 @@
     "title": "DPI grace period E2E \u2014 accrual starts after grace gate",
     "cmd": "bash scripts/dpic/run_grace_dpi_e2e.sh",
     "env": {
-      "LOAN_ACCOUNT_ID": "8060160",
-      "DEMO_LAN": "6004044425"
+      "LOAN_ACCOUNT_ID": "8057160",
+      "FIRST_EMI_DUE_DATE": "2026-05-14",
+      "GRACE_DAYS": "3",
+      "JOB_TIME": "1779280200000"
+    }
+  },
+  "dpic.grace_overlap_e2e": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "batch",
+      "grace"
+    ],
+    "title": "DPI grace overlap \u2014 EMI1 DPI continues while EMI2 still in grace",
+    "cmd": "bash scripts/dpic/run_grace_overlap_dpi_e2e.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8057160",
+      "GRACE_DAYS": "3",
+      "JOB_TIME": "1781699400000"
     }
   },
   "dpic.multi_emi_installment_e2e": {
@@ -530,8 +547,8 @@
     "title": "DPI multi-EMI overdue \u2014 accrual rows stamp latest overdue INT installment_id",
     "cmd": "bash scripts/dpic/run_multi_emi_installment_e2e.sh",
     "env": {
-      "LOAN_ACCOUNT_ID": "8060160",
-      "DEMO_LAN": "6004044425",
+      "LOAN_ACCOUNT_ID": "8057160",
+      "DEMO_LAN": "6004041325",
       "JOB_TIME": "1782563400000",
       "GRACE_DAYS": "3"
     }

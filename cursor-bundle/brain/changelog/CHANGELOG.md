@@ -5,6 +5,19 @@
 ---
 
 
+## dpiAccrualCalculation
+## 2026-07-08 | acct `46f115199` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI per-EMI grace base/anchor + overdue boundaries
+KG-FLOW: dpiAccrualCalculation admits PRIN/INT only after computeOverdueDate; segment boundaries include overdue dates so EMI2 past grace re-anchors. Tables: dpi_accrual_details, loan_due_details. Scripts: dpic.grace_dpi / grace_overlap_e2e / multi_emi_installment_e2e.
+
+---
+
+
+## dpiAccrualCalculation SHG parent child parity
+## 2026-07-08 | acct `daf6a331c` | accounting-v2 | feature/delayed_payment_interest | SDCP-11012 SHG DPI parent=sum(children)
+
+---
+
+
 ## 2026-07-08 | acct `66e830670` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | parent DFC asset classification on closure
 KG-FLOW: finalizeParentClosureOnLastChildDfc runs DPD + asset criteria + classification while parent ACTIVE (SEC NPA reset) before CLOSED; fixes stale DOUB_1 on Loan 360. Tables: loan_account, asset_classification_slabs.
 
