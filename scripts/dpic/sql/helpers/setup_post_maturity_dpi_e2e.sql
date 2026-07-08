@@ -15,7 +15,7 @@ WITH target AS (
   WHERE lid.loan_account_id = :loan_account_id::bigint
     AND lid.is_deleted = false
     AND lid.is_part_prepayment_entry = false
-    AND lid.installment_date::date = :maturity_date::date
+    AND lid.installment_date::date = :'maturity_date'::date
   ORDER BY lid.installment_date
   LIMIT 1
 )
@@ -33,10 +33,10 @@ SET is_deleted = true,
     updated_by = 'POST_MATURITY_E2E'
 WHERE lid.loan_account_id = :loan_account_id::bigint
   AND lid.is_deleted = false
-  AND lid.installment_date::date > :maturity_date::date;
+  AND lid.installment_date::date > :'maturity_date'::date;
 
 UPDATE mfi_accounting.loan_account la
-SET maturity_date = :maturity_date::timestamp,
+SET maturity_date = :'maturity_date'::timestamp,
     updated_on = NOW(),
     updated_by = 'POST_MATURITY_E2E'
 WHERE la.account_id = :loan_account_id::bigint;

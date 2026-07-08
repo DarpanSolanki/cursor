@@ -11,7 +11,7 @@ BEGIN;
 
 -- Remove prior seed rows only (not real calc output)
 UPDATE mfi_accounting.dpi_accrual_details
-SET is_deleted = true, updated_on = NOW()
+SET is_deleted = true
 WHERE loan_account_id = :loan_account_id
   AND accrual_posting_date IS NULL
   AND billing_posting_date IS NULL
@@ -25,7 +25,7 @@ WITH first_overdue AS (
          COALESCE(psfd.interest_calculation_days_in_year, 'DIM_365') AS days_in_year
   FROM mfi_accounting.loan_installment_details lid
   JOIN mfi_accounting.loan_account la ON la.account_id = lid.loan_account_id
-  LEFT JOIN mfi_accounting.account_interest_details aid ON aid.account_id = la.account_id AND aid.is_deleted = false
+  LEFT JOIN mfi_accounting.account_interest_details aid ON aid.account_id = la.account_id
   LEFT JOIN mfi_accounting.product_scheme_frequency_details psfd
     ON psfd.product_scheme_id = la.la_product_scheme_id
    AND psfd.interest_frequency = la.repayment_frequency
@@ -38,13 +38,12 @@ WITH first_overdue AS (
   LIMIT 1
 )
 INSERT INTO mfi_accounting.dpi_accrual_details (
-  loan_account_id, installment_id, overdue_date, base_amount,
+  loan_account_id, installment_id, base_amount,
   start_date, end_date, dpi_annual_rate, days_in_year, total_accrued_amount, is_deleted
 )
 SELECT
   :loan_account_id,
   fo.installment_id,
-  fo.overdue_date,
   0,
   fo.overdue_date,
   fo.overdue_date,

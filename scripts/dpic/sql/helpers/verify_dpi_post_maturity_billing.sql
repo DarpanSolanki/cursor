@@ -46,7 +46,7 @@ SELECT next_emi.cnt AS next_emi_count,
        dpi_due.due_amount,
        (next_emi.cnt = 0) AS no_next_emi,
        (dpi_due.due_rows > 0) AS has_dpi_due,
-       (dpi_due.due_day = :billing_anchor_date::date) AS due_on_maturity_anchor,
+       (dpi_due.due_day = :'billing_anchor_date'::date) AS due_on_maturity_anchor,
        (accrual.unbilled_posted_rows = 0 AND accrual.billed_rows > 0) AS all_posted_billed,
        (accrual.billed_amount > 0 AND dpi_due.due_amount > 0) AS amounts_positive
 FROM next_emi

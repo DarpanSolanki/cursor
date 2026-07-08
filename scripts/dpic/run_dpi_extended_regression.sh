@@ -44,7 +44,7 @@ fail() {
 _on_fail() {
   local code=$?
   if [[ "$code" -ne 0 ]]; then
-    echo ">>> regression failed during phase: $_CURRENT_PHASE (${SECONDS - _REGRESSION_START}s elapsed)" >&2
+    echo ">>> regression failed during phase: ${_CURRENT_PHASE} ($((SECONDS - _REGRESSION_START))s elapsed)" >&2
     dpi_print_fixture_health "$LOAN_ACCOUNT_ID" >&2 || true
   fi
 }
@@ -58,7 +58,7 @@ run_case() {
 phase() {
   _CURRENT_PHASE="$1"
   echo ""
-  echo "=== Phase $_CURRENT_PHASE (${SECONDS - _REGRESSION_START}s) ==="
+  echo "=== Phase ${_CURRENT_PHASE} ($((SECONDS - _REGRESSION_START))s) ==="
 }
 
 maybe_restore() {

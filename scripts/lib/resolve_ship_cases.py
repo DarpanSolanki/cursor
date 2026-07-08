@@ -36,6 +36,8 @@ PATH_TRIGGERED_CASES = frozenset(
         "dpic.foreclosure_details_flow",
         "dpic.cross_eod_replay_134497",
         "dpic.posting_calendar_regression",
+        "dpic.eod_txn_regression",
+        "dpic.two_emi_full_chain",
         "dpic.npa_dpi_movement_e2e",
     }
 )
@@ -89,6 +91,7 @@ _DPI_FULL_SUITE_CASES = frozenset(
         "dpic.regression_preflight",
         "dpic.certify_scenarios",
         "dpic.verify_certified",
+        "dpic.full_regression",
     }
 )
 
@@ -217,6 +220,13 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "month_end_job_time",
             "setup_qa1_month_end",
         ),
+        "dpic.two_emi_full_chain": (
+            "two_emi",
+            "setup_two_emi",
+            "verify_dpi_accrual_slice_integrity",
+            "dpiaccrualbooking",
+            "dpiaccrualcalculation",
+        ),
         "dpic.npa_dpi_movement_e2e": (
             "assetclassif",
             "dpimovement",
@@ -344,10 +354,12 @@ def resolve_dpi_cases(
             add("dpic.grace_e2e")
         if multi:
             add("dpic.multi_emi_installment_e2e")
+        add("dpic.two_emi_full_chain")
     if booking:
         add("batch.dpi_booking")
         if posting or go_live:
             add("dpic.go_live_ud")
+        add("dpic.two_emi_full_chain")
     if billing:
         add("batch.dpi_billing")
         add("dpic.post_maturity_billing")

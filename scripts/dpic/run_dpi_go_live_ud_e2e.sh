@@ -25,7 +25,8 @@ SELECT lid1.installment_date::date,
        p.code,
        la.maturity_date::date
 FROM mfi_accounting.loan_account la
-JOIN mfi_accounting.product p ON p.id = la.loan_product_id
+JOIN mfi_accounting.loan_product lp ON lp.id = la.loan_product_id
+JOIN mfi_accounting.product p ON p.id = lp.product_id
 JOIN mfi_accounting.loan_installment_details lid1
   ON lid1.loan_account_id = la.account_id AND lid1.is_deleted = false
 JOIN mfi_accounting.loan_installment_details lid2
@@ -54,8 +55,8 @@ GO_LIVE_DDMM="$(echo "$GO_LIVE_VALUE" | head -1)"
 
 echo "=== DPI go-live UD E2E loan=$LOAN_ACCOUNT_ID go_live=$GO_LIVE_ISO product=$product_code ==="
 
-dpi_pg -v ON_ERROR_STOP=1 -v go_live_value="$GO_LIVE_DDMM" \
-  -f "$ROOT/scripts/dpic/sql/helpers/upsert_dpi_go_live_jlgdl.sql" >/dev/null
+dpi_pg -v ON_ERROR_STOP=1 -v go_live_value="$GO_LIVE_DDMM" -v go_live_sub_type="$product_code" \
+  -f "$ROOT/scripts/dpic/sql/helpers/upsert_dpi_go_live.sql" >/dev/null
 
 COMPILE=1 bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting --compile
 
@@ -91,7 +92,7 @@ rs="$(date +%s)"
 JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
 bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$rs"
 
-read -r eligible all_od accrual_base verdict <<<"$(
+read -r eligible all_od accrual_base accrual_amount verdict <<<"$(
   dpi_pg -t -A -F' ' -v ON_ERROR_STOP=1 \
     -v loan_account_id="$LOAN_ACCOUNT_ID" \
     -v go_live_date="$GO_LIVE_ISO" \
@@ -125,7 +126,14 @@ dpi_pg -v ON_ERROR_STOP=1 -c \
 echo "OK maturity skip"
 
 echo ">>> full EOD + posting calendar"
-dpi_prepare_repay_fixture
+dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" -v grace_days="$GRACE_DAYS" \
+  -f "$ROOT/scripts/dpic/sql/helpers/setup_grace_dpi_e2e.sql" >/dev/null
+dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
+  -f "$ROOT/scripts/dpic/sql/helpers/setup_multi_emi_dpi_e2e.sql" >/dev/null
+dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
+  -f "$ROOT/scripts/dpic/sql/helpers/purge_dpi_accruals_for_loan.sql" >/dev/null
+dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
+  -f "$ROOT/scripts/dpic/sql/helpers/reset_dpi_booking_replay.sql" >/dev/null
 LOAN_ACCOUNT_ID="$LOAN_ACCOUNT_ID" JOB_TIME="$JOB_TIME" RESET_DPI_BOOKING=1 \
   bash "$ROOT/scripts/dpic/run_eod_dpi_only.sh"
 

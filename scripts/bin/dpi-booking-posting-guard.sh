@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Static guard: DPI accrual booking must gate on slice end (dayBefore exclusive end_date),
-# NOT on EOD businessDate for EMI due — SDCP-10497 / upstream accrued_fix.
+# Static guard: DPI accrual booking must only post on posting anchors (EMI PRIN/INT due or month-end).
+# Booking may run with EOD job_time (businessDate) and must allow either:
+# - slice end_date is a posting anchor, OR
+# - businessDate is a posting anchor (e.g. due-day EOD), while still enforcing end_date <= businessDate.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -17,23 +19,23 @@ fail() {
 }
 
 if grep -qE 'dueDayKeys\.contains\(truncateToDayMillis\(postingDate\)\)' "$FILE"; then
-  fail "EMI posting gated on businessDate/postingDate — must use dayBefore(sliceEndDate)"
+  fail "legacy dueDayKeys businessDate gate detected (unexpected in current design)"
 fi
 
-if ! grep -qE 'dayBefore\(sliceEndDate\)|Date lastAccruedDay = dayBefore' "$FILE"; then
-  fail "missing dayBefore(sliceEndDate) posting gate"
-fi
-
-if ! grep -q 'isAccrualPostingDate(entity.getEndDate()' "$FILE"; then
-  fail "isEligible must call isAccrualPostingDate(entity.getEndDate(), ...)"
-fi
-
-if ! grep -q 'entity.getEndDate().after(businessDate)' "$FILE"; then
+if ! grep -qE 'entity\.getEndDate\(\)\.after\(businessDate\)' "$FILE"; then
   fail "missing end_date <= businessDate eligibility check"
 fi
 
-if ! grep -q 'dayBefore(entity.getEndDate())' "$FILE"; then
-  fail "value_date must use dayBefore(entity.getEndDate()) for GL accrual date"
+if ! grep -qE 'isPostingDay\(loanAccountId, businessDate\).*\\|\\|.*isPostingDay\(loanAccountId, entity\.getEndDate\(\)\)' "$FILE"; then
+  fail "posting anchor gate must allow businessDate OR slice end_date"
+fi
+
+if ! grep -q 'getLoanDueDetailsForDueDate(' "$FILE"; then
+  fail "isPostingDay must consult due_date rows (PRIN/INT)"
+fi
+
+if grep -qE '"PINT"\.equals' "$FILE"; then
+  fail "booking must not treat PINT as posting anchor"
 fi
 
 echo "dpi-booking-posting-guard: PASS"

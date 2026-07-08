@@ -34,13 +34,15 @@ accrual AS (
 ),
 dpi_due AS (
   SELECT COUNT(*) AS due_rows,
-         MAX(due_date) AS due_date,
-         MAX(loan_installment_details_id) AS due_installment_id,
-         COALESCE(SUM(due_amount), 0) AS due_amount
-  FROM mfi_accounting.loan_due_details
-  WHERE loan_account_id = :loan_account_id::bigint
-    AND component_type = 'DPI'
-    AND is_deleted = false
+         MAX(ldd.due_date) AS due_date,
+         MAX(ldd.loan_installment_details_id) AS due_installment_id,
+         COALESCE(SUM(ldd.due_amount), 0) AS due_amount
+  FROM mfi_accounting.loan_due_details ldd
+  CROSS JOIN next_emi ne
+  WHERE ldd.loan_account_id = :loan_account_id::bigint
+    AND ldd.component_type = 'DPI'
+    AND ldd.is_deleted = false
+    AND ldd.loan_installment_details_id = ne.next_installment_id
 ),
 txn AS (
   SELECT tm.transaction_value_date, tm.reference_number

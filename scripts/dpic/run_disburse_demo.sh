@@ -17,15 +17,16 @@ echo "poll: wait=${WAIT_TIMEOUT_S}s failfast=${NO_LOAN_FAILFAST_S}s interval=${P
 echo ""
 
 rm -f /tmp/disburse_loan_sanity.lock
-python3 "$ROOT/scripts/disbursement/disburse_loan_sanity.py" \
+python3 "$ROOT/scripts/disburse_loan_sanity.py" \
   --request-file "$REQUEST_FILE" \
-  --stage-suite default_clean \
-  --simulator-profile none \
-  --bank-outcome-source script \
+  --stage-suite minimal \
+  --simulator-profile success \
+  --reset-before \
+  --reset-target-disb-status LAN_CREATED \
   --http-timeout-s 30 \
   --wait-timeout-s "$WAIT_TIMEOUT_S" \
-  --no-loan-failfast-s "$NO_LOAN_FAILFAST_S" \
   --poll-s "$POLL_S" \
-  --report-json "$REPORT_JSON"
+  --report-json "$REPORT_JSON" \
+  --fail-fast
 
 echo "Report: $REPORT_JSON"

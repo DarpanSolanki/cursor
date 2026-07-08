@@ -5,6 +5,17 @@
 WITH params AS (
   SELECT :loan_account_id::bigint AS loan_id
 ),
+grace_cfg AS (
+  SELECT psfd.grace_period
+  FROM mfi_accounting.loan_account la
+  JOIN mfi_accounting.product_scheme_frequency_details psfd
+    ON psfd.product_scheme_id = la.la_product_scheme_id
+   AND psfd.interest_frequency = la.repayment_frequency
+   AND psfd.is_deleted = false
+  CROSS JOIN params p
+  WHERE la.account_id = p.loan_id
+  LIMIT 1
+),
 slices AS (
   SELECT da.id,
          da.installment_id,
@@ -25,11 +36,48 @@ slices AS (
 ),
 violations AS (
   SELECT id, 'start_not_before_end' AS rule
-  FROM slices WHERE start_d >= end_d
+  FROM slices WHERE start_d > end_d
   UNION ALL
+  -- Continuation slice must start strictly after prior sealed end (next calendar day).
   SELECT id, 'start_before_prev_end'
   FROM slices
-  WHERE prev_end_d IS NOT NULL AND start_d < prev_end_d
+  WHERE prev_end_d IS NOT NULL AND start_d <= prev_end_d
+  UNION ALL
+  -- Must not seal only on overdue-admission day (grace+1); anchors are EMI due or month-end.
+  SELECT s.id, 'seal_on_overdue_admission_only'
+  FROM slices s
+  JOIN mfi_accounting.loan_due_details ldd
+    ON ldd.loan_installment_details_id = s.installment_id
+   AND ldd.is_deleted = false
+   AND ldd.component_type = 'INT'
+  CROSS JOIN params p
+  CROSS JOIN grace_cfg g
+  WHERE ldd.loan_account_id = p.loan_id
+    AND s.end_d = (ldd.due_date::date + (g.grace_period + 1) * interval '1 day')::date
+    AND s.end_d <> ldd.due_date::date
+    AND s.end_d <> (date_trunc('month', s.end_d) + interval '1 month - 1 day')::date
+  UNION ALL
+  -- Duplicate first-slice stamp on same installment.
+  SELECT s.id, 'duplicate_installment_start'
+  FROM slices s
+  WHERE EXISTS (
+    SELECT 1 FROM slices s2
+    WHERE s2.installment_id = s.installment_id
+      AND s2.id < s.id
+      AND s2.start_d = s.start_d
+  )
+  UNION ALL
+  -- Two May slices on same installment (May duplicate regression).
+  SELECT s.id, 'duplicate_may_month_slice'
+  FROM slices s
+  WHERE EXTRACT(MONTH FROM s.start_d) = 5
+    AND EXISTS (
+      SELECT 1 FROM slices s2
+      WHERE s2.installment_id = s.installment_id
+        AND s2.id <> s.id
+        AND EXTRACT(MONTH FROM s2.start_d) = 5
+        AND EXTRACT(YEAR FROM s2.start_d) = EXTRACT(YEAR FROM s.start_d)
+    )
   UNION ALL
   SELECT s.id, 'posted_slice_missing_posting_date'
   FROM slices s

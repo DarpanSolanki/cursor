@@ -8,7 +8,7 @@
     "LOAN_ACCOUNT_ID": "8060160",
     "DEMO_LAN": "6004044425",
     "CUSTOMER_ID": "10002233",
-    "FORECLOSURE_DATE": "1782563400000",
+    "FORECLOSURE_DATE": "1784984400000",
     "FORECLOSURE_LAN": "6000000262",
     "FORECLOSURE_RECEIPT": "412700000001537",
     "FORECLOSURE_AMOUNT": "5324.00",
@@ -553,6 +553,26 @@
       "GRACE_DAYS": "3"
     }
   },
+  "dpic.two_emi_full_chain": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "title": "DPI two-EMI full chain \u2014 daily calc/booking + billing + slice integrity",
+    "cmd": "bash scripts/dpic/run_dpi_two_emi_full_chain.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8057160",
+      "ACCOUNT_NUMBER": "6004041325",
+      "GO_LIVE_ISO": "2026-05-01",
+      "END_DATE": "2026-07-01",
+      "GRACE_DAYS": "3"
+    }
+  },
   "dpic.integration_smoke": {
     "type": "flow",
     "tags": [
@@ -664,8 +684,27 @@
       "batch",
       "gate"
     ],
-    "title": "DPI full gate — fresh LAN + dual billing + fixture + certify",
+    "title": "DPI full gate \u2014 fresh LAN + dual billing + fixture + certify",
     "cmd": "bash scripts/dpic/run_dpi_full_gate.sh"
+  },
+  "dpic.full_regression": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "ship_scope": "manual",
+    "title": "DPI full regression \u2014 profile-scoped QA battery (quick|standard|full|maturity)",
+    "cmd": "bash scripts/dpic/run_dpi_full_regression.sh",
+    "env": {
+      "DPI_REGRESSION_PROFILE": "standard",
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425"
+    },
+    "note": "Set DPI_REGRESSION_PROFILE=quick for ~10m smoke; maturity adds post-maturity + fixture restore"
   },
   "dpic.disburse": {
     "type": "flow",
@@ -822,7 +861,7 @@
       "billing",
       "post_maturity"
     ],
-    "title": "DPI post-maturity billing — maturity monthly anchor after last EMI",
+    "title": "DPI post-maturity billing \u2014 maturity monthly anchor after last EMI",
     "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -844,7 +883,7 @@
       "post_maturity",
       "catchup"
     ],
-    "title": "DPI post-maturity catch-up — late billing run bills passed monthly anchors",
+    "title": "DPI post-maturity catch-up \u2014 late billing run bills passed monthly anchors",
     "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_catchup_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -877,7 +916,7 @@
       "batch",
       "release"
     ],
-    "title": "DPI pre-release gate — fresh LAN + dual billing + schema contract + certify",
+    "title": "DPI pre-release gate \u2014 fresh LAN + dual billing + schema contract + certify",
     "cmd": "bash scripts/dpic/run_dpi_release_gate.sh"
   },
   "dpic.qa_verify": {
@@ -888,7 +927,7 @@
       "dpi",
       "verify"
     ],
-    "title": "DPI QA verify — schema + pipeline + posting checklist on fixture LAN",
+    "title": "DPI QA verify \u2014 schema + pipeline + posting checklist on fixture LAN",
     "cmd": "bash scripts/dpic/lib/run_dpi_qa_verify.sh 8060160 2026-07-19"
   },
   "dpic.dual_billing": {
@@ -899,7 +938,7 @@
       "dpi",
       "batch"
     ],
-    "title": "DPI dual billing — two due rows + two GL billing txns via schedule date jumps",
+    "title": "DPI dual billing \u2014 two due rows + two GL billing txns via schedule date jumps",
     "cmd": "bash scripts/dpic/run_dpi_dual_billing_e2e.sh"
   },
   "dpic.push_release": {
@@ -1038,7 +1077,7 @@
       "insurance",
       "perf"
     ],
-    "title": "DCF insurance RE_UPLOAD — index coverage + EXPLAIN audit (read-only DB)",
+    "title": "DCF insurance RE_UPLOAD \u2014 index coverage + EXPLAIN audit (read-only DB)",
     "cmd": "bash scripts/dcf_sanity/run_dcf_insurance_reupload_index_audit.sh",
     "env": {
       "DCF_INDEX_AUDIT_DB": "qa4"

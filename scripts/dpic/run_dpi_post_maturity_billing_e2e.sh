@@ -142,7 +142,7 @@ read -r next_emi posted billed unbilled billed_amt due_rows due_day due_amt \
   no_next has_due due_anchor all_billed amounts_ok <<<"$(
   dpi_pg -t -A -F' ' -v ON_ERROR_STOP=1 \
     -v loan_account_id="$LOAN_ACCOUNT_ID" \
-    -v "billing_anchor_date=$BILLING_ANCHOR_ISO" \
+    -v billing_anchor_date="'$BILLING_ANCHOR_ISO'" \
     -f "$ROOT/scripts/dpic/sql/helpers/verify_dpi_post_maturity_billing.sql" | tail -1
 )"
 

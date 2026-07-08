@@ -9,9 +9,7 @@ BEGIN;
 
 UPDATE mfi_accounting.product_scheme_frequency_details psfd
 SET grace_period = :grace_days::int,
-    dpi_applicable = 'YES',
-    updated_on = NOW(),
-    updated_by = 'DPI_SIMPLE_2MO'
+    dpi_applicable = 'YES'
 FROM mfi_accounting.loan_account la
 WHERE la.account_id = :loan_account_id::bigint
   AND psfd.product_scheme_id = la.la_product_scheme_id

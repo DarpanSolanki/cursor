@@ -43,8 +43,8 @@ def plan(anchor: date) -> dict[str, str]:
     first_emi_plus1 = first_emi + timedelta(days=1)
     last_dom = calendar.monthrange(first_emi.year, first_emi.month)[1]
     month_end = date(first_emi.year, first_emi.month, last_dom)
-    # Disburse ~61 days before 1st EMI (matches monthly MFI spacing in local payload)
-    disburse = first_emi - timedelta(days=61)
+    # Disburse at most 60 days before 1st EMI (demo product async validation max gap = 60 days).
+    disburse = first_emi - timedelta(days=60)
 
     return {
         "DEMO_ANCHOR_DATE": anchor.isoformat(),
