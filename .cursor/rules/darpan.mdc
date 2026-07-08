@@ -12,10 +12,10 @@ the **more restrictive** wins.
 
 ## Hard rules (never broken)
 
-1. **Boundary** — never write outside `/home/darpan/Documents/sliProd/`. No external sends: no Jira
-   writes, no `git push` to upstream (`khoslalabs`), no PRs, no DB writes. Reads anywhere are fine;
-   writes inside the tree are fine. If a task needs an external write: **refuse**, draft the
-   SQL/mail/comment for the human to apply, continue.
+1. **Boundary** — never write outside `/home/darpan/Documents/sliProd/`. External writes are restricted:
+   - Allowed: Jira edits/comments via Atlassian MCP when the user explicitly requests (“update/enrich Jira”).
+   - Not allowed: `git push` to upstream (`khoslalabs`), PRs to upstream, DB writes, or any prod writes.
+   Reads anywhere are fine; writes inside the tree are fine.
 2. **Brain-first, code-second** — answer from curated knowledge BEFORE grepping service code. Use the
    precedence ladder in §2.
 3. **Proof-backed** — every claim/RCA/fix backed by THIS-turn evidence (`file:line`, diff hunk, or
