@@ -5,6 +5,18 @@
 ---
 
 
+## 2026-07-09 | acct `425472cab` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 QA6 display gaps
+last-child RSCH saveLoanAccountPaymentsDetails: net_amount=0 avoids 2x principal in statement; GetLoanAccountInstallmentDetails uses loan_status CLOSED; finalizeParent sets account.status CLOSED | kg-flow | getLoanAccountOverviewDetails RSCH_DEATH_FORECLOSURE
+
+---
+
+
+## 2026-07-09 | acct `425472cab` | accounting-v2 | mfi_integration_v3.4.2.1 | SDCP-10199 display gaps
+last-child RSCH: net_amount=0 before payment details (principal not 2x); account.status CLOSED; overview installment uses loan_status | kg-flow | getLoanAccountOverviewDetails RSCH_DEATH_FORECLOSURE
+
+---
+
+
 ## 2026-07-09 | acct `4d44f2f92` | accounting-v2 | mfi_integration_v3.7.1 | DPI EOD inclusive calc + booking anchor
 dpiAccrualCalculation: processThrough=nextDay(today), inclusive segment walk, cursor=nextDay(segmentEnd), resolveSliceStart; dpiAccrualBooking: post when businessDate OR end_date is PRIN/INT due/month-end; tables dpi_accrual_details
 
