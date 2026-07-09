@@ -19,6 +19,7 @@
 | [`child-foreclosure-with-waiver.md`](child-foreclosure-with-waiver.md) | Child loan foreclosure with principal waiver — duplicate parent-leg postings, waiver propagation gaps, payment_details inconsistency. SDCP-10080. |
 | [`pinpoint-rca-playbook.md`](pinpoint-rca-playbook.md) | **ANY** issue — the general symptom→decision-point→live-data method. Start here when no specific runbook matches. Pairs with `kg why <request>`. |
 | [`charge-amount-shows-zero.md`](charge-amount-shows-zero.md) | A charge/fee/amount renders ₹0.00 or blank on a quote/preview (CBC fee, foreclosure fee, penal) — config-resolution (price-setup mapping `is_deleted`). |
+| [`dcf-local-stack.md`](dcf-local-stack.md) | Local death-foreclosure insurance e2e — kafka, stubs, SQL placeholders, fixture backup/restore, `ntest run dcf.group_parent_last_child_e2e`. |
 
 ## Pinpoint RCA for ANY issue — start here
 

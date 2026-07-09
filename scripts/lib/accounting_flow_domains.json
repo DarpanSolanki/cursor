@@ -59,7 +59,7 @@
       "label": "Death foreclosure & insurance",
       "path_hints": ["deathforeclosure", "death_foreclosure", "dcf_", "/death/"],
       "api_hints": ["loanDeathForeclosure"],
-      "impact_cases": ["dcf.principal_split_sim", "foreclosure.individual_child"],
+      "impact_cases": ["dcf.principal_split_sim", "dcf.group_parent_last_child_e2e"],
       "deep_cases": [],
       "release_cases": []
     },

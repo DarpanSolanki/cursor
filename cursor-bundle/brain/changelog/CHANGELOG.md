@@ -5,6 +5,18 @@
 ---
 
 
+## 2026-07-09 | acct `4d44f2f92` | accounting-v2 | mfi_integration_v3.7.1 | DPI EOD inclusive calc + booking anchor
+dpiAccrualCalculation: processThrough=nextDay(today), inclusive segment walk, cursor=nextDay(segmentEnd), resolveSliceStart; dpiAccrualBooking: post when businessDate OR end_date is PRIN/INT due/month-end; tables dpi_accrual_details
+
+---
+
+
+## dpiAccrualCalculation dpiAccrualBooking dpiBilling
+## 2026-07-09 | acct `e1875d1b4` | accounting-v2 | mfi_integration_v3.7.1 | DPI interest-parity calc + booking
+
+---
+
+
 ## dpiAccrualCalculation
 ## 2026-07-08 | acct `a66900048` | accounting-v2 | feature/sdcp-11012-shg-dpi-parity-3.7.1 | kg-flow | DPI seals due/month-end only (grace day-walk)
 KG-FLOW: dpiAccrualCalculation seals like interest — EMI due + month-end only; grace gates daily base/anchor; mid-slice amounts day-walked into one row (no overdue-date seal). Reverts 46f115199 overdue boundaries. Tables: dpi_accrual_details.

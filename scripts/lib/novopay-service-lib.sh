@@ -10,6 +10,8 @@ nps_service_repo() {
   case "$1" in
     accounting) echo "novopay-platform-accounting-v2" ;;
     actor) echo "novopay-platform-actor" ;;
+    authorization) echo "novopay-platform-authorization" ;;
+    notifications) echo "novopay-platform-notifications" ;;
     task) echo "novopay-platform-task" ;;
     *) return 1 ;;
   esac
@@ -19,6 +21,8 @@ nps_service_port() {
   case "$1" in
     accounting) echo "8002" ;;
     actor) echo "8003" ;;
+    authorization) echo "8007" ;;
+    notifications) echo "8015" ;;
     task) echo "8019" ;;
     *) return 1 ;;
   esac
@@ -26,7 +30,7 @@ nps_service_port() {
 
 nps_service_profile() {
   case "$1" in
-    accounting|actor|task) echo "mfi" ;;
+    accounting|actor|authorization|notifications|task) echo "mfi" ;;
     *) return 1 ;;
   esac
 }
@@ -35,6 +39,8 @@ nps_service_probe_url() {
   case "$1" in
     accounting) echo "http://localhost:8002/accounting/api/v1/getLoanAccountBasicDetails" ;;
     actor) echo "http://localhost:8003/actor/api/v1/getUserBasicDetails" ;;
+    authorization) echo "http://localhost:8007/authorization/api/v1/getPermissionList" ;;
+    notifications) echo "http://localhost:8015/notifications/api/v1/getNotificationsCount" ;;
     task) echo "http://localhost:8019/task/api/v1/getTaskList" ;;
     *) return 1 ;;
   esac
@@ -47,6 +53,12 @@ nps_service_probe_body() {
       ;;
     actor)
       echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"DEFAULT","run_mode":"REAL"},"request":{"user_id":"53"}}'
+      ;;
+    authorization)
+      echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"USER","function_sub_code":"DEFAULT","run_mode":"REAL","transmission_datetime":"'"$(date +%s%3N)"'"},"request":{"user_id":"53"}}'
+      ;;
+    notifications)
+      echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"UNSEEN","run_mode":"REAL","transmission_datetime":"'"$(date +%s%3N)"'"},"request":{}}'
       ;;
     task)
       echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"DEFAULT","run_mode":"REAL"},"request":{}}'

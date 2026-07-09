@@ -55,6 +55,16 @@ SEND_EMAIL_BODY = json.dumps(
         }
     }
 )
+GET_NOTIFICATIONS_COUNT_BODY = json.dumps(
+    {
+        "count": "0",
+        "response_status": {
+            "status": "SUCCESS",
+            "code": "000",
+            "message": "LOCAL_NOTIFICATIONS_STUB_OK",
+        },
+    }
+)
 
 # path: /notifications/template/<request|response>/<tenant>/<version>/<apiName>
 _TEMPLATE_RE = re.compile(r"^/notifications/template/(request|response)/[^/]+/[^/]+/([A-Za-z0-9_]+)$")
@@ -107,6 +117,9 @@ class NotificationsStubHandler(BaseHTTPRequestHandler):
             return
         if "/api/v1/sendEmail" in self.path:
             self._send(200, SEND_EMAIL_BODY.encode())
+            return
+        if "/api/v1/getNotificationsCount" in self.path:
+            self._send(200, GET_NOTIFICATIONS_COUNT_BODY.encode())
             return
         # any other notification API: generic success so it never blocks a money path
         self._send(200, SEND_EMAIL_BODY.encode())

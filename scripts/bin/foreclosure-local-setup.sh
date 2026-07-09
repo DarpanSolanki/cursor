@@ -21,7 +21,7 @@ run_sql local_setup_payments_collection_schema_align.sql
 run_sql local_setup_platform_master_service_endpoints.sql
 
 echo ">> services ensure"
-bash "$ROOT/scripts/bin/novopay-service.sh" ensure payments
+bash "$ROOT/scripts/dcf_sanity/local_payments_stub.sh" ensure
 if [[ "$RESTART" -eq 1 ]]; then
   bash "$ROOT/scripts/bin/novopay-service.sh" restart accounting
 else

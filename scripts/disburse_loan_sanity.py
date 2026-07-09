@@ -1470,7 +1470,7 @@ def _wait_for_disbursement_status_in(ext_ref: str, statuses: set[str], timeout_s
 def _run_local_reset_from_json(request_file: str, *, target_disb_status: str) -> None:
     cmd = [
         sys.executable,
-        "/home/darpan/Documents/sliProd/scripts/reset_disburse_loan_replay_mfi_from_json.py",
+        "/home/darpan/Documents/sliProd/scripts/sql/reset/reset_disburse_loan_replay_mfi_from_json.py",
         "--file",
         request_file,
         "--target-disb-status",

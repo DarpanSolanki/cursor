@@ -1,9 +1,9 @@
--- Regular (non-NPA) loan + 2nd-of-month EMI — same calendar shape as QA1 6801460 without NPA tagging.
+-- NPA loan + 2nd-of-month EMI — month-end booking should use NPA catalogues.
 \set ON_ERROR_STOP on
 
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS mfi_accounting._qa1_month_end_regular_backup (
+CREATE TABLE IF NOT EXISTS mfi_accounting._qa1_month_end_npa_backup (
   loan_account_id           BIGINT NOT NULL,
   entity_kind               TEXT NOT NULL,
   entity_id                 BIGINT NOT NULL,
@@ -12,22 +12,25 @@ CREATE TABLE IF NOT EXISTS mfi_accounting._qa1_month_end_regular_backup (
   due_date                  TIMESTAMP,
   npa_ageing_start_date     TIMESTAMP,
   npa_tagging_date          TIMESTAMP,
+  sec_npa_tagging_date      TIMESTAMP,
   backed_up_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (loan_account_id, entity_kind, entity_id)
 );
 
-INSERT INTO mfi_accounting._qa1_month_end_regular_backup (
-  loan_account_id, entity_kind, entity_id, npa_ageing_start_date, npa_tagging_date
+INSERT INTO mfi_accounting._qa1_month_end_npa_backup (
+  loan_account_id, entity_kind, entity_id, npa_ageing_start_date, npa_tagging_date, sec_npa_tagging_date
 )
-SELECT la.account_id, 'loan_account', la.account_id, la.npa_ageing_start_date, la.npa_tagging_date
+SELECT la.account_id, 'loan_account', la.account_id,
+       la.npa_ageing_start_date, la.npa_tagging_date, la.sec_npa_tagging_date
 FROM mfi_accounting.loan_account la
 WHERE la.account_id = :loan_account_id::bigint
 ON CONFLICT (loan_account_id, entity_kind, entity_id) DO UPDATE SET
   npa_ageing_start_date = EXCLUDED.npa_ageing_start_date,
   npa_tagging_date = EXCLUDED.npa_tagging_date,
+  sec_npa_tagging_date = EXCLUDED.sec_npa_tagging_date,
   backed_up_at = NOW();
 
-INSERT INTO mfi_accounting._qa1_month_end_regular_backup (
+INSERT INTO mfi_accounting._qa1_month_end_npa_backup (
   loan_account_id, entity_kind, entity_id, installment_date, overdue_date
 )
 SELECT lid.loan_account_id, 'installment', lid.id, lid.installment_date, lid.overdue_date
@@ -40,7 +43,7 @@ ON CONFLICT (loan_account_id, entity_kind, entity_id) DO UPDATE SET
   overdue_date = EXCLUDED.overdue_date,
   backed_up_at = NOW();
 
-INSERT INTO mfi_accounting._qa1_month_end_regular_backup (
+INSERT INTO mfi_accounting._qa1_month_end_npa_backup (
   loan_account_id, entity_kind, entity_id, due_date
 )
 SELECT ldd.loan_account_id, 'due', ldd.id, ldd.due_date
@@ -56,11 +59,11 @@ ON CONFLICT (loan_account_id, entity_kind, entity_id) DO UPDATE SET
   backed_up_at = NOW();
 
 UPDATE mfi_accounting.loan_account la
-SET npa_ageing_start_date = NULL,
-    npa_tagging_date = NULL,
-    sec_npa_tagging_date = NULL,
+SET npa_ageing_start_date = TIMESTAMP '2026-04-01 00:00:00',
+    npa_tagging_date = TIMESTAMP '2026-04-01 00:00:00',
+    sec_npa_tagging_date = TIMESTAMP '2026-04-01 00:00:00',
     updated_on = NOW(),
-    updated_by = 'QA1_MONTH_END_REG_FIXTURE'
+    updated_by = 'QA1_MONTH_END_NPA_FIXTURE'
 WHERE la.account_id = :loan_account_id::bigint;
 
 UPDATE mfi_accounting.loan_installment_details lid
@@ -77,7 +80,7 @@ SET installment_date = CASE lid.serial_number
     is_settled = false,
     is_deleted = false,
     updated_on = NOW(),
-    updated_by = 'QA1_MONTH_END_REG_FIXTURE'
+    updated_by = 'QA1_MONTH_END_NPA_FIXTURE'
 WHERE lid.loan_account_id = :loan_account_id::bigint
   AND lid.serial_number IN (6, 7, 8);
 
@@ -87,7 +90,7 @@ SET due_date = lid.installment_date,
     paid_amount = 0,
     waived_amount = 0,
     updated_on = NOW(),
-    updated_by = 'QA1_MONTH_END_REG_FIXTURE'
+    updated_by = 'QA1_MONTH_END_NPA_FIXTURE'
 FROM mfi_accounting.loan_installment_details lid
 WHERE ldd.loan_account_id = :loan_account_id::bigint
   AND ldd.is_deleted = false
@@ -99,12 +102,8 @@ WHERE ldd.loan_account_id = :loan_account_id::bigint
 
 COMMIT;
 
-\echo '=== QA1 month-end regular fixture ==='
-SELECT serial_number, installment_date::date
-FROM mfi_accounting.loan_installment_details
-WHERE loan_account_id = :loan_account_id::bigint AND serial_number IN (6, 7, 8) AND is_deleted = false
-ORDER BY serial_number;
-
-SELECT account_id, npa_ageing_start_date
+\echo '=== QA1 month-end NPA fixture ==='
+SELECT account_id, npa_ageing_start_date, sec_npa_tagging_date
 FROM mfi_accounting.loan_account
 WHERE account_id = :loan_account_id::bigint;
+

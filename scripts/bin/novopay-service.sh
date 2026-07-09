@@ -20,7 +20,7 @@ usage() {
   exit "${1:-0}"
 }
 
-known_services() { echo accounting actor task payments; }
+known_services() { echo accounting actor authorization notifications task payments; }
 
 resolve_services() {
   local arg="${1:-all}"
