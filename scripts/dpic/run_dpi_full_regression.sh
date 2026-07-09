@@ -4,7 +4,7 @@
 #   DPI_REGRESSION_PROFILE=quick|standard|full|maturity  (default: standard)
 #
 # Profiles:
-#   quick     — guards + grace + overlap + two_emi_full_chain (~10 min)
+#   quick     — guards + grace + overlap + two_emi + shg_parity (~12 min)
 #   standard  — + posting_calendar + eod_txn + go_live_ud + cross_eod (~30 min)
 #   full      — + billing_ud + integration_smoke + ud_compliance
 #   maturity  — + post_maturity + post_maturity_catchup + fixture restore
@@ -83,6 +83,7 @@ if profile_ge quick; then
     bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
   run_step two_emi_full_chain env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
     bash "$DPIC/run_dpi_two_emi_full_chain.sh"
+  run_step shg_parent_child_parity bash "$DPIC/run_dpi_shg_parent_child_parity.sh"
 fi
 
 if profile_ge standard; then

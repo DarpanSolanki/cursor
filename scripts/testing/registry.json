@@ -573,6 +573,26 @@
       "GRACE_DAYS": "3"
     }
   },
+  "dpic.shg_parent_child_parity": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "shg",
+      "regression"
+    ],
+    "title": "SDCP-11012 SHG parent DPI accrued = sum(children) after calc adjust",
+    "cmd": "bash scripts/dpic/run_dpi_shg_parent_child_parity.sh",
+    "env": {
+      "PARENT_LOAN_ACCOUNT_ID": "116360",
+      "ACCOUNT_NUMBER": "6000001074",
+      "GO_LIVE_DDMM": "15-04-2025",
+      "JOB_TIME": "1749990600000"
+    }
+  },
   "dpic.integration_smoke": {
     "type": "flow",
     "tags": [
