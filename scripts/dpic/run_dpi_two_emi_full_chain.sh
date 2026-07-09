@@ -123,7 +123,7 @@ read -r unposted posted closed <<<"$(
   dpi_pg -t -A -F' ' -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" -v business_date="$END_DATE" \
     -f "$ROOT/scripts/dpic/sql/helpers/verify_dpi_posting_calendar.sql" | tail -1
 )"
-[[ "${unposted:-1}" -le 1 ]] || fail "unposted closed slices=$unposted (max 1 grace-overlap tail allowed)"
+[[ "${unposted:-1}" -eq 0 ]] || fail "unposted closed slices=$unposted (all closed slices must be posted)"
 
 read -r accrual_rows distinct_inst booked billed _extra <<<"$(
   dpi_pg -t -A -F' ' -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \

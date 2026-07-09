@@ -34,6 +34,19 @@ slices AS (
     AND da.is_deleted = false
     AND da.total_accrued_amount > 0
 ),
+emi_dues AS (
+  SELECT ldd.loan_installment_details_id AS installment_id,
+         ldd.due_date::date AS due_day,
+         ROW_NUMBER() OVER (ORDER BY ldd.due_date) AS rn
+  FROM mfi_accounting.loan_due_details ldd
+  CROSS JOIN params p
+  CROSS JOIN grace_cfg g
+  WHERE ldd.loan_account_id = p.loan_id
+    AND ldd.is_deleted = false
+    AND ldd.component_type = 'INT'
+    AND (ldd.due_amount - ldd.paid_amount - ldd.waived_amount) > 0
+  GROUP BY ldd.loan_installment_details_id, ldd.due_date
+),
 violations AS (
   SELECT id, 'start_not_before_end' AS rule
   FROM slices WHERE start_d > end_d
@@ -77,6 +90,22 @@ violations AS (
         AND s2.id <> s.id
         AND EXTRACT(MONTH FROM s2.start_d) = 5
         AND EXTRACT(YEAR FROM s2.start_d) = EXTRACT(YEAR FROM s.start_d)
+    )
+  UNION ALL
+  -- No grace-overlap micro-slice (SDCP-11030): EMI1 must not split Jun15-17 tail during EMI2 grace.
+  SELECT s.id, 'grace_overlap_micro_slice'
+  FROM slices s
+  JOIN emi_dues e1 ON e1.rn = 1
+  JOIN emi_dues e2 ON e2.rn = 2
+  CROSS JOIN grace_cfg g
+  WHERE s.installment_id = e1.installment_id
+    AND s.start_d > e2.due_day
+    AND s.end_d < (e2.due_day + (g.grace_period + 1) * interval '1 day')::date
+    AND EXISTS (
+      SELECT 1 FROM slices s2
+      WHERE s2.installment_id = s.installment_id
+        AND s2.id <> s.id
+        AND s2.end_d = e2.due_day
     )
   UNION ALL
   SELECT s.id, 'posted_slice_missing_posting_date'

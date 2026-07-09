@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Static guard: DPI accrual booking must only post on posting anchors (EMI PRIN/INT due or month-end).
-# Booking may run with EOD job_time (businessDate) and must allow either:
-# - slice end_date is a posting anchor, OR
-# - businessDate is a posting anchor (e.g. due-day EOD), while still enforcing end_date <= businessDate.
+# Static guard: DPI accrual booking posts only when slice end_date is this installment's posting anchor.
+# Interest parity: month-end or this EMI's INT due — not another EMI's due on the same calendar day.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -26,12 +24,16 @@ if ! grep -qE 'entity\.getEndDate\(\)\.after\(businessDate\)' "$FILE"; then
   fail "missing end_date <= businessDate eligibility check"
 fi
 
-if ! grep -qE 'isPostingDay\(loanAccountId, businessDate\).*\\|\\|.*isPostingDay\(loanAccountId, entity\.getEndDate\(\)\)' "$FILE"; then
-  fail "posting anchor gate must allow businessDate OR slice end_date"
+if ! grep -q 'isInstallmentPostingAnchor(entity.getInstallmentId(), entity.getEndDate())' "$FILE"; then
+  fail "booking must gate on per-installment posting anchor (end_date = this EMI due or month-end)"
 fi
 
-if ! grep -q 'getLoanDueDetailsForDueDate(' "$FILE"; then
-  fail "isPostingDay must consult due_date rows (PRIN/INT)"
+if ! grep -q 'findByLoanInstallmentIdAndComponentType' "$FILE"; then
+  fail "per-installment anchor must resolve INT due for installment"
+fi
+
+if grep -qE 'isPostingDay\(loanAccountId, businessDate\).*\\|\\|.*isPostingDay\(loanAccountId, entity\.getEndDate\(\)\)' "$FILE"; then
+  fail "loan-level businessDate OR end_date gate removed — use per-installment end_date anchor only"
 fi
 
 if grep -qE '"PINT"\.equals' "$FILE"; then
