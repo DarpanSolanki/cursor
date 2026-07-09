@@ -459,6 +459,48 @@ WHERE la.la_account_number='{parent_lan}' AND ldd.is_deleted=false;
     print(f"  parent partitions: {parts}")
     if not ref:
         raise AssertionError(f"parent {parent_lan} missing RSCH_DEATH_FORECLOSURE txn")
+    payment_principal = psql(f"""
+SELECT lapd.principal_amount::text
+FROM mfi_accounting.loan_account_payments_details lapd
+JOIN mfi_accounting.transaction_master tm ON tm.reference_number = lapd.transaction_reference_number
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.loan_account la ON la.account_id = lapd.loan_account_id
+WHERE la.la_account_number='{parent_lan}' AND tc.type='RSCH_DEATH_FORECLOSURE'
+ORDER BY tm.id DESC LIMIT 1;
+""")
+    if not payment_principal:
+        raise AssertionError(f"parent {parent_lan} missing RSCH payment details row")
+    txn_amt = Decimal(amt or "0")
+    prin = Decimal(payment_principal or "0")
+    if txn_amt > 0 and prin >= txn_amt * 2 - Decimal("0.01"):
+        raise AssertionError(
+            f"parent RSCH principal_amount {prin} looks doubled vs txn {txn_amt} "
+            f"(saveLoanAccountPaymentsDetails net_amount+principal_amount on last child)"
+        )
+    if prin > txn_amt + Decimal("0.01"):
+        raise AssertionError(f"parent RSCH principal_amount {prin} exceeds txn amount {txn_amt}")
+    account_status = psql(f"""
+SELECT a.status FROM mfi_accounting.account a
+JOIN mfi_accounting.loan_account la ON la.account_id=a.id
+WHERE la.la_account_number='{parent_lan}';
+""")
+    if account_status != "CLOSED":
+        raise AssertionError(f"parent account.status {account_status!r} expected CLOSED (Loan 360 banner)")
+    account_closing = psql(f"""
+SELECT CASE WHEN a.closing_date IS NULL THEN 'no' ELSE 'yes' END
+FROM mfi_accounting.account a
+JOIN mfi_accounting.loan_account la ON la.account_id=a.id
+WHERE la.la_account_number='{parent_lan}';
+""")
+    if account_closing != "yes":
+        raise AssertionError(f"parent account.closing_date missing")
+    unsettled = psql(f"""
+SELECT COUNT(*) FROM mfi_accounting.loan_installment_details
+WHERE loan_account_id=(SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{parent_lan}')
+  AND is_deleted=false AND is_settled=false;
+""")
+    if int(unsettled or "0") > 0:
+        raise AssertionError(f"parent has {unsettled} unsettled installment(s) after last-child close")
     asset_class = psql(f"""
 SELECT acs.classification FROM mfi_accounting.loan_account la
 JOIN mfi_accounting.asset_classification_slabs acs ON acs.id = la.asset_classification_slabs_id
