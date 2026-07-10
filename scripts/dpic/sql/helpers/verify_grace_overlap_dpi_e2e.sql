@@ -8,7 +8,9 @@ WITH dues AS (
   SELECT DISTINCT ON (ldd.loan_installment_details_id)
          ldd.loan_installment_details_id AS installment_id,
          ldd.due_date::date AS due_day,
-         (ldd.due_date::date + ((:grace_days::int + 1) || ' days')::interval)::date AS overdue_day
+         COALESCE(ldd.overdue_date::date,
+           (ldd.due_date::date + ((:grace_days::int + 1) || ' days')::interval)::date
+         ) AS overdue_day
   FROM mfi_accounting.loan_due_details ldd
   WHERE ldd.loan_account_id = :loan_account_id::bigint
     AND ldd.is_deleted = false
