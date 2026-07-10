@@ -22,15 +22,26 @@ def run(
     simulator_port: int = 8018,
 ) -> PreflightResult:
     details: list[dict[str, Any]] = []
-    health_url = f"{accounting_base_url.rstrip('/')}{accounting_context_path}/actuator/health"
+    probe_url = (
+        f"{accounting_base_url.rstrip('/')}{accounting_context_path.rstrip('/')}/api/v1/disburseLoan"
+    )
     try:
-        with urlopen(health_url, timeout=8) as resp:
+        import json
+        from urllib.request import Request
+
+        req = Request(
+            probe_url,
+            data=json.dumps({}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urlopen(req, timeout=12) as resp:
             ok = resp.status == 200
-        details.append({"check": "accounting_health", "ok": ok, "actual": health_url})
+        details.append({"check": "accounting_disburse_probe", "ok": ok, "actual": probe_url})
         if not ok:
-            return PreflightResult(ok=False, blocker=f"accounting health not 200: {health_url}", details=details)
+            return PreflightResult(ok=False, blocker=f"disburseLoan probe not 200: {probe_url}", details=details)
     except (URLError, OSError) as exc:
-        details.append({"check": "accounting_health", "ok": False, "actual": str(exc)})
+        details.append({"check": "accounting_disburse_probe", "ok": False, "actual": str(exc)})
         return PreflightResult(ok=False, blocker=str(exc), details=details)
 
     sim_url = f"http://{simulator_host}:{simulator_port}"

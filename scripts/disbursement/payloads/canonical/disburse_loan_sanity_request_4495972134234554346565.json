@@ -15,14 +15,15 @@
     "member_details": null,
     "disbursement_details": {
       "disbursement_mode": "ACCTWB",
-      "external_ref_number": "4495972134234554346566",
-      "expected_disbursement_date": null,
-      "client_reference_number": "{{$timestamp}}"
+      "external_ref_number": "4495972134234554346565",
+      "expected_disbursement_date": "1773426600000",
+      "client_reference_number": "{{$timestamp}}",
+      "disbursement_account_number": "50100869620843"
     },
     "repayment_details": {
       "number_of_installments": "24",
       "repayment_mode": "DIRDR",
-      "first_repayment_date": null,
+      "first_repayment_date": "1776018600000",
       "first_interest_payment_date": null
     },
     "disbursement_repayment_account_details": [
@@ -39,7 +40,9 @@
             "purpose_code": "DSBR_ACCT",
             "value": "Disbursement Account"
           }
-        ]
+        ],
+        "account_number": "50100869620843",
+        "product_type": "SAVINGS"
       },
       {
         "account_number": "50100869620843",
@@ -89,7 +92,7 @@
       "product_id": "2",
       "is_pre_emi_applicable": null,
       "vtc_id": "679207",
-      "customer_id": "10000305",
+      "customer_id": "10002221",
       "stamp_duty_amount": "150.00",
       "approved_amount": "50000.00",
       "sourcing_emp_id": "2"
@@ -102,7 +105,7 @@
     "operation_mode": "SELF",
     "sim_number": null,
     "channel_code": "WEB",
-    "locale": null,
+    "locale": "en-in",
     "function_sub_code": "DEFAULT",
     "function_code": "DEFAULT",
     "end_channel_code": null,
@@ -111,9 +114,9 @@
     "user_id": "3",
     "stan": "500004946309989",
     "origination_channel": null,
-    "user_handle_value": null,
-    "client_ip": null,
-    "location": null,
+    "user_handle_value": "9816923672",
+    "client_ip": "127.0.0.1",
+    "location": "44.968046,-94.420307",
     "battery_percentage": null,
     "channel_type": null,
     "tenant_code": "mfi",

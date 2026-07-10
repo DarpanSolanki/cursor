@@ -1,0 +1,171 @@
+{
+  "headers": {
+    "tenant_code": "mfi",
+    "client_code": "NOVOPAY",
+    "channel_code": "WEB",
+    "stan": "{{$timestamp}}",
+    "client_ip": "127.0.0.1",
+    "transmission_datetime": "1488779072701",
+    "operation_mode": "SELF",
+    "run_mode": "REAL",
+    "actor_type": "CUSTOMER",
+    "user_handle_type": "MSISDN",
+    "user_handle_value": "9816923672",
+    "location": "44.968046,-94.420307",
+    "function_code": "DEFAULT",
+    "function_sub_code": "DEFAULT",
+    "user_id": "263",
+    "locale": "en-in"
+  },
+  "request": {
+    "loan_details": {
+      "loan_amount": "50000",
+      "office_id": "2",
+      "customer_id": "10002215",
+      "product_id": "44",
+      "approved_amount": "50000",
+      "requested_amount": "50000",
+      "employee_ref_code": "EMP9050",
+      "stamp_duty_amount": "220",
+      "account_number": ""
+    },
+    "disbursement_details": {
+      "disbursement_mode": "ACCTWB",
+      "client_reference_number": "{{$timestamp}}",
+      "external_ref_number": "41333333",
+      "expected_disbursement_date": "1724236341000"
+    },
+    "repayment_details": {
+      "number_of_installments": "12",
+      "first_repayment_date": "1727173941000",
+      "repayment_mode": "DIRDR"
+    },
+    "interest_details": {
+      "interest_rate": "22"
+    },
+    "disbursement_repayment_account_details": [
+      {
+        "purpose": [
+          {
+            "code": "DSBR_ACCT",
+            "value": "Disbursement Account"
+          }
+        ],
+        "account_number": "50123456789020",
+        "product_type": "SAVINGS",
+        "external_account_number": "434020",
+        "external_account_type": "SAVINGS",
+        "account_holder_name": "Roy John",
+        "routing_type": "ROUT_TYP_IFSC",
+        "routing_value": "SBIN0015680",
+        "bank_name": "SBI",
+        "bank_customer_id": "192598023"
+      },
+      {
+        "account_number": "1232545866886",
+        "product_type": "SAVINGS",
+        "purpose": [
+          {
+            "code": "REP_ACCT",
+            "purpose_code": "REP_ACCT",
+            "value": "Repayment Account"
+          }
+        ],
+        "account_holder_name": "Savithiri T"
+      }
+    ],
+    "group_details": {
+      "is_primary_sig": "true",
+      "primary_sig_lan": "LAN002023"
+    },
+    "charges_details": [
+      {
+        "charge_type_value": "1.000000",
+        "charge_type": "Percentage",
+        "charge_name": "PROC_FEE",
+        "charge_value": "350",
+        "charge_inclusive_of_tax": "false",
+        "charge_code": "PROC_FEE",
+        "tax_components": [],
+        "base_amount": "57040",
+        "charge_identifier": "PROC_FEE",
+        "charge_label": "",
+        "total_tax_amount": "0"
+      },
+      {
+        "stamp_duty_charges": "100.000000",
+        "charge_type": "PERCENTAGE",
+        "poa": "0",
+        "response_status": {
+          "code": "000",
+          "message": "",
+          "status": "SUCCESS"
+        },
+        "charge_value": "0.100000",
+        "is_sdc_applicable": "true",
+        "charge_identifier": "STAMP_DUTY",
+        "stamping_type": "Traditional"
+      }
+    ],
+    "member_details": [
+      {
+        "customer_id": "460447",
+        "loan_amount": "30000",
+        "approved_amount": "30000",
+        "requested_amount": "30000",
+        "external_ref_number": "134020331",
+        "disbursement_mode": "ACCTWB",
+        "charges_details": [],
+        "disbursement_repayment_account_details": [
+          {
+            "purpose": [
+              {
+                "code": "DSBR_ACCT",
+                "value": "Disbursement Account"
+              }
+            ],
+            "account_number": "50123456789020",
+            "product_type": "SAVINGS",
+            "external_account_number": "434020",
+            "external_account_type": "SAVINGS",
+            "account_holder_name": "Roy John",
+            "routing_type": "ROUT_TYP_IFSC",
+            "routing_value": "SBIN0015680",
+            "bank_name": "SBI",
+            "bank_customer_id": "192598023"
+          }
+        ],
+        "insurance_details": []
+      },
+      {
+        "customer_id": "364247",
+        "loan_amount": "20000",
+        "approved_amount": "20000",
+        "requested_amount": "20000",
+        "external_ref_number": "134020221",
+        "disbursement_mode": "OTHBACCT",
+        "charges_details": [],
+        "disbursement_repayment_account_details": [
+          {
+            "purpose": [
+              {
+                "code": "DSBR_ACCT",
+                "value": "Disbursement Account"
+              }
+            ],
+            "account_number": "50100103531011",
+            "product_type": "SAVINGS",
+            "external_account_number": "1003456749",
+            "external_account_type": "SAVINGS",
+            "account_holder_name": "Roy John",
+            "routing_type": "ROUT_TYP_IFSC",
+            "routing_value": "ICIC0000006",
+            "bank_name": "ICICI",
+            "bank_customer_id": "192598023"
+          }
+        ],
+        "insurance_details": []
+      }
+    ]
+  }
+}

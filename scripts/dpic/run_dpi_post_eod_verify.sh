@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # SQL assertions after dpiAccrualCalculation → booking → billing.
+# Read-only — does NOT trigger jobs. Run after EOD chain or dpic.june_slice_job_proof.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

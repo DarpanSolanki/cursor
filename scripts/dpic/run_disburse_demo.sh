@@ -17,6 +17,8 @@ echo "poll: wait=${WAIT_TIMEOUT_S}s failfast=${NO_LOAN_FAILFAST_S}s interval=${P
 echo ""
 
 rm -f /tmp/disburse_loan_sanity.lock
+DPI_CERTIFY_ARGS=()
+[[ "${DISBURSE_DPI_CERTIFY:-0}" == "1" ]] && DPI_CERTIFY_ARGS+=(--dpi-certify)
 python3 "$ROOT/scripts/disburse_loan_sanity.py" \
   --request-file "$REQUEST_FILE" \
   --stage-suite minimal \
@@ -27,6 +29,7 @@ python3 "$ROOT/scripts/disburse_loan_sanity.py" \
   --wait-timeout-s "$WAIT_TIMEOUT_S" \
   --poll-s "$POLL_S" \
   --report-json "$REPORT_JSON" \
-  --fail-fast
+  --fail-fast \
+  "${DPI_CERTIFY_ARGS[@]}"
 
 echo "Report: $REPORT_JSON"

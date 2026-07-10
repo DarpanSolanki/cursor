@@ -205,10 +205,10 @@ Cross-reference: `.cursor/gaps-and-risks.md`. **Related diagrams:** `.cursor/arc
 
 - Use this exact command pattern per product payload:
   - `python3 scripts/disburse_loan_sanity.py --request-file <payload.json> --neft-version v2 --stage-suite full --simulator-profile success --report-json /tmp/<name>_v2_full_report.json`
-- Verified payload set:
-  - `scripts/disburse_loan_sanity_request_jlg_short_runtime.json`
-  - `scripts/disburse_loan_sanity_request_indl_runtime.json`
-  - `scripts/disburse_loan_sanity_request_shg_runtime.json`
+- Verified payload set (canonical):
+  - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_4495972134234554346565.json` (JLG flat)
+  - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_370164.json` (INDL flat)
+  - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_shg_41333333.json` (SHG `member_details[]`)
 - Status expectations validated by suite:
   - JLG/INDL (NEFT v2): initial `NEFT_STAGE_1_PENDING`, replay/resume to `DTFC_SUCCESS`, plus stage replay checks (`LAN_CREATED`, `LOAN_BOOKED`, `DTFC_SUCCESS`) through function_sub_code routing.
   - SHG (`ACCTWB`, child flow): default lane stabilizes at `PARENT_SUCCESS`; replay paths validate parent/child retries and inquiry-led transitions (`MFT_TRANSACTION_INQUIRY`, `NEFT_TRANSACTION_INQUIRY`, `...NEFT_NEI` CRR evidence).

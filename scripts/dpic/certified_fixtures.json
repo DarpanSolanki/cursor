@@ -1,0 +1,51 @@
+{
+  "_meta": "Local DPI certification \u2014 fresh LAN per scenario; re-run certify_dpi_scenarios.sh",
+  "scenarios": [
+    {
+      "id": "pre_emi",
+      "status": "PASS",
+      "lan": "6004052125",
+      "loan_account_id": "8098360",
+      "ext_ref": "",
+      "customer_id": "",
+      "pre_emi_job_ms": "1776861000000",
+      "anchor_date": "2026-07-09",
+      "assertion": "zero_accrual_before_first_emi"
+    },
+    {
+      "id": "single_overdue",
+      "status": "PASS",
+      "lan": "6004052225",
+      "loan_account_id": "8098460",
+      "ext_ref": "",
+      "customer_id": "",
+      "single_overdue_job_ms": "1781785800000",
+      "foreclosure_job_ms": "1781785800000",
+      "anchor_date": "2026-07-09",
+      "assertion": "full_eod_positive_accrual"
+    },
+    {
+      "id": "multi_overdue",
+      "status": "PASS",
+      "lan": "6004052325",
+      "loan_account_id": "8098560",
+      "ext_ref": "",
+      "customer_id": "",
+      "multi_overdue_job_ms": "1784377800000",
+      "anchor_date": "2026-07-09",
+      "assertion": "multi_emi_anchor_on_latest_overdue",
+      "emi1_rows": "2",
+      "emi2_rows": "1"
+    }
+  ],
+  "certified_at": "2026-07-09T12:50:09Z",
+  "product_id": "6367",
+  "primary_scenario": "single_overdue",
+  "primary": {
+    "scenario_id": "single_overdue",
+    "lan": "6004052225",
+    "loan_account_id": "8098460",
+    "foreclosure_date": "1781785800000",
+    "job_time": "1781785800000"
+  }
+}

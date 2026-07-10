@@ -3,17 +3,20 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-# Pin before dpi_demo_fixture.sh (shared default is 8060160 / LAN 6004044425).
-: "${LOAN_ACCOUNT_ID:=8057160}"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
 : "${GRACE_DAYS:=3}"
-: "${DEMO_LAN:=6004041325}"
-: "${ACCOUNT_NUMBER:=6004041325}"
 : "${PRODUCT_CODE:=7676}"
 : "${GO_LIVE_DDMM:=15-04-2025}"
-# Past second EMI grace (EMI2 due 2026-06-14 + grace 3 → overdue 2026-06-18).
-: "${JOB_TIME:=1782563400000}"
 # shellcheck source=lib/dpi_demo_fixture.sh
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
+export JOB_TIME="$DPI_MULTI_EMI_JOB_TIME"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 NTEST="$ROOT/scripts/bin/ntest.sh"

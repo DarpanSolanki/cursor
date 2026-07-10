@@ -178,6 +178,7 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         payload = build_envelope(service, req, stan=stan, vars=env)
 
     print(f"=== {case_id} [{service}] {api} ===")
+    run_started = str(int(time.time()))
     result = fire_api(api, payload, service=service)
     if os.environ.get("NTEST_NO_AUTO_RECOVER") != "1" and result.http_status in (0, 502, 503, 504):
         print("(connection failed — agent-ops retry)")
@@ -197,6 +198,28 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     run = run_assertions(result.body, result, spec, env={**os.environ, **env})
     for ar in run.results:
         print(f"  [{'PASS' if ar.ok else 'FAIL'}] {ar.name}: {ar.detail}")
+
+    if (
+        run.passed
+        and case.get("wait_batch") is not False
+        and (case.get("batch") or case.get("type") == "batch")
+    ):
+        job_name = case.get("batch_job_name") or api
+        job_time = str(env.get("JOB_TIME") or "")
+        wait_script = ROOT / "scripts" / "dpic" / "lib" / "wait_batch_job.sh"
+        if wait_script.is_file() and job_time:
+            print(f"  wait_batch: {job_name} job_time={job_time}")
+            wb = subprocess.run(
+                ["bash", str(wait_script), job_name, job_time, run_started],
+                cwd=str(ROOT),
+            )
+            if wb.returncode != 0:
+                print(f"  [FAIL] batch_completed: wait_batch_job exited {wb.returncode}", file=sys.stderr)
+                _auto_on_failure(service, api, job_time)
+                return 1, result
+            print("  [PASS] batch_completed: COMPLETED")
+        elif case.get("wait_batch"):
+            print("  [WARN] wait_batch skipped — set JOB_TIME default or env", file=sys.stderr)
 
     if case.get("print"):
         obj = json.loads(result.body)

@@ -8,7 +8,7 @@ BASE_URL="${ACCOUNTING_BASE_URL:-http://localhost:8002}"
 CTX="${ACCOUNTING_CONTEXT_PATH:-/accounting}"
 STAN="${STAN:-$(date +%s%3N)}"
 LOAN_ACCOUNT_ID="${LOAN_ACCOUNT_ID:-}"
-SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-1}"
+SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-0}"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 
@@ -42,7 +42,7 @@ EOF
 }
 
 if [[ -n "$LOAN_ACCOUNT_ID" && "$SEED_CALC_WINDOW" == "1" ]]; then
-  echo ">>> Calc window seed (optional workaround) loan_account_id=$LOAN_ACCOUNT_ID"
+  echo ">>> BYPASS: seed_calc_window.sql (documented workaround — see sql/helpers/seed_calc_window.sql)"
   "${PG[@]}" -v ON_ERROR_STOP=1 \
     -v loan_account_id="$LOAN_ACCOUNT_ID" \
     -v business_date_ms="$JOB_TIME" \

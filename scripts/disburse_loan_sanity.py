@@ -15,6 +15,7 @@ import atexit
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 from pathlib import Path
 import re
@@ -451,7 +452,7 @@ def _simulator_force_mft_inquiry_unknown() -> None:
 
 
 def _force_stage_for_retry(*, lan: str, target_disb_status: str, archive_gl: bool, archive_neft: bool, archive_mft: bool = False) -> None:
-    script = _workspace_root() / "scripts" / "local_force_disburse_stage_for_retry_mfi_yugabyte.sql"
+    script = _workspace_root() / "scripts" / "sql" / "utility" / "local_force_disburse_stage_for_retry_mfi_yugabyte.sql"
     if not script.exists():
         raise FileNotFoundError(str(script))
     cmd = [
@@ -482,6 +483,195 @@ def _force_stage_for_retry(*, lan: str, target_disb_status: str, archive_gl: boo
     env = os.environ.copy()
     env.setdefault("PGOPTIONS", "-c lock_timeout=5s -c statement_timeout=60s")
     subprocess.check_call(cmd, env=env)
+
+
+def _member_ext_refs_for_bank_leg(payload: dict[str, Any], bank_leg: str) -> list[str]:
+    """Child external_ref_number values for the bank leg under test (ACCTWB→MFT, OTHBACCT→NEFT)."""
+    mode = "ACCTWB" if bank_leg == "MFT" else "OTHBACCT"
+    req = payload.get("request") if isinstance(payload.get("request"), dict) else payload
+    out: list[str] = []
+    for m in req.get("member_details") or []:
+        if not isinstance(m, dict):
+            continue
+        if str(m.get("disbursement_mode") or "").strip() == mode:
+            ref = str(m.get("external_ref_number") or "").strip()
+            if ref:
+                out.append(ref)
+    return out
+
+
+def _crr_extref_counts(account_number: str) -> dict[str, int]:
+    rows = _psql_rows(
+        f"""
+        SELECT transaction_type, status, COUNT(1)::text
+        FROM client_request_response_log
+        WHERE loan_account_number = {sql_quote(account_number)}
+          AND transaction_type LIKE '%EXTREF%'
+          AND status NOT LIKE 'LOCAL_%'
+        GROUP BY transaction_type, status
+        ORDER BY transaction_type, status;
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+    out: dict[str, int] = {}
+    for t, st, cnt in rows:
+        out[f"{t}:{st}"] = int(cnt)
+    return out
+
+
+def _parent_fillers(parent_account_id: int) -> tuple[str, str]:
+    rows = _psql_rows(
+        f"""
+        SELECT COALESCE(filler_1, ''), COALESCE(filler_2, '')
+        FROM loan_account
+        WHERE account_id = {int(parent_account_id)};
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+    if not rows:
+        return "", ""
+    return rows[0][0], rows[0][1]
+
+
+def _restore_parent_bank_leg_success(*, lan: str, bank_leg: str) -> None:
+    """After S5 parent-ft-fail, drop parent FAIL row and surface archived SUCCESS for retry staging."""
+    txn_type = "DISBURSEMENT_MFT" if bank_leg == "MFT" else "DISBURSEMENT_NEFT"
+    _psql(
+        f"""
+        UPDATE client_request_response_log c
+        SET
+          uri = concat_ws(
+            ' | ',
+            NULLIF(btrim(coalesce(c.uri, '')), ''),
+            'LOCAL_FORCE_SHG_S6_PARENT_FAIL_ARCHIVED',
+            'ORIG_STATUS=' || c.status
+          ),
+          loan_account_number = '~' || c.id::text,
+          status = 'LOCAL_FORCE_SHG_S6_ARCHIVED',
+          eligible_for_retry = false,
+          updated_on = CURRENT_TIMESTAMP
+        WHERE c.loan_account_number = {sql_quote(lan)}
+          AND c.transaction_type = {sql_quote(txn_type)}
+          AND c.status IN ('FAIL', 'UNKNOWN')
+          AND c.status NOT LIKE 'LOCAL_%';
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+    _psql(
+        f"""
+        WITH pick AS (
+          SELECT c.id
+          FROM client_request_response_log c
+          WHERE c.transaction_type = {sql_quote(txn_type)}
+            AND c.status = 'LOCAL_FORCE_STAGE_ARCHIVED'
+            AND c.uri LIKE '%LOCAL_FORCE_STAGE_ORIG_LAN=' || {sql_quote(lan)} || '%'
+            AND c.uri LIKE '%ORIG_STATUS=SUCCESS%'
+          ORDER BY c.id DESC
+          LIMIT 1
+        )
+        UPDATE client_request_response_log c
+        SET
+          loan_account_number = {sql_quote(lan)},
+          status = 'SUCCESS',
+          eligible_for_retry = true,
+          updated_on = CURRENT_TIMESTAMP
+        FROM pick
+        WHERE c.id = pick.id
+          AND NOT EXISTS (
+            SELECT 1
+            FROM client_request_response_log x
+            WHERE x.loan_account_number = {sql_quote(lan)}
+              AND x.transaction_type = {sql_quote(txn_type)}
+              AND x.status = 'SUCCESS'
+          );
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+
+
+def _force_shg_s6_child_ft_stage(
+    *,
+    lan: str,
+    parent_account_id: int,
+    bank_leg: str,
+    child_ext_refs: list[str],
+) -> None:
+    """
+    Stage SHG S6: parent fund transfer already succeeded; retry must hit child bank leg only.
+    Does not archive parent DISBURSEMENT_MFT/NEFT CRR (unlike S5 parent-ft-failed staging).
+    """
+    parent_status = "PARENT_SUCCESS" if bank_leg == "NEFT" else "DTFC_SUCCESS"
+    child_clmt_status = "PARENT_SUCCESS" if bank_leg == "NEFT" else "DTFC_SUCCESS"
+    child_member_mode = "OTHBACCT" if bank_leg == "NEFT" else "ACCTWB"
+    _restore_parent_bank_leg_success(lan=lan, bank_leg=bank_leg)
+    _force_stage_for_retry(
+        lan=lan,
+        target_disb_status=parent_status,
+        archive_gl=False,
+        archive_neft=False,
+        archive_mft=False,
+    )
+    _psql(
+        f"""
+        UPDATE loan_account
+        SET filler_1 = NULL, filler_2 = NULL,
+            updated_on = CURRENT_TIMESTAMP, updated_by = 'local_force_shg_s6'
+        WHERE account_id = {int(parent_account_id)};
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+    leg_token = "MFT" if bank_leg == "MFT" else "NEFT"
+    extref_pred_parts = [
+        f"(transaction_type LIKE 'LOAN_DISBURSEMENT_EXTREF%' AND transaction_type LIKE '%EXTREF' || {sql_quote(ref)} || '%')"
+        for ref in child_ext_refs
+    ]
+    if extref_pred_parts:
+        extref_pred = " OR ".join(extref_pred_parts)
+    else:
+        extref_pred = (
+            f"transaction_type LIKE 'LOAN_DISBURSEMENT_EXTREF%' AND transaction_type LIKE '%_{leg_token}'"
+        )
+    _psql(
+        f"""
+        UPDATE client_request_response_log c
+        SET
+          uri = concat_ws(
+            ' | ',
+            NULLIF(btrim(coalesce(c.uri, '')), ''),
+            'LOCAL_FORCE_SHG_S6_ORIG_LAN=' || c.loan_account_number,
+            'LOCAL_FORCE_SHG_S6_ORIG_STATUS=' || c.status
+          ),
+          loan_account_number = '~' || c.id::text,
+          status = 'LOCAL_FORCE_SHG_S6_ARCHIVED',
+          eligible_for_retry = false,
+          updated_on = CURRENT_TIMESTAMP
+        WHERE c.loan_account_number = {sql_quote(lan)}
+          AND ({extref_pred})
+          AND c.status NOT LIKE 'LOCAL_%';
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+    clmt_filter = f"AND COALESCE(NULLIF(btrim(q.data), '')::jsonb->>'disbursement_mode', '') = {sql_quote(child_member_mode)}"
+    _psql(
+        f"""
+        UPDATE loan_account_events_queue q
+        SET
+          event_status = 'P',
+          data = (
+            (COALESCE(NULLIF(btrim(q.data), '')::jsonb, '{{}}'::jsonb)
+              - 'external_error_code' - 'external_error_message'
+            ) || jsonb_build_object('disbursement_status', {sql_quote(child_clmt_status)})
+          )::text,
+          updated_on = CURRENT_TIMESTAMP,
+          updated_by = 'local_force_shg_s6'
+        WHERE q.parent_account_id = {int(parent_account_id)}
+          AND q.event_type = 'CLMT'
+          AND q.is_deleted = false
+          {clmt_filter};
+        """,
+        schema=DEFAULT_DB_SCHEMA,
+    )
+
 
 def _json_load(path: str) -> dict[str, Any]:
     return json.loads(open(path, "r", encoding="utf-8").read())
@@ -1595,6 +1785,75 @@ def _sum_crr_delta_for_prefix(delta: dict[str, int], *, prefix: str) -> int:
 
 def _disbursement_mode(req: dict[str, Any]) -> str:
     return str(((req.get("disbursement_details") or {}).get("disbursement_mode") or "")).strip()
+
+
+_PRODUCT_ID_LABEL: dict[str, str] = {"2": "JLG", "44": "SHG", "45": "INDL"}
+
+
+def _infer_product_type(req: dict[str, Any]) -> str:
+    pid = str(((req.get("loan_details") or {}).get("product_id") or "")).strip()
+    return _PRODUCT_ID_LABEL.get(pid, f"UNKNOWN(product_id={pid})")
+
+
+def _is_child_flow_payload(req_obj: dict[str, Any]) -> bool:
+    """SHG parent+CLMT path only — non-empty member_details[] (not JLG group_details)."""
+    md = req_obj.get("member_details")
+    return isinstance(md, list) and len(md) > 0
+
+
+def _validate_payload_product_contract(req: dict[str, Any]) -> list[tuple[str, bool, str, str]]:
+    """Preflight shape checks: JLG/INDL flat (member_details null); SHG child-flow array."""
+    pid = str(((req.get("loan_details") or {}).get("product_id") or "")).strip()
+    md = req.get("member_details")
+    has_members = isinstance(md, list) and len(md) > 0
+    flat_ok = md is None or (isinstance(md, list) and len(md) == 0)
+    out: list[tuple[str, bool, str, str]] = []
+    if pid == "2":
+        out.append(
+            (
+                "jlg_flat_payload",
+                flat_ok,
+                f"JLG expects member_details null/absent (flat per-member LOS disburse); got type={type(md).__name__}",
+                "FAIL",
+            )
+        )
+    elif pid == "45":
+        out.append(
+            (
+                "indl_flat_payload",
+                flat_ok,
+                "INDL expects member_details null/absent",
+                "FAIL",
+            )
+        )
+    elif pid == "44":
+        out.append(
+            (
+                "shg_child_payload",
+                has_members,
+                f"SHG expects non-empty member_details[]; got type={type(md).__name__}",
+                "FAIL",
+            )
+        )
+        if has_members and isinstance(md, list):
+            try:
+                parent_amt = Decimal(str(((req.get("loan_details") or {}).get("loan_amount") or "0")))
+                child_sum = sum(
+                    Decimal(str(m.get("loan_amount") or "0")) for m in md if isinstance(m, dict)
+                )
+                sum_ok = parent_amt == child_sum
+                out.append(
+                    (
+                        "shg_child_sum_equals_parent",
+                        sum_ok,
+                        f"parent loan_amount={parent_amt} sum(member_details.loan_amount)={child_sum}",
+                        "FAIL",
+                    )
+                )
+            except Exception as e:
+                out.append(("shg_child_sum_equals_parent", False, f"{type(e).__name__}: {e}", "FAIL"))
+    return out
+
 
 def _member_disbursement_modes(req: dict[str, Any]) -> set[str]:
     member_details = req.get("member_details")
@@ -2893,7 +3152,7 @@ def _write_qa_testcase_matrix_csv(path: Path) -> None:
         {
             "Sl No": "16",
             "Product Code": "SHG",
-            "Scenarios": "a. Input payload is non-child flow (member_details / primary_sig_lan not present)\nb. SHG parent/child specific testcase is part of suite",
+            "Scenarios": "a. Input payload is non-child flow (member_details[] empty — JLG/INDL flat)\nb. SHG parent/child specific testcase is part of suite",
             "Action": "On Execution",
             "Expected Behaviour": "a. SHG-only testcase should be marked as Not Applicable / Skipped with reason.\nb. Skip should not be counted as functional FAIL for disbursement flow.\nc. JLG & INDL applicable testcases should continue and final suite status should reflect applicable coverage only.",
         },
@@ -3100,6 +3359,10 @@ def _mk_check(name: str, ok: bool, details: str = "", *, level: str = "FAIL") ->
     return CheckResult(name=name, ok=ok, details=details if not ok else "", level=level)
 
 
+def _has_fail_checks(checks: list[CheckResult]) -> bool:
+    return any((not c.ok) and c.level == "FAIL" for c in checks)
+
+
 def _validate_post_run(
     *,
     scenario: str,
@@ -3108,6 +3371,7 @@ def _validate_post_run(
     expect_terminal: bool,
     bank_leg: str,
     require_gl: bool,
+    dpi_certify: bool = False,
 ) -> tuple[list[CheckResult], dict[str, Any]]:
     checks: list[CheckResult] = []
     diag: dict[str, Any] = {}
@@ -3133,13 +3397,18 @@ def _validate_post_run(
     checks.append(_mk_check("due_details_generated", due_cnt > 0, f"expected dues>0, got {due_cnt}"))
 
     if expect_terminal and not snap.has_child_accounts:
+        terminal_ok = snap.disbursement_status in {"COMPLETED", "DTFC_SUCCESS"}
+        terminal_level = "WARN" if snap.disbursement_status == "DTFC_SUCCESS" else "FAIL"
+        if dpi_certify and snap.disbursement_status == "LOAN_BOOKED" and snap.loan_status == "ACTIVE" and inst_cnt > 0:
+            terminal_ok = True
+            terminal_level = "WARN"
         checks.append(
             _mk_check(
                 "terminal_status_non_child",
-                snap.disbursement_status in {"COMPLETED", "DTFC_SUCCESS"},
+                terminal_ok,
                 "expected one of: LAN_CREATED, LOAN_BOOKED, DTFC_SUCCESS, COMPLETED (non-child loans); "
                 f"terminal should be COMPLETED (ideal) or DTFC_SUCCESS (acceptable local terminal), got {snap.disbursement_status}",
-                level="WARN" if snap.disbursement_status == "DTFC_SUCCESS" else "FAIL",
+                level=terminal_level,
             )
         )
     if expect_terminal and snap.has_child_accounts:
@@ -3524,6 +3793,12 @@ def main() -> int:
         default="full",
         help="minimal: DEFAULT + replay only. full: also runs function_sub_code stage permutations.",
     )
+    p.add_argument(
+        "--dpi-certify",
+        action="store_true",
+        default=bool(os.environ.get("DISBURSE_DPI_CERTIFY")),
+        help="DPI certify path: LOAN_BOOKED + ACTIVE + schedule is acceptable when GL/MFT leg is unavailable locally.",
+    )
 
     args = p.parse_args()
     _ACTIVE_NEFT_VERSION = args.neft_version
@@ -3578,6 +3853,12 @@ def main() -> int:
     mode = _disbursement_mode(req)
     bank_leg = _expected_bank_leg(mode)
     require_gl = bank_leg != "MFT"
+    product_type = _infer_product_type(req)
+    child_flow = _is_child_flow_payload(req)
+    for check_name, ok, details, level in _validate_payload_product_contract(req):
+        if not ok:
+            print(f"[suite] PAYLOAD {level} {check_name}: {details}", flush=True)
+            return 2
     # Provide fallback keys to waiters via env (keeps function signatures stable)
     os.environ["SUITE_SINCE_MS"] = str(suite_start_ms)
     os.environ["SUITE_CUSTOMER_ID"] = customer_id
@@ -3585,7 +3866,10 @@ def main() -> int:
     url = args.endpoint.strip()
     if not url:
         url = args.base_url.rstrip("/") + args.context_path.rstrip("/") + args.api_path
-    print(f"[suite] mode={mode} bank_leg={bank_leg} endpoint={url}", flush=True)
+    print(
+        f"[suite] product={product_type} child_flow={child_flow} mode={mode} bank_leg={bank_leg} endpoint={url}",
+        flush=True,
+    )
 
     simulator_up = _tcp_probe(args.simulator_host, args.simulator_port)
     simulator_changes: list[dict[str, Any]] = []
@@ -3674,6 +3958,7 @@ def main() -> int:
                 expect_terminal=expect_terminal,
                 bank_leg=bank_leg,
                 require_gl=require_gl,
+                dpi_certify=args.dpi_certify,
             )
             checks.extend(run_checks)
             diag.update(run_diag)
@@ -3758,17 +4043,6 @@ def main() -> int:
             )
         )
 
-    def is_child_flow_payload(req_obj: dict[str, Any]) -> bool:
-        md = req_obj.get("member_details")
-        if isinstance(md, list) and len(md) > 0:
-            return True
-        gd = req_obj.get("group_details") or {}
-        if isinstance(gd, dict):
-            # If primary_sig_lan exists, we treat it as child-flow context.
-            if str(gd.get("primary_sig_lan") or "").strip():
-                return True
-        return False
-
     # Scenario Group 1: Happy path (DEFAULT) + replay DEFAULT
     # NEFT v2 default call is typically stage-1 acknowledged (pending) in production-like async flows.
     expect_terminal_default_once = not (bank_leg == "NEFT" and args.neft_version == "v2")
@@ -3790,7 +4064,7 @@ def main() -> int:
         # Also keep it for replay calls so the same payload can be reused safely.
         raw.setdefault("request", {}).setdefault("loan_details", {})["account_number"] = r1.loan.account_number
         print(f"[suite] using request.loan_details.account_number={r1.loan.account_number} for subsequent scenarios", flush=True)
-    if args.fail_fast and not all(c.ok for c in r1.checks):
+    if args.fail_fast and _has_fail_checks(r1.checks):
         _pretty_print_results(suite_results)
         return 2
 
@@ -3808,7 +4082,7 @@ def main() -> int:
     else:
         baseline = {}
 
-    has_child_payload = is_child_flow_payload(req)
+    has_child_payload = child_flow
 
     # Scenario B: Replay/idempotency.
     # For NEFT v2 stage-1 pending loans, production resume path is LOAN_BOOKED with account_number.
@@ -3917,7 +4191,7 @@ def main() -> int:
 
     # Screenshot-matrix testcases: S1–S7 ("On Retry") with stage forcing so simulator overrides actually apply.
     # For JLG/INDL flows we can stage-force deterministically per LAN.
-    # For SHG/child-flow we mark as SKIPPED unless payload indicates child-flow (member_details present or primary_sig_lan set).
+    # S4–S7 SHG matrix cases: only when member_details[] is non-empty (not JLG group_details alone).
     if args.stage_suite == "full" and r1.loan and simulator_up and bank_leg in {"NEFT", "MFT"}:
         lan = r1.loan.account_number
         stage_retry_sub_code = "LOAN_BOOKED" if bank_leg == "MFT" else "DEFAULT"
@@ -4041,10 +4315,10 @@ def main() -> int:
 
         # SHG child-flow scenarios: only run if payload indicates child-flow; otherwise SKIP.
         if not has_child_payload:
-            skip_case("S4_SHG_parent_dtfc_failed", "Not applicable: payload has no member_details/primary_sig_lan (non-child flow).", product="SHG")
-            skip_case("S5_SHG_parent_ft_failed", "Not applicable: payload has no member_details/primary_sig_lan (non-child flow).", product="SHG")
-            skip_case("S6_SHG_child_ft_failed", "Not applicable: payload has no member_details/primary_sig_lan (non-child flow).", product="SHG")
-            skip_case("S7_SHG_retry_after_terminal", "Not applicable: payload has no member_details/primary_sig_lan (non-child flow).", product="SHG")
+            skip_case("S4_SHG_parent_dtfc_failed", "Not applicable: flat JLG/INDL payload (member_details[] empty).", product="SHG")
+            skip_case("S5_SHG_parent_ft_failed", "Not applicable: flat JLG/INDL payload (member_details[] empty).", product="SHG")
+            skip_case("S6_SHG_child_ft_failed", "Not applicable: flat JLG/INDL payload (member_details[] empty).", product="SHG")
+            skip_case("S7_SHG_retry_after_terminal", "Not applicable: flat JLG/INDL payload (member_details[] empty).", product="SHG")
         else:
             # Run SHG parent + child retry matrix end-to-end on child payload.
             try:
@@ -4077,19 +4351,69 @@ def main() -> int:
             finally:
                 _simulator_restore_success_profile()
 
-            # S6/S7 child-transfer path and terminal retry.
-            _force_stage_for_retry(
+            # S6: parent fund transfer succeeded; child bank leg must fail (not a DEFAULT no-op).
+            child_ext_refs = _member_ext_refs_for_bank_leg(raw, bank_leg)
+            _force_shg_s6_child_ft_stage(
                 lan=lan,
-                target_disb_status="PARENT_SUCCESS" if bank_leg == "NEFT" else "DTFC_SUCCESS",
-                archive_gl=False,
-                archive_neft=(bank_leg == "NEFT"),
-                archive_mft=(bank_leg == "MFT"),
+                parent_account_id=r1.loan.account_id,
+                bank_leg=bank_leg,
+                child_ext_refs=child_ext_refs,
             )
+            s6_ext_before = _crr_extref_counts(lan)
+            fillers_before = _parent_fillers(r1.loan.account_id)
+            try:
+                if bank_leg == "MFT":
+                    _simulator_force_mft_fail_only()
+                else:
+                    _simulator_force_neft_fail_only()
+                s6 = run_scenario(
+                    "S6_SHG_child_ft_failed",
+                    _with_function_sub_code(
+                        raw,
+                        stage_retry_sub_code,
+                        stage_retry_account,
+                        external_ref_number=stage_retry_ext_ref,
+                    ),
+                    expect_terminal=False,
+                )
+            finally:
+                _simulator_restore_success_profile()
+            s6_ext_after = _crr_extref_counts(lan)
+            ext_delta = _crr_delta(s6_ext_before, s6_ext_after)
             if bank_leg == "MFT":
-                _simulator_force_mft_fail_only()
+                child_fail_delta = sum(
+                    v for k, v in ext_delta.items() if "EXTREF" in k and (":FAIL" in k or ":UNKNOWN" in k) and "_MFT" in k
+                )
             else:
-                _simulator_force_neft_fail_only()
-            s6 = run_scenario("S6_SHG_child_ft_failed", _with_function_sub_code(raw, "DEFAULT", None, external_ref_number=canonical_ext_ref), expect_terminal=False)
+                child_fail_delta = sum(
+                    v for k, v in ext_delta.items() if "EXTREF" in k and "NEFT" in k and (k.endswith(":FAIL") or k.endswith(":UNKNOWN"))
+                )
+            s6.checks.append(
+                _mk_check("child_transfer_fail_logged", child_fail_delta > 0, f"ext_delta={ext_delta}")
+            )
+            f1, f2 = _parent_fillers(r1.loan.account_id)
+            fillers_ok = bool(f1.strip()) and bool(f2.strip()) and f1.strip() != "MFI-40001"
+            s6.checks.append(
+                _mk_check(
+                    "parent_fillers_synced_from_child_fail",
+                    fillers_ok,
+                    f"filler_1={f1!r} filler_2={f2!r} (before={fillers_before})",
+                )
+            )
+            crr_delta = s6.diagnostics.get("crr_delta_raw") if isinstance(s6.diagnostics.get("crr_delta_raw"), dict) else {}
+            child_crr_delta = sum(
+                v for k, v in (crr_delta or {}).items() if "EXTREF" in k and (":FAIL" in k or ":UNKNOWN" in k)
+            )
+            s6.checks.append(
+                _mk_check(
+                    "s6_not_noop_retry",
+                    child_fail_delta > 0 or child_crr_delta > 0,
+                    f"ext_delta={ext_delta} crr_delta_raw={crr_delta}",
+                )
+            )
+            if isinstance(s6.diagnostics, dict):
+                s6.diagnostics["s6_ext_delta"] = ext_delta
+                s6.diagnostics["s6_parent_fillers"] = {"filler_1": f1, "filler_2": f2}
             suite_results.append(s6)
             _simulator_restore_success_profile()
             s7 = run_scenario("S7_SHG_retry_after_terminal", _with_function_sub_code(raw, "DEFAULT", None, external_ref_number=canonical_ext_ref), expect_terminal=True)
@@ -4135,7 +4459,7 @@ def main() -> int:
             )
         )
         suite_results.append(resumed)
-    if args.fail_fast and not all(c.ok for c in r2.checks):
+    if args.fail_fast and _has_fail_checks(r2.checks):
         _pretty_print_results(suite_results)
         return 2
 
@@ -4217,7 +4541,7 @@ def main() -> int:
 
     _pretty_print_results(suite_results)
 
-    all_ok = all(not any((not c.ok) and c.level == "FAIL" for c in r.checks) for r in suite_results)
+    all_ok = all(not _has_fail_checks(r.checks) for r in suite_results)
     if args.report_json:
         report = {
             "request_file": args.request_file,
@@ -4260,6 +4584,9 @@ def main() -> int:
     meta = {
         "endpoint": url,
         "external_ref_number": ext_ref,
+        "product_type": product_type,
+        "product_id": product_id,
+        "child_flow": child_flow,
         "disbursement_mode": mode,
         "bank_leg": bank_leg,
         "simulator_up": simulator_up,

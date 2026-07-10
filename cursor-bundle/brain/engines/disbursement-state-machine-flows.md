@@ -1,8 +1,23 @@
 # How disbursement state works — a guided tour with code anchors
 
-> Read this if you've never touched the disbursement code, or if you have but want one map covering business flow + code structure together. Companion: [`disbursement-engine.md`](disbursement-engine.md) for the full processor chain enumeration, [`platform/state-machine-safety.md`](../platform/state-machine-safety.md) for the CAS contract reference, [`accounting/06-shg-jlg-group-loans.md`](../accounting/06-shg-jlg-group-loans.md) for SHG/JLG model deep-dive.
+> Read this if you've never touched the disbursement code, or if you have but want one map covering business flow + code structure together. Companion: [`disbursement-engine.md`](disbursement-engine.md) for the full processor chain enumeration, [`platform/state-machine-safety.md`](../platform/state-machine-safety.md) for the CAS contract reference.
 
 All file paths in this doc are relative to `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/`. The few orchestration XMLs sit under `novopay-platform-accounting-v2/deploy/application/orchestration/`.
+
+---
+
+## Product matrix — INDL / JLG / SHG (accounting `disburseLoan`)
+
+**Child-flow gate in accounting is `member_details[]` non-empty** — not `group_details`. JLG may carry optional `group_details` on a **flat** per-member disburse with `member_details: null`.
+
+| | **INDL** | **JLG** | **SHG** |
+|---|---|---|---|
+| **LOS trigger** | `DisburseLoanProcessor` | After PDC: per-member INDIVIDUAL rows; one `disburseLoan` per member | `DisburseGroupLoanProcessor` — GROUP row |
+| **Payload** | Flat; no `member_details` | Flat; `member_details: null`; optional `group_details` | Parent + **`member_details[]`** (child sum = parent, 134472) |
+| **`has_child_accounts`** | `false` | `false` per member LAN | `true` when product category SHG (`CreateLoanAccountProcessor:172-174`) |
+| **MFT terminal** | `COMPLETED` | `COMPLETED` | `PARENT_SUCCESS` when `member_details` set (`CallBankAPIForDisbursementProcessor:357-358`) |
+| **CLMT queue** | No | No | Yes (`PrepareClmtRowsForChildDisbursementProcessor:46-48`) |
+| **Local sanity** | `product_id=45` | `product_id=2`, flat payload | `product_id=44`, `member_details[]` |
 
 ---
 
@@ -61,26 +76,25 @@ The "where set" column shows that not every state moves through the same writer.
             │
    ┌────────┴────────────────────────────────────────────────┐
    │                                                         │
-SINGLE LOAN                                              GROUP LOAN (SHG/JLG)
+SINGLE LOAN (INDL / JLG per-member)                          GROUP LOAN (SHG only)
    │                                                         │
    ├── MFT lane     ┐                                  ┌── parent CASA debit (MFT or NEFT v2)
    │                │                                  │
    ├── NEFT v1 lane │                                  ├── PARENT_SUCCESS
    │                │                                  │      (parent done; children pending)
    └── NEFT v2 lane │                                  │
-       (NEFT_STAGE_1_PENDING                           ├── child loans process via CLMT queue
-        → STAGE_1_SUCCESS                              │   (each child has its own state in
-        → STAGE_2_PENDING)                             │    loan_account_events_queue.data JSON)
-                    │                                  │
+       (NEFT_STAGE_1_PENDING                           ├── child legs via CLMT queue
+        → STAGE_1_SUCCESS                              │   (member_details[] in request)
+        → STAGE_2_PENDING)                             │
                     │                                  ├── CHILD_SUCCESS
                     │                                  │      (CLMTs done; CLB still pending)
-                    │                                  │
                     ▼                                  │
-                                                       │
               ┌──────────────────┐                     │
               │    COMPLETED     │ ◄───────────────────┘
               └──────────────────┘
 ```
+
+**JLG** follows the left column (flat disburse, `member_details` null). **SHG** follows the right column (`member_details[]` present). Do not treat JLG `group_details` as SHG child-flow.
 
 ### Code: how this pipeline is wired
 
@@ -93,7 +107,7 @@ The key processors, in order:
 | `createLoanAccountProcessor` | [`CreateLoanAccountProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) | Inserts the row; sets `LAN_CREATED` |
 | `updateDisbursementStatusProcessor` | [`UpdateDisbursementStatusProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java) | Stamps `LOAN_BOOKED` / `DTFC_SUCCESS` / `BANK_SUCCESS` based on EC value; legacy setter+save |
 | `callBankAPIForDisbursementProcessor` | [`CallBankAPIForDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java) | Decides MFT vs NEFT v1 vs NEFT v2; runs inquiry path for retry; finally calls `saveBankErrorResponseCode` which CAS-advances state |
-| `prepareClmtRowsForChildDisbursementProcessor` | [`PrepareClmtRowsForChildDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) | Group only — queues one CLMT row in `loan_account_events_queue` per child member |
+| `prepareClmtRowsForChildDisbursementProcessor` | [`PrepareClmtRowsForChildDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) | **SHG only** (`member_details[]`) — queues one CLMT row per child |
 | `performChildLoanBankDisbursementProcessor` | [`PerformChildLoanBankDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java) | Group only — kicks off processing of CLMT rows |
 
 The bank-call processor delegates lane work to:

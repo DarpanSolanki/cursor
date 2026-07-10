@@ -3,13 +3,16 @@
 #
 #   DPI_REGRESSION_PROFILE=quick|standard|full|maturity  (default: standard)
 #
+# Pre-step: reset_dpi_fixtures.sh (skip with SKIP_DPI_FIXTURE_RESET=1).
+# Quick profile starts with run_dpi_three_job_verify.sh (ntest batch APIs on 8060160).
+#
 # Profiles:
-#   quick     — guards + grace + overlap + two_emi + shg_parity (~12 min)
+#   quick     — guards + two_emi + grace + overlap + shg_parity (~12 min)
 #   standard  — + posting_calendar + eod_txn + go_live_ud + cross_eod (~30 min)
 #   full      — + billing_ud + integration_smoke + ud_compliance
 #   maturity  — + post_maturity + post_maturity_catchup + fixture restore
 #
-# Fixture loan 8060160 is pinned for standard+ regression blocks; two-EMI chain uses 8057160.
+# Fixture loan 8060160 for standard+ blocks; grace-chain 8057160 for grace/overlap/two_emi/shg.
 # Maturity teardown: restore_demo_installments_after_post_maturity_e2e.sql after post-maturity block.
 #
 # Exit non-zero when any step fails; prints PASS/FAIL summary table at end.
@@ -17,8 +20,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DPIC="$ROOT/scripts/dpic"
-# shellcheck disable=SC1091
-source "$DPIC/lib/dpi_demo_fixture.sh"
 # shellcheck disable=SC1091
 source "$DPIC/lib/dpi_fixture_pin.sh"
 
@@ -75,14 +76,17 @@ restore_maturity_fixture() {
 echo "=== DPI full regression profile=$PROFILE ==="
 bash "$ROOT/scripts/bin/agent-ops.sh" ensure accounting --compile 2>/dev/null || true
 
+if [[ "${SKIP_DPI_FIXTURE_RESET:-0}" != "1" ]]; then
+  run_step fixture_reset bash "$DPIC/reset_dpi_fixtures.sh"
+fi
+
 if profile_ge quick; then
+  run_step three_job_verify bash "$DPIC/run_dpi_three_job_verify.sh"
   run_step posting_guards bash "$ROOT/scripts/bin/dpi-booking-posting-guard.sh"
-  run_step grace_e2e env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
-    bash "$DPIC/run_grace_dpi_e2e.sh"
-  run_step grace_overlap_e2e env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
-    bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
-  run_step two_emi_full_chain env LOAN_ACCOUNT_ID=8057160 ACCOUNT_NUMBER=6004041325 \
-    bash "$DPIC/run_dpi_two_emi_full_chain.sh"
+  # two_emi purges global DPI state — run before grace-chain scenarios on same LAN
+  run_step two_emi_full_chain bash "$DPIC/run_dpi_two_emi_full_chain.sh"
+  run_step grace_e2e bash "$DPIC/run_grace_dpi_e2e.sh"
+  run_step grace_overlap_e2e bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
   run_step shg_parent_child_parity bash "$DPIC/run_dpi_shg_parent_child_parity.sh"
 fi
 

@@ -5,6 +5,90 @@
 ---
 
 
+## 2026-07-10 | acct 412f4d03e3 | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | DPI slice by EMI due not grace anchor
+dpiAccrualCalculation resolveSliceInstallment: latest due<=segStart owns row; EMI1 end at next due_date (14-Jun) not overdue (18-Jun); dpi_accrual_details LAN 8101960
+
+---
+
+
+## 2026-07-10 | acct 4321639df | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | DPI grace stored overdue gate
+KG-FLOW: dpiAccrualCalculation resolveAdmissionOverdueDate uses stored loan_due_details.overdue_date only (>= gate; grace-0 overdue=due valid); first slice start_date=due_date; interest-parity seals unchanged. Tables: dpi_accrual_details loan_due_details
+
+---
+
+
+## 2026-07-10 | acct `b78e1113c` | mfi_integration_v3.7.1 | kg-flow | grace stored overdue + EMI1 seal
+KG-FLOW: dpiAccrualCalculation resolveAdmissionOverdueDate + applyGraceBackfill; loan_due_details.overdue_date gate; tables dpi_accrual_details loan_due_details
+
+---
+
+
+## 2026-07-10 | acct `72e461e10` | accounting-v2 | feature/delayed_payment_interest | kg-flow | DPI grace stored overdue + EMI1 seal
+KG-FLOW: dpiAccrualCalculation resolveAdmissionOverdueDate prefers loan_due_details.overdue_date; grace gate >= penal parity; first post-grace backfill from due_date; EMI1 seals due→next EMI due (skip month-end micro-split); extend posted slices. Tables: dpi_accrual_details, loan_due_details.
+
+---
+
+
+## 2026-07-10 | acct `1baf3f4d8f` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI projection
+KG-FLOW: fetchLoanForeclosureSimulationDetails projects billed DPI for future foreclosure dates
+
+---
+
+
+## 2026-07-10 | acct `167d0942db` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment billed DPI + BPD in approve validation
+KG-FLOW: loanPrepayment ValidateFinalPrepaymentProcessor includes billed_dpi_amount_to_be_paid and bpd_amount_to_be_paid in foreclosure amount check (SDCP-11048)
+
+---
+
+
+## loanPrepayment billed DPI+BPD validation; DPI column audit harness
+loanPrepayment: ValidateFinalPrepaymentProcessor billed_dpi+bpd; verify_dpi_accrual_slice_integrity extended; run_dpi_three_job_verify + run_dpi_column_audit.sh
+
+---
+
+
+## 2026-07-10 | acct `068247cc9` | accounting-v2 | mfi_integration_v3.4.2.2 | kg-flow | SDCP-10227 bank error filler REQUIRES_NEW persist
+| kg-flow | disburseLoan callBankAPIForDisbursement — INDL/JLG flat bank fail + SHG parent mirror use updateLoanAccountFillerNewTransaction so filler_1/2 survive fatal raise; loan_account
+
+---
+
+
+## disburseLoan getLoanAccountDetails
+## 2026-07-09 | acct `b78517980` | accounting-v2 | mfi_integration_v3.4.2.2 | SDCP-10227 SHG CLMT bank error parent fillers
+
+---
+
+
+## 2026-07-09 | acct `e175b78cb` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI future date
+fetchLoanForeclosureSimulationDetails: DpiForeclosureBrokenPeriodService projects DPI through selected foreclosure date when future; reuses accrual simulate path aligned with broken-period interest.
+
+---
+
+
+## 2026-07-09 | acct `e175b78cb` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim bpd_amount future dates
+fetchLoanForeclosureSimulationDetails: DpiForeclosureBrokenPeriodService + simulateAccrualAmountBetweenDates projects DPI till selected foreclosure date when future; parity with bpi_amount. Tables: loan_dpi_accrual_details, loan_due_details.
+
+---
+
+
+## 2026-07-09 | acct `b157b2d33` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanAccountRebooking interest day-count guard
+GenerateRepaymentScheduleProcessor.ensureInterestCalculationDayCounts loads product_scheme days when EC blank; ReducingBalanceInterestAmountCalculator fail-fast 130045/130046. Pairs Ramya `00292b217` resolveDaysInYear after PSFD master-data migration.
+
+---
+
+
+## dpiAccrualCalculation SHG parent child parity
+## 2026-07-09 | acct `74da61acf` | accounting-v2 | mfi_integration_v3.7.1 | SDCP-11012 SHG DPI parity window fix
+
+---
+
+
+## 2026-07-09 | acct `844081f83` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment approve 132268 billed DPI+BPD
+ValidateFinalPrepaymentProcessor.fetchForeclosureAmount adds billedDpiAmountToBePaid + bpdAmountToBePaid from prepayment_details; tables: prepayment_details
+
+---
+
+
 ## 2026-07-09 | acct `425472cab` | accounting-v2 | mfi_integration_v3.4.2.1 | kg-flow | SDCP-10199 QA6 display gaps
 last-child RSCH saveLoanAccountPaymentsDetails: net_amount=0 avoids 2x principal in statement; GetLoanAccountInstallmentDetails uses loan_status CLOSED; finalizeParent sets account.status CLOSED | kg-flow | getLoanAccountOverviewDetails RSCH_DEATH_FORECLOSURE
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Fast local disburseLoan — one DEFAULT scenario, no simulator, script bank outcomes.
-# Use for smoke after accounting changes; full matrix: disbursement/runners/run_disbursement_full_matrix.sh
+# Fast local disburseLoan — JLG minimal stage suite (flat payload, member_details null).
+# Use for smoke after accounting changes; full matrix: scripts/run_disbursement_full_matrix.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PAYLOADS="$ROOT/scripts/disbursement/payloads/canonical"
 REQUEST_FILE="${REQUEST_FILE:-$PAYLOADS/disburse_loan_sanity_request_4495972134234554346565.json}"
-STAGE_SUITE="${STAGE_SUITE:-default_clean}"
+STAGE_SUITE="${STAGE_SUITE:-minimal}"
 REPORT_JSON="${REPORT_JSON:-}"
 
 echo "=== disburse-quick — ensure accounting ==="
@@ -33,15 +33,15 @@ rm -f /tmp/disburse_loan_sanity.lock
 ARGS=(
   --request-file "$REQUEST_FILE"
   --stage-suite "$STAGE_SUITE"
-  --bank-outcome-source script
-  --simulator-profile none
+  --simulator-profile success
+  --reset-before
+  --reset-target-disb-status LAN_CREATED
   --http-timeout-s 30
-  --wait-timeout-s 90
-  --poll-s 1.0
-  --no-loan-failfast-s 45
+  --wait-timeout-s 120
+  --poll-s 2.0
 )
 [[ -n "$REPORT_JSON" ]] && ARGS+=(--report-json "$REPORT_JSON")
 
 echo "=== disburse-quick — disburseLoan ($STAGE_SUITE) ==="
 echo "Payload: $REQUEST_FILE"
-exec python3 "$ROOT/scripts/disbursement/disburse_loan_sanity.py" "${ARGS[@]}" "$@"
+exec python3 "$ROOT/scripts/disburse_loan_sanity.py" "${ARGS[@]}" "$@"

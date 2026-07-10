@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# childLoanRepayment E2E — JLG child loan billed DPI appropriation (6004029335 / 8048470).
+# childLoanRepayment E2E — JLG child loan billed DPI appropriation (see dpi_fixture_constants.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
 
-export LOAN_ACCOUNT_ID="${CHILD_LOAN_ACCOUNT_ID:-8048470}"
-export ACCOUNT_NUMBER="${CHILD_ACCOUNT_NUMBER:-6004029335}"
+export LOAN_ACCOUNT_ID="${CHILD_LOAN_ACCOUNT_ID:-$DPI_CHILD_JLG_LOAN_ID}"
+export ACCOUNT_NUMBER="${CHILD_ACCOUNT_NUMBER:-$DPI_CHILD_JLG_LAN}"
 export DEMO_LAN="$ACCOUNT_NUMBER"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }

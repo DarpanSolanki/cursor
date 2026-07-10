@@ -1,6 +1,7 @@
--- TEMPORARY workaround for DpiAccrualCalculationBatchService installment lookup
--- (uses next future EMI instead of earliest overdue). Seeds max(end_date) anchor so
--- calc window [last_end .. business_date] is valid. Remove when L1 code fix lands.
+-- DOCUMENTED BYPASS (not for passing tests): calc-window anchor seed for
+-- DpiAccrualCalculationBatchService installment lookup bug (next future EMI vs earliest overdue).
+-- Prefer real dpiAccrualCalculation jobs; enable only via SEED_CALC_WINDOW=1 on run_eod*.sh.
+-- Seeds zero-amount anchor row so calc window [last_end .. business_date] is valid. Remove when L1 lands.
 --
 -- Usage: psql ... -v loan_account_id=8055060 -v business_date_ms=1781267400000 \
 --        -f scripts/dpic/sql/helpers/seed_calc_window.sql

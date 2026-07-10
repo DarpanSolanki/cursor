@@ -4,12 +4,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-: "${PARENT_LOAN_ACCOUNT_ID:=116360}"
-: "${ACCOUNT_NUMBER:=6000001074}"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+dpi_use_shg_parent_loan
 : "${GO_LIVE_DDMM:=15-04-2025}"
-: "${JOB_TIME:=1749990600000}"  # 2025-06-15 18:00 IST
 # shellcheck source=lib/dpi_demo_fixture.sh
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
+dpi_use_shg_parent_loan
+export JOB_TIME="$DPI_SHG_PARITY_JOB_TIME"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 NTEST="$ROOT/scripts/bin/ntest.sh"

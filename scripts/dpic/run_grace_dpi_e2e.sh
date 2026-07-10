@@ -3,16 +3,21 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-# Pin scenario defaults BEFORE sourcing dpi_demo_fixture.sh (that file defaults to 8060160).
-: "${LOAN_ACCOUNT_ID:=8057160}"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
 : "${GRACE_DAYS:=3}"
 : "${FIRST_EMI_DUE_DATE:=2026-05-14}"
 : "${PRODUCT_CODE:=7676}"
 : "${GO_LIVE_DDMM:=15-04-2025}"
-# First business day after grace gate (due + grace + 1 = 2026-05-18); run through 2026-05-20 EOD.
-: "${JOB_TIME:=1779280200000}"
 # shellcheck source=lib/dpi_demo_fixture.sh
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
+export JOB_TIME="$DPI_GRACE_JOB_TIME"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 NTEST="$ROOT/scripts/bin/ntest.sh"

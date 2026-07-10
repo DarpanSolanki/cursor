@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Shared DPI demo-loan fixture (8060160 / 6004044425) for ntest + E2E scripts.
+# Shared DPI demo-loan fixture — canonical IDs in lib/dpi_fixture_constants.sh
 set -euo pipefail
 
 _DPI_FIXTURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DPI_FIXTURE_ROOT="$(cd "$_DPI_FIXTURE_DIR/../../.." && pwd)"
+# shellcheck disable=SC1091
+source "$_DPI_FIXTURE_DIR/dpi_fixture_constants.sh"
 
-export LOAN_ACCOUNT_ID="${LOAN_ACCOUNT_ID:-8060160}"
-export ACCOUNT_NUMBER="${ACCOUNT_NUMBER:-6004044425}"
+export LOAN_ACCOUNT_ID="${LOAN_ACCOUNT_ID:-$DPI_FIXTURE_LOAN_ID}"
+export ACCOUNT_NUMBER="${ACCOUNT_NUMBER:-$DPI_FIXTURE_LAN}"
 export DEMO_LAN="${DEMO_LAN:-$ACCOUNT_NUMBER}"
-export JOB_TIME="${JOB_TIME:-1782563400000}"
+export JOB_TIME="${JOB_TIME:-$DPI_FIXTURE_JOB_TIME}"
 export FORECLOSURE_DATE="${FORECLOSURE_DATE:-1784984400000}"
 export GRACE_DAYS="${GRACE_DAYS:-3}"
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
@@ -158,4 +160,43 @@ dpi_set_go_live_and_refresh() {
 dpi_restart_masterdata() {
   echo "  dpi: restart masterdata (refresh bulk master go-live)"
   dpi_ensure_masterdata
+}
+
+# Canonical local batch trigger — same path as QA/prod (ntest → gateway → Spring Batch).
+dpi_date_to_ms() {
+  python3 - "$1" <<'PY'
+import sys
+from datetime import datetime, timezone, timedelta
+d = datetime.strptime(sys.argv[1], "%Y-%m-%d")
+ist = timezone(timedelta(hours=5, minutes=30))
+print(int(d.replace(tzinfo=ist).timestamp() * 1000))
+PY
+}
+
+dpi_purge_batch() {
+  local job_name="$1" job_time="$2"
+  dpi_pg -v ON_ERROR_STOP=1 -v job_name="$job_name" -v job_time="$job_time" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/purge_batch_job_execution.sql" >/dev/null
+}
+
+# Usage: dpi_call_batch dpiAccrualCalculation [job_time_ms] [purge=1]
+# QA path: ntest batch API + wait_batch_job.sh (same as registry batch.dpi_* intent).
+dpi_call_batch() {
+  local api="$1" job_time="${2:-$JOB_TIME}" purge="${3:-1}"
+  local rs wait="$DPI_FIXTURE_ROOT/scripts/dpic/lib/wait_batch_job.sh"
+  local ntest="$DPI_FIXTURE_ROOT/scripts/bin/ntest.sh"
+  [[ "$purge" == "1" ]] && dpi_purge_batch "$api" "$job_time"
+  rs="$(date +%s)"
+  echo ">>> ${api} job_time=${job_time}"
+  echo "# QA: JOB_TIME=$job_time bash scripts/bin/ntest.sh api accounting $api --batch --job-time $job_time"
+  echo "# QA: bash scripts/dpic/lib/wait_batch_job.sh $api $job_time $rs"
+  JOB_TIME="$job_time" "$ntest" api accounting "$api" --batch --job-time "$job_time" >/dev/null
+  bash "$wait" "$api" "$job_time" "$rs"
+}
+
+dpi_call_eod_chain() {
+  local job_time="${1:-$JOB_TIME}"
+  dpi_call_batch dpiAccrualCalculation "$job_time"
+  dpi_call_batch dpiAccrualBooking "$job_time"
+  dpi_call_batch dpiBilling "$job_time"
 }

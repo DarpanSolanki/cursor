@@ -2,10 +2,12 @@
 description: "Run evidence-driven disburseLoan sanity (simulator+DB)"
 globs:
   - "scripts/disburse_loan_sanity.py"
-  - "scripts/disburse_loan_sanity_*.json"
+  - "scripts/disbursement/payloads/canonical/*.json"
+  - "scripts/bin/disburse-quick.sh"
+  - "scripts/bin/disburse-shg-quick.sh"
   - "docs/disbursement-sanity/**"
   - "docs/disbursement-reset-recipes/**"
-  - "scripts/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
+  - "scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
   - "scripts/reset_disburse_loan_replay_mfi_from_json.py"
 alwaysApply: false
 ---
@@ -38,18 +40,23 @@ Run from workspace root (`/home/darpan/Documents/sliProd`).
 ### Wrapper shortcuts (preferred for demos/manual verification)
 
 ```bash
+/home/darpan/Documents/sliProd/scripts/bin/disburse-quick.sh          # JLG minimal (flat payload)
+/home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.sh      # SHG minimal (parent + member_details[])
+STAGE_SUITE=full /home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.sh  # SHG S1–S7 matrix
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh JLG
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh INDL
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh SHG
 ```
 
+Canonical payloads live under `scripts/disbursement/payloads/canonical/`.
+
 ### Minimal (smoke + replay guard)
 
 ```bash
 rm -f /tmp/disburse_loan_sanity.lock
 python3 scripts/disburse_loan_sanity.py \
-  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
+  --request-file scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_4495972134234554346565.json \
   --stage-suite minimal \
   --simulator-profile success \
   --reset-before \
@@ -64,7 +71,7 @@ python3 scripts/disburse_loan_sanity.py \
 ```bash
 rm -f /tmp/disburse_loan_sanity.lock
 python3 scripts/disburse_loan_sanity.py \
-  --request-file scripts/disburse_loan_sanity_request_4495972134234554346565.json \
+  --request-file scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_4495972134234554346565.json \
   --stage-suite full \
   --simulator-profile success \
   --reset-before \
@@ -99,7 +106,7 @@ KAFKA_ENTRY_FORCE_DISBURSEMENT_MODE=ACCTWB \
 KAFKA_ENTRY_SCENARIO_START=1 \
 KAFKA_ENTRY_SCENARIO_LIMIT=7 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
-  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_4495972134234554346565.json
+  /home/darpan/Documents/sliProd/scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_4495972134234554346565.json
 ```
 
 INDL full suite (S1..S7, NEFT v1):
@@ -110,10 +117,16 @@ KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002215 \
 KAFKA_ENTRY_SCENARIO_START=1 \
 KAFKA_ENTRY_SCENARIO_LIMIT=7 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
-  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_370164.json
+  /home/darpan/Documents/sliProd/scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_370164.json
 ```
 
 SHG full suite (S1..S7, parent+child):
+
+```bash
+STAGE_SUITE=full /home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.sh
+```
+
+Kafka-entry equivalent (S1..S7):
 
 ```bash
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002185 \
@@ -121,7 +134,20 @@ KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002179 \
 KAFKA_ENTRY_SCENARIO_START=1 \
 KAFKA_ENTRY_SCENARIO_LIMIT=7 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
-  /home/darpan/Documents/sliProd/scripts/disburse_loan_sanity_request_shg_41333333.json
+  /home/darpan/Documents/sliProd/scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_shg_41333333.json
+```
+
+S6 (`S6_SHG_child_ft_failed`) evidence — child EXTREF bank FAIL on parent LAN + parent fillers:
+
+```sql
+SELECT filler_1, filler_2 FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.account a ON a.id = la.account_id
+WHERE a.account_number = :lan;
+
+SELECT transaction_type, status, count(*)
+FROM mfi_accounting.client_request_response_log
+WHERE loan_account_number = :lan AND transaction_type LIKE '%EXTREF%'
+GROUP BY transaction_type, status;
 ```
 
 ### Customer selection guard (before run)

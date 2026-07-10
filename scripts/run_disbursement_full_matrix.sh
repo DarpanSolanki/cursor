@@ -20,9 +20,10 @@ INDL_SECONDARY="${INDL_SECONDARY:-}"
 SHG_PRIMARY="${SHG_PRIMARY:-}"
 SHG_SECONDARY="${SHG_SECONDARY:-}"
 
-JLG_PAYLOAD="${JLG_PAYLOAD:-$ROOT_DIR/scripts/disburse_loan_sanity_request_4495972134234554346565.json}"
-INDL_PAYLOAD="${INDL_PAYLOAD:-$ROOT_DIR/scripts/disburse_loan_sanity_request_370164.json}"
-SHG_PAYLOAD="${SHG_PAYLOAD:-$ROOT_DIR/scripts/disburse_loan_sanity_request_shg_41333333.json}"
+CANONICAL_PAYLOADS="$ROOT_DIR/scripts/disbursement/payloads/canonical"
+JLG_PAYLOAD="${JLG_PAYLOAD:-$CANONICAL_PAYLOADS/disburse_loan_sanity_request_4495972134234554346565.json}"
+INDL_PAYLOAD="${INDL_PAYLOAD:-$CANONICAL_PAYLOADS/disburse_loan_sanity_request_370164.json}"
+SHG_PAYLOAD="${SHG_PAYLOAD:-$CANONICAL_PAYLOADS/disburse_loan_sanity_request_shg_41333333.json}"
 
 TARGET="${1:-ALL}"
 TARGET="$(echo "$TARGET" | tr '[:lower:]' '[:upper:]')"

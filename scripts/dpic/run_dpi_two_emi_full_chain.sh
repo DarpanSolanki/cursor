@@ -9,10 +9,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
+# shellcheck disable=SC1091
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
 
-LOAN_ACCOUNT_ID="${LOAN_ACCOUNT_ID:-8057160}"
-ACCOUNT_NUMBER="${ACCOUNT_NUMBER:-6004041325}"
 GO_LIVE_DDMM="${GO_LIVE_DDMM:-15-04-2025}"
 GO_LIVE_ISO="${GO_LIVE_ISO:-2026-05-01}"
 END_DATE="${END_DATE:-2026-07-01}"
@@ -50,6 +53,8 @@ echo "=== DPI two-EMI full chain LAN=$ACCOUNT_NUMBER id=$LOAN_ACCOUNT_ID ==="
 echo "    go_live=$GO_LIVE_ISO end=$END_DATE grace=$GRACE_DAYS"
 
 dpi_pg -v ON_ERROR_STOP=1 -f "$ROOT/scripts/dpic/sql/helpers/purge_local_dpi_all.sql" >/dev/null
+dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
+  -f "$ROOT/scripts/dpic/sql/helpers/hard_purge_dpi_accruals_for_loan.sql" >/dev/null
 
 dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" -v grace_days="$GRACE_DAYS" \
   -f "$ROOT/scripts/dpic/sql/helpers/setup_two_emi_dpi_full_chain.sql"

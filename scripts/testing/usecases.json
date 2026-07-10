@@ -1,29 +1,31 @@
 {
-  "disbursement.jlg": {
-    "title": "JLG disburseLoan regression (sanity suite)",
+  "disbursement.quick": {
+    "title": "JLG disburseLoan minimal smoke",
     "service": "accounting",
-    "cmd": "make -C scripts jlg",
-    "notes": "Full validator + DB checks via regression_driver"
+    "cmd": "bash scripts/bin/disburse-quick.sh",
+    "notes": "Flat JLG payload (member_details null); scripts/disburse_loan_sanity.py"
+  },
+  "disbursement.jlg": {
+    "title": "JLG disburseLoan full stage suite",
+    "service": "accounting",
+    "cmd": "STAGE_SUITE=full bash scripts/bin/disburse-quick.sh",
+    "notes": "Full validator + DB checks via disburse_loan_sanity.py"
   },
   "disbursement.indl": {
-    "title": "INDL disburseLoan regression",
+    "title": "INDL disburseLoan minimal smoke",
     "service": "accounting",
     "cmd": "make -C scripts indl"
   },
   "disbursement.shg": {
-    "title": "SHG disburseLoan regression",
+    "title": "SHG disburseLoan minimal smoke",
     "service": "accounting",
-    "cmd": "make -C scripts shg"
+    "cmd": "bash scripts/bin/disburse-shg-quick.sh",
+    "notes": "SHG parent+child (member_details[])"
   },
-  "disbursement.curl_shg": {
-    "title": "One-shot curl disburseLoan (SHG payload)",
+  "disbursement.full_matrix": {
+    "title": "Kafka-entry S1–S7 matrix (JLG/INDL/SHG)",
     "service": "accounting",
-    "cmd": "bash scripts/disbursement/runners/curl_disburse_loan_shg.sh"
-  },
-  "disbursement.neft_v2_jlg": {
-    "title": "JLG NEFT v2 local seed + sanity + terminal callbacks",
-    "service": "accounting",
-    "cmd": "bash scripts/disbursement/runners/run_jlg_neft_v2_local.sh"
+    "cmd": "bash scripts/run_disbursement_full_matrix.sh"
   },
   "dpic.full": {
     "title": "DPIC: setup → disburse → DPD → calc → booking → billing",

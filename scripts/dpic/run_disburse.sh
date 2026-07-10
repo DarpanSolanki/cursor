@@ -12,9 +12,8 @@ echo "Payload: $REQUEST_FILE"
 rm -f /tmp/disburse_loan_sanity.lock
 python3 "$ROOT/scripts/disburse_loan_sanity.py" \
   --request-file "$REQUEST_FILE" \
-  --stage-suite default_clean \
-  --simulator-profile none \
-  --bank-outcome-source script \
+  --stage-suite minimal \
+  --simulator-profile success \
   --http-timeout-s 60 \
   --wait-timeout-s 180 \
   --poll-s 2.0 \

@@ -117,4 +117,4 @@ If `maker_checker_enabled=1` for `disburseLoan`, the loan stays in `APPROVED` un
 - Full flow: [`../flows/disbursement-end-to-end.md`](../flows/disbursement-end-to-end.md)
 - Lifecycle states: [`../accounting/07-loan-account-lifecycle.md`](../accounting/07-loan-account-lifecycle.md)
 - Open gap re Redis TTL: [`../gaps-and-risks.md`](../gaps-and-risks.md) (search "dl key TTL")
-- **Local repro / regression suite:** [`/home/darpan/darpan/scripts/`](../../scripts/) — start at `START_HERE.md`. `regression_driver.py` reproduces every disburseLoan scenario (S1–S7 retry matrix, NEFT v2 callbacks, INDL/JLG/SHG variants) against a local Yugabyte DB and emits an HTML report
+- **Local repro / regression suite:** `scripts/disburse_loan_sanity.py` with canonical payloads under `scripts/disbursement/payloads/canonical/`. Quick entrypoints: `scripts/bin/disburse-quick.sh` (JLG flat), `scripts/bin/disburse-shg-quick.sh` (SHG `member_details[]`). Full Kafka-entry matrix: `scripts/run_disbursement_full_matrix.sh`.

@@ -17,7 +17,7 @@
 -- Usage:
 --   psql -h localhost -p 5433 -U yugabyte -d yugabyte -v ON_ERROR_STOP=1 \
 --     -v lan='6001937616' -v target_disb_status='DTFC_SUCCESS' -v archive_gl='false' -v archive_neft='true' -v archive_mft='false' \
---     -f scripts/local_force_disburse_stage_for_retry_mfi_yugabyte.sql
+--     -f scripts/sql/utility/local_force_disburse_stage_for_retry_mfi_yugabyte.sql
 
 BEGIN;
 SET search_path TO mfi_accounting;

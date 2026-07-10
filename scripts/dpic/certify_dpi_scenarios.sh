@@ -41,17 +41,24 @@ accrued_positive() {
 
 run_calc_only() {
   local lid="$1" jt="$2"
-  LOAN_ACCOUNT_ID="$lid" JOB_TIME="$jt" QUARANTINE_PORTFOLIO=1 SYNC_PAST_DUE=1 RESET_DPI_BOOKING=0 \
-    bash -c '
-      source="'$DPIC'/run_eod_dpi_only.sh"
-      # calc only — override by calling batch directly
-      :
-    ' 2>/dev/null || true
-  "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name=dpiAccrualCalculation -v job_time="$jt" \
-    -f "$DPIC/sql/helpers/purge_batch_job_execution.sql" >/dev/null
-  local rs="$(date +%s)"
-  JOB_TIME="$jt" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$jt" >/dev/null
-  bash "$WAIT_BATCH" dpiAccrualCalculation "$jt" "$rs"
+  # shellcheck disable=SC1091
+  source "$LIB/dpi_demo_fixture.sh"
+  local product_code
+  read -r product_code <<<"$(
+    dpi_pg -t -A -v ON_ERROR_STOP=1 -v loan_account_id="$lid" <<'SQL'
+SELECT COALESCE(p.code, '7676')
+FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.loan_product lp ON lp.id = la.loan_product_id
+LEFT JOIN mfi_accounting.product p ON p.id = lp.product_id AND p.is_deleted = false
+WHERE la.account_id = :loan_account_id::bigint;
+SQL
+  )"
+  dpi_set_go_live_and_refresh "15-04-2025" "${product_code:-7676}"
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$lid" \
+    -f "$DPIC/sql/helpers/quarantine_dpd_portfolio.sql" >/dev/null
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$lid" -v business_date_ms="$jt" \
+    -f "$DPIC/sql/helpers/sync_demo_past_due.sql" >/dev/null
+  dpi_call_batch dpiAccrualCalculation "$jt"
 }
 
 run_full_eod() {

@@ -14,4 +14,4 @@ def workspace_root() -> Path:
 ROOT = workspace_root()
 DISBURSEMENT_DIR = ROOT / "scripts" / "disbursement"
 PAYLOADS_DIR = DISBURSEMENT_DIR / "payloads" / "canonical"
-SANITY_SCRIPT = DISBURSEMENT_DIR / "disburse_loan_sanity.py"
+SANITY_SCRIPT = ROOT / "scripts" / "disburse_loan_sanity.py"

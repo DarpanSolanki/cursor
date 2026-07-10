@@ -15,8 +15,10 @@ has_mod() {
 }
 
 # Pin demo fixture — do not inherit LOAN_ACCOUNT_ID from fresh-disburse / last_certified env.
-SHIP_FIXTURE_LOAN_ID=8060160
-SHIP_FIXTURE_LAN=6004044425
+# shellcheck disable=SC1091
+source "$DPIC/lib/dpi_fixture_constants.sh"
+SHIP_FIXTURE_LOAN_ID="$DPI_FIXTURE_LOAN_ID"
+SHIP_FIXTURE_LAN="$DPI_FIXTURE_LAN"
 SHIP_MONTH_END_JOB_TIME=1782844200000
 SHIP_NEXT_EMI_JOB_TIME=1782930600000
 
@@ -53,9 +55,9 @@ if has_mod billing; then
 fi
 
 if has_mod grace; then
-  phase "grace E2E (fixture loan 8060160)"
-  LOAN_ACCOUNT_ID="$SHIP_FIXTURE_LOAN_ID" DEMO_LAN="$SHIP_FIXTURE_LAN" \
-    bash "$DPIC/run_grace_dpi_e2e.sh" || fail "grace_e2e"
+  phase "grace + overlap E2E (grace-chain LAN $DPI_GRACE_CHAIN_LAN)"
+  bash "$DPIC/run_grace_dpi_e2e.sh" || fail "grace_e2e"
+  bash "$DPIC/run_grace_overlap_dpi_e2e.sh" || fail "grace_overlap_e2e"
 fi
 
 echo "DPI_SHIP_CLOSE_VERIFY PASS (modules=${DPI_SHIP_MODULES:-posting,eod,cross,billing,grace})"
