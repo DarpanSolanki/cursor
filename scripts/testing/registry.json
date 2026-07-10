@@ -1,14 +1,14 @@
 {
   "_meta": "Registry for ntest. Learnings: cursor-bundle/brain/testing/learnings.jsonl (`ntest learn`). Before tests: kg-ensure-fresh.sh. DPIC demo: ntest run dpic.demo.phase1",
   "_correlators": {
-    "ACCOUNT_NUMBER": "6004044425",
+    "ACCOUNT_NUMBER": "6004052225",
     "USER_ID": "103",
     "OFFICE_ID": "6",
-    "JOB_TIME": "1782563400000",
-    "LOAN_ACCOUNT_ID": "8060160",
+    "JOB_TIME": "1781785800000",
+    "LOAN_ACCOUNT_ID": "8098460",
     "DEMO_LAN": "6004044425",
     "CUSTOMER_ID": "10002233",
-    "FORECLOSURE_DATE": "1784984400000",
+    "FORECLOSURE_DATE": "1781785800000",
     "FORECLOSURE_LAN": "6000000262",
     "FORECLOSURE_RECEIPT": "412700000001537",
     "FORECLOSURE_AMOUNT": "5324.00",
@@ -121,6 +121,10 @@
     "title": "fetchLoanForeclosureSimulationDetails \u2014 billed_dpi + bpd_amount",
     "service": "accounting",
     "api": "fetchLoanForeclosureSimulationDetails",
+    "defaults": {
+      "ACCOUNT_NUMBER": "6004055825",
+      "FORECLOSURE_DATE": "1783621800000"
+    },
     "request": {
       "account_number": "${ACCOUNT_NUMBER}",
       "foreclosure_date": "${FORECLOSURE_DATE}"
@@ -138,7 +142,34 @@
       "foreclosure_simulation_details.billed_dpi",
       "foreclosure_simulation_details.bpd_amount",
       "foreclosure_simulation_details.balance_principal"
-    ]
+    ],
+    "note": "LAN maturity must be after FORECLOSURE_DATE; DEFAULT requires FD >= value-date (wall clock in test env)"
+  },
+  "dpic.foreclosure_bpd_growth": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "foreclosure"
+    ],
+    "title": "DEFAULT FC sim twice \u2014 bpd_amount increases (SDCP-11016)",
+    "cmd": "bash scripts/dpic/run_foreclosure_bpd_growth_e2e.sh",
+    "env": {
+      "ACCOUNT_NUMBER": "6004055825",
+      "LOAN_ACCOUNT_ID": "8101960"
+    }
+  },
+  "dpic.loan_prepayment_billed_dpi_e2e": {
+    "type": "flow",
+    "tags": [
+      "dpi",
+      "prepayment"
+    ],
+    "title": "loanPrepayment APPROVE amount gate includes billed DPI (SDCP-11048)",
+    "cmd": "bash scripts/dpic/run_loan_prepayment_billed_dpi_e2e.sh",
+    "env": {
+      "ACCOUNT_NUMBER": "6004055825",
+      "LOAN_ACCOUNT_ID": "8101960"
+    }
   },
   "dpic.foreclosure_details_api": {
     "type": "api",
@@ -631,7 +662,8 @@
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
       "JOB_TIME": "1781699400000"
-    }
+    },
+    "note": "DEPRECATED \u2014 prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)"
   },
   "dpic.dpi_max_regression": {
     "type": "flow",
@@ -647,8 +679,9 @@
       "LOAN_ACCOUNT_ID": "8060160",
       "JOB_TIME": "1782563400000",
       "MULTI_EMI_JOB_TIME": "1782563400000",
-      "GRACE_JOB_TIME": "1779712200000"
-    }
+      "GRACE_JOB_TIME": "1779280200000"
+    },
+    "note": "DEPRECATED \u2014 prefer dpic.full_regression (DPI_REGRESSION_PROFILE=full)"
   },
   "dpic.demo.status": {
     "type": "flow",
@@ -746,7 +779,7 @@
     "cmd": "bash scripts/dpic/run_dpi_ud_compliance.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
-      "GRACE_JOB_TIME": "1779712200000",
+      "GRACE_JOB_TIME": "1779280200000",
       "MULTI_EMI_JOB_TIME": "1782563400000",
       "DPI_UD_PROFILE": "full",
       "DPI_UD_CERTIFY": "1"
@@ -787,6 +820,62 @@
       "GO_LIVE_DDMM": "15-04-2026",
       "GO_LIVE_ISO": "2026-04-15",
       "END_DATE": "2026-07-19"
+    }
+  },
+  "dpic.june_slice_job_proof": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "title": "8060160 June slice integrity via real accrual jobs",
+    "cmd": "bash scripts/bin/dpi-june-slice-proof.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "END_DATE": "2026-06-30"
+    }
+  },
+  "dpic.three_job_verify": {
+    "type": "flow",
+    "api": "dpiAccrualCalculation",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "title": "8060160 reset + ntest batch calc/booking loop + billing + slice proof",
+    "cmd": "bash scripts/dpic/run_dpi_three_job_verify.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "ACCOUNT_NUMBER": "6004044425",
+      "GO_LIVE_ISO": "2026-04-15",
+      "LOOP_START": "2026-05-14",
+      "END_DATE": "2026-05-20",
+      "VERIFY_MODE": "daily_loop",
+      "SEED_CALC_WINDOW": "0"
+    }
+  },
+  "dpic.three_job_verify_single_eod": {
+    "type": "flow",
+    "api": "dpiBilling",
+    "smoke_tier": "money",
+    "tags": [
+      "dpi",
+      "batch",
+      "smoke"
+    ],
+    "title": "8060160 reset + single EOD ntest batch chain (calc/booking/billing)",
+    "cmd": "bash scripts/dpic/run_dpi_three_job_verify.sh",
+    "env": {
+      "LOAN_ACCOUNT_ID": "8060160",
+      "VERIFY_MODE": "single_eod",
+      "JOB_TIME": "1779280200000",
+      "SEED_CALC_WINDOW": "0"
     }
   },
   "dpic.jump_regression": {
@@ -1136,18 +1225,28 @@
     "tags": [
       "disburse"
     ],
-    "title": "JLG disburseLoan \u2014 default_clean (script bank, no simulator)",
+    "title": "JLG disburseLoan \u2014 minimal (simulator success, reset-before)",
     "cmd": "bash scripts/bin/disburse-quick.sh"
   },
   "disbursement.jlg": {
     "type": "flow",
-    "title": "JLG disburseLoan regression",
-    "cmd": "make -C scripts jlg"
+    "api": "disburseLoan",
+    "smoke_tier": "money",
+    "tags": [
+      "disburse"
+    ],
+    "title": "JLG disburseLoan full stage suite (simulator success, reset-before)",
+    "cmd": "STAGE_SUITE=full bash scripts/bin/disburse-quick.sh"
   },
   "disbursement.shg": {
     "type": "flow",
-    "title": "SHG disburseLoan regression",
-    "cmd": "make -C scripts shg"
+    "quick": true,
+    "smoke_tier": "money",
+    "tags": [
+      "disburse"
+    ],
+    "title": "SHG disburseLoan — minimal (member_details[], simulator success)",
+    "cmd": "bash scripts/bin/disburse-shg-quick.sh"
   },
   "batch.dpi_calc": {
     "type": "batch",
@@ -1157,6 +1256,10 @@
     "service": "accounting",
     "api": "dpiAccrualCalculation",
     "batch_job_name": "dpiAccrualCalculation",
+    "defaults": {
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Fire-only: run reset_dpi_fixtures + setup first on fixture LAN 8060160; ntest waits COMPLETED via wait_batch_job.sh",
     "expect": {
       "status": "SUCCESS",
       "batch_completed": true
@@ -1170,6 +1273,10 @@
     "service": "accounting",
     "api": "dpiAccrualBooking",
     "batch_job_name": "dpiAccrualBooking",
+    "defaults": {
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Run after batch.dpi_calc on same JOB_TIME; fixture LAN 8060160 needs prior setup",
     "expect": {
       "status": "SUCCESS",
       "batch_completed": true
@@ -1183,6 +1290,10 @@
     "service": "accounting",
     "api": "dpiBilling",
     "batch_job_name": "dpiBilling",
+    "defaults": {
+      "JOB_TIME": "1782563400000"
+    },
+    "note": "Run after calc+booking on same JOB_TIME",
     "expect": {
       "status": "SUCCESS",
       "batch_completed": true

@@ -91,9 +91,9 @@ violations AS (
     WHERE s2.installment_id = s.installment_id AND s2.id < s.id AND s2.start_d = s.start_d
   )
   UNION ALL
-  SELECT s.id, 'first_slice_not_on_admission_overdue'
+  SELECT s.id, 'first_slice_not_on_emi_due'
   FROM slices s JOIN first_emi fe ON fe.installment_id = s.installment_id
-  WHERE s.slice_rn = 1 AND s.start_d <> fe.admission_overdue_day
+  WHERE s.slice_rn = 1 AND s.start_d <> fe.due_day
   UNION ALL
   SELECT s.id, 'posted_slice_missing_posting_date' FROM slices s CROSS JOIN params p
   JOIN mfi_accounting.loan_due_details ldd

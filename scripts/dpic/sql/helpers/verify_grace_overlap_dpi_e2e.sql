@@ -1,5 +1,7 @@
--- Assert: during EMI2 grace, DPI on EMI1 continues (per-installment grace / LPP parity).
--- Fixture: loan with grac=3, EMI1 due first_emi_due_date, EMI2 = first+1 month.
+-- Assert: during EMI2 grace, DPI accrual continues (per-installment grace / LPP parity).
+-- Product (resolveSliceInstallment): slices after EMI2 due are owned by the latest EMI due
+-- on or before segStart — i.e. stamped to EMI2, not EMI1. EMI1 is sealed at the next due.
+-- Fixture: grac=3, EMI1 due first_emi_due_date, EMI2 = first+1 month.
 -- Job time must fall in EMI2 due..EMI2_overdue-1 (e.g. EMI1=2026-05-14, EMI2=2026-06-14,
 -- EMI2 overdue=2026-06-18 → run as-of 2026-06-17).
 \set ON_ERROR_STOP on
@@ -34,6 +36,7 @@ overlap AS (
          ) AS emi1_rows_in_overlap,
          COUNT(*) FILTER (
            WHERE d.installment_id = (SELECT installment_id FROM emi2)
+             AND d.total_accrued_amount > 0
          ) AS emi2_rows_in_overlap
   FROM mfi_accounting.dpi_accrual_details d
   JOIN emi2 e2 ON true
@@ -42,6 +45,17 @@ overlap AS (
     AND d.total_accrued_amount > 0
     AND d.end_date::date > e2.due_day
     AND d.end_date::date < e2.overdue_day
+),
+emi1_seal AS (
+  -- EMI1 must not extend past EMI2 due (sealed at next installment due)
+  SELECT COUNT(*) AS emi1_past_next_due
+  FROM mfi_accounting.dpi_accrual_details d
+  JOIN emi1 e1 ON d.installment_id = e1.installment_id
+  JOIN emi2 e2 ON true
+  WHERE d.loan_account_id = :loan_account_id::bigint
+    AND d.is_deleted = false
+    AND d.total_accrued_amount > 0
+    AND d.end_date::date > e2.due_day
 )
 SELECT (SELECT installment_id FROM emi1) AS emi1_id,
        (SELECT due_day FROM emi1) AS emi1_due,
@@ -53,5 +67,9 @@ SELECT (SELECT installment_id FROM emi1) AS emi1_id,
        o.amt_in_emi2_grace,
        o.emi1_rows_in_overlap,
        o.emi2_rows_in_overlap,
-       (o.emi1_rows_in_overlap > 0 AND o.amt_in_emi2_grace > 0 AND o.emi2_rows_in_overlap = 0) AS overlap_ok
+       -- Accrual continues in EMI2 grace, rows owned by EMI2, EMI1 sealed at next due
+       (o.emi2_rows_in_overlap > 0
+        AND o.amt_in_emi2_grace > 0
+        AND o.emi1_rows_in_overlap = 0
+        AND (SELECT emi1_past_next_due FROM emi1_seal) = 0) AS overlap_ok
 FROM overlap o;

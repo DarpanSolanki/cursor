@@ -1,24 +1,31 @@
 #!/usr/bin/env bash
-# Multi-EMI grace overlap: EMI1 past grace must keep accruing DPI while EMI2 is still in grace.
-# Causes FAIL on the old "latest-EMI grace kill-switch" bug.
+# Multi-EMI grace overlap: DPI accrual continues through EMI2 grace (not killed by latest-EMI grace).
+# Product stamps overlap-window slices to EMI2 (latest due ≤ segStart); EMI1 seals at next due.
+# Causes FAIL on the old "latest-EMI grace kill-switch" bug (zero accrual in grace window).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-# Pin before dpi_demo_fixture.sh so shared 8060160 defaults do not win.
-: "${LOAN_ACCOUNT_ID:=8057160}"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
 : "${GRACE_DAYS:=3}"
 : "${PRODUCT_CODE:=7676}"
 : "${GO_LIVE_DDMM:=15-04-2025}"
-# As-of 2026-06-17 18:00 IST: EMI1 (14-May) past grace; EMI2 (14-Jun) still in grace until 18-Jun.
-: "${JOB_TIME:=1781699400000}"
 # shellcheck source=lib/dpi_demo_fixture.sh
 source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
+if [[ "${DPI_USE_CUSTOM_LOAN:-0}" != "1" ]]; then
+  dpi_use_grace_chain_loan
+fi
+export JOB_TIME="$DPI_GRACE_OVERLAP_JOB_TIME"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 NTEST="$ROOT/scripts/bin/ntest.sh"
 WAIT_BATCH="$ROOT/scripts/dpic/lib/wait_batch_job.sh"
+RUN_AUDIT="${RUN_COLUMN_AUDIT:-1}"
 
-echo "=== DPI grace overlap E2E (EMI1 continues during EMI2 grace) ==="
+echo "=== DPI grace overlap E2E (accrual continues in EMI2 grace; owned by EMI2) ==="
 echo "  loan_account_id=$LOAN_ACCOUNT_ID grace=$GRACE_DAYS job_time=$JOB_TIME"
 
 bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compile}
@@ -44,10 +51,18 @@ if [[ -f "$ROOT/scripts/dpic/sql/helpers/clear_batch_failure_audit.sql" ]]; then
     -f "$ROOT/scripts/dpic/sql/helpers/clear_batch_failure_audit.sql" >/dev/null 2>&1 || true
 fi
 
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+qa_fire_batch() {
+  local api="$1" job_time="$2"
+  local rs
+  rs="$(date +%s)"
+  JOB_TIME="$job_time" "$NTEST" api accounting "$api" --batch --job-time "$job_time" >/dev/null
+  bash "$WAIT_BATCH" "$api" "$job_time" "$rs"
+}
+
 echo ">>> dpiAccrualCalculation (overlap window through EMI2 grace)"
-run_started="$(date +%s)"
-JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$run_started"
+qa_fire_batch dpiAccrualCalculation "$JOB_TIME"
 
 verify_out="$("${PG[@]}" -v ON_ERROR_STOP=1 -t -A -F'|' \
   -v loan_account_id="$LOAN_ACCOUNT_ID" \
@@ -69,12 +84,10 @@ done
 
 IFS='|' read -r emi1_id emi1_due emi1_od emi2_id emi2_due emi2_od rows_overlap amt_overlap emi1_rows emi2_rows overlap_ok <<<"$verify_out"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
-
 [[ -n "$emi1_id" && -n "$emi2_id" && "$emi1_id" != "$emi2_id" ]] || fail "need two unpaid INT EMIs (got emi1=$emi1_id emi2=$emi2_id)"
-[[ "$overlap_ok" == "t" ]] || fail "overlap_ok=$overlap_ok rows=$rows_overlap amt=$amt_overlap emi1_rows=$emi1_rows emi2_rows=$emi2_rows (EMI1 must accrue in ($emi2_due,$emi2_od); EMI2 must not)"
+[[ "$overlap_ok" == "t" ]] || fail "overlap_ok=$overlap_ok rows=$rows_overlap amt=$amt_overlap emi1_rows=$emi1_rows emi2_rows=$emi2_rows (expect accrual in ($emi2_due,$emi2_od) owned by EMI2; EMI1 sealed at next due)"
 
-echo "PASS: EMI1=$emi1_id continues in EMI2 grace ($emi2_due .. $emi2_od); amt=$amt_overlap emi1_rows=$emi1_rows"
+echo "PASS: accrual continues in EMI2 grace ($emi2_due .. $emi2_od); amt=$amt_overlap emi2_rows=$emi2_rows emi1_rows=$emi1_rows (EMI1 sealed)"
 
 echo ""
 echo "=== accrual rows around EMI2 due ==="
@@ -87,3 +100,14 @@ WHERE da.loan_account_id = $LOAN_ACCOUNT_ID AND da.is_deleted = false
   AND da.end_date::date >= DATE '2026-06-10'
 ORDER BY da.end_date ASC;
 "
+
+if [[ "$RUN_AUDIT" == "1" ]]; then
+  echo ">>> dpiAccrualBooking + dpiBilling (column audit)"
+  qa_fire_batch dpiAccrualBooking "$JOB_TIME"
+  qa_fire_batch dpiBilling "$JOB_TIME"
+  # Overlap job_time is 2026-06-17 18:00 IST — audit wants YYYY-MM-DD
+  proof_date="${PROOF_DATE:-2026-06-17}"
+  bash "$ROOT/scripts/dpic/lib/run_dpi_column_audit.sh" "$LOAN_ACCOUNT_ID" "$proof_date" \
+    || fail "column audit violations after calc+booking+billing"
+  echo "PASS: column audit 0 violations (loan=$LOAN_ACCOUNT_ID)"
+fi

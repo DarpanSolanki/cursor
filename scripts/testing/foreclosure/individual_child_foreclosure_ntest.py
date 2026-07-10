@@ -101,12 +101,14 @@ def _build_request(sim: dict, lan: str, fd: str, receipt: str) -> dict:
     cbc_due = str(fs.get("cbc_fee") or "0")
     request["fee_details"] = [{**_component(cbc_due), "identifier_code": "cbc_fee"}]
 
-    # Match ValidateFinalPrepaymentProcessor.fetchForeclosureAmount (pending installment + balance + bpi + charges; no future_lpp/dpi/bpd in total)
+    # Match ValidateFinalPrepaymentProcessor.fetchForeclosureAmount (incl. billed DPI + BPD)
     total = (
         Decimal(str(fs.get("billed_interest") or "0"))
         + Decimal(str(fs.get("billed_principal") or "0"))
         + Decimal(str(fs.get("balance_principal") or "0"))
         + Decimal(str(fs.get("bpi_amount") or "0"))
+        + Decimal(str(fs.get("billed_dpi") or "0"))
+        + Decimal(str(fs.get("bpd_amount") or "0"))
         + Decimal(str(fs.get("current_lpp") or "0"))
         + Decimal(str(fs.get("foreclosure_fee") or "0"))
         + Decimal(str(cbc_due))
