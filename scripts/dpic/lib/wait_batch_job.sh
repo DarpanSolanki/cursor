@@ -9,7 +9,7 @@ TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-25}"
 INTERVAL_S="${BATCH_POLL_INTERVAL_S:-0.5}"
 PROGRESS_S="${BATCH_PROGRESS_S:-5}"
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 LOGS="$ROOT/scripts/bin/novopay-logs.sh"
 
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -t -A)

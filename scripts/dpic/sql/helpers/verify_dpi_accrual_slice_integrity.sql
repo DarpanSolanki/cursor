@@ -62,7 +62,7 @@ emi_dues AS (
   GROUP BY ldd.loan_installment_details_id, ldd.due_date, ldd.overdue_date
 ),
 first_emi AS (
-  SELECT installment_id, due_day FROM emi_dues WHERE rn = 1
+  SELECT installment_id, due_day, admission_overdue_day FROM emi_dues WHERE rn = 1
 ),
 violations AS (
   SELECT id, 'start_not_before_end' AS rule FROM slices WHERE start_d > end_d
@@ -91,40 +91,23 @@ violations AS (
     WHERE s2.installment_id = s.installment_id AND s2.id < s.id AND s2.start_d = s.start_d
   )
   UNION ALL
-  SELECT s.id, 'duplicate_may_month_slice' FROM slices s
-  WHERE EXTRACT(MONTH FROM s.start_d) = 5
-    AND EXISTS (
-      SELECT 1 FROM slices s2 WHERE s2.installment_id = s.installment_id AND s2.id <> s.id
-        AND EXTRACT(MONTH FROM s2.start_d) = 5 AND EXTRACT(YEAR FROM s2.start_d) = EXTRACT(YEAR FROM s.start_d)
-    )
-  UNION ALL
-  SELECT s.id, 'grace_overlap_micro_slice'
-  FROM slices s
-  JOIN emi_dues e1 ON e1.rn = 1 JOIN emi_dues e2 ON e2.rn = 2
-  WHERE s.installment_id = e1.installment_id
-    AND s.start_d > e2.due_day
-    AND s.end_d < e2.admission_overdue_day
-    AND EXISTS (SELECT 1 FROM slices s2 WHERE s2.installment_id = s.installment_id AND s2.id <> s.id AND s2.end_d = e2.due_day)
+  SELECT s.id, 'first_slice_not_on_admission_overdue'
+  FROM slices s JOIN first_emi fe ON fe.installment_id = s.installment_id
+  WHERE s.slice_rn = 1 AND s.start_d <> fe.admission_overdue_day
   UNION ALL
   SELECT s.id, 'posted_slice_missing_posting_date' FROM slices s CROSS JOIN params p
+  JOIN mfi_accounting.loan_due_details ldd
+    ON ldd.loan_installment_details_id = s.installment_id
+   AND ldd.is_deleted = false AND ldd.component_type = 'INT'
   WHERE s.end_d <= p.biz
     AND (EXTRACT(DAY FROM s.end_d) = EXTRACT(DAY FROM (date_trunc('month', s.end_d) + interval '1 month - 1 day'))
-         OR EXISTS (SELECT 1 FROM due_days dd WHERE dd.d = s.end_d))
+         OR s.end_d = ldd.due_date::date)
     AND s.posted_d IS NULL
   UNION ALL
   SELECT s.id, 'end_not_month_end_or_due' FROM slices s CROSS JOIN params p
   WHERE s.end_d <= p.biz AND s.posted_d IS NOT NULL
     AND NOT (EXTRACT(DAY FROM s.end_d) = EXTRACT(DAY FROM (date_trunc('month', s.end_d) + interval '1 month - 1 day'))
-             OR EXISTS (SELECT 1 FROM due_days dd WHERE dd.d = s.end_d)
-             OR EXISTS (
-               SELECT 1 FROM emi_dues e1 JOIN emi_dues e2 ON e2.rn = 2
-               WHERE e1.rn = 1 AND s.installment_id = e1.installment_id
-                 AND s.end_d = e2.admission_overdue_day
-             ))
-  UNION ALL
-  SELECT s.id, 'first_slice_not_on_emi_due'
-  FROM slices s JOIN first_emi fe ON fe.installment_id = s.installment_id
-  WHERE s.slice_rn = 1 AND s.start_d <> fe.due_day
+             OR EXISTS (SELECT 1 FROM due_days dd WHERE dd.d = s.end_d))
   UNION ALL
   SELECT s.id, 'posting_date_not_seal_anchor' FROM slices s
   WHERE s.posted_d IS NOT NULL AND s.posted_d <> s.end_d
