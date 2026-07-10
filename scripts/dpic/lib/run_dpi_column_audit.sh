@@ -22,7 +22,7 @@ slice_rules="$(echo "$slice_out" | awk -F'|' '/^[[:space:]]*[0-9]+[[:space:]]*\|
 [[ -n "${slice_viol:-}" ]] || fail "could not parse slice violation_count"
 [[ "${slice_viol}" == "0" ]] || fail "slice violations=$slice_viol rules=${slice_rules:-?}"
 
-book_line="$(dpi_pg -t -A -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" \
+book_line="$(dpi_pg -t -A -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" \
   -f "$HELPERS/verify_dpi_booking_billing_audit.sql" 2>/dev/null | head -1)"
 book_viol="${book_line%%|*}"
 book_rules="${book_line#*|}"
@@ -31,8 +31,38 @@ book_rules="${book_line#*|}"
 echo "$slice_out" | sed -n '/=== slice timeline ===/,$p'
 
 echo ""
-echo "=== booking/billing audit ==="
-dpi_pg -v loan_account_id="$LOAN_ID" -c "
+echo "=== booking/billing audit (biz=$BIZ_DATE) ==="
+dpi_pg -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" -c "
+SELECT id,
+       start_date::date AS start_d,
+       end_date::date AS end_d,
+       total_accrued_amount AS amt,
+       accrual_posting_date::date AS apd,
+       billing_posting_date::date AS bpd,
+       CASE
+         WHEN end_date::date <= DATE '$BIZ_DATE' AND accrual_posting_date IS NULL THEN 'FAIL sealed_unposted'
+         WHEN end_date::date <= DATE '$BIZ_DATE' AND accrual_posting_date IS NOT NULL
+              AND billing_posting_date IS NULL
+              AND (
+                EXISTS (
+                  SELECT 1 FROM mfi_accounting.loan_due_details d
+                  WHERE d.loan_account_id = $LOAN_ID AND d.is_deleted = false
+                    AND d.component_type IN ('INT','PRIN') AND d.due_date::date = end_date::date
+                )
+                OR EXISTS (
+                  SELECT 1 FROM mfi_accounting.loan_due_details d
+                  WHERE d.loan_account_id = $LOAN_ID AND d.is_deleted = false
+                    AND d.component_type IN ('INT','PRIN')
+                    AND d.due_date::date > end_date::date
+                    AND d.due_date::date <= DATE '$BIZ_DATE'
+                )
+              ) THEN 'FAIL sealed_unbilled'
+         ELSE 'OK'
+       END AS gate
+FROM mfi_accounting.dpi_accrual_details
+WHERE loan_account_id = $LOAN_ID AND is_deleted = false AND total_accrued_amount > 0
+ORDER BY end_date, id;
+
 SELECT 'posted_slices' AS check_name, COUNT(*)::text AS actual
 FROM mfi_accounting.dpi_accrual_details
 WHERE loan_account_id = $LOAN_ID AND is_deleted = false AND accrual_posting_date IS NOT NULL

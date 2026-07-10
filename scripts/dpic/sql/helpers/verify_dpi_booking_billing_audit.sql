@@ -1,20 +1,56 @@
 -- Booking + billing column audit (after slice_integrity passes).
+-- Requires :loan_account_id and :business_date (YYYY-MM-DD).
+-- Catches 2540301-class: sealed EMI/month-end slice with amount>0 but accrual_posting_date NULL.
 \set ON_ERROR_STOP on
 
 WITH params AS (
-  SELECT :loan_account_id::bigint AS loan_id
+  SELECT :loan_account_id::bigint AS loan_id,
+         :'business_date'::date AS biz
 ),
-posted_slices AS (
-  SELECT da.id, da.end_date::date AS end_d, da.total_accrued_amount,
-         da.accrual_transaction_ref_number AS ref,
-         da.billing_posting_date IS NOT NULL AS billed
+due_days AS (
+  SELECT DISTINCT ldd.due_date::date AS d
+  FROM mfi_accounting.loan_due_details ldd
+  CROSS JOIN params p
+  WHERE ldd.loan_account_id = p.loan_id
+    AND ldd.is_deleted = false
+    AND ldd.component_type IN ('PRIN', 'INT')
+),
+slices AS (
+  SELECT da.id,
+         da.end_date::date AS end_d,
+         da.total_accrued_amount,
+         da.accrual_posting_date::date AS posted_d,
+         da.billing_posting_date::date AS billed_d,
+         da.accrual_transaction_ref_number AS ref
   FROM mfi_accounting.dpi_accrual_details da
   CROSS JOIN params p
   WHERE da.loan_account_id = p.loan_id AND da.is_deleted = false
-    AND da.accrual_posting_date IS NOT NULL AND da.total_accrued_amount > 0
+    AND da.total_accrued_amount > 0
+),
+posted_slices AS (
+  SELECT * FROM slices WHERE posted_d IS NOT NULL
 ),
 violations AS (
-  SELECT ps.id, 'posted_gl_amount_mismatch' AS rule
+  -- Sealed (end <= biz) must be booked — month-end OR any INT/PRIN due seal (calc parity).
+  SELECT s.id, 'sealed_unposted' AS rule
+  FROM slices s
+  CROSS JOIN params p
+  WHERE s.end_d <= p.biz AND s.posted_d IS NULL
+  UNION ALL
+  -- After billing: EMI-seal days (or month-end once next EMI due has arrived) must be billed.
+  -- Exception: month-end seal before next INT/PRIN due day may remain unbilled (billing calendar).
+  SELECT s.id, 'sealed_unbilled'
+  FROM slices s
+  CROSS JOIN params p
+  WHERE s.end_d <= p.biz
+    AND s.posted_d IS NOT NULL
+    AND s.billed_d IS NULL
+    AND (
+      EXISTS (SELECT 1 FROM due_days d WHERE d.d = s.end_d)
+      OR EXISTS (SELECT 1 FROM due_days d WHERE d.d > s.end_d AND d.d <= p.biz)
+    )
+  UNION ALL
+  SELECT ps.id, 'posted_gl_amount_mismatch'
   FROM posted_slices ps
   JOIN mfi_accounting.transaction_master tm ON tm.reference_number = ps.ref
   WHERE tm.original_amount IS DISTINCT FROM ps.total_accrued_amount

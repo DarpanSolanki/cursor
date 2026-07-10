@@ -5,6 +5,12 @@
 ---
 
 
+## 2026-07-10 | acct `77921d275f` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | dpiAccrualBooking EMI due seal anchor
+dpiAccrualBooking books when endDate is month-end or any INT/PRIN due day (calc nextBoundary parity); avoid getLoanDueDetailsForDueDate LIMIT-1 DPI collision after billing — dpi_accrual_details.accrual_posting_date for next-EMI seals (2540301 / loan 8101960)
+
+---
+
+
 ## 2026-07-10 | acct 412f4d03e3 | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | DPI slice by EMI due not grace anchor
 dpiAccrualCalculation resolveSliceInstallment: latest due<=segStart owns row; EMI1 end at next due_date (14-Jun) not overdue (18-Jun); dpi_accrual_details LAN 8101960
 

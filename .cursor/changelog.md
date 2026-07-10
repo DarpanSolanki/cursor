@@ -1,3 +1,5 @@
+## 2026-07-10 | accounting-v2 `77921d275f` | mfi_integration_v3.7.1 | dpiAccrualBooking EMI-due posting anchor (sealed_unposted audit)
+
 ## 2026-07-10 | workspace | mfi_integration_v3.7.1 release blockers closed
 - SDCP-11030: grace-overlap verify SQL aligned to EMI2 ownership (412f4d03e); e2e + column audit PASS
 - SDCP-11016: DEFAULT FC sim BPD growth harness (`run_foreclosure_bpd_growth_e2e.sh`) PASS 54→68.68
@@ -297,3 +299,4 @@
 [2026-07-09] | FIX | loanPrepayment APPROVE 132268: `ValidateFinalPrepaymentProcessor.fetchForeclosureAmount()` now adds persisted `billed_dpi_amount_to_be_paid` and `bpd_amount_to_be_paid` (aligned with `CreatePrepaymentDetailsProcessor` + simulation total). QA1 `prepayment_details_id=262057` / `total_foreclosure_amount=16069.00`. | `novopay-platform-accounting-v2/.../ValidateFinalPrepaymentProcessor.java`, changelog.md
 
 - 2026-07-09 acct e175b78cb pushed to origin (SDCP-11016); brain kg-flow fetchLoanForeclosureSimulationDetails; push-origin failed dpic.ship_close post_maturity, git push succeeded.
+## 2026-07-10 | accounting-v2 `77921d275f` | mfi_integration_v3.7.1 | dpiAccrualBooking EMI-due posting anchor (sealed_unposted audit)

@@ -49,9 +49,11 @@ bash scripts/dpic/lib/run_dpi_column_audit.sh <loan_account_id> <business_date>
 | SQL | Checks |
 |-----|--------|
 | `verify_dpi_accrual_slice_integrity.sql` | start/end dates, contiguity, month-end/due seals, grace-overlap micro-slice (SDCP-11030), posting anchors |
-| `verify_dpi_booking_billing_audit.sql` | `transaction_master` amount/value-date vs slice; GL legs balanced (C/D); billed accrual vs `loan_due_details` DPI |
+| `verify_dpi_booking_billing_audit.sql` | **`sealed_unposted`** (end≤biz, amt>0, `accrual_posting_date` NULL — 2540301 class); **`sealed_unbilled`** (EMI seal day or next EMI due ≤biz); `transaction_master` amount/value-date; GL legs balanced; billed accrual vs DPI due |
 
-Canonical LANs: `8060160` (standard 3-job), `8057160` (grace overlap), `116360` (SHG parity). **0 violations** required before ship.
+**Billing calendar exception (documented):** month-end seals may stay unbilled until the next INT/PRIN due day arrives (`sealed_unbilled` only fires when end is an EMI due day, or a later EMI due ≤ business_date).
+
+Canonical LANs: `8060160` (standard 3-job), `8057160` (grace overlap), `116360` (SHG parity), sample two-EMI seal `8101960` / LAN `6004055825`. **0 violations** required before ship.
 
 ## Fixture LANs (`lib/dpi_fixture_constants.sh`)
 
@@ -107,6 +109,64 @@ Batch status: `mfi_batch.batch_job_execution` where `status=COMPLETED`.
 | `run_eod.sh` | ⚠️ Hybrid | curl batch APIs; `SEED_CALC_WINDOW=0` default |
 
 **Demo loan:** `8060160` / `6004044425` · **job_time:** `1782563400000`
+
+## QA job run guide (calc → booking → billing)
+
+**Order (always):** `dpiAccrualCalculation` → `dpiAccrualBooking` → `dpiBilling`.  
+EOD runs all three in that sequence for the same `job_time` (business date).
+
+| Job | Writes |
+|-----|--------|
+| `dpiAccrualCalculation` | Inserts/updates `dpi_accrual_details` slices (`start_date`, `end_date`, `total_accrued_amount`) — seals on month-end or next EMI INT due |
+| `dpiAccrualBooking` | Sets `accrual_posting_date` + `accrual_transaction_ref_number` + GL (`transaction_master` / legs) for sealed unposted rows |
+| `dpiBilling` | Sets `billing_posting_date` + `billing_transaction_ref_number` + creates/updates `loan_due_details` DPI due |
+
+**Sample LAN (two-EMI next-due seal):** loan `8101960` / LAN `6004055825`
+
+```bash
+# JOB_TIME = 2026-06-15 18:00 UTC (Jun-14 EMI seal + prior month-end in scope)
+export JOB_TIME=1781546400000
+bash scripts/bin/novopay-service.sh ensure accounting --compile
+
+JOB_TIME=$JOB_TIME bash scripts/bin/ntest.sh run batch.dpi_calc
+JOB_TIME=$JOB_TIME bash scripts/bin/ntest.sh run batch.dpi_booking
+JOB_TIME=$JOB_TIME bash scripts/bin/ntest.sh run batch.dpi_billing
+
+# Or ad-hoc:
+bash scripts/bin/ntest.sh api accounting dpiAccrualBooking --batch --job-time "$JOB_TIME"
+bash scripts/dpic/lib/wait_batch_job.sh dpiAccrualBooking "$JOB_TIME" "$(date +%s)"
+```
+
+**Batch COMPLETED check:**
+
+```sql
+SELECT i.job_name, e.job_execution_id, e.status, e.start_time, e.end_time
+FROM mfi_batch.batch_job_execution e
+JOIN mfi_batch.batch_job_instance i ON i.job_instance_id = e.job_instance_id
+WHERE i.job_name IN ('dpiAccrualCalculation','dpiAccrualBooking','dpiBilling')
+ORDER BY e.job_execution_id DESC LIMIT 15;
+-- expect status = COMPLETED for the job_time you fired
+```
+
+**SQL after each job (loan 8101960):**
+
+```sql
+SELECT id, start_date::date, end_date::date, total_accrued_amount,
+       accrual_posting_date::date AS apd, billing_posting_date::date AS bpd
+FROM mfi_accounting.dpi_accrual_details
+WHERE loan_account_id = 8101960 AND is_deleted = false
+ORDER BY end_date, id;
+```
+
+| After | Expect |
+|-------|--------|
+| calc | rows exist; Jun-14 slice may have `apd` NULL until booking |
+| booking | every `end_date <= biz` with amt>0 has `apd` (incl. May31→Jun14) |
+| billing | EMI-seal / billable rows have `bpd`; column audit 0 violations |
+
+```bash
+bash scripts/dpic/lib/run_dpi_column_audit.sh 8101960 2026-06-15
+```
 
 **Out of scope (per QA plan):** `generateDPIPresentationFiles` quartet, `loanWriteoff`.
 
