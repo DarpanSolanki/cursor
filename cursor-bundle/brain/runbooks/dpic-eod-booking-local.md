@@ -30,6 +30,20 @@ FROM mfi_accounting.loan_due_details
 WHERE loan_account_id = <id> AND component_type = 'DPI' AND is_deleted = false;
 ```
 
+## Booking posts sealed slice but prior-EMI → next due stays unposted (2540301 class)
+
+**Cause (fixed `77921d275f` on `mfi_integration_v3.7.1`):** booking gated on *this installment's* INT due only; calc seals prior-EMI slices on **next** EMI due. LIMIT-1 due lookup can also return same-day DPI after billing.
+
+**Expect:** `isInstallmentPostingAnchor(endDate, installmentDueDays)` — month-end OR any INT/PRIN due day.
+
+**Verify:**
+
+```bash
+bash scripts/bin/dpi-booking-posting-guard.sh
+bash scripts/dpic/run_dpi_booking_anchor_e2e.sh
+bash scripts/dpic/lib/run_dpi_column_audit.sh <loan_id> <biz_date>   # sealed_unposted must be 0
+```
+
 ## KG / changelog
 
-Shipped fix case: `kg cases dpiAccrualBooking` · changelog `8d0df267f` + `7e6f0e38`.
+Shipped fix cases: `kg cases dpiAccrualBooking` · changelog `77921d275f` (any EMI due seal) · earlier `8d0df267f` + `7e6f0e38` (office_id / varchar 64).

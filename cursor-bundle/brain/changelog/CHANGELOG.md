@@ -5,6 +5,12 @@
 ---
 
 
+## 2026-07-10 | workspace | harness | mfi_integration_v3.7.1 | kg-flow | DPI quick regression + booking-anchor harness
+dpiAccrualBooking sealed_unposted=anchor-only; DPI_REGRESSION_PROFILE=quick milestones+booking_anchor; column audit wired; branch gate 3.7.1
+
+---
+
+
 ## 2026-07-10 | acct `77921d275f` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | dpiAccrualBooking EMI due seal anchor
 dpiAccrualBooking books when endDate is month-end or any INT/PRIN due day (calc nextBoundary parity); avoid getLoanDueDetailsForDueDate LIMIT-1 DPI collision after billing — dpi_accrual_details.accrual_posting_date for next-EMI seals (2540301 / loan 8101960)
 

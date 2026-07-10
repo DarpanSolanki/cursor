@@ -31,11 +31,16 @@ posted_slices AS (
   SELECT * FROM slices WHERE posted_d IS NOT NULL
 ),
 violations AS (
-  -- Sealed (end <= biz) must be booked — month-end OR any INT/PRIN due seal (calc parity).
+  -- Sealed posting anchors (month-end OR any INT/PRIN due) must be booked.
+  -- Open windows ending on a non-anchor business day are not yet sealed — do not flag.
   SELECT s.id, 'sealed_unposted' AS rule
   FROM slices s
   CROSS JOIN params p
   WHERE s.end_d <= p.biz AND s.posted_d IS NULL
+    AND (
+      EXTRACT(DAY FROM s.end_d) = EXTRACT(DAY FROM (date_trunc('month', s.end_d) + interval '1 month - 1 day'))
+      OR EXISTS (SELECT 1 FROM due_days d WHERE d.d = s.end_d)
+    )
   UNION ALL
   -- After billing: EMI-seal days (or month-end once next EMI due has arrived) must be billed.
   -- Exception: month-end seal before next INT/PRIN due day may remain unbilled (billing calendar).

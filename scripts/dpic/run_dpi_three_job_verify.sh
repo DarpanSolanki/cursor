@@ -26,7 +26,13 @@ VERIFY_MODE="${VERIFY_MODE:-single_eod}"
 GRACE_DAYS="${GRACE_DAYS:-3}"
 SKIP_RESET="${SKIP_RESET:-0}"
 SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-0}"
-JOB_TIME="${JOB_TIME:-$DPI_GRACE_JOB_TIME}"
+# dpi_demo_fixture defaults JOB_TIME to Jun-27 fixture — wrong for May grace single_eod.
+# Use THREE_JOB_TIME to override; else grace job_time for single_eod.
+if [[ "${VERIFY_MODE}" == "single_eod" ]]; then
+  JOB_TIME="${THREE_JOB_TIME:-$DPI_GRACE_JOB_TIME}"
+else
+  JOB_TIME="${JOB_TIME:-$DPI_GRACE_JOB_TIME}"
+fi
 
 export BATCH_POLL_TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-120}"
 

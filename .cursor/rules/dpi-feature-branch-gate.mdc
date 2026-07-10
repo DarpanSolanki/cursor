@@ -1,22 +1,21 @@
 ---
-description: "DPI/DPIC/delayed payment interest — verify feature/delayed_payment_interest checkout on accounting-v2 + initial-setup before grep, KG, or RCA"
+description: "DPI/DPIC — verify accounting checkout matches task branch (release train or feature WIP) before grep/KG/RCA"
 alwaysApply: true
 ---
 
-# DPI feature branch gate (mandatory before code analysis)
+# DPI branch gate (mandatory before code analysis)
 
 **When the task mentions:** DPI, DPIC, delayed payment interest, dpiAccrual*, dpiBilling, DPI go-live, loan restructuring + DPI.
 
 **Before grep, read processors, or trust `kg flow`/`cases`:**
 
 1. Read `cursor-bundle/memory/reference_dpi_feature_branch.md`
-2. Verify checkout (run in each repo):
-   - `novopay-platform-accounting-v2` → `feature/delayed_payment_interest`
-   - `novopay-platform-initial-setup` → `feature/delayed_payment_interest`
-   - `novopay-platform-webapp` → `feature/delayed_payment_interest` (if UI)
-3. `bash scripts/bin/kg-switch.sh` — KG must watermark accounting on feature branch, not `mfi_integration_*`
-4. Optional: `bash scripts/bin/ensure-dpi-branches.sh` — prints PASS/FAIL
+2. Verify checkout matches the **task branch** (do not assume feature WIP):
+   - **Default release train (harness / QA):** `novopay-platform-accounting-v2` → **`mfi_integration_v3.7.1`** (HEAD must include booking fix `77921d275f`)
+   - **Unmerged WIP only when task says so:** `feature/delayed_payment_interest` on accounting-v2 + initial-setup (+ webapp if UI)
+3. `bash scripts/bin/kg-switch.sh` — KG watermark must match the branch under test
+4. Optional: `git merge-base --is-ancestor 77921d275f HEAD` on accounting-v2 for 3.7.1 booking fix
 
-**Never** conclude "field/API missing" from `mfi_integration_*` checkout or `git show` alone while disk is on integration branch.
+**Never** conclude "field/API missing" from the wrong train (e.g. older `mfi_integration_*` without DPI fixes, or feature tip when task is 3.7.1).
 
-**Mixed workspace** (webapp on feature, accounting on integration) → wrong analysis. Fix branches first.
+**Mixed workspace** (webapp on feature, accounting on integration) → wrong analysis. Align branches first.

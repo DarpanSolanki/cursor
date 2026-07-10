@@ -7,12 +7,14 @@
 # Quick profile starts with run_dpi_three_job_verify.sh (ntest batch APIs on 8060160).
 #
 # Profiles:
-#   quick     — guards + two_emi + grace + overlap + shg_parity (~12 min)
+#   quick     — reset + three_job (sealed→posted→billed) + booking guard + milestone two_emi
+#               + grace + overlap + booking_anchor + shg (~12–18 min)
 #   standard  — + posting_calendar + eod_txn + go_live_ud + cross_eod (~30 min)
 #   full      — + billing_ud + integration_smoke + ud_compliance
 #   maturity  — + post_maturity + post_maturity_catchup + fixture restore
 #
 # Fixture loan 8060160 for standard+ blocks; grace-chain 8057160 for grace/overlap/two_emi/shg.
+# Quick uses DPI_CALENDAR_MODE=milestones on two_emi (not daily May→Jul).
 # Maturity teardown: restore_demo_installments_after_post_maturity_e2e.sql after post-maturity block.
 #
 # Exit non-zero when any step fails; prints PASS/FAIL summary table at end.
@@ -84,9 +86,13 @@ if profile_ge quick; then
   run_step three_job_verify bash "$DPIC/run_dpi_three_job_verify.sh"
   run_step posting_guards bash "$ROOT/scripts/bin/dpi-booking-posting-guard.sh"
   # two_emi purges global DPI state — run before grace-chain scenarios on same LAN
-  run_step two_emi_full_chain bash "$DPIC/run_dpi_two_emi_full_chain.sh"
+  # milestones: EMI due + month-end hops (keeps quick under ~20 min vs daily May→Jul)
+  run_step two_emi_full_chain \
+    env DPI_CALENDAR_MODE=milestones END_DATE=2026-07-01 GO_LIVE_ISO=2026-05-01 \
+    bash "$DPIC/run_dpi_two_emi_full_chain.sh"
   run_step grace_e2e bash "$DPIC/run_grace_dpi_e2e.sh"
   run_step grace_overlap_e2e bash "$DPIC/run_grace_overlap_dpi_e2e.sh"
+  run_step booking_anchor_next_due bash "$DPIC/run_dpi_booking_anchor_e2e.sh"
   run_step shg_parent_child_parity bash "$DPIC/run_dpi_shg_parent_child_parity.sh"
 fi
 

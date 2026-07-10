@@ -40,7 +40,15 @@ SELECT id,
        accrual_posting_date::date AS apd,
        billing_posting_date::date AS bpd,
        CASE
-         WHEN end_date::date <= DATE '$BIZ_DATE' AND accrual_posting_date IS NULL THEN 'FAIL sealed_unposted'
+         WHEN end_date::date <= DATE '$BIZ_DATE' AND accrual_posting_date IS NULL
+              AND (
+                EXTRACT(DAY FROM end_date) = EXTRACT(DAY FROM (date_trunc('month', end_date) + interval '1 month - 1 day'))
+                OR EXISTS (
+                  SELECT 1 FROM mfi_accounting.loan_due_details d
+                  WHERE d.loan_account_id = $LOAN_ID AND d.is_deleted = false
+                    AND d.component_type IN ('INT','PRIN') AND d.due_date::date = end_date::date
+                )
+              ) THEN 'FAIL sealed_unposted'
          WHEN end_date::date <= DATE '$BIZ_DATE' AND accrual_posting_date IS NOT NULL
               AND billing_posting_date IS NULL
               AND (

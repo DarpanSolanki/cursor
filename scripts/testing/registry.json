@@ -757,7 +757,7 @@
       "LOAN_ACCOUNT_ID": "8060160",
       "ACCOUNT_NUMBER": "6004044425"
     },
-    "note": "Set DPI_REGRESSION_PROFILE=quick for ~10m smoke; maturity adds post-maturity + fixture restore"
+    "note": "Set DPI_REGRESSION_PROFILE=quick for ~15m smoke (milestones + three_job + booking_anchor); maturity adds post-maturity + fixture restore"
   },
   "dpic.disburse": {
     "type": "flow",
@@ -822,6 +822,24 @@
       "END_DATE": "2026-07-19"
     }
   },
+  "dpic.booking_anchor_next_due": {
+    "type": "flow",
+    "api": "dpiAccrualBooking",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "dpi",
+      "batch",
+      "regression"
+    ],
+    "title": "DPI booking anchor \u2014 next-EMI due seal must post (77921d275f)",
+    "cmd": "bash scripts/dpic/run_dpi_booking_anchor_e2e.sh",
+    "env": {
+      "END_DATE": "2026-06-15",
+      "GO_LIVE_ISO": "2026-05-01"
+    },
+    "note": "Prior-EMI slice ending on next INT/PRIN due must book; column audit sealed_unposted=0"
+  },
   "dpic.june_slice_job_proof": {
     "type": "flow",
     "api": "dpiAccrualCalculation",
@@ -874,7 +892,7 @@
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
       "VERIFY_MODE": "single_eod",
-      "JOB_TIME": "1779280200000",
+      "THREE_JOB_TIME": "1779280200000",
       "SEED_CALC_WINDOW": "0"
     }
   },

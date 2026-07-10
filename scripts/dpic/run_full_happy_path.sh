@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 EXT_REF="${EXT_REF:-DPIC_MFT_6367_10002233_001}"
 JOB_TIME="${JOB_TIME:-1781267400000}"
 SKIP_SETUP="${SKIP_SETUP:-0}"
-SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-1}"
+SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-0}"
 
 echo "=== DPIC full happy path ==="
 echo "ext_ref prefix: $EXT_REF"

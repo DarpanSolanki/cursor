@@ -20,6 +20,8 @@ GO_LIVE_DDMM="${GO_LIVE_DDMM:-15-04-2025}"
 GO_LIVE_ISO="${GO_LIVE_ISO:-2026-05-01}"
 END_DATE="${END_DATE:-2026-07-01}"
 GRACE_DAYS="${GRACE_DAYS:-3}"
+# daily = every calendar day (slow); milestones = EMI due + month-end hops (quick profile default)
+DPI_CALENDAR_MODE="${DPI_CALENDAR_MODE:-daily}"
 NTEST="$ROOT/scripts/bin/ntest.sh"
 WAIT_BATCH="$ROOT/scripts/dpic/lib/wait_batch_job.sh"
 
@@ -75,8 +77,14 @@ dpi_evict_go_live_cache "$product_code"
 dpi_restart_masterdata
 dpi_ensure_accounting ${COMPILE:+--compile}
 
-CALENDAR_DAYS="$(
-  python3 - "$GO_LIVE_ISO" "$END_DATE" <<'PY'
+if [[ "$DPI_CALENDAR_MODE" == "milestones" || "$DPI_CALENDAR_MODE" == "single" ]]; then
+  echo ">>> milestone calc + booking mode=$DPI_CALENDAR_MODE ($GO_LIVE_ISO .. $END_DATE)"
+  export ROOT LOAN_ACCOUNT_ID GO_LIVE_ISO END_DATE NTEST WAIT_BATCH
+  chmod +x "$ROOT/scripts/dpic/lib/dpi_run_milestone_eod.sh"
+  bash "$ROOT/scripts/dpic/lib/dpi_run_milestone_eod.sh" "$DPI_CALENDAR_MODE" "$GO_LIVE_ISO" "$END_DATE"
+else
+  CALENDAR_DAYS="$(
+    python3 - "$GO_LIVE_ISO" "$END_DATE" <<'PY'
 import sys
 from datetime import datetime, timedelta
 start = datetime.strptime(sys.argv[1], "%Y-%m-%d").date()
@@ -86,22 +94,23 @@ while d <= end:
     print(d.isoformat())
     d += timedelta(days=1)
 PY
-)"
+  )"
 
-echo ">>> daily calc + booking $GO_LIVE_ISO .. $END_DATE"
-while IFS= read -r day; do
-  [[ -n "$day" ]] || continue
-  ms="$(date_to_ms "$day")"
-  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" -v business_date_ms="$ms" \
-    -f "$ROOT/scripts/dpic/sql/helpers/sync_demo_past_due.sql" >/dev/null
-  echo "    EOD $day"
-  call_batch dpiAccrualCalculation "$ms"
-  call_batch dpiAccrualBooking "$ms"
-done <<<"$CALENDAR_DAYS"
+  echo ">>> daily calc + booking $GO_LIVE_ISO .. $END_DATE"
+  while IFS= read -r day; do
+    [[ -n "$day" ]] || continue
+    ms="$(date_to_ms "$day")"
+    dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" -v business_date_ms="$ms" \
+      -f "$ROOT/scripts/dpic/sql/helpers/sync_demo_past_due.sql" >/dev/null
+    echo "    EOD $day"
+    call_batch dpiAccrualCalculation "$ms"
+    call_batch dpiAccrualBooking "$ms"
+  done <<<"$CALENDAR_DAYS"
 
-FINAL_MS="$(date_to_ms "$END_DATE")"
-echo ">>> billing on $END_DATE"
-call_batch dpiBilling "$FINAL_MS"
+  FINAL_MS="$(date_to_ms "$END_DATE")"
+  echo ">>> billing on $END_DATE"
+  call_batch dpiBilling "$FINAL_MS"
+fi
 
 echo ""
 echo "=== accrual slices (posting + billing dates) ==="
@@ -173,4 +182,8 @@ SQL
 [[ "${billed_amt:-0}" -gt 0 ]] || fail "expected billed DPI > 0 as of $END_DATE"
 
 echo ""
-echo "PASS: two-EMI DPI full chain on LAN $ACCOUNT_NUMBER through $END_DATE (rows=$accrual_rows EMIs=$distinct_inst booked=$booked billed=$billed billed_due=$billed_amt)"
+bash "$ROOT/scripts/dpic/lib/run_dpi_column_audit.sh" "$LOAN_ACCOUNT_ID" "$END_DATE" \
+  || fail "column audit sealed_unposted/sealed_unbilled after two-EMI chain"
+
+echo ""
+echo "PASS: two-EMI DPI full chain on LAN $ACCOUNT_NUMBER through $END_DATE mode=$DPI_CALENDAR_MODE (rows=$accrual_rows EMIs=$distinct_inst booked=$booked billed=$billed billed_due=$billed_amt)"

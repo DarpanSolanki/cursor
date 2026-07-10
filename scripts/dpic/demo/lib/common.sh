@@ -86,7 +86,7 @@ demo_run_eod() {
   demo_banner "$label — job_time=$job_time ($(date -d "@$((job_time / 1000))" '+%d-%b-%Y %H:%M' 2>/dev/null || echo epoch))"
   demo_require_service
   : "${LOAN_ACCOUNT_ID:?}"
-  LOAN_ACCOUNT_ID="$LOAN_ACCOUNT_ID" JOB_TIME="$job_time" SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-1}" \
+  LOAN_ACCOUNT_ID="$LOAN_ACCOUNT_ID" JOB_TIME="$job_time" SEED_CALC_WINDOW="${SEED_CALC_WINDOW:-0}" \
     bash "$ROOT/scripts/dpic/run_eod.sh"
 }
 

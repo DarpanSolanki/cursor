@@ -1,3 +1,6 @@
+## 2026-07-10 | workspace | DPI harness sync to mfi_integration_v3.7.1 product rules
+- Quick profile: milestones two_emi + booking_anchor_next_due + column audit; booking guard matches 77921d275f any-EMI-due; SEED_CALC_WINDOW default 0; DPI_TEST_COVERAGE + branch gate updated
+
 ## 2026-07-10 | accounting-v2 `77921d275f` | mfi_integration_v3.7.1 | dpiAccrualBooking EMI-due posting anchor (sealed_unposted audit)
 
 ## 2026-07-10 | workspace | mfi_integration_v3.7.1 release blockers closed

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Static guard: DPI accrual booking posts only when slice end_date is this installment's posting anchor.
-# Interest parity: month-end or this EMI's INT due — not another EMI's due on the same calendar day.
+# Static guard: DPI accrual booking posts on month-end OR any EMI INT/PRIN due seal.
+# Mirrors calc nextBoundary seals — not this-installment INT only (avoids LIMIT-1 / DPI-due miss).
+# Product rule (mfi_integration_v3.7.1 / 77921d275f): prior-EMI slice ending on next EMI due must book.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -24,16 +25,30 @@ if ! grep -qE 'entity\.getEndDate\(\)\.after\(businessDate\)' "$FILE"; then
   fail "missing end_date <= businessDate eligibility check"
 fi
 
-if ! grep -q 'isInstallmentPostingAnchor(entity.getInstallmentId(), entity.getEndDate())' "$FILE"; then
-  fail "booking must gate on per-installment posting anchor (end_date = this EMI due or month-end)"
+# New anchor: endDate + preloaded INT/PRIN due-day set (any EMI due), not installment-scoped INT.
+if ! grep -qE 'isInstallmentPostingAnchor\(entity\.getEndDate\(\),\s*installmentDueDays\)' "$FILE"; then
+  fail "booking must gate on isInstallmentPostingAnchor(endDate, installmentDueDays) — any EMI due seal"
 fi
 
-if ! grep -q 'findByLoanInstallmentIdAndComponentType' "$FILE"; then
-  fail "per-installment anchor must resolve INT due for installment"
+if ! grep -q 'loadInstallmentDueDays' "$FILE"; then
+  fail "booking must preload INT/PRIN due days via loadInstallmentDueDays"
 fi
 
-if grep -qE 'isPostingDay\(loanAccountId, businessDate\).*\\|\\|.*isPostingDay\(loanAccountId, entity\.getEndDate\(\)\)' "$FILE"; then
-  fail "loan-level businessDate OR end_date gate removed — use per-installment end_date anchor only"
+if ! grep -q 'getAllActiveLoanDueDetailsByAccId' "$FILE"; then
+  fail "due-day preload must reuse getAllActiveLoanDueDetailsByAccId (no LIMIT-1 due lookup)"
+fi
+
+# Reject stale installment-INT-only gate (pre-77921d275f).
+if grep -qE 'isInstallmentPostingAnchor\(entity\.getInstallmentId\(\)' "$FILE"; then
+  fail "stale per-installment INT-only anchor — use loan-level INT/PRIN due-day set"
+fi
+
+if grep -qE 'findByLoanInstallmentIdAndComponentType' "$FILE"; then
+  fail "stale findByLoanInstallmentIdAndComponentType booking gate — use loadInstallmentDueDays"
+fi
+
+if grep -qE 'getLoanDueDetailsForDueDate' "$FILE"; then
+  fail "LIMIT-1 getLoanDueDetailsForDueDate must not gate booking (same-day DPI due wins after billing)"
 fi
 
 if grep -qE '"PINT"\.equals' "$FILE"; then

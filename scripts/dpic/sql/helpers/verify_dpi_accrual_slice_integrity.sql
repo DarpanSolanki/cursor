@@ -95,14 +95,14 @@ violations AS (
   FROM slices s JOIN first_emi fe ON fe.installment_id = s.installment_id
   WHERE s.slice_rn = 1 AND s.start_d <> fe.due_day
   UNION ALL
+  -- Sealed (month-end OR any INT/PRIN due) must be posted — mirrors booking any-EMI-due anchor.
   SELECT s.id, 'posted_slice_missing_posting_date' FROM slices s CROSS JOIN params p
-  JOIN mfi_accounting.loan_due_details ldd
-    ON ldd.loan_installment_details_id = s.installment_id
-   AND ldd.is_deleted = false AND ldd.component_type = 'INT'
   WHERE s.end_d <= p.biz
-    AND (EXTRACT(DAY FROM s.end_d) = EXTRACT(DAY FROM (date_trunc('month', s.end_d) + interval '1 month - 1 day'))
-         OR s.end_d = ldd.due_date::date)
     AND s.posted_d IS NULL
+    AND (
+      EXTRACT(DAY FROM s.end_d) = EXTRACT(DAY FROM (date_trunc('month', s.end_d) + interval '1 month - 1 day'))
+      OR EXISTS (SELECT 1 FROM due_days dd WHERE dd.d = s.end_d)
+    )
   UNION ALL
   SELECT s.id, 'end_not_month_end_or_due' FROM slices s CROSS JOIN params p
   WHERE s.end_d <= p.biz AND s.posted_d IS NOT NULL
