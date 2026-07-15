@@ -3,6 +3,53 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
+## 2026-07-15 | workspace | Synced disbursement-guide.html (NEFT v2 / 3.4.2.4) from Desktop
+
+## 2026-07-15 | acct `5b1b928ed` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | last-child DFC A2 EXTRA-net + B force-bill labd
+loanDeathForeclosure | kg-flow | DeathForeclosureInsuranceWriter: last-child parent POS/net/gross/TRANSACTION_AMOUNT/UNBLD_PRIN net EXTRA+overpaid penal/fee to match child claim; forceBillPartialCycleInterest persists/links labd txn_ref after postTransaction
+
+---
+
+Mirror of Desktop NEFT-v2-complete guide (`mfi_integration_v3.4.2.4`, entityType, NeftStage1InquiryGate, split("_", 3)) into `cursor-bundle/brain/guides/disbursement-guide.html`; Desktop kept as source (md5 `1eecccb3cd3ffa1ac79c5dfd8a65fef4`).
+
+
+
+## 2026-07-13 | acct `bb6b37d178`+`682afe5ca2` | accounting-v2 | revert SDCP-11058 from 3.4.2.2/3.4.2.3
+Reverted 8d9f0feed8 BPI distribute on origin mfi_integration_v3.4.2.2 and mfi_integration_v3.4.2.3; kept on 3.4.2.4. Upstream PR still required. Release 3.4.2.2/3 still have fix until merged.
+
+---
+
+
+## 2026-07-10 | acct `8d9f0feed8` | accounting-v2 | mfi_integration_v3.4.2.2 | SDCP-11058 SHG BPI parity (next release)
+Cherry-pick of BPI distribute-any-N onto **3.4.2.2** (not 3.4.2.1 prod-today). Diff: ChildLoanForeclosureProcessor only. | kg-flow | loanPrepayment individualChildLoanForeclosure
+
+## 2026-07-10 | acct `4acc7036d4` | accounting-v2 | fix/sdcp-11058-shg-bpi-parity | kg-flow | SDCP-11058 SHG parent FC BPI = sum(children) any N
+ChildLoanForeclosureProcessor BPI uses getDistributedAmountEqually(parent) like foreclosure_fee for any N; ntest foreclosure.shg_bpi_parity unit PASS; product children sum to parent quote | kg-flow | loanPrepayment childLoanForeclosure
+
+---
+
+
+## 2026-07-10 | workspace | GAP-074 INT-180 deferred (user) — open gap; parked `61278d5f8`
+User kept last-child parent INT/DPI under-settlement as open High GAP-074; fix on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — do not merge to `mfi_integration_v3.7.1` until QA/prod discuss; ASK-057 DEFERRED. Not RESOLVED in production.
+
+---
+
+## 2026-07-10 | acct `61278d5f8` | accounting-v2 | fix/sdcp-10199-parent-int-dpi-last-child-dfc | kg-flow | SDCP-10199 last-child parent INT from parent pending
+doParentPartPrePayment last-child: sumPendingComponentOnOrBefore(getDueDetails) for INT/DPI + waiveFutureDpiPastReporting; e2e PASS | **PARKED / DEFERRED SHIP 2026-07-10 — not on mfi_integration_v3.7.1; see GAP-074**
+
+---
+
+
+## 2026-07-10 | acct uncommitted | accounting-v2 | mfi_integration_v3.7.1 | SDCP-10199 last-child parent INT from parent pending
+UNCOMMITTED (no kg-flow until real SHA): doParentPartPrePayment last-child uses sumPendingComponentOnOrBefore(getDueDetails) for INT/DPI + waiveFutureDpiPastReporting on parent. Local e2e dcf.group_parent_last_child_e2e PASS this session. Apis: deathForeclosureInsuranceJob (orch verified).
+
+---
+
+
+## 2026-07-10 | acct `f45dbe3bd` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-10199 forward-merge + dead waive removed
+3.4.2.x SDCP-10199 ancestors of 3.7.1; removed unused waiveFutureParentPendingDuesOnLastChildDfc; parent last-child pays PRIN | kg-flow | deathForeclosureInsuranceJob RSCH_DEATH_FORECLOSURE
+
+---
 
 
 ## 2026-07-10 | workspace | harness | mfi_integration_v3.7.1 | kg-flow | DPI quick regression + booking-anchor harness
@@ -41,13 +88,13 @@ KG-FLOW: dpiAccrualCalculation resolveAdmissionOverdueDate prefers loan_due_deta
 ---
 
 
-## 2026-07-10 | acct `1baf3f4d8f` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI projection
+## 2026-07-10 | acct `f5c4e0a25` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI projection (changelog-sha `1baf3f4d8f` not ancestor of tip; labeled HEAD-eq)
 KG-FLOW: fetchLoanForeclosureSimulationDetails projects billed DPI for future foreclosure dates
 
 ---
 
 
-## 2026-07-10 | acct `167d0942db` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment billed DPI + BPD in approve validation
+## 2026-07-10 | acct `1b34dee4b` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment billed DPI + BPD in approve validation (changelog-sha `167d0942db` not ancestor of tip; labeled HEAD-eq)
 KG-FLOW: loanPrepayment ValidateFinalPrepaymentProcessor includes billed_dpi_amount_to_be_paid and bpd_amount_to_be_paid in foreclosure amount check (SDCP-11048)
 
 ---
@@ -71,31 +118,31 @@ loanPrepayment: ValidateFinalPrepaymentProcessor billed_dpi+bpd; verify_dpi_accr
 ---
 
 
-## 2026-07-09 | acct `e175b78cb` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI future date
+## 2026-07-09 | acct `f5c4e0a25` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim DPI future date (changelog-sha `e175b78cb` not ancestor of tip; labeled HEAD-eq)
 fetchLoanForeclosureSimulationDetails: DpiForeclosureBrokenPeriodService projects DPI through selected foreclosure date when future; reuses accrual simulate path aligned with broken-period interest.
 
 ---
 
 
-## 2026-07-09 | acct `e175b78cb` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim bpd_amount future dates
+## 2026-07-09 | acct `f5c4e0a25` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | SDCP-11016 foreclosure sim bpd_amount future dates (changelog-sha `e175b78cb` not ancestor of tip; labeled HEAD-eq)
 fetchLoanForeclosureSimulationDetails: DpiForeclosureBrokenPeriodService + simulateAccrualAmountBetweenDates projects DPI till selected foreclosure date when future; parity with bpi_amount. Tables: loan_dpi_accrual_details, loan_due_details.
 
 ---
 
 
-## 2026-07-09 | acct `b157b2d33` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanAccountRebooking interest day-count guard
+## 2026-07-09 | acct `b157b2d33` | accounting-v2 | NOT-ancestor-of-3.7.1-tip@b157b2d33 | kg-flow | loanAccountRebooking interest day-count guard
 GenerateRepaymentScheduleProcessor.ensureInterestCalculationDayCounts loads product_scheme days when EC blank; ReducingBalanceInterestAmountCalculator fail-fast 130045/130046. Pairs Ramya `00292b217` resolveDaysInYear after PSFD master-data migration.
 
 ---
 
 
 ## dpiAccrualCalculation SHG parent child parity
-## 2026-07-09 | acct `74da61acf` | accounting-v2 | mfi_integration_v3.7.1 | SDCP-11012 SHG DPI parity window fix
+## 2026-07-09 | acct `f42f5b117` | accounting-v2 | mfi_integration_v3.7.1 | SDCP-11012 SHG DPI parity window fix (changelog-sha `74da61acf` not ancestor of tip; labeled HEAD-eq)
 
 ---
 
 
-## 2026-07-09 | acct `844081f83` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment approve 132268 billed DPI+BPD
+## 2026-07-09 | acct `1b34dee4b` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | loanPrepayment approve 132268 billed DPI+BPD (changelog-sha `844081f83` not ancestor of tip; labeled HEAD-eq)
 ValidateFinalPrepaymentProcessor.fetchForeclosureAmount adds billedDpiAmountToBePaid + bpdAmountToBePaid from prepayment_details; tables: prepayment_details
 
 ---
@@ -113,14 +160,14 @@ last-child RSCH: net_amount=0 before payment details (principal not 2x); account
 ---
 
 
-## 2026-07-09 | acct `4d44f2f92` | accounting-v2 | mfi_integration_v3.7.1 | DPI EOD inclusive calc + booking anchor
+## 2026-07-09 | acct `4d44f2f92` | accounting-v2 | NOT-ancestor-of-3.7.1-tip@4d44f2f92 | DPI EOD inclusive calc + booking anchor
 dpiAccrualCalculation: processThrough=nextDay(today), inclusive segment walk, cursor=nextDay(segmentEnd), resolveSliceStart; dpiAccrualBooking: post when businessDate OR end_date is PRIN/INT due/month-end; tables dpi_accrual_details
 
 ---
 
 
 ## dpiAccrualCalculation dpiAccrualBooking dpiBilling
-## 2026-07-09 | acct `e1875d1b4` | accounting-v2 | mfi_integration_v3.7.1 | DPI interest-parity calc + booking
+## 2026-07-09 | acct `e1875d1b4` | accounting-v2 | NOT-ancestor-of-3.7.1-tip@e1875d1b4 | DPI interest-parity calc + booking
 
 ---
 
@@ -733,3 +780,6 @@ Flag was read by `DisbursementBankCallTypeUtil.isPaymentReinitiationTransferExec
 ## 2026-05-04 — SDCP — friendly error for duplicate `client_reference_number` on `loanRepayment`
 
 - **Repos:** `novopay-platform-accounting-v2` `d358a9034`, `novopay-platform-initial-setup` `62cefa1e` · `SDCP-fix-dup-crn-loan-repayment` (off `upstream/mfi_integration_v3.3.1.0.0`) · force-pushed · PRs open vs khoslalabs upstream
+
+## 2026-07-13 | initial-setup | rollback SQL 3.4.2.2_055 → 3.4.2.1_017
+Prepared prod rollback for 13 Flyway scripts between tags (audit/los/masterdata/notifications/platform_master). Path: scripts/sql/deploy/rollback_initial_setup_3.4.2.2_055_to_3.4.2.1_017.sql. QA: varchar(255)→TEXT on forwarded_notes; truncate USING left(...,255) required.

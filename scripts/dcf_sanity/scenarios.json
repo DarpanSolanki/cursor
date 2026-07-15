@@ -3,9 +3,11 @@
   "prerequisites": {
     "accounting_health": "http://localhost:8002/accounting/actuator/health",
     "db": { "host": "localhost", "port": 5433, "database": "yugabyte", "schema": "mfi_accounting" },
-    "branch": "sdcp-9301-hotfix-3.3.1.0",
+    "branch": "mfi_integration_v3.7.1",
+    "also_contains_fixes_from": ["mfi_integration_v3.4.2.1", "mfi_integration_v3.4.2.2", "mfi_integration_v3.4.2.3", "mfi_release_v3.6.1"],
     "rules_catalogue": 22,
-    "transaction_types": ["DEATH_FORECLOSURE", "BILLING", "RSCH_DEATH_FORECLOSURE"]
+    "transaction_types": ["DEATH_FORECLOSURE", "BILLING", "RSCH_DEATH_FORECLOSURE"],
+    "note": "As of 2026-07-10 merge f45dbe3bd: all SDCP-10199 commits from 3.4.2.x are ancestors of 3.7.1; 3.7.1 also has DPI legs on DFC."
   },
   "scenarios": [
     {
@@ -58,10 +60,21 @@
       "label": "SHG/JLG group — child DEATH_FORECLOSURE + parent RSCH on last child (SDCP-10199)",
       "loan_prep": "product-70 parent + 2 insured ACTIVE children; penal billed must match penal_interest_accrual_details",
       "expected_txn_types": ["DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE"],
-      "expected_db": { "parent_loan_status": "CLOSED", "parent_prin_waived": 0, "parent_prin_pending": 0, "all_pending": 0 },
-      "local_e2e": "PARENT_LAN=6000137433 CHILD1_LAN=6000137440 CHILD2_LAN=6000137441 DEATH_DATE=2025-11-02 python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",
+      "expected_db": {
+        "parent_loan_status": "CLOSED",
+        "parent_account_status": "CLOSED",
+        "parent_prin_waived": 0,
+        "parent_prin_pending": 0,
+        "parent_dpi_pending": 0,
+        "all_pending": 0,
+        "unsettled_installments": 0,
+        "rsch_payment_principal_not_doubled": true
+      },
+      "local_e2e": "ntest run dcf.group_parent_last_child_e2e",
       "fixture_backup": "python3 scripts/dcf_sanity/dcf_fixture_backup.py snapshot|restore 6000137433",
-      "note": "Non-last child: parent stays ACTIVE + RSCH reschedule. Last child: parent PRIN paid (not waived). Phantom PINT rows (billed>accrued) are fixture data — run local_setup_dcf_fixture_penal_reconcile.sql"
+      "canonical_branch": "mfi_integration_v3.7.1",
+      "key_commits": ["e919e3b33", "66e830670", "425472cab", "f45dbe3bd"],
+      "note": "DO NOT waive parent PRIN on last child — pay full parent POS via appropriation + RSCH. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save (avoids 2x principal), overview uses loan_status OR account_status for next EMI. Dead method waiveFutureParentPendingDuesOnLastChildDfc removed on 3.7.1 (was unused and wrong). Phantom PINT: local_setup_dcf_fixture_penal_reconcile.sql"
     },
     {
       "id": "S09_reverse_feed_reupload",

@@ -1,3 +1,47 @@
+- **2026-07-15** | accounting-v2 `5b1b928ed` (`mfi_integration_v3.4.2.4`): last-child parent DFC A2 EXTRA-net statement amounts + B force-bill labd txn_ref persist/link (`DeathForeclosureInsuranceWriter`); e2e harness under `scripts/dcf_sanity/group_parent_last_child_dfc_*`.
+- **2026-07-15** | TechOps disbursement guide SHG≠JLG≠INDL accuracy pass: truth matrix + Applies-to callouts; §04=flat INDL/JLG, §05=SHG parent–child (MFT PARENT_SUCCESS vs NEFT note); LAR/reinit/SQL Q3/walker scoped; Desktop↔brain md5 identical (`74f6d3f0`).
+- **2026-07-15** | Synced `cursor-bundle/brain/guides/disbursement-guide.html` from Desktop NEFT-v2-complete guide (3.4.2.4); Desktop kept as authoritative source (md5 `1eecccb3cd3ffa1ac79c5dfd8a65fef4`).
+## 2026-07-13 | accounting-v2 | Revert SDCP-11058 from **3.4.2.2** and **3.4.2.3** (keep **3.4.2.4**)
+- Reverted `8d9f0feed8` (BPI distribute in `ChildLoanForeclosureProcessor`) on origin `mfi_integration_v3.4.2.2` @ `bb6b37d178` and `mfi_integration_v3.4.2.3` @ `682afe5ca2`. Fix retained on upstream/origin path for **3.4.2.4**. PR into upstream still required for 2/3. Release trains `mfi_release_v3.4.2.2` / `.3` still contain the fix until merge or matching revert.
+
+## 2026-07-10 | workspace | AiTDP Remarks = agent-help narrative (no Cursor brand)
+SDCP-11058 remarks rewritten; jira-fix-update skill + fields-reference + `jira-fix-adf.py` scan (`\bCursor\b`); memory `feedback_jira_aitdp_remarks_no_cursor_brand.md`.
+
+## 2026-07-10 | workspace | jira-fix-update skill
+SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned ticket fields/comment (removed 3.4.2.2 / harness Dev Test). Memory: feedback_jira_enrich_forbidden_scan_assignee.md.
+
+## 2026-07-10 | SDCP-11058 ship target **mfi_integration_v3.4.2.2** (not 3.4.2.1)
+- Cherry-pick BPI distribute fix onto upstream 3.4.2.2 tip; pushed origin `mfi_integration_v3.4.2.2` @ `8d9f0feed8` (ChildLoanForeclosureProcessor). Standing: train sync-first gate in `upstream-sync-no-unrelated-diff.mdc` + `feedback_train_branch_sync_origin_upstream.md`.
+
+## 2026-07-10 | SDCP-11058 | accounting-v2 `4acc7036d4` | SHG parent foreclosure BPI distributed to children (any N) via getDistributedAmountEqually — sum(child BPI)==parent quote; gap RESOLVED; ntest foreclosure.shg_bpi_parity PASS
+
+## 2026-07-10 | workspace | GAP-074 INT-180 parked off 3.7.1 (open gap)
+- Last-child DFC parent residual INT (latent 3.4.2.1+) / DPI residual risk on 3.7.1 kept **OPEN** (not RESOLVED). Fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to `mfi_integration_v3.7.1`** until QA/prod discuss. ASK-057 DEFERRED; dual-home gaps + MEMORY synced. Integration tip remains `f45dbe3bd`.
+
+## 2026-07-10 | workspace | Gap-closure: harmony H01–H10 + kg validate/orient + train matrix
+- Wired `kg validate`/`orient` into kg.py; hooks/docs already ship-path; gaps SoT dual-home; mixed-train-matrix runbook; MEMORY ask-tracker gate; capture-flow fid fix + DFC footprint; thin-domain backlog WS-025..034; nps_app_log ops-state hardened.
+
+## 2026-07-10 | accounting-v2 `61278d5f8` | (later parked) | SDCP-10199 INT-180 last-child parent INT settlement
+- Was committed on 3.7.1 then **parked** to `fix/sdcp-10199-parent-int-dpi-last-child-dfc` (see GAP-074 open entry above). Parent overdue INT/DPI from parent pending; local e2e PASS×2.
+
+## 2026-07-10 | workspace | Harmony FAIL fixes (hooks/ship/docs/gaps/scripts/ops)
+- hooks.json: afterFileEdit→after-ship-path-edit.sh; wire post-commit-ship-test.sh. Re-pending dirty DeathForeclosureInsuranceWriter. Changelog JIRA count=9. brain CHANGELOG non-ancestor 3.7.1 SHA labels corrected. gaps dual-home INT-180 synced. Restored workspace-bootstrap.sh + install-user-cursor-gates.sh wrappers. nps_app_log added.
+
+## 2026-07-10 | workspace | Accounting-wide self-upgrade (domains + JIRA + stale train banners)
+## 2026-07-10 | workspace | JIRA graph v3 maximally verified (orch+HEAD+e2e)
+- Rebuilt `cursor-bundle/brain/jira/` from orch Request + Java on 3.7.1 + ancestor/HEAD-equivalent SHAs. INT-180 e2e PASS×2; parent INT pending 0. kg_validate OK. No speculative related edges.
+
+- `accounting_flow_domains.json` v2: canonical_train 3.7.1, writeoff domain, DFC release_cases, portfolio/insurance notes, jira pointers. Registry domain tags + `_meta`. JIRA graph v3: **9 verified nodes** (`cursor-bundle/brain/jira/jira-flow-graph.json`). Stale banners: workspace-state, dpic-demo-local, DFC walkthrough, child-FC. Backlog WS-019..021 (portfolio/writeoff/walkthrough rewrite). INT-180 e2e PASS earlier this session.
+
+## 2026-07-10 | accounting-v2 WIP | mfi_integration_v3.7.1 | SDCP-10199 last-child parent INT settlement + JIRA flow graph
+- Root cause: last-child parent appropriation used child `INT_AMT`, leaving overdue billed INT pending (fixture 180 on due 2025-09-01) on CLOSED parent. Fix: `sumPendingComponentOnOrBefore` via `getDueDetails` + Java; also `waiveFutureDpiPastReporting` on parent. `ntest run dcf.group_parent_last_child_e2e` PASS. JIRA graph: `cursor-bundle/brain/jira/`.
+
+## 2026-07-10 | workspace + acct | SDCP-10199 on mfi_integration_v3.7.1 — forward-merge confirmed + knowledge sync
+- Verified tips of 3.4.2.1/2/3 + release 3.6.1 are ancestors of 3.7.1 (`f45dbe3bd`); key SHAs e919e3b33/66e830670/425472cab present. Removed dead `waiveFutureParentPendingDuesOnLastChildDfc` (unused; would waive parent PRIN). Enriched e2e DPI pending assert, scenarios/registry/release-trains/runbooks/gaps/system_brain.
+
+## 2026-07-10 | workspace | Disbursement suite gap cleanup
+- `--help` before run lock + stale-PID auto-clear; `disburse-indl-quick.sh` + registry `disbursement.indl`; stale FILES/README/DPIC/NEFT-v2 refs fixed; non-child NEFT `NEFT_STAGE_*` accepted as WARN (INDL local awaiting NEI)
+
 ## 2026-07-10 | workspace | DPI harness sync to mfi_integration_v3.7.1 product rules
 - Quick profile: milestones two_emi + booking_anchor_next_due + column audit; booking guard matches 77921d275f any-EMI-due; SEED_CALC_WINDOW default 0; DPI_TEST_COVERAGE + branch gate updated
 

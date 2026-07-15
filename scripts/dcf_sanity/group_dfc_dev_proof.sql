@@ -6,11 +6,14 @@
 --
 -- Paste outcomes into JIRA Dev Test Details (functional labels — no table/column names in JIRA).
 
-\echo '=== loan status ==='
+\echo '=== loan + account status (both must be CLOSED on parent after last child) ==='
 SELECT la.la_account_number AS loan_account,
-       la.loan_status AS status,
-       CASE WHEN la.la_closing_date IS NOT NULL THEN 'yes' ELSE 'no' END AS closing_date_set
+       la.loan_status AS loan_status,
+       a.status AS account_status,
+       CASE WHEN la.la_closing_date IS NOT NULL THEN 'yes' ELSE 'no' END AS la_closing_date_set,
+       CASE WHEN a.closing_date IS NOT NULL THEN 'yes' ELSE 'no' END AS account_closing_date_set
 FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.account a ON a.id = la.account_id
 WHERE la.la_account_number IN (:'parent_lan', :'child1_lan', :'child2_lan')
 ORDER BY la.la_account_number;
 
