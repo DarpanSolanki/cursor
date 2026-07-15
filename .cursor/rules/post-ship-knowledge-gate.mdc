@@ -29,6 +29,11 @@ Any turn that **ships** (commit/push) or **completes** a fix touching:
 | 6 | Edge case (optional) | `system_brain/edge_cases/` one short note if symptom is searchable |
 | 7 | KG sync | `scripts/bin/kg-switch.sh` after **any** repo branch checkout; `kg-enrich.sh --cases` after kg-flow prepend |
 | 8 | Freshness | `python3 cursor-bundle/kg/bin/kg.py fresh` → must print **FRESH** before closing |
+| 9 | **Testing suite** | `scripts/testing/registry.json` case for the fix path updated (note/defaults/expects encode **new asserts**). Surgical edit if unrelated WIP dirties the file — **never exclude the money case**. |
+| 10 | **Runbook** | Matching `cursor-bundle/brain/runbooks/*` (or INDEX link) documents symptom + SHA + `ntest run …` |
+| 11 | **Scenarios / learnings** | Domain `scenarios.json` / `ntest learn` when new regression class |
+
+**Compile + changelog-add alone is NOT DoD.** Memory: `cursor-bundle/memory/feedback_post_ship_registry_runbook_gap_mandatory.md`.
 
 ## Hard stop phrases (task is NOT done if any true)
 
@@ -36,6 +41,8 @@ Any turn that **ships** (commit/push) or **completes** a fix touching:
 - User asked to push and gaps doc still lists the fixed issue as **open**
 - `kg.py fresh` reports **STALE** and gate item 7 was not run
 - brain CHANGELOG kg-flow row cites wrong sha (e.g. BPD fix under earlier commit)
+- Money fix added asserts / behaviour but **registry case note still describes the old weak path** (e.g. closure-only while e2e now asserts EXTRA/labd)
+- Money fix shipped without runbook/gap touch when symptom class is searchable (DFC, disburse sync, DPI, …)
 
 ## End-of-task output (required format)
 
@@ -44,6 +51,8 @@ Knowledge updated: [list every file touched]
 KG enrichment: [FULL | CASES | SKIP]
 KG fresh: [FRESH | STALE — blocked]
 Gaps touched: [GAP-ids RESOLVED | none]
+Registry/ntest: [case id updated | n/a]
+Runbook: [path updated | n/a]
 Changelog: [appended | n/a]
 Post-ship gate: [PASS | FAIL — <what's missing>]
 ```
@@ -55,7 +64,7 @@ Post-ship gate: [PASS | FAIL — <what's missing>]
 After push on a money-path fix, run:
 
 ```bash
-scripts/bin/ship-knowledge-gate.sh
+scripts/bin/ship-knowledge-gate.sh --full
 ```
 
-Fix reported failures before ending the turn.
+Fix reported failures before ending the turn. Gate WARNs on DCF/DeathForeclosure kg-flow without companion registry/runbook markers.

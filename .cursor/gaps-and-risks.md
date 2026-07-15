@@ -20,6 +20,7 @@ Every item below has **description + file path + line evidence + risk level**. S
 | **RESOLVED (2026-06-25) — DPI accrual on maturity before go-live** | **Resolved (was High)** | `DpiAccrualCalculationItemReader` + batch skip when `maturity_date < goLiveDate`; `run_dpi_go_live_ud_e2e.sh` | Loan 750461: matured before go-live still accrued. |
 | **RESOLVED (2026-06-25) — DPI accrual booking posting gaps (exclusive end_date)** | **Resolved (was High)** | `DpiAccrualBookingBatchService.java` — `isAccrualPostingDate` mirrors interest accrual (`dayBefore(endDate)`); `verify_dpi_posting_calendar.sql` | Unposted slices on EMI due / month-end (e.g. Apr 30–May 7). |
 | **RESOLVED (2026-06-23) — DPI billing used installment-only alphabetic `client_reference_number` (QA 134497)** | **Resolved (was High)** | Was `DpiBillingBatchService.java` `{loanId}_DPI_BILL_{installmentId}`; fixed `346d9efe6` → numeric `loanAccountId+installmentId+millis` (parity `LoanAccountBillingBatchService` L168). Edge: `system_brain/edge_cases/dpi_billing_client_ref_134497_qa.md` | Cross-EOD / second accrual slice on same installment collided with morning `transaction_master` row → batch FAILED with `writeSkipCount`. |
+| **RESOLVED (2026-07-10) — SHG parent foreclosure BPI ≠ sum(child BPI) (SDCP-11058)** | **Resolved (was High)** | `ChildLoanForeclosureProcessor.java` — BPI due now uses `groupLoanUtility.getDistributedAmountEqually(parentDue, childLoanBookingDTOList)` like `foreclosure_fee` (any N≥1); was independent child sim `bpi_amount` HALF_UP; harness `foreclosure.shg_bpi_parity`; SQL `scripts/sql/helpers/verify_shg_foreclosure_bpi_parity.sql`; runbook `cursor-bundle/brain/runbooks/shg-foreclosure-bpi-parent-child-parity.md` | Parent quote 79 vs children 39+39=78 (or any N round-twice drift). Product: children sum to parent BPI. |
 | **RESOLVED (2026-07-08) — SHG parent DPI ≠ sum(child DPI) (SDCP-11012)** | **Resolved (was High)** | `DpiGroupLoanAccrualAdjustService.java` + `DpiGroupLoanAccrualAdjustTasklet` after `dpiAccrualCalculation` (mirrors `InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual`); verify `scripts/dpic/sql/helpers/verify_dpi_shg_parent_child_parity.sql`; QA1 L0 `scripts/sql/setup/qa1_repair_sdcp_11012_shg_dpi_accrual.sql` | Per-loan HALF_UP rounding on parent vs children drifted (e.g. parent 2912 vs children 2910 on LAN 6000196157). |
 | **RESOLVED (2026-07-08) — DPI grace admit without overdue-date seals** | **Resolved (was High)** | `DpiAccrualCalculationBatchService` admits base/anchor after `computeOverdueDate`; seals stay EMI due + month-end only; mid-slice grace changes day-walked into one row (`a66900048`, supersedes overdue-boundary approach in `46f115199`); harness `dpic.grace_overlap_e2e` / `multi_emi` on LAN 8057160 | EMI still in grace must not enter base; older EMI past grace continues; no extra `dpi_accrual_details` rows at overdue dates (UD = interest-parity seals). |
 | **RESOLVED (2026-06-23) — Local `disburse-quick` slow/failing (OTHBACCT+NEFT without simulator)** | **Resolved (was Medium)** | Was canonical JLG OTHBACCT payload + script bank mode only mocking NEFT; fixed suite: JLG MFT payload, `_ensure_acctwb_disbursement_account`, MFT script SQL completion, intermediate wait (~11s). Edge: `system_brain/edge_cases/disburse_quick_script_mode_acctwb.md` | Smoke hung 60–90s at `LOAN_BOOKED` or async-failed on missing DSBR_ACCT `account_number`; blocked post-accounting regression loops. |
@@ -31,7 +32,10 @@ Every item below has **description + file path + line evidence + risk level**. S
 | **Gradle Novopay plugin classpath `3.2.6.6-1` vs dependency-mgmt published `3.2.6.6.2-1`** | **High** | `novopay-platform-accounting-v2/build.gradle` L14 (`accounting.dependency.gradle.plugin:3.2.6.6-1`) vs `novopay-platform-dependency-mgmt/build.gradle` (e.g. accounting plugin `version = "3.2.6.6.2-1"`) | Resolved `novopay-platform-lib` / platform artifacts may **not** match the BOM developers believe they use — subtle cross-service binary drift at runtime. |
 | **No `src/test` coverage for `LmsMessageBrokerConsumer` async disburse path** | **High** | Workspace `grep` `LmsMessageBrokerConsumer` in `**/src/test/**/*.java` → **no hits** (2026-04-07); see `.cursor/test-coverage-map.md` | Redis skip / Kafka result publish / orchestration regressions reach production without CI signal. |
 | **No `src/test` coverage for `glBalanceZeroisation` / `reverseTransaction` / `postManualJournalEntry`** | **High** | Workspace `grep` those strings in `**/src/test/**/*.java` → **no hits** (2026-04-07); `.cursor/test-coverage-map.md` | Year-end GL and finance correction flows lack automated guard — misposting risk at close. |
-| **No `src/test` coverage for DCF / insurance inbound batch posting** | **High** | `grep` `DeathForeclosure` / inbound insurance writer symbols in `**/novopay-platform-accounting-v2/src/test/**/*.java` → **no hits** (2026-04-07) | Insurance → LMS posting regressions undetected until staging/prod reconciliation. |
+| **No `src/test` coverage for DCF / insurance inbound batch posting** | **High** (mitigated locally) | `grep` `DeathForeclosure` in `**/novopay-platform-accounting-v2/src/test/**/*.java` → **no hits**; **local money e2e:** `ntest run dcf.group_parent_last_child_e2e` + `scripts/dcf_sanity/*` on `mfi_integration_v3.7.1` | Unit tests still missing in CI; group last-child path covered by registry flow (SDCP-10199). |
+| **RESOLVED (2026-07-10) — SDCP-10199 workspace/train drift (3.4.2.x vs 3.7.1)** | **Resolved** | Forward merge `f45dbe3bd` on `mfi_integration_v3.7.1`; runbook `sdcp-10199-group-parent-last-child-dfc.md`; removed dead `waiveFutureParentPendingDuesOnLastChildDfc` | Agents analyzing DFC on stale branch / waiving parent PRIN caused wrong fixes. 3.4.2.1/2/3 tips are ancestors of 3.7.1. |
+| **GAP-074 — SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)** | **High** (open; parked) | `DeathForeclosureInsuranceWriter.doParentPartPrePayment` (released trains / `mfi_integration_v3.7.1@f45dbe3bd` still use child `INT_AMT`); fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to `mfi_integration_v3.7.1` until QA/prod discuss**; runbook `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ASK-057 **DEFERRED** | SHG/JLG parent can CLOSE after last-child DFC with residual pending INT (latent 3.4.2.1+); DPI residual risk on 3.7.1. Missed via lucky INT=0 e2e / UI-focused QA. |
+| **RESOLVED (2026-07-15) — GAP-075 SDCP-10199 A2 EXTRA-net + B force-bill labd** | **Resolved (was High)** | `DeathForeclosureInsuranceWriter` @ `mfi_integration_v3.4.2.4` `5b1b928ed`: last-child parent POS/net/gross/TRANSACTION_AMOUNT/UNBLD_PRIN net EXTRA+overpaid penal/fee; `forceBillPartialCycleInterest` persists/links labd txn_ref; e2e `dcf.group_parent_last_child_e2e` + runbook `sdcp-10199-group-parent-last-child-dfc.md` | Parent/child statement amount mismatch (full POS vs claim EXTRA-net); force-bill without labd / txn_ref (Vikram/Srikant). |
 | **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
 | **Multi-node batch dependency tracking is in-memory only** | **Medium** | `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
@@ -1561,3 +1565,39 @@ Evidence: Representative logs/processors cited in `knowledge-graph.md`, `LmsMess
 Fix: Standard observability kit per path (correlation, metrics, DLQ/lag alerts); GAP-066 closed 2026-04-17; remaining: producer swallow (**GAP-019**), universal trace-id, metrics hooks.  
 Status: OPEN (matrix target; disburse sync correlation slice improved)  
 Date found: 2026-04-17
+
+## GAP-074: SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)
+
+Service: novopay-platform-accounting-v2  
+Risk: **High**  
+Status: **OPEN** — parked off `mfi_integration_v3.7.1` 2026-07-10 (wait for QA/production case; discuss before merge)  
+Date found: 2026-07-10
+
+**Symptom:** After last-child death foreclosure on SHG/JLG, parent can reach `CLOSED` while overdue billed INT remains pending (fixture example pending **180**). On `mfi_integration_v3.7.1`, residual **DPI** can remain for the same reason.
+
+**Root cause:** Last-child path in `DeathForeclosureInsuranceWriter.doParentPartPrePayment` appropriated parent interest using **child** `INT_AMT` (and DPI analog), which under-settles parent overdue INT left by prior sibling DFCs.
+
+**Latency:** Behaviour latent on **3.4.2.1+**; DPI residual risk on **3.7.1**.
+
+**Why missed:** Local e2e often had parent overdue INT=0 (lucky fixture); QA focus was UI display, not residual pending INT on CLOSED parent.
+
+**Parked fix (not on release train):** Branch `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ commit `61278d5f8` — parent pending INT/DPI via `getDueDetails` + Java; `waiveFutureDpiPastReporting` on parent. Integration tip `mfi_integration_v3.7.1` reset to `f45dbe3bd` (fix **not** an ancestor). **Do not merge or push** this fix onto `mfi_integration_v3.7.1` / origin / upstream until QA/prod case + explicit discuss.
+
+**Runbook / tracker:** `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ask tracker `ASK-057` = **DEFERRED**. Memory: `cursor-bundle/memory/feedback_int180_deferred_unpushed.md`.
+
+## GAP-075: SDCP-10199 last-child A2 EXTRA-net statement + B force-bill labd
+
+Service: novopay-platform-accounting-v2  
+Risk: **High** (was)  
+Status: **RESOLVED** 2026-07-15 — `mfi_integration_v3.4.2.4` @ `5b1b928ed`  
+Date found: 2026-07-15 (Vikram/Srikant observation on parent/child amounts + force-bill)
+
+**Symptom A2:** After last-child DFC, parent RSCH / payment statement amounts used **full POS** instead of **EXTRA-net** matching the child claim overpayment (EXCESS_* / EXTRA + overpaid penal/fee).
+
+**Symptom B:** Force-bill partial-cycle interest txn existed but `loan_account_billing_details` was missing or not linked via `transaction_reference_number` to `DFC_PRTL_BILL_*`.
+
+**Fix:** `DeathForeclosureInsuranceWriter` — last-child parent amount bridge nets EXTRA; `forceBillPartialCycleInterest` persists/links labd after `postTransaction`.
+
+**Verify:** `ntest run dcf.group_parent_last_child_e2e` (`assert_a2_extra_parent_rsch`, `assert_force_bill_labd`). Runbook: `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`.
+
+**Distinct from GAP-074:** INT-180 residual pending INT on CLOSED parent remains open/parked.

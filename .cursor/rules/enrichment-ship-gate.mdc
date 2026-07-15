@@ -29,7 +29,7 @@ alwaysApply: true
 
 2. **Agent KB** — append `.cursor/changelog.md` (one line).
 
-3. **Gaps / runbook** — only when symptom class or gap status changes (SKIP KG).
+3. **Gaps / runbook / registry** — when symptom class or assert path changes: update `.cursor/gaps-and-risks.md`, matching runbook, and **`scripts/testing/registry.json` case note** (strong path). Memory: `feedback_post_ship_registry_runbook_gap_mandatory.md`. SKIP KG for doc-only; still required for DoD.
 
 `changelog-add.sh` runs **cases refresh** when watermark in sync; **full build** when code drift.
 
@@ -46,12 +46,13 @@ alwaysApply: true
 ## End-of-task output (mandatory)
 
 ```
-Knowledge updated: [brain CHANGELOG | gaps | runbook | .cursor/changelog | none]
+Knowledge updated: [brain CHANGELOG | gaps | runbook | registry | .cursor/changelog | none]
 KG enrichment: [FULL | CASES — <reason> | SKIP — KB only]
 KG cases: [<apiName> — N precedent(s) | n/a]
+Registry/ntest: [<case id> | n/a]
 Changelog: [appended | n/a]
 ```
 
 ## Discuss-before-updating exception
 
-Does **not** apply to enrichment when user asked to **ship/fix** code — brain CHANGELOG is part of shipping. KB-only doc edits never require KG unless they name new orchestration facts.
+Does **not** apply to enrichment when user asked to **ship/fix** code — brain CHANGELOG **and** companion registry/runbook/gaps are part of shipping. KB-only doc edits never require KG unless they name new orchestration facts.

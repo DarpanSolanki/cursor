@@ -1,3 +1,5 @@
+- **2026-07-15** | workspace post-ship knowledge closure for A2+B DFC: GAP-075 RESOLVED, runbook/registry/scenarios/edge/flows + memory `feedback_post_ship_registry_runbook_gap_mandatory.md` + ship-knowledge-gate companion WARN. Code already @ acct `5b1b928ed` / ws `7d22003`.
+
 - **2026-07-15** | accounting-v2 `5b1b928ed` (`mfi_integration_v3.4.2.4`): last-child parent DFC A2 EXTRA-net statement amounts + B force-bill labd txn_ref persist/link (`DeathForeclosureInsuranceWriter`); e2e harness under `scripts/dcf_sanity/group_parent_last_child_dfc_*`.
 - **2026-07-15** | TechOps disbursement guide SHG≠JLG≠INDL accuracy pass: truth matrix + Applies-to callouts; §04=flat INDL/JLG, §05=SHG parent–child (MFT PARENT_SUCCESS vs NEFT note); LAR/reinit/SQL Q3/walker scoped; Desktop↔brain md5 identical (`74f6d3f0`).
 - **2026-07-15** | Synced `cursor-bundle/brain/guides/disbursement-guide.html` from Desktop NEFT-v2-complete guide (3.4.2.4); Desktop kept as authoritative source (md5 `1eecccb3cd3ffa1ac79c5dfd8a65fef4`).

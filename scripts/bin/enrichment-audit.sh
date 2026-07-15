@@ -94,6 +94,40 @@ if [[ -f "$CHANGELOG" && -f "$LAST" ]]; then
   fi
 fi
 
+# Money companion WARN: DeathForeclosure / DCF writer in recent kg-flow without registry/runbook markers
+if [[ -f "$CHANGELOG" ]]; then
+  if python3 - <<'PY'
+import json, re, sys
+from pathlib import Path
+root = Path(".")
+cl = (root / "cursor-bundle/brain/changelog/CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
+m = re.search(r"^## .+?\| kg-flow \|.*?(?=^## |\Z)", cl, re.M | re.S)
+block = m.group(0) if m else ""
+if not any(k in block for k in ("DeathForeclosure", "deathForeclosure", "loanDeathForeclosure", "EXTRA", "labd", "A2")):
+    sys.exit(0)
+reg = json.loads((root / "scripts/testing/registry.json").read_text(encoding="utf-8"))
+note = (reg.get("dcf.group_parent_last_child_e2e") or {}).get("note") or ""
+rb_p = root / "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md"
+rb = rb_p.read_text(encoding="utf-8", errors="replace") if rb_p.is_file() else ""
+miss = []
+if any(k in block for k in ("EXTRA", "labd", "A2", "force-bill")):
+    if not any(k in note for k in ("EXTRA", "labd", "A2")):
+        miss.append("registry note")
+    if "EXTRA" not in rb or "labd" not in rb:
+        miss.append("runbook A2/B")
+if miss:
+    print(",".join(miss))
+    sys.exit(1)
+sys.exit(0)
+PY
+  then
+    ok "DCF companion markers (registry/runbook) when kg-flow is DCF/EXTRA"
+  else
+    warn "money companion incomplete for top DCF kg-flow — registry note + runbook A2/B required (feedback_post_ship_registry_runbook_gap_mandatory.md)"
+    [[ "$PRE_PUSH" -eq 1 ]] && echo "WARN (non-blocking): companion knowledge lag — still pushable but DoD incomplete" >&2
+  fi
+fi
+
 if [[ "$issues" -eq 0 ]]; then
   echo "=== enrichment audit: PASS ==="
 else

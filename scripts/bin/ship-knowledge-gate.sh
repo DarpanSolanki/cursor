@@ -124,6 +124,64 @@ PY
   else
     warn "no recent signal events on learning_bus (OK if kb-only ship)"
   fi
+
+  # Companion knowledge for DCF / DeathForeclosure money ships (WARN — harden DoD)
+  if python3 - <<'PY'
+import json, re, sys
+from pathlib import Path
+root = Path(".")
+cl = (root / "cursor-bundle/brain/changelog/CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
+# Top ~40 lines after first kg-flow header
+m = re.search(r"^## .+?\| kg-flow \|.*?(?=^## |\Z)", cl, re.M | re.S)
+block = (m.group(0) if m else cl[:2000])
+keys = ("DeathForeclosure", "deathForeclosure", "loanDeathForeclosure", "DFC", "EXTRA", "labd", "force-bill", "force_bill")
+if not any(k in block for k in keys):
+    sys.exit(0)
+reg = json.loads((root / "scripts/testing/registry.json").read_text(encoding="utf-8"))
+note = (reg.get("dcf.group_parent_last_child_e2e") or {}).get("note") or ""
+rb = (root / "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md").read_text(encoding="utf-8", errors="replace")
+gaps = (root / ".cursor/gaps-and-risks.md").read_text(encoding="utf-8", errors="replace")
+issues = []
+if "EXTRA" in block or "labd" in block or "force-bill" in block.lower() or "A2" in block:
+    if "EXTRA" not in note and "labd" not in note and "A2" not in note:
+        issues.append("registry dcf.group_parent_last_child_e2e note missing A2 EXTRA / B labd markers")
+    if "EXTRA" not in rb or "labd" not in rb:
+        issues.append("runbook sdcp-10199 missing A2 EXTRA / B labd section")
+    if "GAP-075" not in gaps and "EXTRA-net" not in gaps:
+        issues.append("gaps missing GAP-075 / EXTRA-net RESOLVED row")
+elif "DeathForeclosure" in block or "deathForeclosure" in block or "loanDeathForeclosure" in block:
+    if "dcf.group_parent_last_child_e2e" not in (root / "scripts/testing/registry.json").read_text(encoding="utf-8"):
+        issues.append("DCF kg-flow but registry missing dcf.group_parent_last_child_e2e")
+    if not (root / "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md").is_file():
+        issues.append("DCF kg-flow but sdcp-10199 runbook missing")
+if issues:
+    print("\n".join(issues))
+    sys.exit(1)
+sys.exit(0)
+PY
+  then
+    ok "DCF companion knowledge (registry/runbook/gaps) markers present"
+  else
+    warn "DCF/money companion gap — update registry note + runbook + gaps (see feedback_post_ship_registry_runbook_gap_mandatory.md)"
+    python3 - <<'PY' 2>/dev/null || true
+import json, re
+from pathlib import Path
+root = Path(".")
+cl = (root / "cursor-bundle/brain/changelog/CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
+m = re.search(r"^## .+?\| kg-flow \|.*?(?=^## |\Z)", cl, re.M | re.S)
+block = (m.group(0) if m else cl[:2000])
+reg = json.loads((root / "scripts/testing/registry.json").read_text(encoding="utf-8"))
+note = (reg.get("dcf.group_parent_last_child_e2e") or {}).get("note") or ""
+rb = (root / "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md").read_text(encoding="utf-8", errors="replace")
+gaps = (root / ".cursor/gaps-and-risks.md").read_text(encoding="utf-8", errors="replace")
+for label, ok in [
+    ("registry EXTRA/labd", "EXTRA" in note or "labd" in note or "A2" in note),
+    ("runbook EXTRA+labd", "EXTRA" in rb and "labd" in rb),
+    ("gaps GAP-075", "GAP-075" in gaps or "EXTRA-net" in gaps),
+]:
+    print(f"  companion check {label}: {'OK' if ok else 'MISSING'}")
+PY
+  fi
 elif [[ -f "$ROOT/scripts/testing/sync_engine.py" ]]; then
   stale_n="$(python3 "$ROOT/scripts/testing/sync_engine.py" status 2>/dev/null | grep -c STALE || true)"
   if [[ "${stale_n:-0}" -gt 2 ]]; then

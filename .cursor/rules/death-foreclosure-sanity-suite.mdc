@@ -12,14 +12,16 @@ alwaysApply: false
 
 When user asks to test DCF, death foreclosure GL, or insurance approve batch:
 
-1. Read **`docs/dcf-sanity/PROCESS.md`** (flow from orchestration + writer — not assumed).
-2. Run **`python3 scripts/dcf_sanity.py --preflight`**.
-3. Loan prep: **`scripts/disburse_loan_sanity.py`** (ACTIVE loan + LIFE_INSUR).
-4. UI/batch path: `loanDeathForeclosure` STAGE_1..5 → outbound → inbound CSV → **`deathForeclosureInsuranceJob`**.
-5. Verify: **`python3 scripts/dcf_sanity.py --verify-only --lan <LAN>`** + `scripts/dcf_sanity/dcf_post_approve_verify.sql`.
+1. Confirm accounting branch — **canonical:** `mfi_integration_v3.7.1` (includes 3.4.2.x SDCP-10199). See `.cursor/release-trains.md` + runbook `sdcp-10199-group-parent-last-child-dfc.md`.
+2. Bootstrap: **`bash scripts/dcf_sanity/ensure_dcf_local_stack.sh`** (or rely on e2e wrapper).
+3. Group parent last-child: **`ntest run dcf.group_parent_last_child_e2e`**.
+4. Scenario matrix: **`scripts/dcf_sanity/scenarios.json`** (S01–S10; S08 = SDCP-10199).
+5. Verify SQL: `scripts/dcf_sanity/dcf_post_approve_verify.sql` + `group_dfc_dev_proof.sql`.
 
-**Money path code:** `DeathForeclosureInsuranceWriter.calculateAmountsForTransaction` on branch `sdcp-9301-hotfix-3.3.1.0`.
+**Money path code:** `DeathForeclosureInsuranceWriter` (`loan/deathforeclosure/writer/`) — child `calculateAmountsForTransaction` + parent `doParentPartPrePayment`.
 
-**GL rules:** DB catalogue **22** / Sheet15 `reference_code`s — must match writer bridge.
+**GL rules:** DB catalogue / Sheet `reference_code`s — must match writer bridge (incl. DPI legs on 3.7.1).
 
-**Do not declare PASS** without DB: `loan_status=CLOSED`, closure txn, partitions, zero pending dues, `past_due_days=0`.
+**Do not declare PASS** without DB: `loan_status=CLOSED`, for group parent also `account.status=CLOSED`, closure/RSCH txn, zero pending dues (incl. DPI on 3.7.1), unsettled installments = 0, RSCH payment principal not doubled, **and** (when fixture seeds EXTRA) A2 EXTRA-net parent RSCH + B force-bill labd linked to `DFC_PRTL_BILL_*` (`assert_a2_extra_parent_rsch`, `assert_force_bill_labd` in `group_parent_last_child_dfc_local_e2e.py`). Registry note for `dcf.group_parent_last_child_e2e` must document these asserts.
+
+**Stale:** Do not use branch `sdcp-9301-hotfix-3.3.1.0` as current truth. Do not waive parent PRIN on last-child DFC. Do not ship DCF writer fixes without updating registry + runbook + gaps (see `feedback_post_ship_registry_runbook_gap_mandatory.md`).

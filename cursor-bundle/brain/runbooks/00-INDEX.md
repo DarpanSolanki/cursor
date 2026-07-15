@@ -17,9 +17,14 @@
 | [`tenant-bootstrap.md`](tenant-bootstrap.md) | New tenant onboarding, missing API in routing, schema mismatch |
 | [`webhook-replay.md`](webhook-replay.md) | Replaying a Kafka or HTTP callback safely (idempotency rules) |
 | [`child-foreclosure-with-waiver.md`](child-foreclosure-with-waiver.md) | Child loan foreclosure with principal waiver — duplicate parent-leg postings, waiver propagation gaps, payment_details inconsistency. SDCP-10080. |
+| [`shg-foreclosure-bpi-parent-child-parity.md`](shg-foreclosure-bpi-parent-child-parity.md) | SHG/JLG **parent** foreclosure BPI ≠ sum(children) for any N (SDCP-11058) — independent HALF_UP vs parent distribute. |
 | [`pinpoint-rca-playbook.md`](pinpoint-rca-playbook.md) | **ANY** issue — the general symptom→decision-point→live-data method. Start here when no specific runbook matches. Pairs with `kg why <request>`. |
 | [`charge-amount-shows-zero.md`](charge-amount-shows-zero.md) | A charge/fee/amount renders ₹0.00 or blank on a quote/preview (CBC fee, foreclosure fee, penal) — config-resolution (price-setup mapping `is_deleted`). |
 | [`dcf-local-stack.md`](dcf-local-stack.md) | Local death-foreclosure insurance e2e — kafka, stubs, SQL placeholders, fixture backup/restore, `ntest run dcf.group_parent_last_child_e2e`. |
+| [`sdcp-10199-group-parent-last-child-dfc.md`](sdcp-10199-group-parent-last-child-dfc.md) | SHG/JLG parent last-child DFC — PRIN paid not waived, account.status CLOSED, net_amount=0, **A2 EXTRA-net statement** + **B force-bill labd** (`5b1b928ed`), GAP-074 INT-180 still open. |
+| [`../jira/JIRA-INDEX.md`](../jira/JIRA-INDEX.md) | **Smart JIRA graph** — ticket → domain/api → commits → ntest → reopen symptoms. Machine: [`../jira/jira-flow-graph.json`](../jira/jira-flow-graph.json). |
+| [`mixed-train-matrix.md`](mixed-train-matrix.md) | **Mixed git trains** — DFC on 3.7.1 vs disburse on 3.4.2.2 vs DPI feature; scoped sync + `kg-switch` (never blind all-repo). |
+| [`../workspace/ASK-TRACKER-2026-07-10.md`](../workspace/ASK-TRACKER-2026-07-10.md) | **Ask completeness tracker** (living) — OPEN/BLOCKED must block “done” claims. Twin: `ask-tracker-2026-07-10.json`. |
 
 ## Pinpoint RCA for ANY issue — start here
 

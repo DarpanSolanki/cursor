@@ -68,13 +68,16 @@
         "parent_dpi_pending": 0,
         "all_pending": 0,
         "unsettled_installments": 0,
-        "rsch_payment_principal_not_doubled": true
+        "rsch_payment_principal_not_doubled": true,
+        "a2_extra_parent_rsch_net": true,
+        "b_force_bill_labd_linked": true
       },
       "local_e2e": "ntest run dcf.group_parent_last_child_e2e",
       "fixture_backup": "python3 scripts/dcf_sanity/dcf_fixture_backup.py snapshot|restore 6000137433",
       "canonical_branch": "mfi_integration_v3.7.1",
-      "key_commits": ["e919e3b33", "66e830670", "425472cab", "f45dbe3bd"],
-      "note": "DO NOT waive parent PRIN on last child — pay full parent POS via appropriation + RSCH. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save (avoids 2x principal), overview uses loan_status OR account_status for next EMI. Dead method waiveFutureParentPendingDuesOnLastChildDfc removed on 3.7.1 (was unused and wrong). Phantom PINT: local_setup_dcf_fixture_penal_reconcile.sql"
+      "a2b_fix_branch": "mfi_integration_v3.4.2.4",
+      "key_commits": ["e919e3b33", "66e830670", "425472cab", "f45dbe3bd", "5b1b928ed"],
+      "note": "DO NOT waive parent PRIN on last child — pay full parent POS via appropriation + RSCH. A2 (5b1b928ed): EXTRA>0 → parent RSCH nets EXCESS/EXTRA (not full POS statement). B: force-bill labd txn_ref → DFC_PRTL_BILL_*. e2e asserts assert_a2_extra_parent_rsch + assert_force_bill_labd. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save. GAP-074 INT-180 still open/parked on 3.7.1."
     },
     {
       "id": "S09_reverse_feed_reupload",

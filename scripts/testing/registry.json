@@ -1221,18 +1221,19 @@
       "shg",
       "sdcp-10199"
     ],
-    "title": "SHG group parent last-child DFC e2e (SDCP-10199)",
+    "title": "SHG group parent last-child DFC e2e (SDCP-10199 A2 EXTRA + B labd)",
     "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
     "defaults": {
       "PARENT_LAN": "6000137433",
       "CHILD1_LAN": "6000137440",
       "CHILD2_LAN": "6000137441",
-      "DEATH_DATE": "2025-11-02"
+      "DEATH_DATE": "2025-11-02",
+      "SEED_EXTRA": "1"
     },
     "expect": {
       "status": "PASS"
     },
-    "note": "Synced fixture 6000137433; backup/restore via dcf_fixture_backup.py; penal reconcile SQL if billed>accrued"
+    "note": "Canonical proof: accounting mfi_integration_v3.4.2.4@5b1b928ed (A2+B) + workspace e2e. Asserts A2 EXTRA>0 parent RSCH net (EXCESS_* / EXTRA-net statement vs full POS) + B force-bill labd txn_ref linked to DFC_PRTL_BILL_*; also parent PRIN paid not waived, account.status CLOSED, RSCH principal not doubled. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py (assert_a2_extra_parent_rsch, assert_force_bill_labd). Fixture backup via dcf_fixture_backup.py. GAP-074 INT-180 still open/parked on 3.7.1."
   },
   "disbursement.quick": {
     "type": "flow",
@@ -1263,7 +1264,7 @@
     "tags": [
       "disburse"
     ],
-    "title": "SHG disburseLoan — minimal (member_details[], simulator success)",
+    "title": "SHG disburseLoan \u2014 minimal (member_details[], simulator success)",
     "cmd": "bash scripts/bin/disburse-shg-quick.sh"
   },
   "batch.dpi_calc": {

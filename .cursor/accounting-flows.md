@@ -133,6 +133,7 @@ Trace the full chain with:
 - **GL zeroisation**: Request `glBalanceZeroisation` — **not** the generic `postTransaction` chain; dedicated processors through `createTransactionDetailsProcessor` — `flows/gl_balance_zeroisation_posting.md`.
 - **Reversal / manual JE**: `reverseTransaction`, `postManualJournalEntry`, `reverseManualJournalEntry` — `flows/reversals_manual_journal_transaction_engine.md`.
 - **Insurance pipelines**: `runInbound*` / `inbound*` / `deathForeclosureInsuranceJob` / `bulkSGToDisbursementCancellationJob` / `bulkSGToPostDisbursementInsuranceUpdateJob` (**last has no ledger posting**) — `flows/insurance_inbound_posting.md`.
+  - **SHG/JLG last-child DFC (SDCP-10199):** parent PRIN paid not waived; account+loan CLOSED; `net_amount=0` before payment-details. **A2+B (2026-07-15, `5b1b928ed` on 3.4.2.4):** parent RSCH nets EXTRA/EXCESS (not full POS); force-bill persists/links `loan_account_billing_details` to `DFC_PRTL_BILL_*`. Proof: `ntest run dcf.group_parent_last_child_e2e`. Runbook: `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`. **GAP-074** INT-180 still open.
 
 ---
 

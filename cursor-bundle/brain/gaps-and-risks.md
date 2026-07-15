@@ -1,3 +1,5 @@
+> **Dual-home (2026-07-15):** **SoT = `.cursor/gaps-and-risks.md`**. This brain file is a **mirror** for brain-first agents — keep money-path rows identical. Last money sync: **GAP-075 RESOLVED** (A2 EXTRA-net + B force-bill labd @ `5b1b928ed`); **GAP-074** INT-180 still **OPEN** — parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8`; **do not merge to `mfi_integration_v3.7.1` until discuss**.
+
 # Identified gaps, risks, and inconsistencies (evidenced)
 
 Every item below has **description + file path + line evidence + risk level**. Sources are either **code** or a named `system_brain/edge_cases/*` note plus its backing code.
@@ -1524,3 +1526,8 @@ Fix: Commit `ede4aa325` broadens evidence acceptance to three signals (in order 
 Status: **CLOSED on `mfi_integration_v3.2.8.4.1`** (commit `ede4aa325`).  
 Existing-data remediation: open — for QA3 parent `6009682425` (5-of-10 stuck children), the recovery is a manual UPDATE on `loan_account_events_queue` to drive the affected rows from `NEFT_STAGE_1_SUCCESS` through stage-2; coordinate with QA before running. Code-fix detail in `git show ede4aa325`.  
 Date closed: 2026-05-04
+
+## Synced from .cursor (2026-07-10)
+
+| **GAP-074 — SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)** | **High** (open; parked) | Released trains / `mfi_integration_v3.7.1@f45dbe3bd` still use child `INT_AMT` in `doParentPartPrePayment`; fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to 3.7.1 until QA/prod discuss**; SoT narrative `.cursor/gaps-and-risks.md` GAP-074; runbook `sdcp-10199-group-parent-last-child-dfc.md`; ASK-057 **DEFERRED** | Parent can CLOSE after last-child DFC with residual pending INT (latent 3.4.2.1+); DPI residual risk on 3.7.1. Missed via lucky INT=0 e2e / UI-focused QA. |
+| **RESOLVED (2026-07-15) — GAP-075 A2 EXTRA-net + B force-bill labd** | **Resolved** | SoT `.cursor/gaps-and-risks.md` GAP-075; acct `5b1b928ed`; e2e `dcf.group_parent_last_child_e2e`; runbook `sdcp-10199-group-parent-last-child-dfc.md` | Parent statement full POS vs EXTRA-net; force-bill without labd txn_ref. |
