@@ -1,3 +1,7 @@
+## 2026-07-17 | acct `ff19f0c8c` | TDPQA-72 comment strip (keep labd ORDER BY)
+- Strip TDPQA-72 / A2+B / Accrued explanatory comments in `DeathForeclosureInsuranceWriter` + Repository.
+- **Query not removable:** `findByLoanInstallmentDetailsId` keeps `ORDER BY id DESC LIMIT 1` (dedicated force-bill multi-row labd; no existing list finder for Java pick). Behaviour unchanged; KG SKIP.
+
 ## 2026-07-17 | TDPQA-72 port to mfi_integration_v3.4.2.4
 - accounting `29bd01e8a6`+`dfec1e60f1`: cherry-pick dedicated force-bill labd + Accrued≤Original reconcile onto upstream tip (`5b1b928ed` already present).
 - Files: `DeathForeclosureInsuranceWriter.java`, `LoanAccountBillingDetailsRepository.java` only.
