@@ -5,6 +5,12 @@
 ---
 ## 2026-07-17 | acct `cae54fd9d6` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 dedicated force-bill labd + lapd EXTRA reconcile
 
+## deathForeclosureInsuranceJob,getLoanAccountSummaryDetails
+## 2026-07-17 | acct `a7e6d1d1c4` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 Obs3 Accrued≤Original reconcile
+
+---
+
+
 ## deathForeclosureInsuranceJob
 ## 2026-07-17 | acct `a7e6d1d1c4` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | TDPQA-72 Obs3 Accrued≤Original
 
