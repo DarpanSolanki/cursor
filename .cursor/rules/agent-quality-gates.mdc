@@ -51,8 +51,28 @@ After `kg orient` / `kg why`:
 | Workbook numbers match | Simulation or read-only SQL — say so |
 | LAN xxxxx Pass | Live API/batch on that LAN after deploy/reset |
 | All scenarios Pass | Count matches list; no pending QA-only items in Dev Test |
+| `ORCH_SIBLING_SIM` / `PROCESSOR_MIRROR_SIM` Pass | Registry case with `verify_mode` ran this session; **never** label as full E2E / LAN Pass; cite stage blocker (see `code-backed-simulation-testing.mdc`) |
 
-Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unrelated registry cases (e.g. `dpic.foreclosure_sim` on death-FC-only edits).
+Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unrelated registry cases (e.g. `dpic.foreclosure_sim` on death-FC-only edits). When full money E2E is blocked, use a **code-backed** sim case — not an unrelated disburse smoke fallback.
+
+### Gate D-acceptance — QA acceptance is the bar, not a passing subset (fail-closed)
+
+`cursor-bundle/memory/feedback_qa_acceptance_not_subset_verify.md` (SDCP-10199/TDPQA-72 QA embarrassment 2026-07-17).
+
+**Never claim Pass / RESOLVED / QA-ready when the assert allows the exact QA fail mode.** A test that prints `OK …` / `WARN …` for a state QA rejects is a **FAIL**, not a Pass.
+
+| Anti-pattern (forbidden as Pass) | Required instead |
+|---|---|
+| Assert prints "OK A2 netting" / "allow prin > amount" and passes | `amount == principal`/component, OR delta legs **documented** in product spec + assert checks the named legs |
+| "a labd linked to force-bill exists" | **Dedicated** force-bill labd visibility; EMI-labd hijack (EMI txn_ref overwritten, amounts still EMI) must FAIL |
+| Happy-path only e2e | Add **dirty / pre-existing state** fixture (e.g. pre-existing EMI labd) — production rows are not clean seeds |
+| Parent/product-scope item silently dropped | Must be **Pass** or explicit **Out-of-scope-documented** |
+| "webapp verified" (partial) | Verify the exact screen fields QA cites via **live webapp APIs**: `getLoanAccountSummaryDetails` (`interest_details.accrued/original`), `getLoanAccountOverviewDetails` (`account_number_list`), `getLoanAccountStatement` (`DFC_PRTL_BILL` / RSCH amounts) — see `feedback_webapp_verify_mandatory_ui_ships.md` |
+| SQL-only `ui_fields` as "webapp" | `acceptance_coverage` requires WEBAPP_UI_FIELD_MARKERS on `downstream_ui` |
+
+Subset e2e (loan CLOSED, txn exists) is **not Done** while the acceptance shape QA cites is unproven. Debug-only relax flags (`ACCEPTANCE_STRICT=0`, `ALLOW_A2_NETTING_DISPLAY_DIFF=1`) **never** produce a handoff Pass.
+
+**Machine gate:** `scripts/lib/acceptance_coverage.py` (+ manifest) — enforced domains must declare `acceptance.dimensions` / webapp-marker `ui_fields` on registry cases; wired into `ship_discipline_gate` / `ship-loop-gate`. Subset notes and SQL-only “webapp” fail closed.
 
 ## Gate E — Outputs (RCA / JIRA / release)
 

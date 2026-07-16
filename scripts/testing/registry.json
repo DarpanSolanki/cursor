@@ -1,14 +1,14 @@
 {
-  "_meta": "Registry for ntest. Learnings: cursor-bundle/brain/testing/learnings.jsonl (`ntest learn`). Before tests: kg-ensure-fresh.sh. DPIC demo: ntest run dpic.demo.phase1",
+  "_meta": "Registry for ntest. Flow domains map: scripts/lib/accounting_flow_domains.json. JIRA evidence graph: cursor-bundle/brain/jira/JIRA-INDEX.md (evidence-only). Learnings: cursor-bundle/brain/testing/learnings.jsonl. Before tests: kg-ensure-fresh.sh.",
   "_correlators": {
-    "ACCOUNT_NUMBER": "6004052225",
+    "ACCOUNT_NUMBER": "6004044425",
     "USER_ID": "103",
     "OFFICE_ID": "6",
-    "JOB_TIME": "1781785800000",
-    "LOAN_ACCOUNT_ID": "8098460",
+    "JOB_TIME": "1782563400000",
+    "LOAN_ACCOUNT_ID": "8060160",
     "DEMO_LAN": "6004044425",
     "CUSTOMER_ID": "10002233",
-    "FORECLOSURE_DATE": "1781785800000",
+    "FORECLOSURE_DATE": "1784984400000",
     "FORECLOSURE_LAN": "6000000262",
     "FORECLOSURE_RECEIPT": "412700000001537",
     "FORECLOSURE_AMOUNT": "5324.00",
@@ -1181,15 +1181,25 @@
     "type": "flow",
     "api": "loanDeathForeclosure",
     "smoke_tier": "money",
+    "verify_mode": "processor_mirror_sim",
     "tags": [
       "foreclosure",
       "death",
-      "dcf"
+      "dcf",
+      "death_foreclosure"
     ],
     "title": "DCF GL BLD/UNBLD principal split + SDCP-10494 outstanding simulation",
     "cmd": "bash scripts/dcf_sanity/run_dcf_principal_split_simulation.sh",
     "env": {
       "DCF_SIM_QA3": "1"
+    },
+    "acceptance": {
+      "dimensions": [
+        "adjacent_sibling",
+        "boundary_zero"
+      ],
+      "verify_mode": "processor_mirror_sim",
+      "note": "Writer-order principal split matrix; not a substitute for last-child e2e acceptance."
     },
     "note": "S07/S11/S12/S13 matrix \u2014 writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
   },
@@ -1197,17 +1207,27 @@
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
     "smoke_tier": "service",
+    "verify_mode": "runtime",
     "tags": [
       "foreclosure",
       "death",
       "dcf",
       "insurance",
-      "perf"
+      "perf",
+      "death_foreclosure"
     ],
     "title": "DCF insurance RE_UPLOAD \u2014 index coverage + EXPLAIN audit (read-only DB)",
     "cmd": "bash scripts/dcf_sanity/run_dcf_insurance_reupload_index_audit.sh",
     "env": {
       "DCF_INDEX_AUDIT_DB": "qa4"
+    },
+    "acceptance": {
+      "dimensions": [
+        "partial_failure"
+      ],
+      "verify_mode": "runtime",
+      "na": {},
+      "note": "Index/EXPLAIN audit for RE_UPLOAD claim path; ops partial-failure surface."
     },
     "note": "Profiles claimForReUpload, reader filter, lookup by death_foreclosure_details_id; WARN ok at small scale"
   },
@@ -1215,6 +1235,7 @@
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
     "smoke_tier": "money",
+    "verify_mode": "runtime",
     "tags": [
       "dcf",
       "death_foreclosure",
@@ -1228,12 +1249,45 @@
       "CHILD1_LAN": "6000137440",
       "CHILD2_LAN": "6000137441",
       "DEATH_DATE": "2025-11-02",
-      "SEED_EXTRA": "1"
+      "SEED_EXTRA": "1",
+      "DCF_SEED_EMI_LABD": "1",
+      "ACCEPTANCE_STRICT": "1"
     },
     "expect": {
       "status": "PASS"
     },
-    "note": "Canonical proof: accounting mfi_integration_v3.4.2.4@5b1b928ed (A2+B) + workspace e2e. Asserts A2 EXTRA>0 parent RSCH net (EXCESS_* / EXTRA-net statement vs full POS) + B force-bill labd txn_ref linked to DFC_PRTL_BILL_*; also parent PRIN paid not waived, account.status CLOSED, RSCH principal not doubled. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py (assert_a2_extra_parent_rsch, assert_force_bill_labd). Fixture backup via dcf_fixture_backup.py. GAP-074 INT-180 still open/parked on 3.7.1."
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "boundary_zero",
+        "dirty_state",
+        "downstream_ui",
+        "adjacent_sibling"
+      ],
+      "verify_mode": "runtime",
+      "ui_fields": [
+        "getLoanAccountSummaryDetails",
+        "interest_details.accrued_amount",
+        "interest_details.original_amount",
+        "getLoanAccountOverviewDetails",
+        "account_overview_list",
+        "getLoanAccountStatement",
+        "DFC_PRTL_BILL",
+        "transaction_master.original_amount",
+        "loan_account_payments_details.principal_amount",
+        "loan_account_payments_details.excess_amount",
+        "loan_account_billing_details.transaction_reference_number",
+        "loan_account_billing_details.interest_amount",
+        "account.status"
+      ],
+      "ui_asserted": true,
+      "webapp_required": true,
+      "na": {
+        "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same DFC_PRTL_BILL ref no-op). Blocker: no second insurance-job fire harness without claim reset."
+      },
+      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; fails on EMI-labd hijack and amount!=principal."
+    },
+    "note": "QA acceptance (TDPQA-72/SDCP-10199): ACCEPTANCE_STRICT=1 default. Obs1 dedicated force-bill labd (no EMI hijack); Obs1b parent FB Out-of-scope (child-only); Obs2 amount==principal/excess; Obs3 Accrued<=Original (reconcileAccruedInterestToBilledOriginal). Webapp-bound: getLoanAccountSummaryDetails interest_details, getLoanAccountOverviewDetails account_number_list, getLoanAccountStatement DFC_PRTL_BILL. Fixture: equivalent local product-70 SHG (QA LAN full clone blocked) + DCF_SEED_EMI_LABD=1 + EXTRA. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. GAP-075."
   },
   "disbursement.quick": {
     "type": "flow",
@@ -1266,6 +1320,36 @@
     ],
     "title": "SHG disburseLoan \u2014 minimal (member_details[], simulator success)",
     "cmd": "bash scripts/bin/disburse-shg-quick.sh"
+  },
+  "disbursement.child_sanction_date_sim": {
+    "type": "flow",
+    "api": "childLoanDisbursement",
+    "apis": [
+      "childLoanDisbursement",
+      "createOrUpdateLoanAccount"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "disburse",
+      "shg",
+      "simulation"
+    ],
+    "title": "SDCP-11085 \u2014 SHG child sanction_date copy on CLB populator",
+    "cmd": "python3 scripts/testing/disbursement/sdcp11085_child_sanction_date_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator puts sanction_date member-first then parent EC; CreateLoanAccountProcessor persists millis; flatten reaches EC. Existing null children need ops re-book/replay. INDL missing stamp is LOS-side \u2014 not invented here."
+  },
+  "disbursement.indl": {
+    "type": "flow",
+    "api": "disburseLoan",
+    "quick": true,
+    "smoke_tier": "money",
+    "tags": [
+      "disburse"
+    ],
+    "title": "INDL disburseLoan \u2014 minimal (flat payload, NEFT, simulator success)",
+    "cmd": "bash scripts/bin/disburse-indl-quick.sh"
   },
   "batch.dpi_calc": {
     "type": "batch",
@@ -1498,6 +1582,39 @@
     ],
     "title": "individualChildLoanForeclosure APPROVE REAL \u2014 simulation-built payload (UpdateDueDetails DPI path)",
     "cmd": "bash scripts/testing/foreclosure/individual-child-foreclosure-e2e.sh"
+  },
+  "foreclosure.shg_bpi_parity": {
+    "type": "flow",
+    "api": "loanPrepayment",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "tags": [
+      "foreclosure",
+      "shg",
+      "bpi"
+    ],
+    "title": "SDCP-11058 SHG parent FC BPI parity \u2014 sum(child.bpi)==parent.bpi for any N",
+    "cmd": "UNIT_ONLY=1 bash scripts/testing/foreclosure/sdcp-11058-shg-bpi-parity.sh",
+    "note": "Unit: getDistributedAmountEqually mirror for N=1..20 (incl N=3). Full FC: omit UNIT_ONLY; REQUIRE_FULL_E2E=1 to hard-fail. Assert is sum(child.bpi)==parent.bpi for any N (not 39+39)."
+  },
+  "reopening.child_payments_parity_sim": {
+    "type": "flow",
+    "api": "childLoanReopening",
+    "apis": [
+      "loanAccountReopening",
+      "childLoanReopening"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "orch_sibling_sim",
+    "tags": [
+      "reopening",
+      "shg",
+      "simulation"
+    ],
+    "title": "TDPQA-102 \u2014 child reopen orch/processor parity for loan payment components",
+    "cmd": "python3 scripts/testing/reopening/tdpqa102_child_reopen_payments_sim.py",
+    "note": "Code-backed ORCH_SIBLING_SIM + PROCESSOR_MIRROR_SIM (not live SHG reopen E2E). Upgrade to reopening.child_e2e when foreclosed parent+child + events batch fixture exists. Proves childLoanReopening includes loanAccountPaymentsDetailsReversalProcessor parity with parent approve path."
   },
   "workspace.doctor": {
     "type": "flow",

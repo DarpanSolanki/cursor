@@ -1,65 +1,115 @@
 {
-  "description": "Death foreclosure scenario matrix — metadata for local UAT. Each scenario needs a prepared loan (see docs/dcf-sanity/PROCESS.md).",
+  "description": "Death foreclosure scenario matrix \u2014 metadata for local UAT. Each scenario needs a prepared loan (see docs/dcf-sanity/PROCESS.md).",
   "prerequisites": {
     "accounting_health": "http://localhost:8002/accounting/actuator/health",
-    "db": { "host": "localhost", "port": 5433, "database": "yugabyte", "schema": "mfi_accounting" },
+    "db": {
+      "host": "localhost",
+      "port": 5433,
+      "database": "yugabyte",
+      "schema": "mfi_accounting"
+    },
     "branch": "mfi_integration_v3.7.1",
-    "also_contains_fixes_from": ["mfi_integration_v3.4.2.1", "mfi_integration_v3.4.2.2", "mfi_integration_v3.4.2.3", "mfi_release_v3.6.1"],
+    "also_contains_fixes_from": [
+      "mfi_integration_v3.4.2.1",
+      "mfi_integration_v3.4.2.2",
+      "mfi_integration_v3.4.2.3",
+      "mfi_release_v3.6.1"
+    ],
     "rules_catalogue": 22,
-    "transaction_types": ["DEATH_FORECLOSURE", "BILLING", "RSCH_DEATH_FORECLOSURE"],
+    "transaction_types": [
+      "DEATH_FORECLOSURE",
+      "BILLING",
+      "RSCH_DEATH_FORECLOSURE"
+    ],
     "note": "As of 2026-07-10 merge f45dbe3bd: all SDCP-10199 commits from 3.4.2.x are ancestors of 3.7.1; 3.7.1 also has DPI legs on DFC."
   },
   "scenarios": [
     {
       "id": "S01_on_time",
-      "label": "All EMIs on time — future INT waived, insurance settles remainder",
+      "label": "All EMIs on time \u2014 future INT waived, insurance settles remainder",
       "loan_prep": "disburse + repay all EMIs till before death cycle",
       "death_timing": "mid-cycle or after last paid EMI",
-      "expected_gl": ["BLD_PRIN_AMT", "UNBLD_PRIN_AMT", "BLD_INT_AMT", "BLD_INT_WAIVED_AMT"],
-      "expected_db": { "loan_status": "CLOSED", "past_due_days": 0 }
+      "expected_gl": [
+        "BLD_PRIN_AMT",
+        "UNBLD_PRIN_AMT",
+        "BLD_INT_AMT",
+        "BLD_INT_WAIVED_AMT"
+      ],
+      "expected_db": {
+        "loan_status": "CLOSED",
+        "past_due_days": 0
+      }
     },
     {
       "id": "S02_overdue",
-      "label": "Overdue PRIN/INT at death — overdue in buckets first",
+      "label": "Overdue PRIN/INT at death \u2014 overdue in buckets first",
       "loan_prep": "disburse, skip >=1 EMI",
-      "expected_gl": ["BLD_PRIN_AMT", "BLD_INT_AMT", "UNBLD_PRIN_AMT"],
-      "expected_db": { "loan_status": "CLOSED", "pending_dues": 0 }
+      "expected_gl": [
+        "BLD_PRIN_AMT",
+        "BLD_INT_AMT",
+        "UNBLD_PRIN_AMT"
+      ],
+      "expected_db": {
+        "loan_status": "CLOSED",
+        "pending_dues": 0
+      }
     },
     {
       "id": "S03_mid_cycle_not_billed",
-      "label": "Death mid EMI, cycle not billed — force BILLING + partial split",
+      "label": "Death mid EMI, cycle not billed \u2014 force BILLING + partial split",
       "loan_prep": "death before billing job on current installment",
-      "expected_txn_types": ["BILLING", "DEATH_FORECLOSURE"],
-      "expected_gl": ["BLD_INT_AMT", "BLD_INT_WAIVED_AMT"]
+      "expected_txn_types": [
+        "BILLING",
+        "DEATH_FORECLOSURE"
+      ],
+      "expected_gl": [
+        "BLD_INT_AMT",
+        "BLD_INT_WAIVED_AMT"
+      ]
     },
     {
       "id": "S04_mid_cycle_billed",
-      "label": "Death mid EMI, cycle already billed — recovered from INT row",
+      "label": "Death mid EMI, cycle already billed \u2014 recovered from INT row",
       "loan_prep": "run billing through death installment before DFC approve",
-      "expected_gl": ["BLD_INT_AMT"],
+      "expected_gl": [
+        "BLD_INT_AMT"
+      ],
       "regression": "dcf_recovered_partial_cycle settles INT row (commit 6dc5c3e44)"
     },
     {
       "id": "S05_overpaid_int",
-      "label": "Customer overpaid interest — EXCESS_INCOME_INT_AMT, lower UNBLD_PRIN",
-      "expected_gl": ["EXCESS_INCOME_INT_AMT", "EXCESS_ACCOUNT_INC_AMT", "UNBLD_PRIN_AMT"]
+      "label": "Customer overpaid interest \u2014 EXCESS_INCOME_INT_AMT, lower UNBLD_PRIN",
+      "expected_gl": [
+        "EXCESS_INCOME_INT_AMT",
+        "EXCESS_ACCOUNT_INC_AMT",
+        "UNBLD_PRIN_AMT"
+      ]
     },
     {
       "id": "S06_overpaid_penal_fee",
-      "label": "Overpaid penal/fee — EXCESS_PINT_AMT / EXCESS_CBC_FEE_AMT",
-      "expected_gl": ["EXCESS_PINT_AMT", "EXCESS_CBC_FEE_AMT"]
+      "label": "Overpaid penal/fee \u2014 EXCESS_PINT_AMT / EXCESS_CBC_FEE_AMT",
+      "expected_gl": [
+        "EXCESS_PINT_AMT",
+        "EXCESS_CBC_FEE_AMT"
+      ]
     },
     {
       "id": "S07_billed_unbilled_prin",
-      "label": "Split principal — BLD_PRIN to billed GL, UNBLD_PRIN to loan GL",
-      "expected_gl": ["BLD_PRIN_AMT", "UNBLD_PRIN_AMT"],
+      "label": "Split principal \u2014 BLD_PRIN to billed GL, UNBLD_PRIN to loan GL",
+      "expected_gl": [
+        "BLD_PRIN_AMT",
+        "UNBLD_PRIN_AMT"
+      ],
       "verify_sql": "unpaid_billed_prin block in dcf_post_approve_verify.sql"
     },
     {
       "id": "S08_shg_parent_last_child",
-      "label": "SHG/JLG group — child DEATH_FORECLOSURE + parent RSCH on last child (SDCP-10199)",
+      "label": "SHG/JLG group \u2014 child DEATH_FORECLOSURE + parent RSCH on last child (SDCP-10199)",
       "loan_prep": "product-70 parent + 2 insured ACTIVE children; penal billed must match penal_interest_accrual_details",
-      "expected_txn_types": ["DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE"],
+      "expected_txn_types": [
+        "DEATH_FORECLOSURE",
+        "RSCH_DEATH_FORECLOSURE"
+      ],
       "expected_db": {
         "parent_loan_status": "CLOSED",
         "parent_account_status": "CLOSED",
@@ -76,26 +126,32 @@
       "fixture_backup": "python3 scripts/dcf_sanity/dcf_fixture_backup.py snapshot|restore 6000137433",
       "canonical_branch": "mfi_integration_v3.7.1",
       "a2b_fix_branch": "mfi_integration_v3.4.2.4",
-      "key_commits": ["e919e3b33", "66e830670", "425472cab", "f45dbe3bd", "5b1b928ed"],
-      "note": "DO NOT waive parent PRIN on last child — pay full parent POS via appropriation + RSCH. A2 (5b1b928ed): EXTRA>0 → parent RSCH nets EXCESS/EXTRA (not full POS statement). B: force-bill labd txn_ref → DFC_PRTL_BILL_*. e2e asserts assert_a2_extra_parent_rsch + assert_force_bill_labd. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save. GAP-074 INT-180 still open/parked on 3.7.1."
+      "key_commits": [
+        "e919e3b33",
+        "66e830670",
+        "425472cab",
+        "f45dbe3bd",
+        "5b1b928ed"
+      ],
+      "note": "DO NOT waive parent PRIN on last child \u2014 pay full parent POS via appropriation + RSCH. A2 (5b1b928ed): EXTRA>0 \u2192 parent RSCH nets EXCESS/EXTRA (not full POS statement). B: force-bill labd txn_ref \u2192 DFC_PRTL_BILL_*. e2e asserts assert_a2_extra_parent_rsch + assert_force_bill_labd. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save. GAP-074 INT-180 still open/parked on 3.7.1. | Obs3 Accrued<=Original + webapp summary/overview/statement (2026-07-17)."
     },
     {
       "id": "S09_reverse_feed_reupload",
-      "label": "Pending for FR — RE_UPLOAD, no GL",
+      "label": "Pending for FR \u2014 RE_UPLOAD, no GL",
       "inbound_claim_status": "Pending for FR",
       "expected_writer_action": "RE_UPLOAD",
       "expected_gl": false
     },
     {
       "id": "S10_amount_mismatch",
-      "label": "Claim Closed but wrong outstanding — batch rejects APPROVE",
+      "label": "Claim Closed but wrong outstanding \u2014 batch rejects APPROVE",
       "inbound_claim_status": "Claim Closed",
       "tamper": "outstanding_loan_balance mismatch",
       "expected_writer_action": "RE_UPLOAD"
     },
     {
       "id": "S11_death_on_due_paid_emi",
-      "label": "Death on installment due date, EMI fully paid incl. PINT — penal credit reduces outstanding",
+      "label": "Death on installment due date, EMI fully paid incl. PINT \u2014 penal credit reduces outstanding",
       "loan_prep": "disburse + repay through death-cycle EMI on due date",
       "death_timing": "date_of_death = installment due_date, PRIN+INT+PINT settled",
       "expected_outstanding": "future_prin - extra_int - death_cycle_pint_paid (LAN 6007564726: 5158)",
@@ -105,13 +161,13 @@
     },
     {
       "id": "S12_death_on_due_unpaid_emi",
-      "label": "Death on due date, EMI unpaid — no death-cycle penal/fee credit",
+      "label": "Death on due date, EMI unpaid \u2014 no death-cycle penal/fee credit",
       "loan_prep": "death on installment due date without repayment",
       "expected": "death_cycle penal/fee credit = 0; outstanding includes unpaid cycle components"
     },
     {
       "id": "S13_reporting_after_death",
-      "label": "Reporting date after death — billing sync capped at death for claim; GL split after reporting sync",
+      "label": "Reporting date after death \u2014 billing sync capped at death for claim; GL split after reporting sync",
       "loan_prep": "death mid-cycle; reporting created_on weeks later",
       "expected": "claim outstanding matches death-date snapshot; GL BLD_PRIN uses billing through reporting before split (LAN 6005077725)",
       "verify_cmd": "bash scripts/dcf_sanity/run_dcf_principal_split_simulation.sh",
@@ -125,7 +181,7 @@
     },
     {
       "id": "S15_int_waived_pre_death",
-      "label": "Pre-death INT waived rows — owed side uses due minus waived",
+      "label": "Pre-death INT waived rows \u2014 owed side uses due minus waived",
       "expected": "outstanding not inflated by waived INT obligation",
       "regression": "calculateExtraInterestAmountPaid waived alignment"
     }

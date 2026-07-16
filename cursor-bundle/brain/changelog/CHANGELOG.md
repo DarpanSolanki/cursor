@@ -3,7 +3,37 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
+## 2026-07-17 | acct `cae54fd9d6` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 dedicated force-bill labd + lapd EXTRA reconcile
+
+## deathForeclosureInsuranceJob
+## 2026-07-17 | acct `a7e6d1d1c4` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | TDPQA-72 Obs3 Accrued≤Original
+
+---
+
+persistForceBillBillingDetails INSERT (no EMI txn_ref hijack); last-child lapd principal=A2-netted POS excess=claimOverpayment; labd finder LIMIT 1; e2e ACCEPTANCE_STRICT+DCF_SEED_EMI_LABD; GAP-075 | kg-flow | loanDeathForeclosure deathForeclosureInsuranceJob loan_account_billing_details loan_account_payments_details
+
 ## 2026-07-15 | workspace | Synced disbursement-guide.html (NEFT v2 / 3.4.2.4) from Desktop
+
+## createLoanAccount
+## 2026-07-15 | acct `59e9686a80` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | SDCP-11085 SHG child sanction_date on CLB
+
+ChildLoanBookingEventsQueueDataPopulator copies member-then-parent sanction_date into child loan_details on CLB; forward traffic only. VERIFY: disbursement.child_sanction_date_sim PROCESSOR_MIRROR_SIM PASS. INDL null LOS-owned (updateLoanAppStatus never setSanctionDate). Stock SHG children need ops backfill from parent. | kg-flow | createLoanAccount | childLoanEventProcessingBatchJob
+
+
+---
+
+
+## childLoanForeclosure
+## 2026-07-15 | acct `dadb354cd5` | accounting-v2 | mfi_integration_v3.4.2.4 | SDCP-11058 re-land BPI parent distribute
+
+---
+
+
+## childLoanReopening
+## 2026-07-15 | acct `163201d86` | accounting-v2 | mfi_integration_v3.4.2.4 | TDPQA-102 child reopen payment components
+
+---
+
 
 ## 2026-07-15 | acct `5b1b928ed` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | last-child DFC A2 EXTRA-net + B force-bill labd
 loanDeathForeclosure | kg-flow | DeathForeclosureInsuranceWriter: last-child parent POS/net/gross/TRANSACTION_AMOUNT/UNBLD_PRIN net EXTRA+overpaid penal/fee to match child claim; forceBillPartialCycleInterest persists/links labd txn_ref after postTransaction

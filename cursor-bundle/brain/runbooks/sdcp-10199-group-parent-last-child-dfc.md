@@ -1,19 +1,55 @@
 # SDCP-10199 — SHG/JLG parent last-child death foreclosure
 
 **Canonical branch (closure series):** `mfi_integration_v3.7.1` @ merge `f45dbe3bd`  
-**A2+B statement/labd (2026-07-15):** `mfi_integration_v3.4.2.4` @ `5b1b928ed` (`DeathForeclosureInsuranceWriter`)  
-**Also present on:** `mfi_integration_v3.4.2.1` / `.2` / `.3` (tips are ancestors of 3.7.1 for closure series)  
+**A2+B statement/labd (2026-07-15):** `mfi_integration_v3.4.2.4` @ `5b1b928ed`  
+**TDPQA-72 QA acceptance (2026-07-17):** dedicated force-bill labd (no EMI hijack) + lapd principal=EXTRA-net + excess — branch `feature/tdpqa72-dfc-acceptance-labd-lapd` (see GAP-075)  
 **Writer:** `DeathForeclosureInsuranceWriter.doParentPartPrePayment` + force-bill + last-child RSCH amount bridge  
-**Local proof:** `ntest run dcf.group_parent_last_child_e2e` (must assert **A2 EXTRA + B labd**)
+**Local proof:** `DCF_SEED_EMI_LABD=1 ACCEPTANCE_STRICT=1 ntest run dcf.group_parent_last_child_e2e`
 
-## A2 + B (RESOLVED 2026-07-15 — Vikram/Srikant obs)
+## TDPQA-72 acceptance contract (fail-closed)
 
-| Issue | Symptom | Fix @ `5b1b928ed` | Retest |
-|-------|---------|-------------------|--------|
-| **A2** | Parent last-child RSCH / statement used **full POS** (TRANSACTION_AMOUNT / UNBLD_PRIN / net) instead of **EXTRA-net** (claim overpayment EXCESS_* + overpaid penal/fee) → parent/child amount mismatch on statement | Last-child parent POS/net/gross/TRANSACTION_AMOUNT/UNBLD_PRIN net **EXTRA + overpaid penal/fee** to match child claim | Seed EXTRA>0 via child `loanRepayment` before DFC; `assert_a2_extra_parent_rsch` |
-| **B** | Force-bill partial-cycle interest posted but **labd** missing or **txn_ref** not linked to `DFC_PRTL_BILL_*` | `forceBillPartialCycleInterest` persists/links labd after `postTransaction` | `assert_force_bill_labd` on death children |
+| Obs | QA fail mode | Permanent write-path fix | Assert |
+|-----|--------------|--------------------------|--------|
+| **Obs1** | EMI labd `txn_ref` overwritten to `DFC_PRTL_BILL_*` while amounts stay EMI | INSERT dedicated force-bill labd; leave EMI row untouched | `assert_force_bill_labd` + EMI_LABD_FIXTURE preserved + **statement** `DFC_PRTL_BILL` |
+| **Obs2** | `tm.original_amount` ≠ `lapd.principal_amount` (e.g. 11550 vs 11605) | Before save: principal=A2-netted POS, excess=claimOverpayment, net_amount=0 | `principal > txn_amt` → FAIL under `ACCEPTANCE_STRICT` |
+| **Obs3** | Parent Accrued > Original on summary | `reconcileAccruedInterestToBilledOriginal` (zero IAD past last billed INT) | SQL `assert_accrued_le_original` + webapp summary `interest_details` |
+| Parent FB | Invented parent force-bill labd | **Out of scope** — child-only `DFC_PRTL_BILL`; parent `RSCH_DEATH_FORECLOSURE` | `assert_parent_force_bill_out_of_scope` + parent statement no `DFC_PRTL` |
 
-SoT gap row: `.cursor/gaps-and-risks.md` **GAP-075 RESOLVED**. Registry: `dcf.group_parent_last_child_e2e`.
+**Webapp (mandatory on UI-impacting ships):** `assert_webapp_bound_apis` fires `getLoanAccountSummaryDetails`, `getLoanAccountOverviewDetails` (`account_number_list`), `getLoanAccountStatement`. See `feedback_webapp_verify_mandatory_ui_ships.md`.
+
+**Prevention checklist (agents):** never print `OK A2 netting` and Pass; never claim webapp verified without `acceptance.ui_fields` webapp markers; never mark GAP RESOLVED while registry note encodes weaker acceptance. Workspace gate: `scripts/lib/acceptance_coverage.py`.
+
+## Fixture method (Vikram QA4 shape)
+
+| Approach | Status |
+|----------|--------|
+| Full QA→local clone of 6011375325 / 5655 / 5656 | **Blocked** — no multi-table QA LAN import pack for this ticket |
+| **Equivalent local product-70 SHG** auto-discover + non-last DFC (parent RSCH) + last DFC + `DCF_SEED_EMI_LABD=1` + EXTRA | **Used** — same Accrued orphan / EMI dirty / EXTRA acceptance class |
+
+## DFC scenario matrix (code-backed)
+
+| Scenario | Entry | Writer/path | Expected | Verify mode | Suite |
+|----------|-------|-------------|----------|-------------|-------|
+| SHG non-last child DFC | `deathForeclosureInsuranceJob` | child DFC + parent RSCH/reschedule | child CLOSED; parent ACTIVE; child force-bill labd | RUNTIME (same e2e child1) | `dcf.group_parent_last_child_e2e` |
+| SHG last-child DFC + EXTRA>0 | same | last-child A2 net + lapd reconcile | parent CLOSED; amount≈principal; excess set; EMI+FB labd | RUNTIME_VERIFIED | same + `DCF_SEED_EMI_LABD=1` |
+| Dirty EMI labd pre-exists | same | `persistForceBillBillingDetails` INSERT | EMI fixture ref preserved + dedicated FB labd | RUNTIME_VERIFIED | `DCF_SEED_EMI_LABD=1` |
+| EXTRA=0 last child | same | A2 path with 0 overpayment | principal=POS; excess=0; Accrued≤Original; webapp | RUNTIME | `SEED_EXTRA=0 ntest run dcf.group_parent_last_child_e2e` |
+| Webapp summary/overview/statement | same | no writer change | Accrued≤Original; FB on statement; overview SUCCESS | RUNTIME_VERIFIED | `assert_webapp_bound_apis` |
+| Standalone individual DFC | `loanDeathForeclosure` | no parent RSCH | child force-bill labd only | PROCESSOR_MIRROR / extend later | `dcf.principal_split_sim` adjacent |
+| GL principal split | writer model | BLD/UNBLD | sim matrix | PROCESSOR_MIRROR_SIM | `dcf.principal_split_sim` |
+| Replay force-bill labd | writer | same `DFC_PRTL_BILL` ref | no duplicate / no EMI hijack | N/A evidence in writer + registry `acceptance.na` | — |
+| Parent force-bill labd | — | — | **not required** (no parent FB txn) | N/A product | — |
+
+## A2 + B (RESOLVED 2026-07-15 — Vikram/Srikant obs; acceptance hardened 2026-07-17)
+
+| Issue | Symptom | Fix | Retest |
+|-------|---------|-----|--------|
+| **A2** | Parent last-child RSCH used **full POS** | EXTRA-net TRANSACTION_AMOUNT / UNBLD | Seed EXTRA>0; `assert_a2_extra_parent_rsch` |
+| **B** | Force-bill without labd link | Persist labd after post | `assert_force_bill_labd` |
+| **Obs1** | EMI hijack | INSERT dedicated FB labd | `DCF_SEED_EMI_LABD=1` |
+| **Obs2** | amount≠principal | lapd principal=netted + excess | `ACCEPTANCE_STRICT=1` |
+
+SoT: `.cursor/gaps-and-risks.md` **GAP-075**. Registry: `dcf.group_parent_last_child_e2e`.
 
 ## GAP-074 / INT-180 (open — deferred ship)
 
@@ -38,11 +74,11 @@ Parent can CLOSE after last-child DFC with residual pending INT (DPI on 3.7.1) w
 3. **Schedule reduction (non-last / shared formula inputs)** — `futurePrincipal − getUnpaidFutureBilledPrincipalForDeathForeClosure` (not all billed).
 4. **EC shadowing** — `putLocal(LOAN_ACCOUNT_ENTITY, parent)` before parent appropriation / due updates.
 5. **`upsertAdditionalAmount`** — replace UNBLD/BLD PRIN (+ BLD_INT / billed DPI) legs; do not append duplicates.
-6. **Before `saveLoanAccountPaymentsDetails` on last child** — `net_amount = "0"` (that saver does `net + principal`; both were full POS → 2× statement principal).
+6. **Before `saveLoanAccountPaymentsDetails` on last child** — `net_amount = "0"`; set `principal_amount` to **A2-netted POS** and `excess_amount` to claim overpayment (do not leave principal at full POS — TDPQA-72 Obs2).
 7. **`finalizeParentClosureOnLastChildDfc`** — asset classification **while still open**, then `loan_status=CLOSED` **and** `account.status=CLOSED` + closing dates.
 8. **Overview next EMI** — `GetLoanAccountInstallmentDetailsProcessor` treats CLOSED if `loan_status` **or** `account_status` is CLOSED.
 9. **A2 EXTRA-net** — when child claim has EXTRA / EXCESS_INCOME_INT (overpayment), parent last-child RSCH amounts must **net** that down (not book full POS as TRANSACTION_AMOUNT).
-10. **B force-bill labd** — partial-cycle force-bill must leave `loan_account_billing_details` with `transaction_reference_number` tied to the billing txn (`DFC_PRTL_BILL_*`).
+10. **B / Obs1 force-bill labd** — dedicated labd for `DFC_PRTL_BILL_*` (principal=0, interest=force-bill). **Never** overwrite an existing EMI labd `txn_ref`. Multi-row per installment is schema-valid; finder uses `ORDER BY id DESC LIMIT 1`.
 
 ## Anti-patterns (stale / wrong)
 

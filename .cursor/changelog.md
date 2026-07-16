@@ -1,5 +1,19 @@
+## 2026-07-17 | acct `a7e6d1d1c4` | TDPQA-72 Obs3 Accrued≤Original + webapp gate
+`DeathForeclosureInsuranceWriter.reconcileAccruedInterestToBilledOriginal` (zero IAD past billed INT + trim Accrued excess to getBilledInterestAmount). E2e `assert_accrued_le_original` + `assert_webapp_bound_apis`. Acceptance coverage WEBAPP_UI_FIELD_MARKERS. Memory: feedback_tdpqa72_obs3_accrued_original, feedback_webapp_verify_mandatory_ui_ships. GAP-075 Obs3. Fixture: equivalent local product-70 (QA LAN clone blocked).
+
+## 2026-07-17 | TDPQA-72 / GAP-075 QA acceptance (Obs1+Obs2)
+- accounting `cae54fd9d6`: dedicated DFC force-bill labd (no EMI hijack) + last-child lapd principal=EXTRA-net + excess; workspace acceptance_coverage gate + strict e2e. Evidence: parent 6000023640 RSCH amount=principal=7654 excess=333; EMI_LABD_FIXTURE preserved + FB labd interest=27 on same installment.
+
+- **2026-07-16** | JIRA enrich fast path: `jira-fix-adf.py pack`, `jira-enrich.sh` (venv + cached OAuth), token cache in REST helper; SKILL fast-path — skip field-meta API and multi-subprocess ADF chain.
+- **2026-07-15** | GitHub org/repo rename hygiene: canonical map `scripts/lib/github_repo_map.{sh,py}` (`trusttai` + `trustt-*`); sync scripts set origin/upstream from map (was wrongly using local `novopay-*` folder for forks); docs/hooks/memory/rules updated; `python3 scripts/lib/github_repo_map.py verify` → 20/20 OK.
+- **2026-07-15** | jira-fix-update: TDPQA handoff comment now **requires AITDP** (Yes + % + remarks) via `handoff_comment`; posted handoff on [TDPQA-72](https://novopay.atlassian.net/browse/TDPQA-72) (comment `388281`) and refreshed AITDP on TDPQA-102 (`388253`).
+- **2026-07-15** | jira-fix-update: TDPQA `comment_handoff` — RCA/Impact/Dev go in one structured comment (`handoff_comment` + `owners_tdpqa`); no companion SDCP for missing fields. Memory `feedback_jira_tdpqa_comment_handoff.md`.
+- **2026-07-15** | TDPQA-102 pushed | accounting-v2 `163201d86` on `mfi_integration_v3.4.2.4` — child SHG reopen payment components parity; sim `reopening.child_payments_parity_sim` PASS.
 - **2026-07-15** | workspace post-ship knowledge closure for A2+B DFC: GAP-075 RESOLVED, runbook/registry/scenarios/edge/flows + memory `feedback_post_ship_registry_runbook_gap_mandatory.md` + ship-knowledge-gate companion WARN. Code already @ acct `5b1b928ed` / ws `7d22003`.
 
+- **2026-07-15** | workspace once-and-for-all: `ship_discipline_gate.py` fail-closed (minimal/hot-path/verify_mode/KG/assumptions); path-absolute smoke+enrichment; `workspace-contract.mdc`; restore `super-agent corroborate`; max-pass self-heals enrichment-sync. Memory `feedback_workspace_once_and_for_all.md`.
+- **2026-07-15** | workspace: code-backed simulation testing rule + platform suite — prefer realtime; if stage blocked use orch sibling / processor mirror (`orch_sibling_parity.py`); registry `reopening.child_payments_parity_sim` (TDPQA-102); domain `reopening` in accounting_flow_domains.
+- **2026-07-15** | accounting-v2 `group_mfi_orc.xml` (`mfi_integration_v3.4.2.4`): TDPQA-102 — `childLoanReopening` now runs `initiateClosureTaxReversalProcessor` + `loanAccountPaymentsDetailsReversalProcessor` (parity with parent `loanAccountReopening` approve path) so child reopen reversal txn gets `loan_account_payments_details` component rows.
 - **2026-07-15** | accounting-v2 `5b1b928ed` (`mfi_integration_v3.4.2.4`): last-child parent DFC A2 EXTRA-net statement amounts + B force-bill labd txn_ref persist/link (`DeathForeclosureInsuranceWriter`); e2e harness under `scripts/dcf_sanity/group_parent_last_child_dfc_*`.
 - **2026-07-15** | TechOps disbursement guide SHG≠JLG≠INDL accuracy pass: truth matrix + Applies-to callouts; §04=flat INDL/JLG, §05=SHG parent–child (MFT PARENT_SUCCESS vs NEFT note); LAR/reinit/SQL Q3/walker scoped; Desktop↔brain md5 identical (`74f6d3f0`).
 - **2026-07-15** | Synced `cursor-bundle/brain/guides/disbursement-guide.html` from Desktop NEFT-v2-complete guide (3.4.2.4); Desktop kept as authoritative source (md5 `1eecccb3cd3ffa1ac79c5dfd8a65fef4`).
@@ -349,3 +363,6 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 
 - 2026-07-09 acct e175b78cb pushed to origin (SDCP-11016); brain kg-flow fetchLoanForeclosureSimulationDetails; push-origin failed dpic.ship_close post_maturity, git push succeeded.
 ## 2026-07-10 | accounting-v2 `77921d275f` | mfi_integration_v3.7.1 | dpiAccrualBooking EMI-due posting anchor (sealed_unposted audit)
+
+- 2026-07-15 | accounting-v2 `59e9686a80` mfi_integration_v3.4.2.4 | SDCP-11085/TDPQA-127 SHG child CLB copies member/parent sanction_date into loan_details (forward only; INDL LOS; stock backfill ops)
+- 2026-07-16 | workspace | infra | workspace-disk-clean.sh + super-agent clean — purge rotated service logs (~371MB reclaimed); wired max-pass + autopilot end; active bootRun logs preserved when service UP

@@ -30,9 +30,42 @@ Do **not** push after `compileJava` alone. HTTP 200 on a batch trigger is **not*
 - **service** — `gradlew build -x test` + health probe or `ntest smoke --quick`
 - **money** — build + registry case (`batch.*` preferred over certify flows) + batch `COMPLETED` when applicable
 
+## Adversarial fixture matrix (money ships — mandatory)
+
+A green happy-path e2e is **not** proof. Money ships must cover each row, or **document Out-of-scope** with a reason (`feedback_qa_acceptance_not_subset_verify.md`):
+
+| Path | Why |
+|---|---|
+| **happy path** | baseline |
+| **dirty / pre-existing state** | QA runs on production rows, not clean seeds (e.g. pre-existing EMI labd on the death-cycle installment — `DCF_SEED_EMI_LABD=1`) |
+| **UI / component equality** | statement `amount == principal`/component; a delta is allowed **only** if the legs are documented and the assert checks them |
+| **Webapp-bound APIs** | If the fix changes amounts, labd/billing, Accrued/Original, DFC/foreclosure, or payment components: live `getLoanAccountSummaryDetails` / `getLoanAccountOverviewDetails` (`account_number_list`) / `getLoanAccountStatement` — SQL-only is **not** webapp verified (`feedback_webapp_verify_mandatory_ui_ships.md`) |
+
+**The assert must FAIL on the exact QA fail mode** — never print "OK …"/"WARN …" and pass. Debug relax flags (`ACCEPTANCE_STRICT=0`) never yield a handoff Pass.
+
+## When full flow E2E cannot run
+
+Do **not** skip the ship gate. Follow `.cursor/rules/code-backed-simulation-testing.mdc`:
+
+1. Prefer realtime / staged ntest.
+2. If a stage is blocked → add/run a **code-backed** registry sim (`verify_mode: orch_sibling_sim` / `processor_mirror_sim`) that parses real orch XML / Java — never guessed expects.
+3. Label claims `ORCH_SIBLING_SIM` (etc.); enrich the platform suite in the same change.
+
 ## After test PASS
 
-`workspace-autopilot.sh mark-verified` or full `workspace-close` clears pending. Prefer `bash scripts/bin/push-origin.sh --repo <service>`.
+Before money/service `workspace-close` / ship-loop PASS, write discipline (fail closed):
+
+```bash
+bash scripts/bin/ship-discipline.sh write \
+  --minimal-fix "<one permanent-fix sentence>" \
+  --read-path No \
+  --hot-path PASS \
+  --verify-mode RUNTIME_VERIFIED \
+  --kg CASES \
+  --assumptions-none
+```
+
+Then `workspace-autopilot.sh mark-verified` or full `workspace-close`. Prefer `bash scripts/bin/push-origin.sh --repo <service>`.
 
 ## Escape hatch (rare)
 

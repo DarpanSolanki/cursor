@@ -21,6 +21,17 @@ from decimal import Decimal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# --- QA acceptance gate (feedback_qa_acceptance_not_subset_verify.md) ---
+# Default STRICT: a test must FAIL on the exact QA fail mode, never print "OK …" and pass.
+#   * amount(txn) != principal(payment) is a FAIL unless the delta components are documented.
+#   * force-bill labd must be visible without EMI-hijack.
+# ACCEPTANCE_STRICT=0 or ALLOW_A2_NETTING_DISPLAY_DIFF=1 relaxes to WARN — DEBUG ONLY, never a handoff Pass.
+ACCEPTANCE_STRICT = os.environ.get("ACCEPTANCE_STRICT", "1") != "0"
+ALLOW_A2_NETTING_DISPLAY_DIFF = os.environ.get("ALLOW_A2_NETTING_DISPLAY_DIFF") == "1"
+# Adversarial fixture: seed a pre-existing EMI labd on the death-cycle installment (QA4 dirty-state shape).
+SEED_EMI_LABD = os.environ.get("DCF_SEED_EMI_LABD") == "1"
+
 PG_ENV = {**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")}
 PG = [
     "psql", "-h", os.environ.get("YB_HOST", "localhost"),
@@ -415,8 +426,250 @@ WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
     return proxy["raw_surplus"]
 
 
+def seed_pre_existing_emi_labd(child_lan: str, death_date: str) -> None:
+    """Adversarial fixture (QA4 dirty-state): ensure a pre-existing EMI labd exists on the
+    death-cycle installment BEFORE force-bill runs, so the strict hijack check is exercised.
+
+    Schema-agnostic clone of the child's latest existing labd (keeps EMI-shaped amounts) with a
+    synthetic EMI transaction_reference_number so any force-bill overwrite of it is detectable.
+    Under ACCEPTANCE_STRICT, inability to seed raises (dirty-state not proven).
+    """
+    account_id = psql(
+        f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}' AND is_deleted=false;"
+    )
+    if not account_id:
+        msg = f"DCF_SEED_EMI_LABD blocker: child LAN not found {child_lan}"
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(msg)
+        print(f"  {msg}")
+        return
+    # Prefer labd whose installment_date is on/after death (death-cycle-ish); else any labd.
+    # loan_account_billing_details has no is_deleted column.
+    src_id = psql(f"""
+SELECT labd.id::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_installment_details lid ON lid.id = labd.loan_installment_details_id
+WHERE labd.account_id={account_id}
+  AND lid.is_deleted=false
+  AND lid.installment_date::date >= DATE '{death_date}'
+ORDER BY lid.installment_date ASC, labd.id DESC
+LIMIT 1;
+""")
+    if not src_id:
+        src_id = psql(f"""
+SELECT id::text FROM mfi_accounting.loan_account_billing_details
+WHERE account_id={account_id}
+ORDER BY id DESC LIMIT 1;
+""")
+    if not src_id:
+        msg = (
+            f"DCF_SEED_EMI_LABD blocker: no existing labd to clone for {child_lan} "
+            f"(fixture needs a real EMI billing row)"
+        )
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(msg)
+        print(f"  {msg}")
+        return
+    cols = subprocess.check_output(
+        [*PG, "-c", """
+SELECT column_name FROM information_schema.columns
+WHERE table_schema='mfi_accounting' AND table_name='loan_account_billing_details'
+ORDER BY ordinal_position;"""],
+        env=PG_ENV, text=True,
+    ).strip().split("\n")
+    cols = [c.strip() for c in cols if c.strip() and c.strip() != "id"]
+    emi_ref = f"EMI_LABD_FIXTURE_{child_lan}_{int(time.time())}"
+    select_exprs = []
+    for c in cols:
+        if c == "transaction_reference_number":
+            select_exprs.append(f"'{emi_ref}'")
+        elif c in ("created_by", "updated_by"):
+            select_exprs.append("'LOCAL_EMI_LABD_FIXTURE'")
+        elif c in ("created_on", "updated_on"):
+            select_exprs.append("NOW()")
+        else:
+            select_exprs.append(c)
+    try:
+        psql_multi(f"""
+INSERT INTO mfi_accounting.loan_account_billing_details ({", ".join(cols)})
+SELECT {", ".join(select_exprs)}
+FROM mfi_accounting.loan_account_billing_details WHERE id={src_id};
+""")
+        print(f"  DCF_SEED_EMI_LABD: seeded pre-existing EMI labd (ref={emi_ref}) for {child_lan} "
+              f"(clone of labd id={src_id})")
+    except subprocess.CalledProcessError as e:
+        msg = f"DCF_SEED_EMI_LABD blocker: clone insert failed ({e})"
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(msg) from e
+        print(f"  {msg}; skipping fixture (not a Pass)")
+
+
+def assert_webapp_bound_apis(parent_lan: str, children: list[str], last_child: str) -> None:
+    """Live webapp-bound APIs QA screens use — fail-closed under ACCEPTANCE_STRICT.
+
+    Required fields (TDPQA-72 / UI-impacting DCF ships):
+      - getLoanAccountSummaryDetails → interest_details.accrued_amount ≤ original_amount (Obs3)
+      - getLoanAccountStatement → death child shows DFC_PRTL_BILL; parent must NOT
+      - getLoanAccountOverviewDetails (account_number_list) → SUCCESS for CLOSED loans
+    """
+    sys.path.insert(0, str(ROOT / "scripts" / "testing"))
+    from lib.api_client import fire_api, fresh_stan  # noqa: WPS433
+    import json
+
+    def _headers(api: str) -> dict:
+        return {
+            "tenant_code": "mfi",
+            "client_code": "NOVOPAY",
+            "channel_code": "WEB",
+            "user_id": "3",
+            "stan": fresh_stan(api),
+            "function_code": "DEFAULT",
+            "function_sub_code": "DEFAULT",
+        }
+
+    for lan, role in [(parent_lan, "parent")] + [(c, "child") for c in children]:
+        # Summary — Obs3 Accrued vs Original (nested interest_details)
+        r = fire_api(
+            "getLoanAccountSummaryDetails",
+            {"headers": _headers("summary"), "request": {"account_number": lan}},
+        )
+        body = json.loads(r.body or "{}")
+        code, status = r.response_status()
+        if status != "SUCCESS" and code not in ("000", "0", "30225"):
+            raise AssertionError(f"webapp FAIL summary {role} {lan}: code={code} status={status}")
+        interest = body.get("interest_details") or {}
+        accrued = Decimal(str(interest.get("accrued_amount") or "0"))
+        original = Decimal(str(interest.get("original_amount") or "0"))
+        if ACCEPTANCE_STRICT and accrued > original + Decimal("1"):
+            raise AssertionError(
+                f"webapp FAIL Obs3 summary {role} {lan}: Accrued={accrued} > Original={original}"
+            )
+        print(f"  webapp summary PASS: {role} {lan} Accrued={accrued} Original={original}")
+
+        # Overview — account_number_list (webapp contract)
+        r = fire_api(
+            "getLoanAccountOverviewDetails",
+            {"headers": _headers("overview"), "request": {"account_number_list": [lan]}},
+        )
+        code, status = r.response_status()
+        if status != "SUCCESS" and code not in ("000", "0", "30223"):
+            raise AssertionError(f"webapp FAIL overview {role} {lan}: code={code} status={status}")
+        print(f"  webapp overview PASS: {role} {lan} code={code}")
+
+        # Statement — force-bill visibility
+        r = fire_api(
+            "getLoanAccountStatement",
+            {
+                "headers": _headers("statement"),
+                "request": {"account_number": lan, "offset": "0", "page_size": "50"},
+            },
+        )
+        code, status = r.response_status()
+        if status != "SUCCESS" and code not in ("000", "0"):
+            raise AssertionError(f"webapp FAIL statement {role} {lan}: code={code} status={status}")
+        blob = r.body or ""
+        has_fb = "DFC_PRTL_BILL" in blob
+        if role == "parent" and has_fb:
+            raise AssertionError(
+                f"webapp FAIL Obs1b: parent {lan} statement exposes DFC_PRTL_BILL "
+                f"(product: child-only force-bill)"
+            )
+        if lan == last_child and ACCEPTANCE_STRICT and not has_fb:
+            # Last death child must show force-bill on statement when slice > 0; if none, Issue B N/A
+            fb_exists = psql(f"""
+SELECT 1 FROM mfi_accounting.transaction_master tm
+WHERE tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
+  AND EXISTS (
+    SELECT 1 FROM mfi_accounting.transaction_details td
+    WHERE td.transaction_id=tm.id AND td.account_number='{lan}'
+  ) LIMIT 1;
+""")
+            if fb_exists:
+                raise AssertionError(
+                    f"webapp FAIL Obs1: death child {lan} has DFC_PRTL_BILL txn but statement "
+                    f"response lacks DFC_PRTL_BILL visibility"
+                )
+            print(f"  webapp statement N/A force-bill: {role} {lan} (no DFC_PRTL txn)")
+        else:
+            print(f"  webapp statement PASS: {role} {lan} DFC_PRTL={has_fb}")
+
+
+def assert_accrued_le_original(lan: str, role: str) -> None:
+    """TDPQA-72 Obs3: summary Accrued must not exceed Original after DFC close.
+
+    Mirrors GetLoanAccountSummaryDetailsProcessor:
+      Original = SUM(INT due_amount) WHERE installment has non-reversed labd
+      Accrued  = SUM(interest_accrual_details.total_accrued_amount)
+    QA fail mode: Accrued > Original on parent after last-child DFC (stale IAD past billed INT).
+    """
+    row = psql(f"""
+WITH la AS (SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{lan}')
+SELECT
+  (SELECT COALESCE(SUM(ldd.due_amount),0)::text FROM mfi_accounting.loan_due_details ldd, la
+   WHERE ldd.loan_account_id=la.account_id AND ldd.component_type='INT' AND ldd.is_deleted=false
+     AND EXISTS (SELECT 1 FROM mfi_accounting.loan_account_billing_details bd
+                 WHERE bd.loan_installment_details_id=ldd.loan_installment_details_id
+                   AND COALESCE(bd.reversed,false)=false)),
+  (SELECT COALESCE(SUM(iad.total_accrued_amount),0)::text FROM mfi_accounting.interest_accrual_details iad, la
+   WHERE iad.account_id=la.account_id);
+""")
+    if not row:
+        raise AssertionError(f"Obs3 FAIL: no account {lan} ({role})")
+    orig_s, acc_s = row.split("|", 1)
+    original = Decimal(orig_s or "0")
+    accrued = Decimal(acc_s or "0")
+    # Allow ₹1 rounding (local parent was 2810 vs 2809 before reconcile)
+    if ACCEPTANCE_STRICT and accrued > original + Decimal("1"):
+        raise AssertionError(
+            f"ACCEPTANCE FAIL (Obs3 Accrued>Original): {role} {lan} Accrued={accrued} Original={original} "
+            f"(Δ={accrued - original}). Summary interest_accrued_amount must not exceed "
+            f"interest_original_amount after DFC. Debug-only: ACCEPTANCE_STRICT=0."
+        )
+    print(f"  Obs3 PASS: {role} {lan} Accrued={accrued} Original={original}")
+
+
+def assert_parent_force_bill_out_of_scope(parent_lan: str) -> None:
+    """Obs1b: writer never posts parent DFC_PRTL_BILL — document Out-of-scope with evidence assert."""
+    cnt = int(psql(f"""
+SELECT COUNT(*)::text
+FROM mfi_accounting.transaction_master tm
+WHERE tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
+  AND EXISTS (
+    SELECT 1 FROM mfi_accounting.transaction_details td
+    WHERE td.transaction_id=tm.id AND td.account_number='{parent_lan}'
+  );
+""") or "0")
+    if cnt > 0:
+        raise AssertionError(
+            f"Obs1b unexpected: parent {parent_lan} has DFC_PRTL_BILL txn(s) count={cnt} — "
+            f"product previously documented child-only; update Out-of-scope if intentional."
+        )
+    print(f"  Obs1b Out-of-scope PASS: parent {parent_lan} has no DFC_PRTL_BILL "
+          f"(DeathForeclosureInsuranceWriter force-bills death child only)")
+
+
 def assert_force_bill_labd(child_lan: str) -> None:
-    """Issue B: death-child labd linked to force-bill txn (DFC_PRTL_BILL_* client_ref)."""
+    """Issue B (QA acceptance): death-child force-bill must have DEDICATED labd visibility.
+
+    QA obs1: EMI labd hijack — an existing EMI billing row's transaction_reference_number is
+    overwritten to the force-bill txn while its billing amounts still look like the EMI, so there
+    is no dedicated force-bill labd QA can see. This must FAIL under ACCEPTANCE_STRICT, not pass on
+    "a labd linked to DFC_PRTL_BILL exists".
+    """
+    # Force-bill txn + its partial-cycle interest amount (the dedicated labd interest must match this).
+    fb = psql(f"""
+SELECT tm.reference_number, COALESCE(tm.original_amount,0)::text
+FROM mfi_accounting.transaction_master tm
+WHERE tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
+  AND EXISTS (
+    SELECT 1 FROM mfi_accounting.transaction_details td
+    WHERE td.transaction_id = tm.id AND td.account_number = '{child_lan}'
+  )
+ORDER BY tm.id DESC LIMIT 1;
+""")
+    fb_ref, fb_amt_s = (fb.split("|", 1) if fb else ("", "0"))
+    fb_amt = Decimal(fb_amt_s or "0")
+
     row = psql(f"""
 SELECT labd.id::text, labd.transaction_reference_number, tm.client_reference_number,
        COALESCE(labd.interest_amount,0)::text
@@ -428,7 +681,6 @@ WHERE la.la_account_number = '{child_lan}'
 ORDER BY labd.id DESC LIMIT 1;
 """)
     if not row:
-        # Fallback: labd txn_ref equals force-bill client_ref when postTransaction reused CRN
         row = psql(f"""
 SELECT labd.id::text, labd.transaction_reference_number, labd.transaction_reference_number,
        COALESCE(labd.interest_amount,0)::text
@@ -439,19 +691,45 @@ WHERE la.la_account_number = '{child_lan}'
 ORDER BY labd.id DESC LIMIT 1;
 """)
     if not row:
-        fb = psql(f"""
-SELECT tm.reference_number, tm.client_reference_number
-FROM mfi_accounting.transaction_master tm
-JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
-WHERE td.account_number = '{child_lan}'
-  AND tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
-ORDER BY tm.id DESC LIMIT 1;
-""")
+        if not fb_ref and fb_amt == 0:
+            print(f"  Issue B N/A: no DFC_PRTL_BILL txn for {child_lan} "
+                  f"(partial-cycle force-bill slice was 0 — Obs1 hijack N/A)")
+            return
         raise AssertionError(
-            f"Issue B FAIL: no labd linked to DFC_PRTL_BILL for {child_lan}; force-bill txn={fb or 'none'}"
+            f"Issue B FAIL: no labd linked to DFC_PRTL_BILL for {child_lan}; force-bill txn={fb_ref or 'none'}"
         )
-    labd_id, txn_ref, client_ref, int_amt = row.split("|", 3)
-    print(f"  Issue B PASS: labd_id={labd_id} txn_ref={txn_ref} client_ref={client_ref} interest={int_amt}")
+    labd_id, txn_ref, client_ref, int_amt_s = row.split("|", 3)
+    int_amt = Decimal(int_amt_s or "0")
+
+    # Dedicated-visibility / EMI-hijack check: the force-bill labd interest must match the force-bill
+    # txn's partial-cycle interest. If it carries a different (EMI) interest, the EMI labd was hijacked.
+    if ACCEPTANCE_STRICT and fb_amt > 0 and abs(int_amt - fb_amt) > Decimal("0.01"):
+        raise AssertionError(
+            f"ACCEPTANCE FAIL (Obs1 EMI-labd hijack): labd_id={labd_id} interest={int_amt} does NOT match "
+            f"force-bill txn interest {fb_amt} (txn_ref={txn_ref}). The EMI labd appears hijacked to the "
+            f"force-bill txn while its amounts still look like an EMI — QA needs a DEDICATED force-bill labd. "
+            f"Debug-only override: ACCEPTANCE_STRICT=0."
+        )
+    print(f"  Issue B PASS: labd_id={labd_id} txn_ref={txn_ref} client_ref={client_ref} "
+          f"interest={int_amt} force_bill_txn_amt={fb_amt}")
+
+    # Dirty-state: when EMI_LABD_FIXTURE_* was seeded, those rows must survive (no overwrite/delete).
+    emi_left = int(psql(f"""
+SELECT COUNT(*)::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+WHERE la.la_account_number = '{child_lan}'
+  AND labd.transaction_reference_number LIKE 'EMI_LABD_FIXTURE_%';
+""") or "0")
+    if SEED_EMI_LABD and ACCEPTANCE_STRICT:
+        if emi_left < 1:
+            raise AssertionError(
+                f"ACCEPTANCE FAIL (Obs1): EMI_LABD_FIXTURE rows missing after DFC for {child_lan} "
+                f"(EMI labd was deleted or txn_ref hijacked away from EMI_LABD_FIXTURE_*)"
+            )
+        print(f"  Issue B PASS: EMI_LABD_FIXTURE rows preserved count={emi_left}")
+    elif emi_left > 0:
+        print(f"  Issue B: EMI fixture rows present count={emi_left}")
 
 
 def assert_a2_extra_parent_rsch(parent_lan: str, child_lan: str, expected_extra: Decimal) -> None:
@@ -701,13 +979,18 @@ ORDER BY tm.id DESC LIMIT 1;
             f"(saveLoanAccountPaymentsDetails net_amount+principal_amount on last child)"
         )
     if prin > txn_amt + Decimal("0.01"):
-        if allow_int_pending:
-            # A2: book POS (payments_details.principal) can exceed TRANSACTION_AMOUNT after EXTRA netting
-            delta = prin - txn_amt
-            print(f"  OK A2 netting: payment_prin={prin} txn_amt={txn_amt} delta={delta} "
-                  f"(claim overpayment nets statement amount)")
-        else:
-            raise AssertionError(f"parent RSCH principal_amount {prin} exceeds txn amount {txn_amt}")
+        delta = prin - txn_amt
+        # QA acceptance (Obs2): statement amount != payment principal (e.g. 11550 vs 11605) is the
+        # EXACT mode QA rejects. Do NOT print "OK A2 netting" and pass. Only relax as debug.
+        if ACCEPTANCE_STRICT and not ALLOW_A2_NETTING_DISPLAY_DIFF:
+            raise AssertionError(
+                f"ACCEPTANCE FAIL (Obs2): parent RSCH txn amount {txn_amt} != payment principal {prin} "
+                f"(delta={delta}). QA rejects amount!=principal. Either the writer must make statement "
+                f"amount == principal, OR the delta components must be documented in product spec + this "
+                f"assert extended to check the named legs. Debug-only override: ALLOW_A2_NETTING_DISPLAY_DIFF=1."
+            )
+        print(f"  WARN (DEBUG-ONLY, not a handoff Pass): payment_prin={prin} txn_amt={txn_amt} "
+              f"delta={delta} — amount!=principal relaxed via override. QA acceptance NOT proven.")
     account_status = psql(f"""
 SELECT a.status FROM mfi_accounting.account a
 JOIN mfi_accounting.loan_account la ON la.account_id=a.id
@@ -777,6 +1060,13 @@ WHERE p.has_child_accounts=true AND p.loan_status='ACTIVE' AND p.is_deleted=fals
   AND p.loan_product_id=70
 GROUP BY p.account_id
 HAVING COUNT(c.account_id)=2 AND SUM(CASE WHEN ins.id IS NOT NULL THEN 1 ELSE 0 END)=2
+  AND NOT EXISTS (
+    SELECT 1 FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account cx ON cx.account_id=ldd.loan_account_id
+    WHERE cx.parent_loan_account_id=p.account_id AND cx.is_deleted=false
+      AND ldd.component_type='PINT' AND ldd.is_deleted=false
+      AND (ldd.due_amount-ldd.paid_amount-ldd.waived_amount) > 0
+  )
 ORDER BY p.account_id LIMIT 1;
 """)
     if not parent_id:
@@ -825,6 +1115,10 @@ def main() -> int:
 
     print("=== SDCP-10199 group parent last-child DFC local e2e (real batches) ===")
     print(f"parent={parent} child1={child1} child2={child2} death_date={death_date}")
+    print(f"acceptance_strict={ACCEPTANCE_STRICT} allow_a2_netting_display_diff={ALLOW_A2_NETTING_DISPLAY_DIFF} "
+          f"seed_emi_labd={SEED_EMI_LABD}")
+    if not ACCEPTANCE_STRICT or ALLOW_A2_NETTING_DISPLAY_DIFF:
+        print("  WARN: acceptance gate relaxed — this run is DEBUG ONLY and is NOT a QA handoff Pass.")
 
     # Retest-on-same-LANs provision (dcf_fixture_backup.py):
     #   * first run on a LAN  → snapshot pristine state (parent + ALL children, every mutated table)
@@ -871,6 +1165,8 @@ def main() -> int:
                 print(f"  skip batch — {child} already CLOSED with DEATH_FORECLOSURE (prior run)")
                 assert_child_closed(child)
             else:
+                if SEED_EMI_LABD:
+                    seed_pre_existing_emi_labd(child, death_date)
                 dfd_id, staging_id = seed_dfc_child(child, death_date)
                 cleanup_abandoned_staging([child1, child2], keep_staging_id=staging_id)
                 run_inbound_approve_only(child, dfd_id, staging_id, death_date)
@@ -891,7 +1187,18 @@ def main() -> int:
         for child in children_in_order:
             assert_force_bill_labd(child)
 
-        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e (A2+B) ===")
+        print("\n--- Obs1b parent force-bill (Out-of-scope vs inventing parent FB) ---")
+        assert_parent_force_bill_out_of_scope(parent)
+
+        print("\n--- Obs3 Accrued ≤ Original (summary formula via SQL) ---")
+        assert_accrued_le_original(parent, "parent")
+        for child in children_in_order:
+            assert_accrued_le_original(child, "child")
+
+        print("\n--- Webapp-bound APIs (summary / overview / statement) ---")
+        assert_webapp_bound_apis(parent, children_in_order, last_child)
+
+        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e (A2+B+Obs3+webapp) ===")
         return 0
     finally:
         if snapshot_enabled:

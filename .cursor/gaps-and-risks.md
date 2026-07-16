@@ -35,7 +35,7 @@ Every item below has **description + file path + line evidence + risk level**. S
 | **No `src/test` coverage for DCF / insurance inbound batch posting** | **High** (mitigated locally) | `grep` `DeathForeclosure` in `**/novopay-platform-accounting-v2/src/test/**/*.java` → **no hits**; **local money e2e:** `ntest run dcf.group_parent_last_child_e2e` + `scripts/dcf_sanity/*` on `mfi_integration_v3.7.1` | Unit tests still missing in CI; group last-child path covered by registry flow (SDCP-10199). |
 | **RESOLVED (2026-07-10) — SDCP-10199 workspace/train drift (3.4.2.x vs 3.7.1)** | **Resolved** | Forward merge `f45dbe3bd` on `mfi_integration_v3.7.1`; runbook `sdcp-10199-group-parent-last-child-dfc.md`; removed dead `waiveFutureParentPendingDuesOnLastChildDfc` | Agents analyzing DFC on stale branch / waiving parent PRIN caused wrong fixes. 3.4.2.1/2/3 tips are ancestors of 3.7.1. |
 | **GAP-074 — SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)** | **High** (open; parked) | `DeathForeclosureInsuranceWriter.doParentPartPrePayment` (released trains / `mfi_integration_v3.7.1@f45dbe3bd` still use child `INT_AMT`); fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to `mfi_integration_v3.7.1` until QA/prod discuss**; runbook `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ASK-057 **DEFERRED** | SHG/JLG parent can CLOSE after last-child DFC with residual pending INT (latent 3.4.2.1+); DPI residual risk on 3.7.1. Missed via lucky INT=0 e2e / UI-focused QA. |
-| **RESOLVED (2026-07-15) — GAP-075 SDCP-10199 A2 EXTRA-net + B force-bill labd** | **Resolved (was High)** | `DeathForeclosureInsuranceWriter` @ `mfi_integration_v3.4.2.4` `5b1b928ed`: last-child parent POS/net/gross/TRANSACTION_AMOUNT/UNBLD_PRIN net EXTRA+overpaid penal/fee; `forceBillPartialCycleInterest` persists/links labd txn_ref; e2e `dcf.group_parent_last_child_e2e` + runbook `sdcp-10199-group-parent-last-child-dfc.md` | Parent/child statement amount mismatch (full POS vs claim EXTRA-net); force-bill without labd / txn_ref (Vikram/Srikant). |
+| **REOPENED then RESOLVED (2026-07-17) — GAP-075 TDPQA-72 QA acceptance (Obs1 EMI-labd hijack + Obs2 amount≠principal + Obs3 Accrued>Original + webapp)** | **Resolved (was High)** | Writer @ `feature/tdpqa72-dfc-acceptance-labd-lapd`: dedicated force-bill labd; lapd EXTRA-net; `reconcileAccruedInterestToBilledOriginal`; e2e `assert_webapp_bound_apis` + `ACCEPTANCE_STRICT=1` + `DCF_SEED_EMI_LABD=1`. Gate: `acceptance_coverage.py` WEBAPP_UI_FIELD_MARKERS. | QA4: force-bill not visible; amount 11550 vs principal 11605; parent Accrued>Original; webapp summary/statement. |
 | **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
 | **Multi-node batch dependency tracking is in-memory only** | **Medium** | `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
@@ -1585,19 +1585,34 @@ Date found: 2026-07-10
 
 **Runbook / tracker:** `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ask tracker `ASK-057` = **DEFERRED**. Memory: `cursor-bundle/memory/feedback_int180_deferred_unpushed.md`.
 
-## GAP-075: SDCP-10199 last-child A2 EXTRA-net statement + B force-bill labd
+## GAP-075: SDCP-10199 / TDPQA-72 last-child A2 EXTRA-net + B force-bill labd (QA acceptance)
 
 Service: novopay-platform-accounting-v2  
 Risk: **High** (was)  
-Status: **RESOLVED** 2026-07-15 — `mfi_integration_v3.4.2.4` @ `5b1b928ed`  
-Date found: 2026-07-15 (Vikram/Srikant observation on parent/child amounts + force-bill)
+Status: **RESOLVED** 2026-07-17 — `mfi_integration_v3.4.2.4` / `feature/tdpqa72-dfc-acceptance-labd-lapd` @ `cae54fd9d6` (builds on `5b1b928ed`)  
+Date found: 2026-07-15 (Vikram/Srikant); **reopened** 2026-07-17 after TDPQA-72 QA embarrassment (subset Pass)
 
-**Symptom A2:** After last-child DFC, parent RSCH / payment statement amounts used **full POS** instead of **EXTRA-net** matching the child claim overpayment (EXCESS_* / EXTRA + overpaid penal/fee).
+**Symptom A2 (statement EXTRA-net — 2026-07-15):** Parent RSCH TRANSACTION_AMOUNT used full POS instead of EXTRA-net.
 
-**Symptom B:** Force-bill partial-cycle interest txn existed but `loan_account_billing_details` was missing or not linked via `transaction_reference_number` to `DFC_PRTL_BILL_*`.
+**Symptom Obs2 (TDPQA-72 — 2026-07-17):** Even after A2 netted `tm.original_amount`, `lapd.principal_amount` stayed at **full POS** (`appropriateDeathForeclosure` overwrite + `saveLoanAccountPaymentsDetails`) → e.g. amount 11550 vs principal 11605.
 
-**Fix:** `DeathForeclosureInsuranceWriter` — last-child parent amount bridge nets EXTRA; `forceBillPartialCycleInterest` persists/links labd after `postTransaction`.
+**Symptom B / Obs1 (TDPQA-72):** Force-bill labd path **hijacked** existing EMI `loan_account_billing_details.transaction_reference_number` to `DFC_PRTL_BILL_*` while amounts stayed EMI-shaped — no dedicated force-bill labd for QA.
 
-**Verify:** `ntest run dcf.group_parent_last_child_e2e` (`assert_a2_extra_parent_rsch`, `assert_force_bill_labd`). Runbook: `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`.
+**Fix (2026-07-15 `5b1b928ed`):** EXTRA-net on parent RSCH amounts + persist/link labd after force-bill post.
+
+**Fix (2026-07-17 acceptance):**  
+1. `persistForceBillBillingDetails` — if EMI (non-`DFC_PRTL_BILL`) labd exists → **INSERT** dedicated force-bill row (principal=0, interest=force-bill); never mutate EMI ref. Idempotent on existing `DFC_PRTL_BILL` row.  
+2. Last-child before `saveLoanAccountPaymentsDetails` — `principal_amount` = A2-netted `POS`, `excess_amount` = claimOverpayment, `net_amount=0`.  
+3. `findByLoanInstallmentDetailsId` → `ORDER BY id DESC LIMIT 1` (multi-row safe).
+
+**Parent force-bill (Obs1b):** Out of scope — only death child gets `DFC_PRTL_BILL`; parent gets `RSCH_DEATH_FORECLOSURE` only (writer never force-bills parent).
+
+**Symptom Obs3 (TDPQA-72 — 2026-07-17):** Parent summary **Accrued > Original** after sibling RSCH + last-child DFC — IAD rows past last billed INT due remain while Original = billed INT only.
+
+**Fix Obs3:** `reconcileAccruedInterestToBilledOriginal` zeros IAD `total_accrued_amount` for `end_date` after max billed INT due (child after force-bill; parent after last-child waive).
+
+**Webapp:** `assert_webapp_bound_apis` — summary `interest_details`, overview `account_number_list`, statement `DFC_PRTL_BILL` on death child.
+
+**Verify:** `DCF_SEED_EMI_LABD=1 ACCEPTANCE_STRICT=1 ntest run dcf.group_parent_last_child_e2e`. Asserts must **FAIL** on EMI hijack and `principal > txn amount`. Gate: `scripts/lib/acceptance_coverage.py`. Runbook: `sdcp-10199-group-parent-last-child-dfc.md`.
 
 **Distinct from GAP-074:** INT-180 residual pending INT on CLOSED parent remains open/parked.
