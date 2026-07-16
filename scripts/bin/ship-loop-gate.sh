@@ -306,6 +306,14 @@ if [[ -f "$ROOT/.cursor/.pending-kg-rebuild" ]]; then
   echo "→ reminder: cursor-bundle/kg/bin/changelog-add.sh --kg-flow + .cursor/changelog.md"
 fi
 
+# Hard discipline (minimal fix · hot-path · verify_mode · KG · no bare assumptions)
+if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then
+  echo "→ ship-discipline check ($TIER)"
+  python3 "$ROOT/scripts/lib/ship_discipline_gate.py" check || exit 1
+  echo "→ acceptance-coverage check ($TIER)"
+  python3 "$ROOT/scripts/lib/acceptance_coverage.py" check --from-pending || exit 1
+fi
+
 if [[ "$SKIP_GATE" -eq 0 && "${SHIP_LOOP_SKIP_KNOWLEDGE_GATE:-}" != "1" ]]; then
   profile="$(python3 "$ROOT/scripts/lib/ship_push_gate.py" --close-profile 2>/dev/null || echo minimal)"
   echo "→ ship-knowledge-gate.sh --profile $profile"

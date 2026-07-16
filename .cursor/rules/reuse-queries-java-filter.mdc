@@ -8,6 +8,21 @@ alwaysApply: true
 
 Aligns with `cursor-bundle/memory/feedback_keep_code_simple.md` **RULE 3** and `feedback_query_reuse_vs_performance.md`.
 
+## Machine-enforced (fail closed)
+
+Any pending ship touching a `*Repository.java` / `*DAOService.java` file whose diff changes query semantics (`@Query`, native SQL, `ORDER BY`, `LIMIT`, `WHERE`, `SELECT`/`JOIN`, or a finder-method signature) **blocks** ship-discipline until `.cursor/.ship-discipline.json` carries a `reuse_query` block. Write it:
+
+```bash
+bash scripts/bin/ship-discipline.sh write --minimal-fix "…" --read-path No \
+  --hot-path PASS --verify-mode RUNTIME_VERIFIED --kg CASES --assumptions-none \
+  --reuse-step 2 \
+  --reuse-existing findByLoanInstallmentDetailsId --reuse-existing findOneByAccountId \
+  --reuse-caller DeathForeclosureInsuranceWriter --reuse-caller LoanAccountBillingBatchService \
+  --reuse-perf "loan_installment_details_id indexed; LIMIT 1 O(1)"
+```
+
+`--reuse-step 3` additionally requires `--reuse-justification` (why steps 1–2 cannot work). Gate: `scripts/lib/reuse_query_gate.py` (wired into `scripts/lib/ship_discipline_gate.py`).
+
 ## Decision ladder (strict order)
 
 1. **Reuse existing query + Java** — grep `*Repository.java`, `*DAOService.java`, callers on the same table. Filter / pick-one / sum in Java when rows per call are bounded (per loan, per installment, API read). Multiple calls to the **same** existing method is OK on cold paths.

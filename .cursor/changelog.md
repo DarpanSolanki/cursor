@@ -1,3 +1,6 @@
+## 2026-07-17 | workspace | fail-closed reuse-query discipline gate
+- Repository/DAO query-semantic diffs now require reuse-ladder step, checked methods/callers, and index/scan/limit performance evidence in ship discipline; step 3 requires justification. Focused gate suite: 18/18 PASS.
+
 ## 2026-07-17 | acct `ff19f0c8c` | TDPQA-72 comment strip (keep labd ORDER BY)
 - Strip TDPQA-72 / A2+B / Accrued explanatory comments in `DeathForeclosureInsuranceWriter` + Repository.
 - **Query not removable:** `findByLoanInstallmentDetailsId` keeps `ORDER BY id DESC LIMIT 1` (dedicated force-bill multi-row labd; no existing list finder for Java pick). Behaviour unchanged; KG SKIP.

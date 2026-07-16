@@ -38,6 +38,7 @@ Classification meaning:
 | `.cursor/rules/effective-prompts-and-issue-triage.mdc` | false | `.cursorrules`, `AGENTS.md`, `**/*.md` | Strong | Rich prompts; thin-prompt triage. |
 | `.cursor/rules/internal-api-local-test-harness.mdc` | true | — | Strong | Internal-only APIs: local JTF templates + ntest flow for gateway tests; do not push to service/cursor remotes. |
 | `.cursor/rules/workspace-developer-tester.mdc` | true | — | Strong | Unified dev+test loop: KG orient → `ntest` registry → fix → smoke; one row per API in `registry.json`. |
+| `.cursor/rules/workspace-contract.mdc` | true | — | Strong | Once-and-for-all contract; machine gates not daily re-setup; ship-discipline fail-closed. |
 
 ## Maintainer note
 

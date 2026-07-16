@@ -1,4 +1,5 @@
 # Memory Index
+- [Reuse-query machine gate](feedback_reuse_query_machine_gate.md) — fail closed when Repository/DAO query semantics change without reuse-ladder, caller, and index/scan/limit performance evidence; step 3 requires justification. (2026-07-17)
 - [Webapp verify mandatory on UI ships](feedback_webapp_verify_mandatory_ui_ships.md) — money/UI-impacting ships must assert summary/overview/statement webapp fields (not SQL-only / overview-partial); `acceptance_coverage` WEBAPP_UI_FIELD_MARKERS + DCF `assert_webapp_bound_apis`. (2026-07-17)
 - [TDPQA-72 Obs3 Accrued>Original](feedback_tdpqa72_obs3_accrued_original.md) — parent Accrued>Original after sibling RSCH + last-child DFC; write-path `reconcileAccruedInterestToBilledOriginal`; webapp summary interest_details. (2026-07-17)
 - [TDPQA-72 Obs3 Accrued>Original](feedback_tdpqa72_obs3_accrued_original.md) — parent summary Accrued>Original after sibling RSCH + last-child DFC; IAD past last billed INT; write-path `reconcileAccruedInterestToBilledOriginal` (not read clamp; not invent parent FB). Assert `assert_accrued_le_original`. (2026-07-17)
