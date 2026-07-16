@@ -1,3 +1,8 @@
+## 2026-07-17 | TDPQA-72 port to mfi_integration_v3.4.2.4
+- accounting `29bd01e8a6`+`dfec1e60f1`: cherry-pick dedicated force-bill labd + Accrued≤Original reconcile onto upstream tip (`5b1b928ed` already present).
+- Files: `DeathForeclosureInsuranceWriter.java`, `LoanAccountBillingDetailsRepository.java` only.
+- Verified RUNTIME on train JVM: ACCEPTANCE_STRICT=1 DCF_SEED_EMI_LABD=1 SEED_EXTRA=1 parent=6002329725 — Issue A/B + Obs1b/Obs3 + webapp APIs PASS.
+
 ## 2026-07-17 | acct `a7e6d1d1c4` | TDPQA-72 Obs3 Accrued≤Original + webapp gate
 `DeathForeclosureInsuranceWriter.reconcileAccruedInterestToBilledOriginal` (zero IAD past billed INT + trim Accrued excess to getBilledInterestAmount). E2e `assert_accrued_le_original` + `assert_webapp_bound_apis`. Acceptance coverage WEBAPP_UI_FIELD_MARKERS. Memory: feedback_tdpqa72_obs3_accrued_original, feedback_webapp_verify_mandatory_ui_ships. GAP-075 Obs3. Fixture: equivalent local product-70 (QA LAN clone blocked).
 

@@ -3,19 +3,16 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
-## 2026-07-17 | acct `cae54fd9d6` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 dedicated force-bill labd + lapd EXTRA reconcile
+## 2026-07-17 | acct `dfec1e60f1` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 Obs3 Accrued≤Original (port)
+loanDeathForeclosure | kg-flow | Port a7e6d1d1c: reconcileAccruedInterestToBilledOriginal after DFC force-bill (child+parent); VERIFY ACCEPTANCE_STRICT e2e parent=6002329725 Obs3+webapp PASS
 
-## deathForeclosureInsuranceJob,getLoanAccountSummaryDetails
+## 2026-07-17 | acct `29bd01e8a6` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 dedicated force-bill labd + lapd EXTRA (port)
+loanDeathForeclosure | kg-flow | Port cae54fd9d: INSERT dedicated DFC_PRTL_BILL labd (no EMI hijack); last-child lapd principal/excess; labd finder ORDER BY id DESC LIMIT 1; Issue A/B PASS on train
+
 ## 2026-07-17 | acct `a7e6d1d1c4` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 Obs3 Accrued≤Original reconcile
+loanDeathForeclosure | kg-flow | reconcileAccruedInterestToBilledOriginal after DFC; Accrued≤Original on summary/webapp
 
----
-
-
-## deathForeclosureInsuranceJob
-## 2026-07-17 | acct `a7e6d1d1c4` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | TDPQA-72 Obs3 Accrued≤Original
-
----
-
+## 2026-07-17 | acct `cae54fd9d6` | accounting-v2 | feature/tdpqa72-dfc-acceptance-labd-lapd | kg-flow | TDPQA-72 dedicated force-bill labd + lapd EXTRA reconcile
 persistForceBillBillingDetails INSERT (no EMI txn_ref hijack); last-child lapd principal=A2-netted POS excess=claimOverpayment; labd finder LIMIT 1; e2e ACCEPTANCE_STRICT+DCF_SEED_EMI_LABD; GAP-075 | kg-flow | loanDeathForeclosure deathForeclosureInsuranceJob loan_account_billing_details loan_account_payments_details
 
 ## 2026-07-15 | workspace | Synced disbursement-guide.html (NEFT v2 / 3.4.2.4) from Desktop
