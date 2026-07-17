@@ -21,17 +21,14 @@ On TDPQA-102 agents either (a) tried SDCP custom fields that do not exist, or (b
 
 ## Rework / QA-retest proof block (2026-07-17, TDPQA-72)
 
-On a **reopened** ticket a one-line handoff or prose-only Dev section is not proof. QA needs traceable, re-verifiable evidence that the **exact** scenario they failed was tested before the build shipped. Every rework handoff (comment on TDPQA; Dev Test Details on SDCP) MUST carry a **Dev Test Evidence** block:
+On a **reopened** ticket, prose-only Dev text is not proof. Use **simple ADF tables** QA can scan in ~30 seconds:
 
-- Build line + one commit reference (sanctioned exception to "no build/SHA" on internal QA projects — QA cite builds and demand traceability on reopen; still no branch names / full tag noise).
-- Real-flow verify wording (verify_mode intent without `ntest`/`registry`/`e2e` jargon).
-- Dataset / fresh LANs actually run (parent + members; last vs non-last member).
-- Scenario matrix with **Run / Not-run** + Result — includes the exact QA fail mode; anything not executed is explicit Not-run, never implied Pass.
-- **Persisted values expected-vs-actual** for every touched money area (functional labels + numbers, not raw table/column names) — presence-only is not acceptance.
-- User-visible webapp views (Summary Accrued/Original, Overview account list, Statement txn-vs-principal) when the fix changes amounts/billing.
-- `Result: PASS` + scope note (fresh fixture because old QA LANs already closed) + fresh-retest instruction.
+- **Test data** — Parent / Child A / Child B
+- **Observation checks** — What QA checked | Account | Expected | Actual | Result (one check per row; numbers in Expected/Actual cells)
+- **UI checks** — Summary / Overview / Statement, one line each
+- **How to retest** — 3–4 bullets
 
-No "Result: Pass" without this block. The developer proof comment must be the latest comment (new comment if QA posted newer observations). Full presentation guidance: SKILL.md § QA retest / rework proof block.
+No commit IDs/SHAs in user-facing Dev Test. No dense multi-fact sentences. No jargon (`reconciled`, `labd`, harness flags). Exact SHA stays agent-internal. Developer proof must be the latest comment. Full template: SKILL.md § QA retest / rework proof block.
 
 Skill: `.cursor/skills/jira-fix-update/SKILL.md` Step 0 + § QA retest / rework proof block  
 Helper: `jira-fix-adf.py project_mode | owners_tdpqa | handoff_comment`

@@ -411,25 +411,51 @@ Result: Pass.
 
 ## QA retest / rework proof block (MANDATORY on reopened tickets)
 
-When a ticket is **reworked / reopened** (QA already retested once and posted fresh observations, or the ticket bounced through **Dev:Rework**), a one-line "ready for QA" or a prose-only Dev section is **not enough**. QA needs **traceable, re-verifiable proof** that the exact scenario they failed was tested before the build was shared. Every rework handoff comment (TDPQA) or Dev Test Details (SDCP) **must** carry a **Dev Test Evidence** block with all of the following:
+When a ticket is **reworked / reopened**, a prose-only Dev section is **not enough**. QA must be able to scan proof in ~30 seconds. Use **simple ADF tables** — one observation per row, short plain English, numbers in their own Expected / Actual cells.
 
-| Proof item | Required content | Notes |
+**Never put commit IDs / SHAs in user-facing Dev Test.** Build/branch may be named if it helps QA pick the deployable. Exact SHA stays agent-internal unless the user explicitly asks.
+
+### Required short tables
+
+1. **Test data** — Parent / Child A / Child B (role + account only)
+2. **Observation checks** — What QA checked | Account | Expected | Actual | Result
+3. **UI checks** — Screen | What was checked | Result (one line each)
+4. **How to retest** — 3–4 bullets max (fresh group, preconditions, what to look for)
+
+### Wording rules (fail closed)
+
+- No dense sentences packing multiple facts into one cell
+- No jargon: avoid “reconciled”, “labd”, “EMI hijack”, harness flags, method names
+- Prefer: “billing table”, “force-bill interest entry”, “EMI billing entry kept”, “same amount”
+- One account / one check per row
+- Mark untested scenarios explicitly — never imply Pass
+
+### Good Observation checks template
+
+| What QA checked | Account | Expected | Actual | Result |
+|---|---|---|---|---|
+| Accrued vs Original | Parent `<LAN>` | Same amount | Accrued `<n>`, Original `<n>` | Pass |
+| Accrued vs Original | Child `<LAN>` | Same amount | Accrued `<n>`, Original `<n>` | Pass |
+| Force-bill in billing table | Child `<LAN>` | Separate force-bill row; principal 0; EMI row kept | Interest `<n>`, principal 0; EMI principal `<n>` kept | Pass |
+| Transaction amount vs principal | Parent `<LAN>` | Same amount | Amount `<n>`, Principal `<n>` | Pass |
+| Extra amount | Parent `<LAN>` | Extra shown separately | Excess `<n>` | Pass |
+| Parent force-bill | Parent `<LAN>` | Not required (settled in reschedule) | No parent force-bill | Expected |
+
+### Good UI checks template
+
+| Screen | What was checked | Result |
 |---|---|---|
-| **Build & implementation reference** | Build line + commit reference the fix was verified on | On internal QA projects (TDPQA / HSQA / AUT) this is a **sanctioned exception** to the "no build/SHA" rule — QA themselves cite build tags and demand exact traceability on reopen. Keep it to the build line + one commit reference; do **not** paste branch names or full `mfi_release_*_NNN` tag noise. |
-| **How it was verified** | Real-flow run + acceptance mode (functional words: "developer real-flow run in strict acceptance mode") | Encodes the verify_mode / command intent **without** harness jargon (`ntest`, `registry case id`, `e2e`). Never claim Pass from compile/code review. |
-| **Dataset / LANs** | The fresh developer LANs actually run (parent + members) | Business identifiers QA can look up; state last-member vs non-last-member. |
-| **Scenario matrix** | Each scenario + **Run / Not run** + Result | Must include the **exact QA fail mode** (e.g. pre-existing EMI billing + excess + force-bill). Anything **not** executed this cycle is listed explicitly as **Not run / out of scope** — never implied as Pass. |
-| **Persisted values — expected vs actual** | For **every touched money area**, the expected value and the actual observed value | Functional labels + numbers (e.g. "settlement amount == principal: 13,702 == 13,702, excess 200"), not raw table/column names. This is the value-level DB proof — presence-only ("a row exists") is **not** acceptance. |
-| **User-visible views (webapp)** | When the fix changes amounts / billing / summary / statement: the screens + fields + values QA sees | Summary (Accrued vs Original), Overview (account list), Statement (txn amount vs principal component). SQL-only is not "webapp verified". |
-| **Result + scope note** | `Result: PASS` + why fresh fixture (old QA LANs already closed) + fresh-retest instruction | Never mark PASS if any assert allows the QA fail mode. |
+| Summary | Accrued and Original show the same interest | Pass |
+| Overview | Status and payment values look correct | Pass |
+| Statement | Force-bill interest entry is visible | Pass |
 
-**Hard rule:** No **"Result: Pass"** on a rework handoff unless the proof block covers the **exact** QA fail mode with expected-vs-actual values. A green subset while the acceptance shape QA cited is unproven is **FAIL**, not Pass (`agent-quality-gates.mdc` Gate D-acceptance).
+**Hard rule:** No **"Result: Pass"** unless the Observation checks table covers the **exact** QA fail mode with Expected vs Actual values.
 
-**Presentation (TDPQA comment):** build ADF with a `### Dev Test Evidence` heading, then bold sub-labels (**Build and dataset**, **Scenario matrix**, **Persisted values (expected vs actual)**, **User-visible views (webapp)**, **Result: PASS**, **Scope note**) each followed by a bullet/ordered list. The `handoff_comment` helper's forbidden-token scan bans build/SHA; for the QA-retest proof block on internal QA projects, either post the ADF directly via `addCommentToJiraIssue(contentFormat=adf)` (keeping the build line + one commit reference), or keep those two items out and put the rest through the helper. Everything else (raw table/column names, `ntest`/`registry`/`e2e`, branch names, apiName/Processor) stays banned.
+**Presentation:** native ADF `table` nodes (not ASCII). Keep RCA/Impact brief so the tables stay the main scan target. Post via `addCommentToJiraIssue(contentFormat=adf)`; edit in place while the handoff is still newest.
 
-**Ordering on reopened tickets:** the developer proof comment must be the **latest** comment. If QA has posted newer observations since your last handoff, post a **new** structured handoff comment so it appears after the latest QA evidence; edit-in-place only while your handoff is still the newest comment. Do not leave a stale handoff buried above fresh QA observations.
+**Ordering on reopened tickets:** developer proof must be the **latest** comment. If QA posted newer observations, post a **new** handoff after them.
 
-**Status:** move a rework fix to the exact **QA Retest** transition when the workflow exposes one. TDPQA does **not** expose a "QA Retest" transition (available: BA Clarification, To Do, Dev:Rework, QA:Traige, QA Tested→QA:Closed, "QA Tested Issue is Still There"→Dev:Rework, Product Team Validation) — **report that it is unavailable and do not guess** (never silently route through QA:Traige). Leave status as-is and let the handoff comment be the signal.
+**Status:** use **QA Retest** when exposed. TDPQA has no QA Retest transition — **report unavailable; do not guess** (never silently route through QA:Traige).
 
 ## AITDP fields (AI Tool Development Productivity — mandatory, do not leave defaults)
 
@@ -591,7 +617,7 @@ editJiraIssue(
 - [ ] **Assignee + project owners set** — SDCP `owners` **or** TDPQA `owners_tdpqa`
 - [ ] **SDCP only:** AiTDP Yes + 0–1 fraction + remarks; MICRO; Pre/Post; fields `11137`/`11138`/`11901`
 - [ ] **TDPQA only:** one `handoff_comment` with RCA + Impact + Dev + Pre/Post + **AITDP % + remarks**; edit-in-place while still newest, else new comment after latest QA observation
-- [ ] **Rework / reopened ticket:** Dev Test Evidence proof block present (build+commit ref, real-flow verify wording, dataset LANs, scenario matrix with Run/Not-run, persisted values expected-vs-actual, webapp views when UI impacted, Result + scope note) — no "Pass" without it
+- [ ] **Rework / reopened ticket:** simple ADF tables present (Test data, Observation checks with Expected/Actual per row, UI checks, How to retest) — no commit SHA; no dense multi-fact sentences; no "Pass" without Expected vs Actual
 - [ ] **QA Retest transition** used if exposed; otherwise reported unavailable (never guess QA:Traige)
 - [ ] **Human tone** — developer-to-QA
 - [ ] No empty ADF paragraphs
