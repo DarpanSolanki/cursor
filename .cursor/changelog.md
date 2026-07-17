@@ -1,3 +1,8 @@
+## 2026-07-17 | acct `48f9461f1` + workspace | TDPQA-72 DFC hardcoding + real-flow DB-write gate
+- Accounting: `DFC_PRTL_BILL_` → `FORCE_BILL_CLIENT_REF_PREFIX` constant + `build/isForceBillClientReference` helpers; `reconcileAccruedInterestToBilledOriginal` slimmed 99→68 LOC (same 2 phases). Real-flow e2e PASS (FB labd prin=0 + EMI preserved, Obs3 Accrued==Original, Obs2 amount==principal).
+- Blast radius `findByLoanInstallmentDetailsId ORDER BY id DESC LIMIT 1`: all callers null/reversed-only → multi-row (EMI+FB) safe; real DB proof both children.
+- Workspace upgrade (fail-closed): `acceptance_coverage.py` now requires value-level `db_asserts` vs `domain_money_tables` for enforced money domains (presence-only rejected); memory `feedback_real_flow_db_write_validate.md`; rules ship-test-mandatory / code-backed-sim / agent-quality-gates Gate D / workspace-contract / workspace-developer-tester. Self-test 6/6 PASS.
+
 ## 2026-07-17 | workspace | fail-closed reuse-query discipline gate
 - Repository/DAO query-semantic diffs now require reuse-ladder step, checked methods/callers, and index/scan/limit performance evidence in ship discipline; step 3 requires justification. Focused gate suite: 18/18 PASS.
 

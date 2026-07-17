@@ -1282,10 +1282,32 @@
       ],
       "ui_asserted": true,
       "webapp_required": true,
+      "db_asserts": [
+        {
+          "table": "loan_account_billing_details",
+          "assert": "death-cycle installment keeps EMI labd (EMI_LABD_FIXTURE, principal>0) AND gains a dedicated force-bill labd (principal=0, interest=billed slice); findByLoanInstallmentDetailsId ORDER BY id DESC LIMIT 1 returns a non-reversed row for both; no EMI hijack",
+          "checked_by": "Issue B PASS labd_id/txn_ref/interest + EMI_LABD_FIXTURE preserved count=1 (real DB: lid 7455066 -> emi 157002 int188/prin762 + fb 157102 int38/prin0; lid 7455065 -> fb 157103 int71/prin0 + emi 157202 int355/prin1443)"
+        },
+        {
+          "table": "transaction_master",
+          "assert": "force-bill client_reference_number == DFC_PRTL_BILL_<accountId>_<valueDateMs> (from FORCE_BILL_CLIENT_REF_PREFIX builder, not scattered literal); original_amount == billed interest slice",
+          "checked_by": "Issue B PASS client_ref DFC_PRTL_BILL_7899566_1770489000000 orig=71, DFC_PRTL_BILL_7899567_1770489000000 orig=38"
+        },
+        {
+          "table": "loan_account_payments_details",
+          "assert": "parent POS-clear payment amount==principal_amount, interest_amount=0, excess_amount==EXTRA surplus",
+          "checked_by": "Issue A PASS parent 6003769230 amount=13702 principal=13702 int=0 excess=1244 (EXTRA netting)"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "SUM(total_accrued_amount) after reconcileAccruedInterestToBilledOriginal == billed original INT (Accrued<=Original) for parent AND every death child; IAD past last billed INT due zeroed, excess trimmed from newest",
+          "checked_by": "Obs3 PASS parent 919==919, child 974==974, child 1845==1845 (SQL + webapp getLoanAccountSummaryDetails interest_details)"
+        }
+      ],
       "na": {
         "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same DFC_PRTL_BILL ref no-op). Blocker: no second insurance-job fire harness without claim reset."
       },
-      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; fails on EMI-labd hijack and amount!=principal."
+      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; fails on EMI-labd hijack and amount!=principal. Real-flow DB values asserted (see db_asserts checked_by)."
     },
     "note": "QA acceptance (TDPQA-72/SDCP-10199): ACCEPTANCE_STRICT=1 default. Obs1 dedicated force-bill labd (no EMI hijack); Obs1b parent FB Out-of-scope (child-only); Obs2 amount==principal/excess; Obs3 Accrued<=Original (reconcileAccruedInterestToBilledOriginal). Webapp-bound: getLoanAccountSummaryDetails interest_details, getLoanAccountOverviewDetails account_number_list, getLoanAccountStatement DFC_PRTL_BILL. Fixture: equivalent local product-70 SHG (QA LAN full clone blocked) + DCF_SEED_EMI_LABD=1 + EXTRA. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. GAP-075."
   },

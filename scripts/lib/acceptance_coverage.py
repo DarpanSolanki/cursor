@@ -78,6 +78,21 @@ WEBAPP_UI_APIS = frozenset(
     }
 )
 
+# Value-level DB assert requirement (real-flow write correctness — not presence-only).
+# A money ship must prove each touched table is written with the EXPECTED column values,
+# via a live/staged flow (not SQL-only "should have inserted"). Enforced money domains
+# declare their money_tables; at least one impact/release case must carry
+# acceptance.db_asserts (or registry expect.db_eq) covering every money table, and each
+# entry must cite how the e2e verifies the value (checked_by / expect).
+DB_ASSERT_ANTIPATTERNS = (
+    "presence only",
+    "row exists",
+    "should have inserted",
+    "assumed inserted",
+    "status-only",
+    "sql-only should",
+)
+
 # ui_fields tokens that count as webapp-bound field coverage (not SQL-only).
 WEBAPP_UI_FIELD_MARKERS = (
     "interest_details.accrued_amount",
@@ -189,6 +204,62 @@ def ui_fields_ok(case: dict) -> list[str]:
     return []
 
 
+def _case_db_asserts(case: dict) -> list[dict]:
+    """Value-level DB asserts declared on a case (acceptance.db_asserts or expect.db_eq)."""
+    out: list[dict] = []
+    acc = case_acceptance(case)
+    for a in acc.get("db_asserts") or []:
+        if isinstance(a, dict) and a.get("table"):
+            out.append(a)
+    db_eq = (case.get("expect") or {}).get("db_eq") or {}
+    if isinstance(db_eq, dict):
+        for table, cols in db_eq.items():
+            out.append({"table": table, "expect": cols, "checked_by": "expect.db_eq"})
+    return out
+
+
+def db_value_asserts_ok(domain: str, ordered_cases: list[str], reg: dict, man: dict) -> list[str]:
+    """Fail closed when an enforced money domain lacks value-level DB asserts.
+
+    Each money_table for the domain must be covered by at least one case declaring an
+    expected column value (not presence-only). Every db_assert entry must cite evidence
+    (checked_by / expect) so the flow actually verifies the written value.
+    """
+    if not (man.get("require_db_value_asserts", True)):
+        return []
+    money_tables = list((man.get("domain_money_tables") or {}).get(domain) or [])
+    if not money_tables:
+        return []
+    errors: list[str] = []
+    covered: set[str] = set()
+    for cid in ordered_cases:
+        case = reg.get(cid) or {}
+        for a in _case_db_asserts(case):
+            table = str(a.get("table"))
+            has_value = bool(a.get("expect") or a.get("assert") or a.get("columns"))
+            has_evidence = bool(a.get("checked_by") or a.get("expect"))
+            blob = " ".join(str(v).lower() for v in a.values())
+            bad = [p for p in DB_ASSERT_ANTIPATTERNS if p in blob]
+            if bad:
+                errors.append(f"{cid}: db_assert for {table} presence-only anti-pattern {bad}")
+                continue
+            if not has_value:
+                errors.append(f"{cid}: db_assert for {table} lacks expected value (expect/assert/columns)")
+                continue
+            if not has_evidence:
+                errors.append(f"{cid}: db_assert for {table} lacks checked_by evidence (real-flow verify)")
+                continue
+            covered.add(table)
+    missing = [t for t in money_tables if t not in covered]
+    if missing:
+        errors.append(
+            f"{domain}: money ship lacks value-level DB asserts for {missing} "
+            f"(covered={sorted(covered)}); add acceptance.db_asserts[{{table,expect|assert,checked_by}}] "
+            f"or expect.db_eq on an impact/release case — presence-only is not acceptable"
+        )
+    return errors
+
+
 def check_domain(domain: str, *, enforce: bool) -> list[str]:
     errors: list[str] = []
     man = _manifest()
@@ -232,6 +303,9 @@ def check_domain(domain: str, *, enforce: bool) -> list[str]:
         if dims and vm and vm not in VERIFY_OK:
             errors.append(f"{cid}: verify_mode {vm!r} not in {sorted(VERIFY_OK)}")
         covered |= dims
+
+    if enforce:
+        errors.extend(db_value_asserts_ok(domain, ordered, reg, man))
 
     missing = [dim for dim in required if dim not in covered and dim not in na]
     if missing and enforce:
@@ -385,6 +459,37 @@ def self_test() -> int:
         failures += 1
     else:
         print("SELF-TEST OK: complete matrix accepted")
+
+    # 3b) Value-level DB asserts: presence-only / missing table rejected, real values pass
+    man_fixture = {
+        "require_db_value_asserts": True,
+        "domain_money_tables": {"t_dom": ["loan_account_billing_details", "transaction_master"]},
+    }
+    reg_bad = {
+        "c.bad": {"acceptance": {"db_asserts": [{"table": "loan_account_billing_details", "assert": "row exists"}]}}
+    }
+    db_bad = db_value_asserts_ok("t_dom", ["c.bad"], reg_bad, man_fixture)
+    if not db_bad:
+        print("SELF-TEST FAIL: presence-only db_assert + missing table not rejected")
+        failures += 1
+    else:
+        print("SELF-TEST OK: presence-only / uncovered-table db_asserts rejected")
+
+    reg_good = {
+        "c.ok": {
+            "acceptance": {
+                "db_asserts": [
+                    {"table": "loan_account_billing_details", "assert": "EMI preserved + FB prin=0", "checked_by": "Issue B PASS"},
+                    {"table": "transaction_master", "expect": {"original_amount": "38"}, "checked_by": "client_ref DFC_PRTL_BILL"},
+                ]
+            }
+        }
+    }
+    if db_value_asserts_ok("t_dom", ["c.ok"], reg_good, man_fixture):
+        print("SELF-TEST FAIL: valid value-level db_asserts rejected")
+        failures += 1
+    else:
+        print("SELF-TEST OK: value-level db_asserts with evidence accepted")
 
     # 4) Live death_foreclosure must be enforceable once registry annotated
     live = check_domain("death_foreclosure", enforce=True)

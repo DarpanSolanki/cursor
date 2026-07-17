@@ -28,7 +28,15 @@ Do **not** push after `compileJava` alone. HTTP 200 on a batch trigger is **not*
 
 - **workspace** — `kg validate` + `ntest validate` (+ flow-scoped case if resolved)
 - **service** — `gradlew build -x test` + health probe or `ntest smoke --quick`
-- **money** — build + registry case (`batch.*` preferred over certify flows) + batch `COMPLETED` when applicable
+- **money** — build + registry case (`batch.*` preferred over certify flows) + batch `COMPLETED` when applicable + **value-level DB asserts** (below)
+
+## Real-flow DB write validation (money ships — mandatory, fail-closed)
+
+`feedback_real_flow_db_write_validate.md`. A money ship is **not** verified until the REAL flow ran and every touched table's **column values** were read back and matched to expected — not presence, not SQL-only "should have inserted", not a status-200/COMPLETED alone.
+
+- Drive the actual orchestration / API / job / batch a production transaction takes (e.g. `deathForeclosureInsuranceJob`, `loanRepayment`, disburse) — never a hand-written INSERT to fake the row.
+- After each critical write, assert exact values: `loan_account_billing_details` (EMI preserved + dedicated FB interest/prin/txn_ref/installment_id), `transaction_master` client_ref + original_amount, `loan_account_payments_details` amount/principal/excess/interest, `interest_accrual_details` accrued vs billed, `is_deleted`/reversed flags.
+- **Machine gate:** enforced money domains must declare `acceptance.db_asserts` (or registry `expect.db_eq`) covering every `domain_money_tables` entry (`scripts/lib/acceptance_coverage_manifest.json`); each entry needs `table` + `expect|assert|columns` + `checked_by` evidence. Presence-only phrasing is rejected. Enforced via `acceptance_coverage.py` inside `ship_discipline_gate` / `ship-loop-gate`.
 
 ## Adversarial fixture matrix (money ships — mandatory)
 

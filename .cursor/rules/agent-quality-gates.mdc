@@ -69,10 +69,11 @@ Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unre
 | Parent/product-scope item silently dropped | Must be **Pass** or explicit **Out-of-scope-documented** |
 | "webapp verified" (partial) | Verify the exact screen fields QA cites via **live webapp APIs**: `getLoanAccountSummaryDetails` (`interest_details.accrued/original`), `getLoanAccountOverviewDetails` (`account_number_list`), `getLoanAccountStatement` (`DFC_PRTL_BILL` / RSCH amounts) — see `feedback_webapp_verify_mandatory_ui_ships.md` |
 | SQL-only `ui_fields` as "webapp" | `acceptance_coverage` requires WEBAPP_UI_FIELD_MARKERS on `downstream_ui` |
+| "row was inserted" / status-200 / COMPLETED as proof | **Real-flow DB write validation** (`feedback_real_flow_db_write_validate.md`): run the actual orch/API/job, read the row back, assert **column values** for every touched money table; presence-only / SQL-only "should have inserted" fails closed |
 
 Subset e2e (loan CLOSED, txn exists) is **not Done** while the acceptance shape QA cites is unproven. Debug-only relax flags (`ACCEPTANCE_STRICT=0`, `ALLOW_A2_NETTING_DISPLAY_DIFF=1`) **never** produce a handoff Pass.
 
-**Machine gate:** `scripts/lib/acceptance_coverage.py` (+ manifest) — enforced domains must declare `acceptance.dimensions` / webapp-marker `ui_fields` on registry cases; wired into `ship_discipline_gate` / `ship-loop-gate`. Subset notes and SQL-only “webapp” fail closed.
+**Machine gate:** `scripts/lib/acceptance_coverage.py` (+ manifest) — enforced domains must declare `acceptance.dimensions` / webapp-marker `ui_fields` **and value-level `acceptance.db_asserts` (or `expect.db_eq`) covering every `domain_money_tables` entry** on registry cases; wired into `ship_discipline_gate` / `ship-loop-gate`. Subset notes, SQL-only “webapp”, and presence-only DB asserts fail closed.
 
 ## Gate E — Outputs (RCA / JIRA / release)
 

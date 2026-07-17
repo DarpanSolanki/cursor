@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "description": "Acceptance-coverage contract — fail-closed for enforced domains on money/service ship. Existing domains migrate via backlog_domains until annotated.",
+  "required_dimensions_default": [
+    "happy_path",
+    "dirty_state",
+    "replay_idempotency",
+    "downstream_ui"
+  ],
+  "domain_required": {
+    "death_foreclosure": [
+      "happy_path",
+      "boundary_zero",
+      "dirty_state",
+      "replay_idempotency",
+      "downstream_ui",
+      "adjacent_sibling"
+    ]
+  },
+  "enforced_domains": [
+    "death_foreclosure"
+  ],
+  "require_db_value_asserts": true,
+  "domain_money_tables": {
+    "death_foreclosure": [
+      "loan_account_billing_details",
+      "transaction_master",
+      "loan_account_payments_details",
+      "interest_accrual_details"
+    ]
+  },
+  "backlog_domains": {
+    "disbursement": "severity — annotate impact_cases acceptance.dimensions; severity=high",
+    "repayment": "severity — severity=high",
+    "prepayment": "severity — severity=medium",
+    "foreclosure": "migrate — severity=high",
+    "dpi": "migrate — severity=high",
+    "batch": "migrate — severity=medium",
+    "reversal": "migrate — severity=medium",
+    "restructuring": "migrate — severity=low"
+  }
+}

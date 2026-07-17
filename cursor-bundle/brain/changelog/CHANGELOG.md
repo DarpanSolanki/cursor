@@ -3,6 +3,10 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
+## 2026-07-17 | acct `48f9461f1` | accounting-v2 | mfi_integration_v3.4.2.4 | TDPQA-72 DFC_PRTL_BILL constant + slim Accrued reconcile
+loanDeathForeclosure | FORCE_BILL_CLIENT_REF_PREFIX + build/isForceBillClientReference helpers (no scattered literal); reconcileAccruedInterestToBilledOriginal 99->68 LOC same 2 phases. REAL-FLOW VERIFY ACCEPTANCE_STRICT=1 DCF_SEED_EMI_LABD=1 e2e: FB labd prin=0 + EMI preserved, client_ref DFC_PRTL_BILL_7899567_1770489000000 tm.orig=38, Obs3 Accrued==Original 919/974/1845, Obs2 amount=13702==principal. KG SKIP (no flow change).
+
+---
 ## 2026-07-17 | acct `dfec1e60f1` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 Obs3 Accrued≤Original (port)
 loanDeathForeclosure | kg-flow | Port a7e6d1d1c: reconcileAccruedInterestToBilledOriginal after DFC force-bill (child+parent); VERIFY ACCEPTANCE_STRICT e2e parent=6002329725 Obs3+webapp PASS
 

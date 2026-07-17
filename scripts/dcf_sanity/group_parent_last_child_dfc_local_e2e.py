@@ -369,16 +369,17 @@ FROM (
 WHERE la.account_id = {account_id};
 """)
 
-    # Advance INT due = first INT due strictly after death-1 (death_date - 1 day)
+    # Advance INT due = first unpaid INT due strictly after death-1
     advance_due = psql(f"""
 SELECT to_char(MIN(ldd.due_date),'YYYY-MM-DD')
 FROM mfi_accounting.loan_due_details ldd
 JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
 WHERE la.la_account_number='{child_lan}' AND ldd.component_type='INT' AND ldd.is_deleted=false
-  AND ldd.due_date::date > ('{death_date}'::date - INTERVAL '1 day');
+  AND ldd.due_date::date > ('{death_date}'::date - INTERVAL '1 day')
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0;
 """)
     if not advance_due:
-        raise RuntimeError(f"no advance INT due after death-1 for {child_lan}")
+        raise RuntimeError(f"no unpaid advance INT due after death-1 for {child_lan}")
 
     # Pay open dues through first advance INT due (PRIN+INT+fees) via real loanRepayment
     amt = psql(f"""
@@ -1079,11 +1080,8 @@ WHERE parent_loan_account_id={parent_id} AND loan_status='ACTIVE' AND is_deleted
 ORDER BY la_account_number;
 """], env=PG_ENV, text=True).strip().split("\n")
     child1, child2 = kids[0].strip(), kids[1].strip()
-    # death_date must fall WITHIN the schedule with a valid "next installment", else
-    # InterestCalculationUtil throws "No current installment". An EXACT due date trips a different
-    # branch that can throw; the proven-good shape (matches manual QA, e.g. 2025-11-03) is a
-    # mid-schedule PRIN due date + 1 day — a real mid-tenure death that leaves overdue rows before
-    # it and future-principal rows after it, with a guaranteed subsequent installment.
+    # death_date mid-schedule, but next INT after death-1 must be <= today so EXTRA
+    # loanRepayment (value_date=today) can settle advance INT (otherwise raw_surplus=0).
     death_date = psql(f"""
 WITH d AS (
   SELECT DISTINCT ldd.due_date
@@ -1091,12 +1089,42 @@ WITH d AS (
   JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
   WHERE c.parent_loan_account_id={parent_id} AND ldd.component_type='PRIN' AND ldd.is_deleted=false
   ORDER BY ldd.due_date
-), n AS (SELECT COUNT(*) cnt FROM d),
-mid AS (
-  SELECT due_date FROM (SELECT due_date, row_number() OVER (ORDER BY due_date) rn FROM d) x, n
-  WHERE rn = GREATEST(1, (n.cnt/2)) LIMIT 1
+), cand AS (
+  SELECT (due_date + INTERVAL '1 day')::date AS death_d
+  FROM d
+), ok AS (
+  SELECT cand.death_d
+  FROM cand
+  WHERE EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='INT' AND ldd.is_deleted=false
+      AND ldd.due_date::date > (cand.death_d - INTERVAL '1 day')
+      AND ldd.due_date::date <= CURRENT_DATE
+      AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+      AND ldd.due_date::date < cand.death_d
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+      AND ldd.due_date::date >= cand.death_d
+  )
+  ORDER BY cand.death_d
+  LIMIT 1
 )
-SELECT to_char((SELECT due_date FROM mid) + INTERVAL '1 day','YYYY-MM-DD');
+SELECT to_char(death_d,'YYYY-MM-DD') FROM ok;
 """) or "2026-04-01"
     print(f"  discovered fresh fixture: parent={parent} child1={child1} child2={child2} death_date={death_date}")
     return parent, child1, child2, death_date

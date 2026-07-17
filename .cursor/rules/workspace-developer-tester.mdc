@@ -19,7 +19,7 @@ orient → reproduce → assert → fix → re-smoke
    - **API:** `ntest run <id>` or `ntest api <service> <api> --var K=V`
    - **Flow:** `ntest run dpic.full` / `make -C scripts jlg`
    - **DB:** `scripts/db-local.sh --canned …`
-3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring)
+3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring); money paths must read written rows back and assert **exact column values** for every touched table (`acceptance.db_asserts` / `expect.db_eq`) — presence-only / status-only fails closed (`feedback_real_flow_db_write_validate.md`)
 4. **Fix** — service repo; tiered L0/L1 per workspace rules
 5. **Verify** — `ntest smoke` or `ntest run <id>`; prepend changelog if stable fix
 
@@ -50,6 +50,17 @@ orient → reproduce → assert → fix → re-smoke
 ```
 
 Payload files only when body is large (e.g. `disburseLoan` → reuse `scripts/dpic/payload/` or `disbursement/payloads/`).
+
+## When a stage is blocked (suite enrichment)
+
+Prefer live `ntest` / E2E. If maker-checker, child events batch, or fixture LAN cannot run:
+
+1. Escalate per `.cursor/rules/code-backed-simulation-testing.mdc` (orch sibling / processor mirror — **code on disk**, not guesses).
+2. Add one registry row with `verify_mode` + honest `note` (upgrade path to full E2E).
+3. Wire `scripts/lib/accounting_flow_domains.json` so ship-loop resolves the case next time.
+4. Print `Verify mode: …` and `Blocker: …` in the result.
+
+Example: `reopening.child_payments_parity_sim` (TDPQA-102).
 
 ## Hygiene
 
