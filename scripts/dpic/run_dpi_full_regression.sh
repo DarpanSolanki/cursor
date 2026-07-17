@@ -13,7 +13,8 @@
 #   full      — + billing_ud + integration_smoke + ud_compliance
 #   maturity  — + post_maturity + post_maturity_catchup + fixture restore
 #
-# Fixture loan 8060160 for standard+ blocks; grace-chain 8057160 for grace/overlap/two_emi/shg.
+# Fixture loan 8060160 for standard+ blocks; grace-chain 8057160 for grace/overlap/two_emi
+# (serialized + per-case dpi_isolate_loan_for_case — do not run those steps concurrently).
 # Quick uses DPI_CALENDAR_MODE=milestones on two_emi (not daily May→Jul).
 # Maturity teardown: restore_demo_installments_after_post_maturity_e2e.sql after post-maturity block.
 #
@@ -76,6 +77,10 @@ restore_maturity_fixture() {
 }
 
 echo "=== DPI full regression profile=$PROFILE ==="
+export BATCH_POLL_TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-90}"
+# shellcheck disable=SC1091
+source "$DPIC/lib/dpi_demo_fixture.sh"
+dpi_abandon_stuck_batches 180
 bash "$ROOT/scripts/bin/agent-ops.sh" ensure accounting --compile 2>/dev/null || true
 
 if [[ "${SKIP_DPI_FIXTURE_RESET:-0}" != "1" ]]; then
@@ -85,7 +90,8 @@ fi
 if profile_ge quick; then
   run_step three_job_verify bash "$DPIC/run_dpi_three_job_verify.sh"
   run_step posting_guards bash "$ROOT/scripts/bin/dpi-booking-posting-guard.sh"
-  # two_emi purges global DPI state — run before grace-chain scenarios on same LAN
+  # two_emi / grace / overlap / booking_anchor share grace-chain LAN 8057160.
+  # Each script calls dpi_isolate_loan_for_case (hard purge + restore schedule + batch purge on fire).
   # milestones: EMI due + month-end hops (keeps quick under ~20 min vs daily May→Jul)
   run_step two_emi_full_chain \
     env DPI_CALENDAR_MODE=milestones END_DATE=2026-07-01 GO_LIVE_ISO=2026-05-01 \

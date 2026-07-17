@@ -42,8 +42,11 @@ violations AS (
       OR EXISTS (SELECT 1 FROM due_days d WHERE d.d = s.end_d)
     )
   UNION ALL
-  -- After billing: EMI-seal days (or month-end once next EMI due has arrived) must be billed.
-  -- Exception: month-end seal before next INT/PRIN due day may remain unbilled (billing calendar).
+  -- After booking+billing: EMI-seal days must be billed when billing-eligible.
+  -- Billing-eligible = end is an INT/PRIN due day, OR a later INT/PRIN due ≤ business_date
+  -- (month-end seal before the next EMI due arrives may stay unbilled — product calendar).
+  -- Open windows ending on a non-due / non-month-end day are never sealed_unbilled.
+  -- Harness must not flag residue from a prior case: isolate loan + purge batch job_time first.
   SELECT s.id, 'sealed_unbilled'
   FROM slices s
   CROSS JOIN params p

@@ -43,17 +43,13 @@ purge_batch() {
 }
 
 call_batch() {
-  local api="$1" job_time="$2"
-  purge_batch "$api" "$job_time"
-  local rs
-  rs="$(date +%s)"
-  JOB_TIME="$job_time" "$NTEST" api accounting "$api" --batch --job-time "$job_time" >/dev/null
-  bash "$WAIT_BATCH" "$api" "$job_time" "$rs"
+  dpi_call_batch "$1" "$2"
 }
 
 echo "=== DPI two-EMI full chain LAN=$ACCOUNT_NUMBER id=$LOAN_ACCOUNT_ID ==="
 echo "    go_live=$GO_LIVE_ISO end=$END_DATE grace=$GRACE_DAYS"
 
+dpi_isolate_loan_for_case "$LOAN_ACCOUNT_ID"
 dpi_pg -v ON_ERROR_STOP=1 -f "$ROOT/scripts/dpic/sql/helpers/purge_local_dpi_all.sql" >/dev/null
 dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
   -f "$ROOT/scripts/dpic/sql/helpers/hard_purge_dpi_accruals_for_loan.sql" >/dev/null

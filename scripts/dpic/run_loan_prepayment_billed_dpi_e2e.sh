@@ -250,7 +250,7 @@ if ok_st.get("code") == "132268":
     raise SystemExit(f"FAIL: approve with billed DPI must not fail amount validation: {ok_st}")
 # with-DPI must clear ValidateFinal (code != 132268). TRIAL postTransaction may still 333.
 from pathlib import Path
-tail = Path("/home/darpan/Documents/sliProd/novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log").read_text(
+tail = Path("/home/darpan/Documents/sliProd/trustt-platform-accounting/logs/mfi/accounting-mfi.log").read_text(
     encoding="utf-8", errors="ignore"
 ).splitlines()[-2000:]
 saw_validate = any("validateFinalPrepaymentProcessor took" in ln for ln in tail)

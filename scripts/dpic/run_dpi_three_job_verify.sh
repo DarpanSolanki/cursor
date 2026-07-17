@@ -43,17 +43,19 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 qa_fire_batch() {
   local api="$1" job_time="$2" purge="${3:-1}"
-  local rs
-  [[ "$purge" == "1" ]] && dpi_purge_batch "$api" "$job_time"
-  rs="$(date +%s)"
-  echo ""
-  echo "# --- QA copy-paste (${api}) ---"
-  echo "JOB_TIME=$job_time bash scripts/bin/ntest.sh api accounting $api --batch --job-time $job_time"
-  echo "bash scripts/dpic/lib/wait_batch_job.sh $api $job_time $rs"
-  echo "# ---"
-  JOB_TIME="$job_time" "$NTEST" api accounting "$api" --batch --job-time "$job_time" >/dev/null
-  bash "$WAIT_BATCH" "$api" "$job_time" "$rs"
-  dpi_print_batch_execution "$api" "$job_time" "$rs"
+  # Shared harness: abandon stuck dpi* + purge job_time + 90s+ poll
+  dpi_call_batch "$api" "$job_time" "$purge"
+  dpi_pg -c "
+SELECT bje.job_execution_id, bji.job_name, bje.status, bje.create_time
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+JOIN mfi_batch.batch_job_execution_params p ON p.job_execution_id = bje.job_execution_id
+WHERE bji.job_name = '$api'
+  AND p.parameter_name IN ('job_time', 'time')
+  AND p.parameter_value LIKE '%' || '$job_time' || '%'
+ORDER BY bje.job_execution_id DESC
+LIMIT 1;
+" >/dev/null || true
 }
 
 dpi_print_batch_execution() {

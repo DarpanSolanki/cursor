@@ -10,16 +10,15 @@ CREATE TABLE IF NOT EXISTS mfi_accounting._demo_dpd_quarantine_backup (
   backed_up_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Also update existing backup rows so purge_local restore cannot revive stale DPD forever.
 INSERT INTO mfi_accounting._demo_dpd_quarantine_backup (account_id, past_due_days)
 SELECT la.account_id, la.past_due_days
 FROM mfi_accounting.loan_account la
 WHERE la.account_id <> :loan_account_id::bigint
   AND la.past_due_days > 0
   AND la.loan_status = 'ACTIVE'
-  AND NOT EXISTS (
-    SELECT 1 FROM mfi_accounting._demo_dpd_quarantine_backup b
-    WHERE b.account_id = la.account_id
-  );
+ON CONFLICT (account_id) DO UPDATE
+  SET past_due_days = EXCLUDED.past_due_days, backed_up_at = NOW();
 
 UPDATE mfi_accounting.loan_account la
 SET past_due_days = 0,

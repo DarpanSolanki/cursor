@@ -30,6 +30,9 @@ bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compi
 
 dpi_set_go_live_and_refresh "$GO_LIVE_DDMM" "$PRODUCT_CODE"
 
+# Isolate shared grace-chain LAN (two_emi / overlap leave EMI3 hide + accrual residue).
+dpi_isolate_loan_for_case "$LOAN_ACCOUNT_ID"
+
 "${PG[@]}" -v ON_ERROR_STOP=1 \
   -v loan_account_id="$LOAN_ACCOUNT_ID" \
   -v grace_days="$GRACE_DAYS" \
@@ -50,9 +53,7 @@ if [[ -f "$ROOT/scripts/dpic/sql/helpers/clear_batch_failure_audit.sql" ]]; then
 fi
 
 echo ">>> dpiAccrualCalculation"
-run_started="$(date +%s)"
-JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$run_started"
+dpi_call_batch dpiAccrualCalculation "$JOB_TIME"
 
 # columns: inside|first_start|first_end|amount|expected_start|gate_end|grace_ok
 verify_out=""

@@ -1,3 +1,7 @@
+## 2026-07-17 | workspace | DPI grace_overlap column-audit settle-poll (harness race, not product bug)
+- RCA: `dpiAccrualBooking` marks Spring Batch COMPLETED before `accrual_posting_date` writes are visible on a fresh psql conn (partition COMPLETED races JPA flush on cold local JVM). Column audit fired immediately → transient `posted_slice_missing_posting_date` ×2 on seal-anchor slices (05-31 month-end, 06-14 EMI2 due); apd settles ~1s later. Final product state correct (accounting repo unchanged — no product fix).
+- Fix: `scripts/dpic/lib/run_dpi_column_audit.sh` bounded settle-poll (AUDIT_SETTLE_TRIES=10×1s) re-runs slice+booking audit until 0 or timeout; genuine persistent violation still fails (no masking). Shared gate → benefits all 5 dpi e2e callers. grace_overlap PASS ×2. Also cleared 28k-row `mfi_batch` dpi metadata bloat (status-flip lag source).
+
 ## 2026-07-17 | workspace | code-comment lint + JIRA mode comment validation
 - Primary: `java_comment_lint.py` / `java-comment-lint.sh` fail-closed on DPI narrative comments (consecutive `//`, ticket/parity essays); wired into money `ship-loop-gate --from-pending`. Memory RULE 1 points at the gate.
 - Secondary: `jira-fix-adf.py validate_mode_comment` — SDCP short ping (or omit); TDPQA structured rca+impact+dev; pack carries `comment_id` for edit-in-place. Tests: `test_java_comment_lint.py`, `test_jira_fix_adf.py`.
@@ -397,3 +401,14 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 ## 2026-07-17 | acct b256efd054 | DCF force-bill client_ref → accountId||valueDateMs (no DFC_PRTL_BILL_); e2e PASS parent=6003896527
 
 - 2026-07-17 | workspace | PR review L1 — added a read-only GitHub evidence collector, strict branch/environment/SHA verdict contract, fintech review lenses, dual report/developer-response output, and canonical router/skill-index integration.
+
+## 2026-07-17 | accounting `8a1a7cd07` | mfi_integration_v3.7.1 | DPI BPD util: loanPrepayment create uses same calculateTillForeclosureDate as foreclosure sim; approve ValidateFinal unchanged.
+
+- 2026-07-17 | workspace | initial-setup 3.7.1 local schema sync: documented bundled Flyway 5.2.4 `localhost.sh` workflow, safe history reconciliation, local-only setup vs release migration boundary; accounting/LOS local histories current. Fresh upstream `e4ade8c3f8` still has no migration for `loan_account.dpi_suspense_amount`.
+
+## 2026-07-17 | workspace | DPI harness 8/8 PASS serialized (TDPQA-83 ready for QA retest)
+- Product on `mfi_integration_v3.7.1` @ `8a1a7cd077` (unify) + day-window `e2789d5f0` + booking `77921d275f` — no new product code this turn.
+- Prior never-green = orphan full-portfolio calc backlog (~29k unposted), not product bugs. `sealed_unbilled` was harness FP (settle race + audit scope) — fixed via isolate/purge/settle-poll + refined billing-eligible rule.
+- Matrix PASS: three_job, posting, grace, grace_overlap (audit 0), booking_anchor, two_emi, SHG parity, bpd_sim ₹29. TDPQA-83 handoff refreshed; SDCP-11012/11016/11030/11048 left untouched (already released).
+
+- 2026-07-17 | workspace | initial-setup hardening — added dependency-led `scripts/bin/initial-setup-local.sh` around untouched Flyway 5.2.4 runner; documented legacy per-schema history, safe reconciliation, and GAP-077 duplicate versions; refreshed mixed-train workspace state. Initial-setup repo remained clean at upstream `e4ade8c3f8` and was not pushed.

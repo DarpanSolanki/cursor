@@ -13,7 +13,7 @@ PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyt
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 LOG_DIR="$ROOT/scripts/scratch/logs"
 mkdir -p "$LOG_DIR"
-ACCT_LOG="${ACCOUNTING_LOG:-$ROOT/novopay-platform-accounting-v2/logs/accounting.log}"
+ACCT_LOG="${ACCOUNTING_LOG:-$ROOT/trustt-platform-accounting/logs/accounting.log}"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 

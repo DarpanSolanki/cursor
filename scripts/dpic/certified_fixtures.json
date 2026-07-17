@@ -2,17 +2,6 @@
   "_meta": "Local DPI certification \u2014 fresh LAN per scenario; re-run certify_dpi_scenarios.sh",
   "scenarios": [
     {
-      "id": "pre_emi",
-      "status": "PASS",
-      "lan": "6004052125",
-      "loan_account_id": "8098360",
-      "ext_ref": "",
-      "customer_id": "",
-      "pre_emi_job_ms": "1776861000000",
-      "anchor_date": "2026-07-09",
-      "assertion": "zero_accrual_before_first_emi"
-    },
-    {
       "id": "single_overdue",
       "status": "PASS",
       "lan": "6004052225",
@@ -36,9 +25,20 @@
       "assertion": "multi_emi_anchor_on_latest_overdue",
       "emi1_rows": "2",
       "emi2_rows": "1"
+    },
+    {
+      "id": "pre_emi",
+      "status": "PASS",
+      "lan": "6004056825",
+      "loan_account_id": "8102960",
+      "ext_ref": "DPIC_CERT_pre_emi_20260717_1784293740639",
+      "customer_id": "10002233",
+      "pre_emi_job_ms": "1776861000000",
+      "anchor_date": "2026-07-17",
+      "assertion": "zero_accrual_before_first_emi"
     }
   ],
-  "certified_at": "2026-07-09T12:50:09Z",
+  "certified_at": "2026-07-17T13:10:48Z",
   "product_id": "6367",
   "primary_scenario": "single_overdue",
   "primary": {

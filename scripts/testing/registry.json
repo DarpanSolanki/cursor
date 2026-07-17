@@ -143,7 +143,7 @@
       "foreclosure_simulation_details.bpd_amount",
       "foreclosure_simulation_details.balance_principal"
     ],
-    "note": "LAN maturity must be after FORECLOSURE_DATE; DEFAULT requires FD >= value-date (wall clock in test env)"
+    "note": "LAN maturity must be after FORECLOSURE_DATE; DEFAULT requires FD >= value-date (wall clock in test env). BPD: DpiForeclosureBrokenPeriodService projects from business date (not nextDay) + HALF_UP 0dp \u2014 QA LAN 6003768627 FC 29-Jul-2026 expects bpd\u224829 (persisted~10 + 9\u00d7daily~2.082)."
   },
   "dpic.foreclosure_bpd_growth": {
     "type": "flow",
@@ -561,12 +561,14 @@
       "batch",
       "grace"
     ],
-    "title": "DPI grace overlap \u2014 EMI1 DPI continues while EMI2 still in grace",
+    "title": "DPI grace overlap \u2014 EMI2 owns accrual during EMI2 grace; EMI1 sealed",
     "cmd": "bash scripts/dpic/run_grace_overlap_dpi_e2e.sh",
+    "note": "Isolates shared LAN 8057160 (hard purge + restore schedule). Purges batch job_time before each fire. Full column audit hides EMI3+ so sealed_unbilled matches billing calendar; open EMI2-grace window may stay unposted. Do not treat COLUMN_AUDIT_FAIL as product bug until isolated re-run.",
     "env": {
       "LOAN_ACCOUNT_ID": "8057160",
       "GRACE_DAYS": "3",
-      "JOB_TIME": "1781699400000"
+      "JOB_TIME": "1781699400000",
+      "RUN_COLUMN_AUDIT": "1"
     }
   },
   "dpic.multi_emi_installment_e2e": {
@@ -1652,5 +1654,22 @@
     "type": "flow",
     "title": "Workspace doctor \u2014 quick + service HTTP checks",
     "cmd": "bash scripts/bin/workspace-doctor.sh --services"
+  },
+  "dpic.foreclosure_bpd_day_window_sim": {
+    "type": "flow",
+    "api": "fetchLoanForeclosureSimulationDetails",
+    "apis": [
+      "fetchLoanForeclosureSimulationDetails"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "dpi",
+      "foreclosure"
+    ],
+    "title": "DPI foreclosure BPD day-window (business start + HALF_UP \u2192 \u20b929)",
+    "cmd": "python3 scripts/testing/dpi/foreclosure_bpd_day_window_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM for DpiForeclosureBrokenPeriodService. Local schema is aligned (dpi_suspense_amount present); runtime dpic.foreclosure_sim currently reaches business validation and fails 134389 because fixture LAN 6004055825 is not ACTIVE."
   }
 }

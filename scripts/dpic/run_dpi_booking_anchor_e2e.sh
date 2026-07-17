@@ -30,6 +30,8 @@ echo "    loan=$LOAN_ACCOUNT_ID LAN=$ACCOUNT_NUMBER end=$END_DATE"
 
 bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compile}
 
+dpi_isolate_loan_for_case "$LOAN_ACCOUNT_ID"
+
 dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
   -f "$ROOT/scripts/dpic/sql/helpers/purge_dpi_accruals_for_loan.sql" >/dev/null
 dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \

@@ -64,7 +64,7 @@ dpi_ensure_masterdata() {
   mkdir -p "$(dirname "$bl")"
   : >"$bl"
   (
-    cd "$DPI_FIXTURE_ROOT/novopay-platform-masterdata-management"
+    cd "$DPI_FIXTURE_ROOT/trustt-platform-masterdata-management"
     nohup ./gradlew bootRun >>"$bl" 2>&1 &
     echo $! >"$DPI_FIXTURE_ROOT/scripts/scratch/services/masterdata.pid"
   )
@@ -179,12 +179,37 @@ dpi_purge_batch() {
     -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/purge_batch_job_execution.sql" >/dev/null
 }
 
+# Abandon hung dpi* STARTED rows left by prior TIMEOUT (default: older than 3 minutes).
+# Never use a short window here — that races the in-flight job dpi_call_batch is waiting on.
+# Returns count abandoned via stdout (for restart decision).
+dpi_abandon_stuck_batches() {
+  local older="${1:-180}"
+  # -t -A: UPDATE emits no row, final SELECT emits just the integer count.
+  # awk on the aligned header returned the literal word "abandoned" (never a number),
+  # so restart never fired — parse the numeric tuple only.
+  dpi_pg -t -A -v ON_ERROR_STOP=1 -v older_than_seconds="$older" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/dpi_abandon_stuck_batch_jobs.sql" 2>/dev/null \
+    | grep -E '^[0-9]+$' | tail -1
+}
+
+# DB FAILED does not stop the JVM TenantTaskAsynExec — restart accounting when we abandon.
+dpi_restart_accounting_if_abandoned() {
+  local n="${1:-0}"
+  if [[ "${n:-0}" =~ ^[1-9] ]]; then
+    echo "  dpi: abandoned $n stuck batch(es) — restart accounting to clear JVM workers"
+    bash "$DPI_FIXTURE_ROOT/scripts/bin/novopay-service.sh" restart accounting >/dev/null
+  fi
+}
+
 # Usage: dpi_call_batch dpiAccrualCalculation [job_time_ms] [purge=1]
 # QA path: ntest batch API + wait_batch_job.sh (same as registry batch.dpi_* intent).
 dpi_call_batch() {
   local api="$1" job_time="${2:-$JOB_TIME}" purge="${3:-1}"
   local rs wait="$DPI_FIXTURE_ROOT/scripts/dpic/lib/wait_batch_job.sh"
   local ntest="$DPI_FIXTURE_ROOT/scripts/bin/ntest.sh"
+  # Matrix hops can exceed 25s under YB contention — default higher for harness fires.
+  export BATCH_POLL_TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-90}"
+  # Purge same job_time only — do NOT abandon other in-flight dpi jobs (that kills siblings).
   [[ "$purge" == "1" ]] && dpi_purge_batch "$api" "$job_time"
   rs="$(date +%s)"
   echo ">>> ${api} job_time=${job_time}"
@@ -199,4 +224,28 @@ dpi_call_eod_chain() {
   dpi_call_batch dpiAccrualCalculation "$job_time"
   dpi_call_batch dpiAccrualBooking "$job_time"
   dpi_call_batch dpiBilling "$job_time"
+}
+
+# Per-case isolation on a shared fixture LAN: wipe accrual/DPI residue, restore schedule,
+# reset booking-replay flags. Call at the start of every grace-chain scenario so two_emi /
+# overlap / booking_anchor cannot stomp each other via soft-deleted EMI3+ or sealed_unbilled leftover.
+dpi_isolate_loan_for_case() {
+  local loan_id="${1:-${LOAN_ACCOUNT_ID:?LOAN_ACCOUNT_ID required}}"
+  local abandoned
+  echo "  dpi: isolate loan=$loan_id (hard purge accruals + restore installments)"
+  # Clear only truly stuck prior runs (>3 min). Restart JVM if any were abandoned.
+  abandoned="$(dpi_abandon_stuck_batches 180 || true)"
+  dpi_restart_accounting_if_abandoned "${abandoned:-0}"
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$loan_id" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/hard_purge_dpi_accruals_for_loan.sql" >/dev/null
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$loan_id" <<'SQL' >/dev/null
+UPDATE mfi_accounting.loan_due_details
+SET is_deleted = true, updated_on = NOW(), updated_by = 'DPI_CASE_ISOLATE'
+WHERE loan_account_id = :loan_account_id::bigint
+  AND component_type = 'DPI' AND is_deleted = false;
+SQL
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$loan_id" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/restore_grace_chain_installments.sql" >/dev/null
+  dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$loan_id" \
+    -f "$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/reset_dpi_booking_replay.sql" >/dev/null 2>&1 || true
 }

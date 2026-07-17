@@ -3,7 +3,8 @@
 #
 # Roles:
 #   DPI_FIXTURE_*     — standard regression (posting calendar, EOD txn, billing UD, APIs)
-#   DPI_GRACE_CHAIN_* — grace / overlap / two-EMI / multi-EMI (EMI1 due 2026-05-14, grace=3)
+#   DPI_GRACE_CHAIN_* — grace / overlap / two-EMI / booking-anchor (SHARED LAN — serialize;
+#                       each script must dpi_isolate_loan_for_case before setup)
 #   DPI_SHG_*         — SDCP-11012 parent=sum(children) parity
 #   DPI_CHILD_JLG_*   — childLoanRepayment billed DPI appropriation
 [[ -n "${_DPI_FIXTURE_CONSTANTS_LOADED:-}" ]] && return 0

@@ -67,13 +67,26 @@ ntest run dpic.three_job_verify_single_eod
 
 **`SEED_CALC_WINDOW`:** default **`0`** on `run_eod_dpi_only.sh` / `run_eod.sh` / `run_qa_demo.sh` / `run_full_happy_path.sh` / demo EOD. Value `1` runs `seed_calc_window.sql` (documented bypass INSERT — **not** for passing tests). Three-job harness **rejects** `SEED_CALC_WINDOW=1`.
 
+## Fixture isolation (mandatory — false positives)
+
+Grace-chain cases (`grace_e2e`, `grace_overlap_e2e`, `two_emi_full_chain`, `booking_anchor`) share LAN **`8057160`**. There is no second local LAN with the same May/Jun EMI schedule; isolation is **serialized + per-case wipe**, not concurrent multi-LAN.
+
+| Rule | Why |
+|------|-----|
+| `dpi_isolate_loan_for_case` at case start | Hard-purge accruals, clear DPI dues, **restore** installments hidden by two_emi, reset booking replay |
+| `dpi_call_batch` (purge=1) | Spring Batch same `job_time` otherwise reuses COMPLETED → 0s no-op → leftover `sealed_unbilled` / missing posts |
+| Column audit = **case intent** | Overlap primary assert = EMI2 owns grace-window accrual. Open EMI2-grace slice (non-due end) may stay unposted/unbilled. `sealed_unbilled` only after a fair book+bill on a billing-eligible window (EMI3+ hidden for overlap full audit) |
+| Do **not** treat every `COLUMN_AUDIT_FAIL` as product bug | First re-run isolated; classify harness collision vs real billing/booking gap |
+
+**`grace_overlap` sealed_unbilled FP class:** prior matrix left residue or booking fired without purge (`qa_fire_batch` without `purge_batch_job_execution`). Fixed by isolate + `dpi_call_batch`. Honest Pass only after isolated re-run.
+
 ## Column audit gate (post-batch, mandatory)
 
 After real `ntest` batch jobs (`COMPLETED`), run:
 
 ```bash
 bash scripts/dpic/lib/run_dpi_column_audit.sh <loan_account_id> <business_date>
-# wired into: three_job_verify, two_emi (milestones/daily), grace_overlap (default), booking_anchor
+# wired into: three_job_verify, two_emi (milestones/daily), grace_overlap (default full), booking_anchor
 ```
 
 | SQL | Checks |
@@ -83,14 +96,14 @@ bash scripts/dpic/lib/run_dpi_column_audit.sh <loan_account_id> <business_date>
 
 **Billing calendar exception (documented):** month-end seals may stay unbilled until the next INT/PRIN due day arrives (`sealed_unbilled` only fires when end is an EMI due day, or a later EMI due ≤ business_date).
 
-Canonical LANs: `8060160` (standard 3-job), `8057160` (grace / two-EMI / booking-anchor), `116360` (SHG parity). **0 violations** required before ship.
+Canonical LANs: `8060160` (standard 3-job), `8057160` (grace / two-EMI / booking-anchor — **serialized**), `116360` (SHG parity). **0 violations** required before ship **after isolation**.
 
 ## Fixture LANs (`lib/dpi_fixture_constants.sh`)
 
 | Role | loan_account_id | LAN | Used by |
 |------|-----------------|-----|---------|
 | Standard regression | `8060160` | `6004044425` | posting calendar, EOD txn, billing UD, APIs, three_job |
-| Grace / overlap / two-EMI | `8057160` | `6004041325` | grace E2E, overlap, two_emi, booking_anchor |
+| Grace / overlap / two-EMI | `8057160` | `6004041325` | grace E2E, overlap, two_emi, booking_anchor (**isolate between**) |
 | SHG parent parity | `116360` | `6000001074` | SDCP-11012 parent=sum(children) |
 | Child JLG repayment | `8048470` | `6004029335` | childLoanRepayment DPI |
 

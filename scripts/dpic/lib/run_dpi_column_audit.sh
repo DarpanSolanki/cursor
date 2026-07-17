@@ -15,17 +15,36 @@ fail() { echo "COLUMN_AUDIT_FAIL: $*" >&2; exit 1; }
 
 echo "=== DPI column audit loan=$LOAN_ID business_date=$BIZ_DATE ==="
 
-slice_out="$(dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" \
-  -f "$HELPERS/verify_dpi_accrual_slice_integrity.sql" 2>&1)"
-slice_viol="$(echo "$slice_out" | awk -F'|' '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/ /,"",$1); print $1; exit}')"
-slice_rules="$(echo "$slice_out" | awk -F'|' '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); print $2; exit}')"
-[[ -n "${slice_viol:-}" ]] || fail "could not parse slice violation_count"
-[[ "${slice_viol}" == "0" ]] || fail "slice violations=$slice_viol rules=${slice_rules:-?}"
+# Settle window: dpiAccrualBooking marks the Spring Batch job COMPLETED before its
+# accrual_posting_date writes are visible on a fresh psql connection (partition COMPLETED
+# races ahead of JPA flush on a cold local JVM — same artifact the accrual verify already
+# retries for). Re-run the audit until violations clear or the window elapses; a genuine
+# persistent violation still fails after timeout (no masking).
+SETTLE_TRIES="${AUDIT_SETTLE_TRIES:-10}"
+SETTLE_INTERVAL_S="${AUDIT_SETTLE_INTERVAL_S:-1}"
 
-book_line="$(dpi_pg -t -A -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" \
-  -f "$HELPERS/verify_dpi_booking_billing_audit.sql" 2>/dev/null | head -1)"
-book_viol="${book_line%%|*}"
-book_rules="${book_line#*|}"
+run_audit_once() {
+  slice_out="$(dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" \
+    -f "$HELPERS/verify_dpi_accrual_slice_integrity.sql" 2>&1)"
+  slice_viol="$(echo "$slice_out" | awk -F'|' '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/ /,"",$1); print $1; exit}')"
+  slice_rules="$(echo "$slice_out" | awk -F'|' '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); print $2; exit}')"
+  book_line="$(dpi_pg -t -A -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ID" -v business_date="$BIZ_DATE" \
+    -f "$HELPERS/verify_dpi_booking_billing_audit.sql" 2>/dev/null | head -1)"
+  book_viol="${book_line%%|*}"
+  book_rules="${book_line#*|}"
+}
+
+for ((try = 1; try <= SETTLE_TRIES; try++)); do
+  run_audit_once
+  [[ -n "${slice_viol:-}" ]] || fail "could not parse slice violation_count"
+  if [[ "${slice_viol}" == "0" && "${book_viol:-1}" == "0" ]]; then
+    break
+  fi
+  [[ "$try" -lt "$SETTLE_TRIES" ]] || break
+  sleep "$SETTLE_INTERVAL_S"
+done
+
+[[ "${slice_viol}" == "0" ]] || fail "slice violations=$slice_viol rules=${slice_rules:-?}"
 [[ "${book_viol:-1}" == "0" ]] || fail "booking/billing violations=$book_viol rules=${book_rules:-?}"
 
 echo "$slice_out" | sed -n '/=== slice timeline ===/,$p'

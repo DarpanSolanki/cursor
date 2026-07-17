@@ -58,4 +58,4 @@ sleep 2
 call_batch dpiBilling
 
 echo ""
-echo "Logs: ${ROOT}/novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log"
+echo "Logs: ${ROOT}/trustt-platform-accounting/logs/mfi/accounting-mfi.log"
