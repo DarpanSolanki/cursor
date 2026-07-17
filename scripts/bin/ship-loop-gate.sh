@@ -122,6 +122,8 @@ if [[ "$TIER" == "money" && "$PENDING_FILES" -gt 0 ]]; then
     echo "ship-loop-gate: hot-path-scan STRICT — fix DAO-in-loop or document false positive" >&2
     exit 1
   fi
+  echo "→ java-comment-lint (DPI pending)"
+  bash "$ROOT/scripts/bin/java-comment-lint.sh" --from-pending || exit 1
 fi
 
 if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
@@ -177,7 +179,7 @@ for r in repos:
         print(r)
 " 2>/dev/null)
   if [[ ${#REPOS[@]} -eq 0 && ${#APIS[@]} -gt 0 ]]; then
-    REPOS=("novopay-platform-accounting-v2")
+    REPOS=("trustt-platform-accounting")
   fi
   local repo
   for repo in "${REPOS[@]}"; do
@@ -250,7 +252,7 @@ for c in d.get('health_cases') or []:
     if c not in seen:
         seen.add(c); print(c)
 repos=d.get('repos') or []
-svc_map={'novopay-platform-accounting-v2':'health.accounting','novopay-platform-actor':'health.actor','novopay-platform-task':'health.task','novopay-platform-payments':'health.payments'}
+svc_map={'trustt-platform-accounting':'health.accounting','trustt-platform-actor':'health.actor','trustt-platform-task':'health.task','trustt-platform-payments':'health.payments'}
 for r in repos:
     h=svc_map.get(r)
     if h and h not in seen:

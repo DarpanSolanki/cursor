@@ -76,8 +76,8 @@ python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-102
 
 1. Call `project_mode` before drafting. Never assume SDCP fields exist on TDPQA.
 2. **Never invent a companion SDCP ticket** just to have somewhere to put RCA fields — enrich the ticket the user named (unless they explicitly ask for an SDCP tracker).
-3. On `comment_handoff`, the handoff **comment is the product** (like field values on SDCP). Edit that comment in place on re-handoff; do not leave a vague “ready for QA” one-liner as the only handoff.
-4. Still run `jira-fix-adf.py scan` on every draft (same forbidden tokens).
+3. On `comment_handoff`, the handoff **comment is the product** (like field values on SDCP). Edit that comment in place on re-handoff; do not leave a vague “ready for QA” one-liner as the only handoff. Pass `comment_id` / `existing_comment_id` in the pack payload so `apply-pack` updates instead of creating a duplicate.
+4. Still run `jira-fix-adf.py scan` on every draft (same forbidden tokens). **Machine validation:** `pack` / `validate_mode_comment` — SDCP ping ≤4 sentences / no section headers (or omit comment); TDPQA requires rca+impact+dev structured handoff (not ping-only). Tests: `scripts/lib/test_jira_fix_adf.py`.
 
 ### TDPQA comment handoff (canonical)
 

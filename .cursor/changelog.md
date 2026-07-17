@@ -1,3 +1,13 @@
+## 2026-07-17 | workspace | code-comment lint + JIRA mode comment validation
+- Primary: `java_comment_lint.py` / `java-comment-lint.sh` fail-closed on DPI narrative comments (consecutive `//`, ticket/parity essays); wired into money `ship-loop-gate --from-pending`. Memory RULE 1 points at the gate.
+- Secondary: `jira-fix-adf.py validate_mode_comment` — SDCP short ping (or omit); TDPQA structured rca+impact+dev; pack carries `comment_id` for edit-in-place. Tests: `test_java_comment_lint.py`, `test_jira_fix_adf.py`.
+
+## 2026-07-17 | workspace | PR review zero-false-positive hardening
+- Fresh base/head/ref provenance, proof-only confidence taxonomy, developer-claim separation, codebase-specific absence/value/scope guards, money runtime bar, and mandatory finding-falsification pass.
+
+## 2026-07-17 | DPI foreclosure BPD day-window (mfi_integration_v3.7.1)
+- `DpiForeclosureBrokenPeriodService`: project gap from business date (not nextDay) + HALF_UP 0dp; SHA `e2789d5f05` — QA LAN 6003768627 expects bpd ₹29.
+
 ## 2026-07-17 | acct `48f9461f1` + workspace | TDPQA-72 DFC hardcoding + real-flow DB-write gate
 - Accounting: `DFC_PRTL_BILL_` → `FORCE_BILL_CLIENT_REF_PREFIX` constant + `build/isForceBillClientReference` helpers; `reconcileAccruedInterestToBilledOriginal` slimmed 99→68 LOC (same 2 phases). Real-flow e2e PASS (FB labd prin=0 + EMI preserved, Obs3 Accrued==Original, Obs2 amount==principal).
 - Blast radius `findByLoanInstallmentDetailsId ORDER BY id DESC LIMIT 1`: all callers null/reversed-only → multi-row (EMI+FB) safe; real DB proof both children.
@@ -383,3 +393,7 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 
 - 2026-07-15 | accounting-v2 `59e9686a80` mfi_integration_v3.4.2.4 | SDCP-11085/TDPQA-127 SHG child CLB copies member/parent sanction_date into loan_details (forward only; INDL LOS; stock backfill ops)
 - 2026-07-16 | workspace | infra | workspace-disk-clean.sh + super-agent clean — purge rotated service logs (~371MB reclaimed); wired max-pass + autopilot end; active bootRun logs preserved when service UP
+
+## 2026-07-17 | acct b256efd054 | DCF force-bill client_ref → accountId||valueDateMs (no DFC_PRTL_BILL_); e2e PASS parent=6003896527
+
+- 2026-07-17 | workspace | PR review L1 — added a read-only GitHub evidence collector, strict branch/environment/SHA verdict contract, fintech review lenses, dual report/developer-response output, and canonical router/skill-index integration.
