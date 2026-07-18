@@ -1384,6 +1384,28 @@
     "cmd": "python3 scripts/testing/disbursement/clb_rep_acct_dedupe_sim.py",
     "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator skips parent REP_ACCT append when member already has one and keepAtMostOneRepAcct (ops rn=1). Poison CLB rows: scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql."
   },
+  "disbursement.clb_mandate_match_sim": {
+    "type": "flow",
+    "api": "createOrUpdateLoanAccount",
+    "apis": [
+      "createOrUpdateLoanAccount",
+      "childLoanDisbursement",
+      "createRepaymentMandateDetails"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "disburse",
+      "shg",
+      "clb",
+      "mandate",
+      "simulation"
+    ],
+    "title": "CLB / createOrUpdateLoanAccount — REP_ACCT must match mandate CASA",
+    "cmd": "python3 scripts/testing/disbursement/clb_mandate_match_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). After ≤1 REP_ACCT (134126), DIRDR/ACH require ACTIVE/REGISTRATION_PENDING mandate (loan_app then group_id) and REP_ACCT account_number == mandate CASA; CASH skips. Errors 134382 / 134348. CLB threads loan_application_id + group_id."
+  },
   "disbursement.neft_crr_exact_audit_callback_sim": {
     "type": "flow",
     "api": "doGenericSyncSTPBankNEFNeftCallBack",

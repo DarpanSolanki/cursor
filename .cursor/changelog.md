@@ -1,3 +1,9 @@
+## 2026-07-19 | acct `ed9b610cc`+`f2491e99c` | accounting-v2 | mfi_integration_v3.4.2.4 | Mandate CASA match on createOrUpdateLoanAccount
+- After ≤1 REP_ACCT (134126), DIRDR/ACH must match pre-created mandate CASA (`DisbursementRepaymentMandateMatchValidator`; 134382 / 134348). MFI `customValidate…` + product `ValidateDisbursement…`. CLB threads `group_id` (+ `group_details` fallback) and `loan_application_id` from external_ref. Sim: `disbursement.clb_mandate_match_sim` PROCESSOR_MIRROR_SIM.
+
+## 2026-07-19 | workspace | Money ship impact_analysis fail-closed gate
+- `ship_discipline_gate` requires `impact_analysis` keys for money pending; CLI `--impact-*`; memory `feedback_full_impact_analysis_before_money_ship.md`.
+
 ## 2026-07-19 | workspace | CRR callback column assert gate (disbursement money-tier)
 - Hole: backlog `disbursement` skipped all `acceptance_coverage` checks → NEFT callback PROCESSOR_MIRROR_SIM shipped without `client_reference_number` assert. Fix: `db_assert_enforced_on_money_tier` + required CRR columns; sim asserts paymentref client_ref; memory `feedback_crr_callback_column_assert.md`. Self-test 3c rejects weak CRR sim.
 

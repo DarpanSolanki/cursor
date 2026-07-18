@@ -30,6 +30,16 @@ REQUIRED_KEYS = (
     "assumptions",
 )
 
+# Money-tier: fail closed without a written impact matrix (collision class 2026-07-19).
+IMPACT_REQUIRED_KEYS = (
+    "callers",
+    "modes",
+    "account_field",
+    "error_codes",
+    "happy_path",
+    "blast_radius",
+)
+
 VERIFY_MODES = frozenset(
     {
         "RUNTIME_VERIFIED",
@@ -51,6 +61,39 @@ def _load(path: Path) -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return {}
+
+
+def _pending_looks_money(pending: dict) -> bool:
+    files = " ".join(pending.get("files") or []).lower()
+    return any(
+        h in files
+        for h in (
+            "/loan/",
+            "disburse",
+            "foreclos",
+            "reopen",
+            "repayment",
+            "dpi",
+            "mandate",
+        )
+    )
+
+
+def _check_impact_analysis(disc: dict) -> list[str]:
+    errors: list[str] = []
+    impact = disc.get("impact_analysis")
+    if not isinstance(impact, dict):
+        errors.append(
+            "missing impact_analysis — money ships need callers/modes/account_field/"
+            "error_codes/happy_path/blast_radius (see feedback_full_impact_analysis_before_money_ship.md)"
+        )
+        return errors
+    for key in IMPACT_REQUIRED_KEYS:
+        val = impact.get(key)
+        text = (val if isinstance(val, str) else str(val or "")).strip()
+        if len(text) < 8:
+            errors.append(f"impact_analysis.{key} missing or too short (min 8 chars)")
+    return errors
 
 
 def needs_discipline(pending: dict) -> bool:
@@ -124,6 +167,11 @@ def check(*, hard: bool = True) -> int:
                     )
         if disc.get("overengineering") is True:
             errors.append("overengineering=true is blocked — drop layers and re-write")
+
+        # Money tier (or money-path pending files): require impact_analysis matrix.
+        tier = (pending.get("tier") or disc.get("tier") or "").lower()
+        if tier == "money" or _pending_looks_money(pending):
+            errors.extend(_check_impact_analysis(disc))
 
     # Fail-closed acceptance matrix (any money/service flow — see acceptance_coverage.py).
     import subprocess
@@ -204,6 +252,18 @@ def write(args: argparse.Namespace) -> int:
             "new_query_justification": (args.reuse_justification or "").strip(),
             "performance_impact": (args.reuse_perf or "").strip(),
         }
+
+    impact = {
+        "callers": (args.impact_callers or "").strip(),
+        "modes": (args.impact_modes or "").strip(),
+        "account_field": (args.impact_account_field or "").strip(),
+        "error_codes": (args.impact_error_codes or "").strip(),
+        "happy_path": (args.impact_happy_path or "").strip(),
+        "blast_radius": (args.impact_blast_radius or "").strip(),
+    }
+    if any(impact.values()):
+        data["impact_analysis"] = impact
+
     DISCIPLINE.parent.mkdir(parents=True, exist_ok=True)
     DISCIPLINE.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {DISCIPLINE}")
@@ -241,6 +301,12 @@ def main() -> int:
     w.add_argument("--reuse-caller", action="append", default=[], help="Caller verified (repeatable)")
     w.add_argument("--reuse-justification", default="", help="New @Query justification (step 3)")
     w.add_argument("--reuse-perf", default="", help="Performance impact note (index/scan/limit)")
+    w.add_argument("--impact-callers", default="", help="Impact matrix: callers (money)")
+    w.add_argument("--impact-modes", default="", help="Impact matrix: CASH vs DIRDR/ACH etc")
+    w.add_argument("--impact-account-field", default="", help="Impact matrix: account field compared")
+    w.add_argument("--impact-error-codes", default="", help="Impact matrix: error codes")
+    w.add_argument("--impact-happy-path", default="", help="Impact matrix: happy path still passes")
+    w.add_argument("--impact-blast-radius", default="", help="Impact matrix: blast radius")
 
     args = p.parse_args()
     if args.cmd == "check":
