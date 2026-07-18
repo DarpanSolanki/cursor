@@ -1,3 +1,18 @@
+## 2026-07-19 | workspace | CRR callback column assert gate (disbursement money-tier)
+- Hole: backlog `disbursement` skipped all `acceptance_coverage` checks → NEFT callback PROCESSOR_MIRROR_SIM shipped without `client_reference_number` assert. Fix: `db_assert_enforced_on_money_tier` + required CRR columns; sim asserts paymentref client_ref; memory `feedback_crr_callback_column_assert.md`. Self-test 3c rejects weak CRR sim.
+
+## 2026-07-19 | acct `ca558ec186` | accounting-v2 | mfi_integration_v3.4.2.4 | CLB REP_ACCT dedupe + NEFT CRR exact audit
+- Write-path: `ChildLoanBookingEventsQueueDataPopulator` skips parent `REP_ACCT` append when member already has one + `keepAtMostOneRepAcct`. NEFT: `DisbursementBankCrrLogHelper.saveWithExactAudit`, `responseForClientRequestLog`, inbound `persistInboundCallbackCrr` `*_CALLBACK` on `DoGenericSyncSTPBankNeftCallBackProcessor`. Sims PASS: `disbursement.clb_rep_acct_dedupe_sim` (PROCESSOR_MIRROR_SIM), `disbursement.neft_crr_exact_audit_callback_sim` (ORCH_SIBLING_SIM+PROCESSOR_MIRROR_SIM). Ops poison rows: `scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql`.
+
+## 2026-07-19 | workspace | CRR ops SQL — contract-native FAIL first (not local-archive)
+- Standing correction: prefer keep `status=FAIL` + `eligible_for_retry=false` + optional `~` LAN over inventing/`LOCAL_RESET_ARCHIVED` as default. Decision ladder in `prod-ops-sql-impact-gate.mdc` + skill; memory `feedback_prod_ops_sql_crr_impact_gate.md` rewritten; minimal-fix scope includes ops SQL; autopilot OPS_SQL directive asks “is contract-native FAIL enough?”. Prior changelog row that preferred `LOCAL_RESET_ARCHIVED` for prod is superseded.
+
+## 2026-07-19 | workspace | prod-ops-sql-impact gate (CRR status miss)
+- Miss: adhoc `prod_neft_v2_fail_reset_to_dtfc_reinit.sql` used invented `PROD_NEFT_V2_FAIL_ARCHIVED` without caller matrix. Rule `prod-ops-sql-impact-gate.mdc`, skill `prod-ops-sql-impact`, autopilot `OPS_SQL`, memory `feedback_prod_ops_sql_crr_impact_gate.md`. *(Superseded same-day: prefer contract-native FAIL, not LOCAL_RESET_ARCHIVED as default — see entry above.)*
+
+## 2026-07-19 | workspace | open-final-file (IDE final buffer vs Review diff)
+Skill `.cursor/skills/open-final-file/`, rule `open-final-file.mdc`, script `scripts/bin/open-final.sh` — agents open forwardable files via MCP `open_resource` / `cursor -r` (final content); `[Review](…#changes)` stays diff-only.
+
 ## 2026-07-17 | workspace | DPI grace_overlap column-audit settle-poll (harness race, not product bug)
 - RCA: `dpiAccrualBooking` marks Spring Batch COMPLETED before `accrual_posting_date` writes are visible on a fresh psql conn (partition COMPLETED races JPA flush on cold local JVM). Column audit fired immediately → transient `posted_slice_missing_posting_date` ×2 on seal-anchor slices (05-31 month-end, 06-14 EMI2 due); apd settles ~1s later. Final product state correct (accounting repo unchanged — no product fix).
 - Fix: `scripts/dpic/lib/run_dpi_column_audit.sh` bounded settle-poll (AUDIT_SETTLE_TRIES=10×1s) re-runs slice+booking audit until 0 or timeout; genuine persistent violation still fails (no masking). Shared gate → benefits all 5 dpi e2e callers. grace_overlap PASS ×2. Also cleared 28k-row `mfi_batch` dpi metadata bloat (status-flip lag source).

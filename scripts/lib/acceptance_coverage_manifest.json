@@ -21,16 +21,33 @@
     "death_foreclosure"
   ],
   "require_db_value_asserts": true,
+  "db_assert_enforced_on_money_tier": [
+    "disbursement"
+  ],
   "domain_money_tables": {
     "death_foreclosure": [
       "loan_account_billing_details",
       "transaction_master",
       "loan_account_payments_details",
       "interest_accrual_details"
+    ],
+    "disbursement": [
+      "client_request_response_log"
+    ]
+  },
+  "domain_money_table_required_columns": {
+    "client_request_response_log": [
+      "client_reference_number",
+      "transaction_type",
+      "status",
+      "request",
+      "response",
+      "loan_account_number",
+      "partner"
     ]
   },
   "backlog_domains": {
-    "disbursement": "severity — annotate impact_cases acceptance.dimensions; severity=high",
+    "disbursement": "severity — dimensions backlog; db_asserts for client_request_response_log enforced on money tier (2026-07-19 CRR column-audit hole)",
     "repayment": "severity — severity=high",
     "prepayment": "severity — severity=medium",
     "foreclosure": "migrate — severity=high",

@@ -100,7 +100,7 @@ WEBAPP_UI_FIELD_MARKERS = (
     "getLoanAccountSummaryDetails",
     "getLoanAccountOverviewDetails",
     "getLoanAccountStatement",
-    "DFC_PRTL_BILL",
+    "force_bill_client_ref",
     "payment_details_list",
     "account_overview_list",
     "transaction_list",
@@ -189,7 +189,7 @@ def ui_fields_ok(case: dict) -> list[str]:
     if not fields and acc.get("ui_asserted") is True:
         return [
             "downstream_ui ui_asserted=true without ui_fields[] — list webapp response "
-            "fields (summary Accrued/Original, statement DFC_PRTL_BILL, overview status)"
+            "fields (summary Accrued/Original, statement force_bill_client_ref, overview status)"
         ]
     # Prefer at least one webapp-bound marker so SQL-only lists cannot fake UI coverage.
     webapp_required = acc.get("webapp_required", True)
@@ -224,14 +224,20 @@ def db_value_asserts_ok(domain: str, ordered_cases: list[str], reg: dict, man: d
     Each money_table for the domain must be covered by at least one case declaring an
     expected column value (not presence-only). Every db_assert entry must cite evidence
     (checked_by / expect) so the flow actually verifies the written value.
+
+    When ``domain_money_table_required_columns`` lists columns for a table (e.g. CRR
+    ``client_reference_number``), those names must appear in the assert text — a
+    PROCESSOR_MIRROR_SIM that only greps bean names without column contracts fails.
     """
     if not (man.get("require_db_value_asserts", True)):
         return []
     money_tables = list((man.get("domain_money_tables") or {}).get(domain) or [])
     if not money_tables:
         return []
+    required_cols = man.get("domain_money_table_required_columns") or {}
     errors: list[str] = []
     covered: set[str] = set()
+    covered_cols: dict[str, set[str]] = {t: set() for t in money_tables}
     for cid in ordered_cases:
         case = reg.get(cid) or {}
         for a in _case_db_asserts(case):
@@ -250,6 +256,10 @@ def db_value_asserts_ok(domain: str, ordered_cases: list[str], reg: dict, man: d
                 errors.append(f"{cid}: db_assert for {table} lacks checked_by evidence (real-flow verify)")
                 continue
             covered.add(table)
+            if table in covered_cols:
+                for col in required_cols.get(table) or []:
+                    if col.lower() in blob:
+                        covered_cols[table].add(col.lower())
     missing = [t for t in money_tables if t not in covered]
     if missing:
         errors.append(
@@ -257,6 +267,19 @@ def db_value_asserts_ok(domain: str, ordered_cases: list[str], reg: dict, man: d
             f"(covered={sorted(covered)}); add acceptance.db_asserts[{{table,expect|assert,checked_by}}] "
             f"or expect.db_eq on an impact/release case — presence-only is not acceptable"
         )
+    for table, need in required_cols.items():
+        if table not in money_tables:
+            continue
+        if table not in covered:
+            continue
+        got = covered_cols.get(table) or set()
+        miss_cols = [c for c in need if c.lower() not in got]
+        if miss_cols:
+            errors.append(
+                f"{domain}: db_asserts for {table} missing required column contracts {miss_cols} "
+                f"(have={sorted(got)}); name each column in expect/assert — "
+                f"PROCESSOR_MIRROR_SIM without column asserts is not a full CRR audit"
+            )
     return errors
 
 
@@ -362,11 +385,26 @@ def check_from_pending(*, hard: bool = True) -> int:
         print("acceptance-coverage: no domain matched — OK")
         return 0
 
+    db_money = set(man.get("db_assert_enforced_on_money_tier") or [])
     errors: list[str] = []
     for dom in targets:
         enforce = dom in enforced
+        # Hole closed 2026-07-19: backlog domains still skip dimension matrix, but money-tier
+        # ships that touch a domain in db_assert_enforced_on_money_tier MUST have value-level
+        # db_asserts for domain_money_tables (e.g. CRR client_reference_number). Previously
+        # `continue` skipped ALL checks → PROCESSOR_MIRROR_SIM shipped with zero column asserts.
         if not enforce and dom in backlog:
-            print(f"acceptance-coverage: {dom} backlog ({backlog[dom]}) — skip enforce")
+            print(f"acceptance-coverage: {dom} backlog ({backlog[dom]}) — skip dimension enforce")
+            if tier == "money" and dom in db_money:
+                d = (_domains().get(dom) or {})
+                ordered: list[str] = []
+                seen: set[str] = set()
+                for key in ("impact_cases", "deep_cases", "release_cases"):
+                    for c in d.get(key) or []:
+                        if c not in seen:
+                            seen.add(c)
+                            ordered.append(c)
+                errors.extend(db_value_asserts_ok(dom, ordered, _registry(), man))
             continue
         errors.extend(check_domain(dom, enforce=enforce or tier == "money" and dom in enforced))
 
@@ -444,7 +482,7 @@ def self_test() -> int:
                 "interest_details.accrued_amount",
                 "interest_details.original_amount",
                 "getLoanAccountStatement",
-                "DFC_PRTL_BILL",
+                "force_bill_client_ref",
                 "tm.original_amount",
                 "lapd.principal_amount",
             ],
@@ -480,7 +518,7 @@ def self_test() -> int:
             "acceptance": {
                 "db_asserts": [
                     {"table": "loan_account_billing_details", "assert": "EMI preserved + FB prin=0", "checked_by": "Issue B PASS"},
-                    {"table": "transaction_master", "expect": {"original_amount": "38"}, "checked_by": "client_ref DFC_PRTL_BILL"},
+                    {"table": "transaction_master", "expect": {"original_amount": "38"}, "checked_by": "client_ref accountId||valueDateMs"},
                 ]
             }
         }
@@ -490,6 +528,62 @@ def self_test() -> int:
         failures += 1
     else:
         print("SELF-TEST OK: value-level db_asserts with evidence accepted")
+
+    # 3c) CRR callback hole: sim without client_reference_number column contract must FAIL
+    man_crr = {
+        "require_db_value_asserts": True,
+        "domain_money_tables": {"disbursement": ["client_request_response_log"]},
+        "domain_money_table_required_columns": {
+            "client_request_response_log": [
+                "client_reference_number",
+                "transaction_type",
+                "status",
+                "loan_account_number",
+                "partner",
+            ]
+        },
+    }
+    weak_crr = {
+        "c.weak": {
+            "acceptance": {
+                "db_asserts": [
+                    {
+                        "table": "client_request_response_log",
+                        "assert": "transaction_type CALLBACK + status SUCCESS + request paymentlist",
+                        "checked_by": "weak processor_mirror_sim",
+                    }
+                ]
+            }
+        }
+    }
+    weak_errs = db_value_asserts_ok("disbursement", ["c.weak"], weak_crr, man_crr)
+    if not any("client_reference_number" in e for e in weak_errs):
+        print("SELF-TEST FAIL: weak CRR sim missing client_reference_number was not rejected")
+        failures += 1
+    else:
+        print("SELF-TEST OK: weak CRR sim without client_reference_number rejected")
+
+    strong_crr = {
+        "c.strong": {
+            "acceptance": {
+                "db_asserts": [
+                    {
+                        "table": "client_request_response_log",
+                        "assert": (
+                            "client_reference_number=paymentref; partner; loan_account_number; "
+                            "transaction_type CALLBACK; status SUCCESS|FAIL|UNKNOWN; request; response"
+                        ),
+                        "checked_by": "neft_crr_exact_audit_callback_sim",
+                    }
+                ]
+            }
+        }
+    }
+    if db_value_asserts_ok("disbursement", ["c.strong"], strong_crr, man_crr):
+        print("SELF-TEST FAIL: strong CRR column asserts rejected")
+        failures += 1
+    else:
+        print("SELF-TEST OK: strong CRR column asserts accepted")
 
     # 4) Live death_foreclosure must be enforceable once registry annotated
     live = check_domain("death_foreclosure", enforce=True)

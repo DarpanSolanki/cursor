@@ -1364,6 +1364,55 @@
     "cmd": "python3 scripts/testing/disbursement/sdcp11085_child_sanction_date_sim.py",
     "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator puts sanction_date member-first then parent EC; CreateLoanAccountProcessor persists millis; flatten reaches EC. Existing null children need ops re-book/replay. INDL missing stamp is LOS-side \u2014 not invented here."
   },
+  "disbursement.clb_rep_acct_dedupe_sim": {
+    "type": "flow",
+    "api": "childLoanDisbursement",
+    "apis": [
+      "childLoanDisbursement",
+      "createOrUpdateLoanAccount"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "disburse",
+      "shg",
+      "clb",
+      "simulation"
+    ],
+    "title": "CLB write-path \u2014 at most one REP_ACCT per member",
+    "cmd": "python3 scripts/testing/disbursement/clb_rep_acct_dedupe_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator skips parent REP_ACCT append when member already has one and keepAtMostOneRepAcct (ops rn=1). Poison CLB rows: scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql."
+  },
+  "disbursement.neft_crr_exact_audit_callback_sim": {
+    "type": "flow",
+    "api": "doGenericSyncSTPBankNEFNeftCallBack",
+    "apis": [
+      "doGenericSyncSTPBankNEFNeftCallBack",
+      "doGenericSyncSTPBankNEINeftCallBack"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "disburse",
+      "neft",
+      "crr",
+      "simulation"
+    ],
+    "title": "NEFT CRR exact-audit + inbound callback CRR column contracts",
+    "cmd": "python3 scripts/testing/disbursement/neft_crr_exact_audit_callback_sim.py",
+    "note": "ORCH_SIBLING_SIM + PROCESSOR_MIRROR_SIM (not live bank ST_NEF/ST_NEI E2E). Asserts client_reference_number=paymentref + partner/LAN/txn_type/status/request/response.column contracts; upgrade: live callback + SQL readback.",
+    "acceptance": {
+      "db_asserts": [
+        {
+          "table": "client_request_response_log",
+          "assert": "client_reference_number=paymentref; partner=Hdfc; loan_account_number from outbound or UNRESOLVED; transaction_type DISBURSEMENT_NEFT_NEF|NEI_CALLBACK(+_REINIT); status SUCCESS|FAIL|UNKNOWN; request has paymentlist|inqlist; response has callback_outcome",
+          "checked_by": "neft_crr_exact_audit_callback_sim PROCESSOR_MIRROR_SIM setClientReferenceNumber(paymentRef)"
+        }
+      ]
+    }
+  },
   "disbursement.indl": {
     "type": "flow",
     "api": "disburseLoan",
