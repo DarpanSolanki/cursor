@@ -340,12 +340,27 @@ def main() -> int:
         is not None,
         "saveWithExactAudit must log then DAO.save (exact audit before persist)",
     )
-    _require("persistBankOrInquiryLegLog" in helper and "saveWithExactAudit(entity)" in helper, "leg log routes through exact audit")
+    _require(
+        "persistBankOrInquiryLegLog" in helper and "saveWithExactAudit(entity, executionContext)" in helper,
+        "leg log routes through exact audit",
+    )
+    _require("logHttpWireIfPresent(" in helper, "Helper must log EC http_wire_* without overwriting CRR")
+    _require("CRR companion HTTP wire" in helper, "Companion wire INFO marker missing")
+    _require(
+        "entity.setRequest(request)" in helper
+        and "http_wire_request" in helper
+        and "entity.setRequest(wire" not in helper,
+        "CRR request column must stay caller JSON — not overwritten from wire",
+    )
     print("PROCESSOR_MIRROR_SIM PASS: DisbursementBankCrrLogHelper saveWithExactAudit")
 
     # --- Outbound NEFT v2 + exception body preference ---
     neft_v2 = NEFT_V2_JAVA.read_text(encoding="utf-8")
-    _require("bankCrrLogHelper.saveWithExactAudit(entity)" in neft_v2, "Parent NEFT v2 must saveWithExactAudit")
+    _require(
+        "bankCrrLogHelper.saveWithExactAudit(entity, executionContext)" in neft_v2
+        or "bankCrrLogHelper.saveWithExactAudit(entity)" in neft_v2,
+        "Parent NEFT v2 must saveWithExactAudit",
+    )
     _require("responseForClientRequestLog(" in neft_v2, "Parent NEFT v2 exception path uses responseForClientRequestLog")
 
     unc = UNCERTAINTY_JAVA.read_text(encoding="utf-8")
