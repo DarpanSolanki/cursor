@@ -1,3 +1,6 @@
+## 2026-07-19 | lib `793ebabbcd` + acct `d982430d1` | bank HTTP wire INFO (CRR JSON unchanged)
+- Platform-lib: `WebClientServiceExecutorDecorator` + `AbstractJSONRestServiceExecutor` put/log `http_wire_request`/`http_wire_response` (post-XML / pre-JSON) without overwriting EC `request`/`response`. Accounting: `DisbursementBankCrrLogHelper` companion INFO at CRR save; parent/child NEFT CRR via helper. NEI `NeftV2BankReferenceUtil` JSON parse intact. Sim: `disbursement.neft_crr_exact_audit_callback_sim` updated (`ab50830`).
+
 ## 2026-07-19 | acct `ed9b610cc`+`f2491e99c` | accounting-v2 | mfi_integration_v3.4.2.4 | Mandate CASA match on createOrUpdateLoanAccount
 - After ≤1 REP_ACCT (134126), DIRDR/ACH must match pre-created mandate CASA (`DisbursementRepaymentMandateMatchValidator`; 134382 / 134348). MFI `customValidate…` + product `ValidateDisbursement…`. CLB threads `group_id` (+ `group_details` fallback) and `loan_application_id` from external_ref. Sim: `disbursement.clb_mandate_match_sim` PROCESSOR_MIRROR_SIM.
 
@@ -433,3 +436,6 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 - Matrix PASS: three_job, posting, grace, grace_overlap (audit 0), booking_anchor, two_emi, SHG parity, bpd_sim ₹29. TDPQA-83 handoff refreshed; SDCP-11012/11016/11030/11048 left untouched (already released).
 
 - 2026-07-17 | workspace | initial-setup hardening — added dependency-led `scripts/bin/initial-setup-local.sh` around untouched Flyway 5.2.4 runner; documented legacy per-schema history, safe reconciliation, and GAP-077 duplicate versions; refreshed mixed-train workspace state. Initial-setup repo remained clean at upstream `e4ade8c3f8` and was not pushed.
+## 2026-07-19 | platform-lib `793ebabbcd` + accounting `d982430d1d` | HTTP wire INFO / CRR JSON unchanged
+- EC `http_wire_request`/`http_wire_response` + INFO; CRR columns stay pre-wire JSON; companion CRR helper INFO. NeftV2BankReferenceUtil JSON-safe.
+
