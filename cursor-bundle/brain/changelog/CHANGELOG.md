@@ -3,8 +3,8 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
-## 2026-07-20 | workspace | platform-lib + LOS + accounting | mfi_integration_v3.4.2.5 | TDPQA-54 Redis in-flight locks (uncommitted)
-disburseLoan | kg-flow | Owner-token `SET NX` + default 600000 ms TTL on LOS producer and Accounting consumer locks; Lua compare-and-delete release; terminal/LOCK/explicit-continuation decision matrix prevents concurrent orchestration and blind intermediate `DEFAULT` restart. `ntest run disbursement.redis_inflight_lock_sim` PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME PASS; commit SHAs pending user approval.
+## 2026-07-20 | lib `9c5c82d2d8` · LOS `0e4a0be2bd` · acct `f9d803c4e` | platform-lib + LOS + accounting | mfi_integration_v3.4.2.5 | TDPQA-54 Redis in-flight locks
+disburseLoan | kg-flow | Owner-token `SET NX` + default 600000 ms TTL on LOS producer and Accounting consumer locks; Lua compare-and-delete release; terminal/LOCK/explicit-continuation decision matrix prevents concurrent orchestration and blind intermediate `DEFAULT` restart. `ntest run disbursement.redis_inflight_lock_sim` PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME PASS.
 
 ## 2026-07-20 | acct `7e1642a57e` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | Parent disburse rejects multi member REP_ACCT (134126)
 
