@@ -3,6 +3,39 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
+## 2026-07-20 | acct `7e1642a57e` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | Parent disburse rejects multi member REP_ACCT (134126)
+
+## childLoanBooking CLB REP
+## 2026-07-20 | acct ac87585a2 | accounting-v2 | mfi_integration_v3.4.2.5 | CLB blank REP fail-closed
+
+---
+
+disburseLoan createOrUpdateLoanAccount loan_account_events_queue — CustomValidate.validateMemberRepAcctUniqueness throws 134126 when any member_details has >1 REP_ACCT before CLB enqueue; removed keepAtMostOneRepAcct trim; kept hasRepAcct skip-parent-append. ntest disbursement.clb_rep_acct_dedupe_sim PROCESSOR_MIRROR_SIM PASS.
+
+## 2026-07-19 | acct `ca558ec186` | accounting-v2 | mfi_integration_v3.4.2.4 | CLB REP_ACCT dedupe + NEFT CRR exact audit
+KG-FLOW: childLoanDisbursement createOrUpdateLoanAccount loan_account_events_queue — earlier write-path skip-append + trim (trim later removed in `7e1642a57e`).
+
+## 2026-07-17 | workspace | initial-setup | mfi_integration_v3.7.1 | dependency-led local Flyway hardening
+Added workspace-only `scripts/bin/initial-setup-local.sh` around the untouched Flyway 5.2.4 runner; verified accounting-core schema status, documented legacy `schema_version` fallback and safe reconciliation, and opened GAP-077 for upstream masterdata/notifications duplicate versions. Initial-setup remained clean at `e4ade8c3f8`; no repo commit/push.
+
+## 2026-07-17 | acct `e2789d5f05` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | DPI foreclosure BPD include business day
+
+## 2026-07-17 | workspace | initial-setup | mfi_integration_v3.7.1 | verified local Flyway runbook and 3.7.1 schema gap
+Fresh upstream e4ade8c3f8: bundled Flyway 5.2.4 localhost.sh repair+migrate per schema; accounting/LOS reconciled locally; no migration adds loan_account.dpi_suspense_amount, so local idempotent setup is separate from required QA/prod migration.
+
+---
+
+
+## fetchLoanForeclosureSimulationDetails,loanPrepayment
+## 2026-07-17 | acct `8a1a7cd07` | accounting-v2 | mfi_integration_v3.7.1 | unify BPD as-of util sim+create
+
+---
+
+fetchLoanForeclosureSimulationDetails bpd_amount: DpiForeclosureBrokenPeriodService projects from business (not nextDay) + HALF_UP 0dp; QA LAN 6003768627 FC 29-Jul-2026 → ₹29 | kg-flow | fetchLoanForeclosureSimulationDetails
+
+## 2026-07-17 | acct `b256efd054` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | DCF force-bill client_ref platform-numeric
+loanDeathForeclosure | kg-flow | buildForceBillClientReference=accountId||valueDateMs (drop DFC_PRTL_BILL_); isForceBillLabdShape prin=0; VERIFY ACCEPTANCE_STRICT e2e parent=6003896527 client_ref 79708671770489000000/79708661770489000000 orig=133/40 EMI preserved Obs2 RSCH 13702==prin excess=200 Obs3 1376/3382/1014
+
 ## 2026-07-17 | acct `48f9461f1` | accounting-v2 | mfi_integration_v3.4.2.4 | TDPQA-72 DFC_PRTL_BILL constant + slim Accrued reconcile
 loanDeathForeclosure | FORCE_BILL_CLIENT_REF_PREFIX + build/isForceBillClientReference helpers (no scattered literal); reconcileAccruedInterestToBilledOriginal 99->68 LOC same 2 phases. REAL-FLOW VERIFY ACCEPTANCE_STRICT=1 DCF_SEED_EMI_LABD=1 e2e: FB labd prin=0 + EMI preserved, client_ref DFC_PRTL_BILL_7899567_1770489000000 tm.orig=38, Obs3 Accrued==Original 919/974/1845, Obs2 amount=13702==principal. KG SKIP (no flow change).
 

@@ -1,3 +1,7 @@
+2026-07-20 | accounting 7e1642a57e | mfi_integration_v3.4.2.4 | Parent disburse 134126 on member multi REP_ACCT; remove CLB keepAtMostOneRepAcct trim
+## 2026-07-20 | workspace | no auto-open documents (opt-in IDE open)
+- `open-final.sh` default prints path only; `--open` / `OPEN_FINAL=1` to open. Rule+skill flipped; memory `feedback_no_auto_open_documents.md`. sessionStart hooks do not open HTML.
+
 ## 2026-07-19 | lib `793ebabbcd` + acct `d982430d1` | bank HTTP wire INFO (CRR JSON unchanged)
 - Platform-lib: `WebClientServiceExecutorDecorator` + `AbstractJSONRestServiceExecutor` put/log `http_wire_request`/`http_wire_response` (post-XML / pre-JSON) without overwriting EC `request`/`response`. Accounting: `DisbursementBankCrrLogHelper` companion INFO at CRR save; parent/child NEFT CRR via helper. NEI `NeftV2BankReferenceUtil` JSON parse intact. Sim: `disbursement.neft_crr_exact_audit_callback_sim` updated (`ab50830`).
 
@@ -439,3 +443,4 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 ## 2026-07-19 | platform-lib `793ebabbcd` + accounting `d982430d1d` | HTTP wire INFO / CRR JSON unchanged
 - EC `http_wire_request`/`http_wire_response` + INFO; CRR columns stay pre-wire JSON; companion CRR helper INFO. NeftV2BankReferenceUtil JSON-safe.
 
+- 2026-07-20: CLB ChildLoanBookingEventsQueueDataPopulator fail-closed blank/missing member REP (130142), no parent REP copy — acct ac87585a2 mfi_integration_v3.4.2.5
