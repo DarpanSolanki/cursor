@@ -20,7 +20,7 @@ from pathlib import Path
 
 def _workspace_root() -> Path:
     for ancestor in Path(__file__).resolve().parents:
-        if (ancestor / "novopay-platform-accounting-v2").is_dir():
+        if (ancestor / "trustt-platform-accounting").is_dir():
             return ancestor
     return Path(__file__).resolve().parents[3]
 
@@ -33,6 +33,11 @@ class ResetRecipe:
     group_id: str
     product_id: str
     customer_id: str
+    repayment_account_number: str
+    repayment_account_type: str
+    repayment_account_holder_name: str
+    repayment_account_ifsc: str
+    repayment_account_bank_name: str
     target_disb_status: str
 
     @staticmethod
@@ -64,6 +69,29 @@ class ResetRecipe:
         group_id = str(group_details.get("group_id") or "").strip()
         product_id = str(loan_details.get("product_id") or "").strip()
         customer_id = str(loan_details.get("customer_id") or "").strip()
+        repayment_mode = str((request.get("repayment_details") or {}).get("repayment_mode") or "").strip()
+        repayment_account: dict = {}
+        for account in request.get("disbursement_repayment_account_details") or []:
+            if not isinstance(account, dict):
+                continue
+            purposes = account.get("purpose") or []
+            if any(
+                isinstance(purpose, dict)
+                and str(purpose.get("code") or purpose.get("purpose_code") or "").strip() == "REP_ACCT"
+                for purpose in purposes
+            ):
+                repayment_account = account
+                break
+
+        account_number_key = "external_account_number" if repayment_mode == "ACH" else "account_number"
+        account_type_key = "external_account_type" if repayment_mode == "ACH" else "product_type"
+        repayment_account_number = str(repayment_account.get(account_number_key) or "").strip()
+        repayment_account_type = str(repayment_account.get(account_type_key) or "SAVINGS").strip()
+        repayment_account_holder_name = str(
+            repayment_account.get("account_holder_name") or "LOCAL DISBURSEMENT FIXTURE"
+        ).strip()
+        repayment_account_ifsc = str(repayment_account.get("routing_value") or "").strip()
+        repayment_account_bank_name = str(repayment_account.get("bank_name") or "HDFC_BANK").strip()
 
         return ResetRecipe(
             ext_ref=ext_ref,
@@ -72,6 +100,11 @@ class ResetRecipe:
             group_id=group_id,
             product_id=product_id,
             customer_id=customer_id,
+            repayment_account_number=repayment_account_number,
+            repayment_account_type=repayment_account_type,
+            repayment_account_holder_name=repayment_account_holder_name,
+            repayment_account_ifsc=repayment_account_ifsc,
+            repayment_account_bank_name=repayment_account_bank_name,
             target_disb_status=target_disb_status,
         )
 
@@ -123,6 +156,16 @@ def run_reset(recipe: ResetRecipe, sql_path: Path) -> None:
         f"product_id={recipe.product_id}",
         "-v",
         f"customer_id={recipe.customer_id}",
+        "-v",
+        f"repayment_account_number={recipe.repayment_account_number}",
+        "-v",
+        f"repayment_account_type={recipe.repayment_account_type}",
+        "-v",
+        f"repayment_account_holder_name={recipe.repayment_account_holder_name}",
+        "-v",
+        f"repayment_account_ifsc={recipe.repayment_account_ifsc}",
+        "-v",
+        f"repayment_account_bank_name={recipe.repayment_account_bank_name}",
         "-v",
         f"target_disb_status={recipe.target_disb_status}",
     ]

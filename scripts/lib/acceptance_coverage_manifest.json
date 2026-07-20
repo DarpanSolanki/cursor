@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Acceptance-coverage contract — fail-closed for enforced domains on money/service ship. Existing domains migrate via backlog_domains until annotated.",
+  "description": "Acceptance-coverage contract \u2014 fail-closed for enforced domains on money/service ship. Existing domains migrate via backlog_domains until annotated.",
   "required_dimensions_default": [
     "happy_path",
     "dirty_state",
@@ -32,6 +32,12 @@
       "interest_accrual_details"
     ],
     "disbursement": [
+      "loan_account",
+      "loan_installment_details",
+      "loan_due_details",
+      "loan_disbursement_mode_details",
+      "loan_disbursement_transaction",
+      "transaction_master",
       "client_request_response_log"
     ]
   },
@@ -44,16 +50,43 @@
       "response",
       "loan_account_number",
       "partner"
+    ],
+    "loan_account": [
+      "loan_status",
+      "disbursement_status",
+      "loan_amount",
+      "loan_product_id"
+    ],
+    "loan_installment_details": [
+      "installment_amount",
+      "schedule_number"
+    ],
+    "loan_due_details": [
+      "component_type",
+      "due_amount"
+    ],
+    "loan_disbursement_mode_details": [
+      "mode",
+      "account_number"
+    ],
+    "loan_disbursement_transaction": [
+      "amount",
+      "client_reference_number",
+      "transaction_reference_number"
+    ],
+    "transaction_master": [
+      "client_reference_number",
+      "original_amount"
     ]
   },
   "backlog_domains": {
-    "disbursement": "severity — dimensions backlog; db_asserts for client_request_response_log enforced on money tier (2026-07-19 CRR column-audit hole)",
-    "repayment": "severity — severity=high",
-    "prepayment": "severity — severity=medium",
-    "foreclosure": "migrate — severity=high",
-    "dpi": "migrate — severity=high",
-    "batch": "migrate — severity=medium",
-    "reversal": "migrate — severity=medium",
-    "restructuring": "migrate — severity=low"
+    "disbursement": "partial \u2014 dimensions backlog; value-level db_asserts enforced for full disbursement money tables on money tier (2026-07-20 column-audit upgrade)",
+    "repayment": "severity \u2014 severity=high",
+    "prepayment": "severity \u2014 severity=medium",
+    "foreclosure": "migrate \u2014 severity=high",
+    "dpi": "migrate \u2014 severity=high",
+    "batch": "migrate \u2014 severity=medium",
+    "reversal": "migrate \u2014 severity=medium",
+    "restructuring": "migrate \u2014 severity=low"
   }
 }

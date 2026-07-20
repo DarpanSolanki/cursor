@@ -20,7 +20,7 @@ r = run(
     simulator_port=8018,
 )
 for d in r.details or []:
-    mark = "OK" if d.get("ok") else "WARN"
+    mark = "OK" if d.get("ok") else "FAIL"
     print(f"  [{mark}] {d.get('check')}: {d.get('actual')}")
 if not r.ok:
     raise SystemExit(f"preflight blocked: {r.blocker}")

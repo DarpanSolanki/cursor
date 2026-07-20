@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Fast local disburseLoan — JLG minimal stage suite (flat payload, member_details null).
-# Use for smoke after accounting changes; full matrix: scripts/run_disbursement_full_matrix.sh
+# Fast local disburseLoan — INDL minimal stage suite (flat payload, member_details null, NEFT).
+# Mirrors disburse-quick.sh with the INDL canonical payload.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PAYLOADS="$ROOT/scripts/disbursement/payloads/canonical"
-REQUEST_FILE="${REQUEST_FILE:-$PAYLOADS/disburse_loan_sanity_request_4495972134234554346565.json}"
+REQUEST_FILE="${REQUEST_FILE:-$PAYLOADS/disburse_loan_sanity_request_370164.json}"
 STAGE_SUITE="${STAGE_SUITE:-minimal}"
 REPORT_JSON="${REPORT_JSON:-}"
 
-echo "=== disburse-quick — ensure accounting ==="
+echo "=== disburse-indl-quick — ensure accounting ==="
 bash "$ROOT/scripts/bin/agent-ops.sh" before-test disburseLoan
 
-echo "=== disburse-quick — preflight ==="
+echo "=== disburse-indl-quick — preflight ==="
 PYTHONPATH="$ROOT/scripts/disbursement" python3 - <<'PY'
 from disbursement_suite.preflight import run
 r = run(
@@ -42,6 +42,6 @@ ARGS=(
 )
 [[ -n "$REPORT_JSON" ]] && ARGS+=(--report-json "$REPORT_JSON")
 
-echo "=== disburse-quick — disburseLoan ($STAGE_SUITE) ==="
+echo "=== disburse-indl-quick — disburseLoan INDL ($STAGE_SUITE) ==="
 echo "Payload: $REQUEST_FILE"
 exec python3 "$ROOT/scripts/disburse_loan_sanity.py" "${ARGS[@]}" "$@"

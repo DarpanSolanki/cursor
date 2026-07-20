@@ -105,6 +105,8 @@ Trace the full chain with:
 
 `grep -n 'Request name="disburseLoan"' loans_orc.xml` then read until the closing `</Request>`.
 
+**TDPQA-54 in-flight locking (2026-07-20 working tree):** LOS acquires `disburseLoan{productId}_{entityType}_{externalRef}` with `SET NX` semantics, owner UUID, and a configurable 600000 ms default TTL before Kafka publish. Accounting independently acquires `dl{originalKey}` before its DB/state decision and releases only with owner-token compare-and-delete. `ACTIVE+COMPLETED` emits SUCCESS without orchestration; `LOCK` and ambiguous intermediate replay do not orchestrate; only no-row `DEFAULT`, payment reinitiation, or an explicit matching continuation stage can process.
+
 ---
 
 ## Representative flows (summary)
@@ -375,7 +377,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 |--------------|----------|---------------|---------------------------|
 | `disburse_loan_api_` | `LosMessageKafkaProducer` via `DisburseLoanAPIUtil.callDisburseLoanAPI` | **`disburseLoan|{json}|{cacheKey}`** where JSON = JTF merge of **shared + local** `ExecutionContext` for apiName `disburseLoan` | **Y** — `PrepareDisburseLoanAPIRequestService` sets `external_ref_number` and **`entity_type`** on the context before formatting (`PrepareDisburseLoanAPIRequestService.java` L148-L149). |
 
-**Redis (LOS producer):** `novopayCacheClient.set(tenant, cacheKey, "in_progress", ACCOUNTING db)` — **no TTL** (`DisburseLoanAPIUtil.java` L72-L83). Duplicate request: if key already present → skip Kafka (**`DISBURSEMENT_REQUEST_IN_REDIS_CACHE`**).
+**Redis (LOS producer):** `novopayCacheClient.setIfAbsent(tenant, cacheKey, ownerToken, producerMarkerTtlMs, ACCOUNTING db)` — atomic acquire with default **600000 ms TTL** (`DisburseLoanAPIUtil`). Duplicate request: if acquire fails → skip Kafka (**`DISBURSEMENT_REQUEST_IN_REDIS_CACHE`**). Publish exceptions release only when the UUID owner still matches.
 
 **If accounting / broker down:** Exception path removes key (`DisburseLoanAPIUtil.java` L86-L94); caller sees FAILED.
 
@@ -395,7 +397,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 **Malformed message:** Missing `entity_type` / `external_ref_number` → **silent skip** (log + return). **LOS down when accounting publishes:** Kafka consumer lag / replay — no LOS-specific outbox; rely on broker retention and consumer recovery.
 
-**Accounting producer Redis:** Consumer sets **`dl{cacheKey}`** without TTL (`LmsMessageBrokerConsumer.java` L110-L122) — see gaps table.
+**Accounting consumer Redis:** Consumer atomically acquires **`dl{cacheKey}`** with owner UUID and default **600000 ms TTL** before the DB decision, then releases through compare-and-delete. Lock-contention returns without orchestration, sync, or key deletion.
 
 ### MAP 5 — Disbursement distributed transaction (end-to-end spine)
 
@@ -403,9 +405,9 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 |------|--------------|----------------|----------------------------|----------|------------------|
 | 1 | LOS gateway → orchestration → `DisburseLoanProcessor.process` | `disburse_loan_process` status IN_PROGRESS, retry | LOS shows in-flight vs reality | Scheduler retry | — |
 | 2 | `PrepareDisburseLoanAPIRequestService.prepareDisburseLoanRequest` | (prepare EC only) | — | — | — |
-| 3 | `DisburseLoanAPIUtil.callDisburseLoanAPI` | Redis **`disburseLoan{productId}_{externalRef}`** = `in_progress` | Stale skip if crash after set | Manual key delete / ops | **N** |
+| 3 | `DisburseLoanAPIUtil.callDisburseLoanAPI` | Redis **`disburseLoan{productId}_{entityType}_{externalRef}`** = owner UUID | Duplicate publish attempt or producer crash | TTL expiry; owner-safe delete on publish exception | **Y — default 600000 ms** |
 | 4 | `LosMessageKafkaProducer.pushDataToKafkaQueue` | Kafka log | Message lost if **GAP-019** | Replay from LOS / ops | — |
-| 5 | `LmsMessageBrokerConsumer.processConsumerRecord` | Redis **`dl`+cacheKey**; orchestration runs `disburseLoan` | Partial accounting state | Kafka retry; skip rules | **N** |
+| 5 | `LmsMessageBrokerConsumer.processConsumerRecord` | Redis **`dl`+cacheKey** = owner UUID; decision gate then optional `disburseLoan` orchestration | Partial accounting state / concurrent replay | Owner-safe release, TTL expiry, explicit stage continuation; ambiguous `DEFAULT` fails closed | **Y — default 600000 ms** |
 | 6 | Accounting `disburseLoan` processors | `loan_account`, CRR logs, events, bank legs (NEFT/MFT) | Money vs book | Bank inquiry / ops | (various) |
 | 7 | `sendResultMessageToKafka` | `los_lms_disbursement_sync` message | LOS never learns outcome | Consumer replay | — |
 | 8 | `DisbursementSyncService.handleDisbursementSyncRecord` | `disburse_loan_process` failure_reason | **Skipped if `entity_type` missing** | Fix producer contract | — |

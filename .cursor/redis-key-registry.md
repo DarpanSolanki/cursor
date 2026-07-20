@@ -29,7 +29,7 @@
 
 | Key pattern (logical) | TTL | TTL value / notes | Purpose | Risk |
 |----------------------|-----|-------------------|---------|------|
-| Disburse consumer `dl` / in-flight key | N | — | Kafka consumer dedupe | **High** — see gaps table (stale lock) |
+| Disburse consumer `dl{disburseLoan…}` / in-flight key | Y | `mfi.disburse.loan.consumer.lock.ttl.ms` (default 600000 ms); owner UUID + compare-and-delete | Kafka consumer dedupe / single-orchestration gate | **Medium residual** — TTL expiry can overlap a genuinely longer-than-10-minute orchestration; stage decision matrix prevents blind `DEFAULT` restart |
 | Various product/config caches | Default / Y | per call site | Masterdata-driven config | **Medium** |
 
 *Source:* `LmsMessageBrokerConsumer`, gaps table; deep per-job keys omitted here — use service + `accounting-edge-cases.md`.
@@ -40,7 +40,7 @@
 
 | Key pattern (logical) | TTL | TTL value / notes | Purpose | Risk |
 |----------------------|-----|-------------------|---------|------|
-| Disburse in-flight (`DisburseLoanAPIUtil`) | N | — | Async disburse dedupe | **High** — gaps table |
+| Disburse producer marker (`DisburseLoanAPIUtil`) | Y | `mfi.disburse.loan.producer.marker.ttl.ms` (default 600000 ms); owner UUID + compare-and-delete on publish failure | Async disburse dedupe / single-Kafka-publish gate | **Low–Medium residual** — tune TTL above normal Kafka processing latency |
 
 ---
 

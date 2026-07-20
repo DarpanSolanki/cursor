@@ -76,7 +76,8 @@
     ],
     "group_details": {
       "is_primary_sig": "true",
-      "primary_sig_lan": "LAN002023"
+      "primary_sig_lan": "LAN002023",
+      "group_id": "41333001"
     },
     "charges_details": [
       {
@@ -133,6 +134,21 @@
             "routing_value": "SBIN0015680",
             "bank_name": "SBI",
             "bank_customer_id": "192598023"
+          },
+          {
+            "account_number": "1232545866886",
+            "product_type": "SAVINGS",
+            "purpose": [
+              {
+                "code": "REP_ACCT",
+                "purpose_code": "REP_ACCT",
+                "value": "Repayment Account"
+              }
+            ],
+            "account_holder_name": "Savithiri T",
+            "routing_type": "ROUT_TYP_IFSC",
+            "routing_value": "HDFC0000001",
+            "bank_name": "HDFC"
           }
         ],
         "insurance_details": []
@@ -162,6 +178,21 @@
             "routing_value": "ICIC0000006",
             "bank_name": "ICICI",
             "bank_customer_id": "192598023"
+          },
+          {
+            "account_number": "1232545866886",
+            "product_type": "SAVINGS",
+            "purpose": [
+              {
+                "code": "REP_ACCT",
+                "purpose_code": "REP_ACCT",
+                "value": "Repayment Account"
+              }
+            ],
+            "account_holder_name": "Savithiri T",
+            "routing_type": "ROUT_TYP_IFSC",
+            "routing_value": "HDFC0000001",
+            "bank_name": "HDFC"
           }
         ],
         "insurance_details": []

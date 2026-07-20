@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ACCOUNTING_DIR="$ROOT_DIR/novopay-platform-accounting-v2"
+ACCOUNTING_DIR="$ROOT_DIR/trustt-platform-accounting"
 RUNNER_CLASS="in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner"
 TMP_DIR="${TMPDIR:-/tmp}/disbursement_full_matrix"
 mkdir -p "$TMP_DIR"

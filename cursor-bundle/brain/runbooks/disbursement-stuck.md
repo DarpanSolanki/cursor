@@ -31,11 +31,13 @@ SELECT * FROM mfi_accounting.loan_disbursement_transaction
 
 The consumer was skipped at `getDisburseSkipReason`. Three sub-cases:
 
-1. **`ALREADY_ACTIVE`** — duplicate event for an already-completed loan. Verify, then ignore (no action).
-2. **`LOCK_LOAN_STATUS`** — loan in `LOCK` status (rare; transient cache). Wait or check Redis.
-3. **`LOCK_CACHE_IN_PROGRESS`** — `dl<…>` Redis key exists from a previous attempt that crashed before cleanup. **This is the recurring gap** ([`../gaps-and-risks.md`](../gaps-and-risks.md)).
+1. **`ALREADY_ACTIVE`** — duplicate event for an already-completed loan. The consumer emits SUCCESS without rerunning orchestration.
+2. **`LOCK_LOAN_STATUS`** — loan in `LOCK` status. The consumer releases only its owned `dl` lock and waits for explicit recovery.
+3. **Consumer lock contention** — another invocation owns `dl<…>`. The contender returns without orchestration, sync, or deleting either Redis key.
 
-   **Fix:** delete the stale key from Redis ACCOUNTING DB (5):
+   **TDPQA-54 behaviour (2026-07-20 working tree):** producer and consumer locks use owner UUIDs and a configurable 600000 ms default TTL. Owner cleanup is atomic compare-and-delete, so a stale invocation cannot delete a reacquired lock. An orphaned lock self-recovers on TTL expiry.
+
+   **Legacy deployment only:** if a pre-TDPQA-54 key has no TTL, delete the stale key from Redis ACCOUNTING DB (5) after proving no invocation is active:
    ```
    redis-cli -n 5 KEYS "*disburseLoan{productId}_{externalRefNumber}*"
    redis-cli -n 5 DEL <stale-key>
@@ -108,7 +110,9 @@ If `maker_checker_enabled=1` for `disburseLoan`, the loan stays in `APPROVED` un
 
 ## Code anchors
 
-- Consumer: [`LmsMessageBrokerConsumer.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) — `getDisburseSkipReason` names the four skip reasons
+- Consumer: `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java` — owner-token lock + `getDisburseDecision` terminal/LOCK/continuation/fail-closed matrix
+- Producer: `trustt-platform-los/.../DisburseLoanAPIUtil.java` — owner-token marker before Kafka publish
+- Shared primitive: `trustt-platform-lib/infra-cache/.../RedisCacheClient.java` — Lua `removeIfValueEquals`
 - State machine: [`mfi_orc.xml:4-200`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) — `function_sub_code` IParam matrix
 - Retry job: scheduled by batch service; logic in `accounting:accountingBankServiceRetryJob` Request
 
@@ -116,5 +120,5 @@ If `maker_checker_enabled=1` for `disburseLoan`, the loan stays in `APPROVED` un
 
 - Full flow: [`../flows/disbursement-end-to-end.md`](../flows/disbursement-end-to-end.md)
 - Lifecycle states: [`../accounting/07-loan-account-lifecycle.md`](../accounting/07-loan-account-lifecycle.md)
-- Open gap re Redis TTL: [`../gaps-and-risks.md`](../gaps-and-risks.md) (search "dl key TTL")
+- Redis key contract: `.cursor/redis-key-registry.md`; regression: `ntest run disbursement.redis_inflight_lock_sim`
 - **Local repro / regression suite:** `scripts/disburse_loan_sanity.py` with canonical payloads under `scripts/disbursement/payloads/canonical/`. Quick entrypoints: `scripts/bin/disburse-quick.sh` (JLG flat), `scripts/bin/disburse-shg-quick.sh` (SHG `member_details[]`). Full Kafka-entry matrix: `scripts/run_disbursement_full_matrix.sh`.

@@ -1,6 +1,7 @@
 """Lightweight disburseLoan preflight — accounting health probe for disburse-quick.sh."""
 from __future__ import annotations
 
+import socket
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.error import URLError
@@ -44,6 +45,21 @@ def run(
         details.append({"check": "accounting_disburse_probe", "ok": False, "actual": str(exc)})
         return PreflightResult(ok=False, blocker=str(exc), details=details)
 
-    sim_url = f"http://{simulator_host}:{simulator_port}"
-    details.append({"check": "simulator_optional", "ok": True, "actual": f"skipped ({sim_url})"})
+    try:
+        with socket.create_connection((simulator_host, simulator_port), timeout=3):
+            pass
+        details.append(
+            {
+                "check": "simulator_tcp",
+                "ok": True,
+                "actual": f"{simulator_host}:{simulator_port}",
+            }
+        )
+    except OSError as exc:
+        details.append({"check": "simulator_tcp", "ok": False, "actual": str(exc)})
+        return PreflightResult(
+            ok=False,
+            blocker=f"bank simulator unavailable at {simulator_host}:{simulator_port}: {exc}",
+            details=details,
+        )
     return PreflightResult(ok=True, details=details)

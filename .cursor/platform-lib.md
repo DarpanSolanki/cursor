@@ -90,6 +90,7 @@ These are **platform-lib** components that are auto-registered by Spring (via `@
 
 - **Redis DB-index specific `LettuceConnectionFactory` beans** (`defaultRedisConnectionFactory`, `masterDataRedisConnectionFactory`, `notificationRedisConnectionFactory`, `actorRedisConnectionFactory`, `authorizationRedisConnectionFactory`, `accountingRedisConnectionFactory`, `taskRedisConnectionFactory`, `apiRateLimitRedisConnectionFactory`, `losRedisConnectionFactory`, ...):  
   `novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java`
+- **Distributed-lock primitives:** `setIfAbsent(..., ttlMs, dbIndex)` performs atomic acquire with expiry; `removeIfValueEquals(..., expectedValue, dbIndex)` performs atomic owner-token compare-and-delete through Redis Lua. Lock callers must use a unique owner value and the same DB index for acquire/release.
 
 ### JPA auditing (infra-platform)
 

@@ -19,7 +19,7 @@ orient → reproduce → assert → fix → re-smoke
    - **API:** `ntest run <id>` or `ntest api <service> <api> --var K=V`
    - **Flow:** `ntest run dpic.full` / `make -C scripts jlg`
    - **DB:** `scripts/db-local.sh --canned …`
-3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring); money paths must read written rows back and assert **exact column values** for every touched table (`acceptance.db_asserts` / `expect.db_eq`) — presence-only / status-only fails closed (`feedback_real_flow_db_write_validate.md`)
+3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring); money paths must read written rows back and assert **exact column values** for every touched table (`acceptance.db_asserts` / `expect.db_eq`) — presence-only / status-only fails closed (`feedback_real_flow_db_write_validate.md`). **Disburse:** `disbursement_suite.column_audit` + registry `disbursement.{indl,jlg,shg,any}` — FAIL on wrong values, never WARN-and-pass (`feedback_disburse_column_audit_mandatory.md`).
 4. **Fix** — service repo; tiered L0/L1 per workspace rules
 5. **Verify** — `ntest smoke` or `ntest run <id>`; prepend changelog if stable fix
 
@@ -32,10 +32,20 @@ orient → reproduce → assert → fix → re-smoke
 | `ntest smoke` | Every `type:api` registry case |
 | `ntest api actor getUserBasicDetails --var USER_ID 103` | Ad-hoc, no new files |
 | `ntest orient disburseLoan` | KG before deep work |
+| `ntest run disbursement.any` | Unified INDL/JLG/SHG (`PRODUCT_TYPE=…`) + column audit |
 | `ntest logs accounting` | Error tail |
 
 **Do not** add per-API payload JSON, duplicate spec files, or new shell wrappers. **Add one row** to `registry.json`.
 
+## Money / API column audit (mandatory)
+
+For any API or money-path test (disburse, repayment, foreclosure, DFC, DPI):
+
+- Declare `acceptance.db_asserts` (or `expect.db_eq`) covering every table in
+  `scripts/lib/acceptance_coverage_manifest.json` → `domain_money_tables.<domain>`.
+- Asserts must name columns and expected values; presence-only phrasing is rejected by
+  `acceptance_coverage.py`.
+- Runtime suite must **FAIL** when a column value is wrong — printing WARN and exiting 0 is a failed test.
 ## Registry case shape (API)
 
 ```json

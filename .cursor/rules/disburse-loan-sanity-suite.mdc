@@ -25,6 +25,11 @@ Before running scenarios, confirm:
 3. Kafka is up on `localhost:9092` when validating async legs.
 4. DB reachable (`yugabyte` / schema `mfi_accounting`).
 
+For mandate-driven repayment (`DIRDR` / `ACH`), the reset fixture must derive the
+`REP_ACCT` entry from the request, create/reuse `repayment_account_details`, and link the
+single active/pending `repayment_mandate_details` row. A mandate row with a null
+`repayment_account_details_id` is invalid and must fail before API submission.
+
 Quick checks:
 
 ```bash
@@ -41,8 +46,10 @@ Run from workspace root (`/home/darpan/Documents/sliProd`).
 
 ```bash
 /home/darpan/Documents/sliProd/scripts/bin/disburse-quick.sh          # JLG minimal (flat payload)
+/home/darpan/Documents/sliProd/scripts/bin/disburse-indl-quick.sh     # INDL minimal (flat payload, NEFT)
 /home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.sh      # SHG minimal (parent + member_details[])
 STAGE_SUITE=full /home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.sh  # SHG S1–S7 matrix
+make -C /home/darpan/Documents/sliProd/scripts jlg|indl|shg|full|lock-clean
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh JLG
 /home/darpan/Documents/sliProd/scripts/run_disbursement_full_matrix.sh INDL
@@ -50,6 +57,8 @@ STAGE_SUITE=full /home/darpan/Documents/sliProd/scripts/bin/disburse-shg-quick.s
 ```
 
 Canonical payloads live under `scripts/disbursement/payloads/canonical/`.
+
+**Single-run lock:** `/tmp/disburse_loan_sanity.lock`. `--help` never acquires it. Live runs auto-clear the lock when the holder PID is dead; wrappers also `rm -f` before start. Manual: `make -C scripts lock-clean`.
 
 ### Minimal (smoke + replay guard)
 
@@ -93,7 +102,7 @@ Important local product-mode constraints:
 Common classpath bootstrap:
 
 ```bash
-cd /home/darpan/Documents/sliProd/novopay-platform-accounting-v2
+cd /home/darpan/Documents/sliProd/trustt-platform-accounting
 CP=$(./gradlew -q --init-script tmp-printcp.init.gradle printTestRuntimeClasspath)
 ```
 
@@ -112,6 +121,8 @@ java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
 INDL full suite (S1..S7, NEFT v1):
 
 ```bash
+/home/darpan/Documents/sliProd/scripts/bin/disburse-indl-quick.sh
+# or Kafka-entry:
 KAFKA_ENTRY_TEST_CUSTOMER_ID=10002221 \
 KAFKA_ENTRY_TEST_SECONDARY_CUSTOMER_ID=10002215 \
 KAFKA_ENTRY_SCENARIO_START=1 \
@@ -119,6 +130,16 @@ KAFKA_ENTRY_SCENARIO_LIMIT=7 \
 java -cp "$CP" in.novopay.accounting.consumers.LmsDisburseKafkaEntryFlowRunner \
   /home/darpan/Documents/sliProd/scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_370164.json
 ```
+
+**INDL minimal smoke note:** the bank simulator on `localhost:8018` is mandatory because
+postTransaction calls GST before schedule/dues generation. Local NEFT often ends at
+`NEFT_STAGE_1_PENDING` after NEF SUCCESS (awaits NEI). Suite treats that as WARN PASS for
+non-child NEFT — not a functional FAIL.
+
+**Kafka + Redis (TDPQA-54):** Accounting must be subscribed to
+`disburse_loan_api_mfi_local` (group `disburse_loan_api_consumer_mfi_local`). Live lock
+proof is on that consumer path (`localmfi_dl…` in Redis DB 5 with positive PTTL), not on
+direct HTTP `disburseLoan`.
 
 SHG full suite (S1..S7, parent+child):
 

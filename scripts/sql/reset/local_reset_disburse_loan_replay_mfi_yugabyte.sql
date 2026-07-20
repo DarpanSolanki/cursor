@@ -8,6 +8,7 @@
 --   group_id          — optional group_details.group_id for mandate branch; '' to skip
 --   product_id — documentation only (echo)
 --   customer_id — optional on mandate row when non-blank (echo + placeholder mandate)
+--   repayment_account_* — REP_ACCT details derived from the request JSON
 --   target_disb_status — loan_account.disbursement_status after reset (e.g. DTFC_SUCCESS)
 --
 -- For each matched loan (parent + members): canonical external_ref → status/fillers → UTR clear →
@@ -31,7 +32,7 @@
 --   target_disb_status— loan_account.disbursement_status after reset (e.g. DTFC_SUCCESS)
 --
 -- After mandate repair: if no REGISTRATION_PENDING/ACTIVE row exists for a ref, inserts a minimal local SI mandate
--- so CustomCallPostTransactionProcessor does not throw 134488. Use disburseLoan expected_disbursement_date (epoch ms).
+-- linked to the request REP_ACCT CASA. Both the mandate and link are required by pre-disbursement validation.
 
 BEGIN;
 SET search_path TO mfi_accounting;
@@ -149,12 +150,48 @@ WHERE rmd.loan_account_id IN (SELECT account_id FROM _ldr_loan)
    OR rmd.loan_application_id IN (SELECT ref FROM _ldr_ref)
    OR (btrim(:'group_id') <> '' AND rmd.group_id = CAST(btrim(:'group_id') AS bigint));
 
--- 7b) Local-only: ensure one REGISTRATION_PENDING mandate per LOS ref (postTransaction / 134488).
+-- 7b) Local-only: ensure the request REP_ACCT exists and mandates are linked to it.
+INSERT INTO repayment_account_details (
+  account_number,
+  account_type,
+  ifsc_code,
+  bank_name,
+  hold_status,
+  lien_status,
+  created_on,
+  created_by,
+  updated_on,
+  updated_by,
+  is_deleted,
+  account_holder_name
+)
+SELECT
+  btrim(:'repayment_account_number'),
+  btrim(:'repayment_account_type'),
+  NULLIF(btrim(:'repayment_account_ifsc'), ''),
+  NULLIF(btrim(:'repayment_account_bank_name'), ''),
+  0,
+  0,
+  CURRENT_TIMESTAMP,
+  'local_reset_disburse_replay',
+  CURRENT_TIMESTAMP,
+  'local_reset_disburse_replay',
+  false,
+  NULLIF(btrim(:'repayment_account_holder_name'), '')
+WHERE btrim(:'repayment_account_number') <> ''
+  AND NOT EXISTS (
+    SELECT 1
+    FROM repayment_account_details rad
+    WHERE rad.account_number = btrim(:'repayment_account_number')
+      AND rad.is_deleted = false
+  );
+
 INSERT INTO repayment_mandate_details (
   loan_application_id,
   loan_account_id,
   group_id,
   customer_id,
+  repayment_account_details_id,
   start_date,
   end_date,
   repayment_frequency,
@@ -173,6 +210,14 @@ SELECT
   NULL,
   CASE WHEN btrim(:'group_id') = '' THEN NULL ELSE CAST(btrim(:'group_id') AS bigint) END,
   CASE WHEN btrim(:'customer_id') = '' THEN NULL ELSE CAST(btrim(:'customer_id') AS bigint) END,
+  (
+    SELECT rad.id
+    FROM repayment_account_details rad
+    WHERE rad.account_number = btrim(:'repayment_account_number')
+      AND rad.is_deleted = false
+    ORDER BY rad.id
+    LIMIT 1
+  ),
   (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date - 30,
   DATE '2099-01-01',
   'MONTHLY',
@@ -193,6 +238,20 @@ WHERE NOT EXISTS (
     AND m.mandate_status IN ('REGISTRATION_PENDING', 'ACTIVE')
     AND m.is_deleted = false
 );
+
+UPDATE repayment_mandate_details rmd
+SET repayment_account_details_id = (
+  SELECT rad.id
+  FROM repayment_account_details rad
+  WHERE rad.account_number = btrim(:'repayment_account_number')
+    AND rad.is_deleted = false
+  ORDER BY rad.id
+  LIMIT 1
+)
+WHERE btrim(:'repayment_account_number') <> ''
+  AND rmd.loan_application_id IN (SELECT ref FROM _ldr_ref)
+  AND rmd.mandate_status IN ('REGISTRATION_PENDING', 'ACTIVE')
+  AND rmd.is_deleted = false;
 
 UPDATE loan_account la
 SET
@@ -224,7 +283,7 @@ COMMIT;
 \echo 'See SELECT above: each row got suffix + INACTIVE; CRR soft-archived per LAN (rows kept for analysis).'
 \echo 'ext_ref=' :'ext_ref' ' member_ext_refs=' :'member_ext_refs'
 \echo 'If SELECT returned 0 rows, no loan matched — fix ext_ref / member_ext_refs / DB.'
-\echo 'Mandate: placeholder inserted per ref when none REGISTRATION_PENDING/ACTIVE (avoids 134488).'
+\echo 'Mandate: one active/pending row per ref linked to request REP_ACCT (avoids missing/unlinked mandate failure).'
 \echo 'Request: set expected_disbursement_date (epoch ms) and a numeric client_reference_number.'
 \echo '================================================================================'
 \echo ''
