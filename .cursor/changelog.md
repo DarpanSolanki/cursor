@@ -444,3 +444,4 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 - EC `http_wire_request`/`http_wire_response` + INFO; CRR columns stay pre-wire JSON; companion CRR helper INFO. NeftV2BankReferenceUtil JSON-safe.
 
 - 2026-07-20: CLB ChildLoanBookingEventsQueueDataPopulator fail-closed blank/missing member REP (130142), no parent REP copy — acct ac87585a2 mfi_integration_v3.4.2.5
+- 2026-07-20 | WORKSPACE | JIRA skills sync-up: master `jira-fix-update` template + stricter `jira-fix-adf.py` scans (never_mention, strict ticket scope, GitHub + comment-handoff SQL ban) and updated TDPQA ADF sections (Summary/Root Cause/Fix/Dev Verification/QA Retest/Notes) | .cursor/skills/jira-fix-update/SKILL.md, .cursor/skills/jira-fix-update/mentions.json, .cursor/skills/jira-fix-update/fields-reference.md, scripts/bin/jira-fix-adf.py, scripts/bin/jira-enrich.sh, changelog.md

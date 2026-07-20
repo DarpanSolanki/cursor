@@ -82,6 +82,7 @@ def micro_service_field(option_ids: list[str]) -> list[dict[str, str]]:
 
 _MENTIONS_CACHE: dict[str, str] | None = None
 _OWNERS_CACHE: dict[str, Any] | None = None
+_NEVER_MENTION_CACHE: list[str] | None = None
 
 
 def load_mentions() -> dict[str, str]:
@@ -95,8 +96,33 @@ def load_mentions() -> dict[str, str]:
         / ".cursor/skills/jira-fix-update/mentions.json"
     )
     raw = json.loads(path.read_text())
-    _MENTIONS_CACHE = {k: v for k, v in raw.items() if not k.startswith("_")}
+    # mentions.json contains extra metadata keys (e.g. never_mention, QA defaults).
+    # Keep only string-valued mention entries.
+    _MENTIONS_CACHE = {
+        k: v
+        for k, v in raw.items()
+        if not k.startswith("_") and isinstance(v, str)
+    }
     return _MENTIONS_CACHE
+
+
+def load_never_mention() -> list[str]:
+    """List of display names (lowercase) that must never be used for @mentions."""
+    global _NEVER_MENTION_CACHE
+    if _NEVER_MENTION_CACHE is not None:
+        return _NEVER_MENTION_CACHE
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[2]
+        / ".cursor/skills/jira-fix-update/mentions.json"
+    )
+    raw = json.loads(path.read_text())
+    nm = raw.get("never_mention") or []
+    if not isinstance(nm, list):
+        nm = []
+    _NEVER_MENTION_CACHE = [str(x).strip().lower() for x in nm if str(x).strip()]
+    return _NEVER_MENTION_CACHE
 
 
 def mention_node(account_id: str, text: str) -> dict[str, Any]:
@@ -190,6 +216,7 @@ def handoff_comment_doc(payload: dict[str, Any]) -> dict[str, Any]:
       rca: {situation, cause, resolution} OR situation/cause/resolution top-level
       impact: list[str]
       dev: list[str]
+      notes: optional string or list[str]
       pre / post: str (default NA)
       service: str optional (e.g. Accounting)
       result: str optional
@@ -204,24 +231,52 @@ def handoff_comment_doc(payload: dict[str, Any]) -> dict[str, Any]:
         blocks.append(_paragraph_with_mentions(lead, mentions))
 
     rca = payload.get("rca") or {}
-    situation = (rca.get("situation") or payload.get("situation") or "").strip()
-    cause = (rca.get("cause") or payload.get("cause") or "").strip()
-    resolution = (rca.get("resolution") or payload.get("resolution") or "").strip()
-    if situation or cause or resolution:
-        blocks.append(heading_paragraph("RCA"))
-        for part in (situation, cause, resolution):
-            if part:
-                blocks.append(paragraph(part))
+    summary = (rca.get("situation") or payload.get("situation") or payload.get("summary") or "").strip()
+    root_cause = (rca.get("cause") or payload.get("cause") or payload.get("root_cause") or "").strip()
+    fix = (rca.get("resolution") or payload.get("resolution") or payload.get("fix") or "").strip()
+    if summary:
+        blocks.append(heading_paragraph("Summary"))
+        blocks.append(paragraph(summary))
+    if root_cause:
+        blocks.append(heading_paragraph("Root Cause"))
+        blocks.append(paragraph(root_cause))
+    if fix:
+        blocks.append(heading_paragraph("Fix"))
+        blocks.append(paragraph(fix))
 
     impact = [str(x).strip() for x in (payload.get("impact") or []) if str(x).strip()]
     if impact:
         blocks.append(heading_paragraph("Impact"))
         blocks.append(bullet_list(impact))
 
-    dev = [str(x).strip() for x in (payload.get("dev") or []) if str(x).strip()]
-    if dev:
-        blocks.append(heading_paragraph("Dev test / QA retest"))
-        blocks.append(ordered_list(dev))
+    dev_verification = [
+        str(x).strip()
+        for x in (payload.get("dev_verification") or payload.get("dev") or [])
+        if str(x).strip()
+    ]
+    qa_retest = [
+        str(x).strip()
+        for x in (payload.get("qa_retest") or payload.get("qa_retest_steps") or payload.get("dev") or [])
+        if str(x).strip()
+    ]
+
+    # Keep both sections present even if the caller only supplies `dev`.
+    if dev_verification:
+        blocks.append(heading_paragraph("Dev Verification"))
+        blocks.append(ordered_list(dev_verification))
+    if qa_retest:
+        blocks.append(heading_paragraph("QA Retest"))
+        blocks.append(ordered_list(qa_retest))
+
+    notes = payload.get("notes", payload.get("note"))
+    blocks.append(heading_paragraph("Notes"))
+    if notes is None or str(notes).strip() == "":
+        blocks.append(paragraph("NA"))
+    elif isinstance(notes, list):
+        notes_items = [str(x).strip() for x in notes if str(x).strip()]
+        blocks.append(bullet_list(notes_items or ["NA"]))
+    else:
+        blocks.append(paragraph(str(notes).strip()))
 
     result = (payload.get("result") or "").strip()
     if result:
@@ -342,6 +397,13 @@ def flatten_handoff_text(payload: dict[str, Any]) -> str:
     for key in ("lead_in", "ping_comment", "comment", "result", "service", "pre", "post"):
         if payload.get(key) is not None:
             flat_parts.append(str(payload[key]))
+    if payload.get("notes") is not None:
+        if isinstance(payload["notes"], list):
+            flat_parts.extend(str(x) for x in payload["notes"])
+        else:
+            flat_parts.append(str(payload["notes"]))
+    if payload.get("note") is not None:
+        flat_parts.append(str(payload["note"]))
     rca = payload.get("rca") or {}
     for k in ("situation", "cause", "resolution"):
         v = rca.get(k) or payload.get(k)
@@ -451,7 +513,7 @@ def build_handoff_pack(issue_key: str, payload: dict[str, Any]) -> dict[str, Any
     mode_info = project_mode(issue_key)
     mode = mode_info["mode"]
     flat = flatten_handoff_text(payload)
-    hits = scan_forbidden(flat)
+    hits = scan_forbidden(flat, issue_key=mode_info["issue_key"])
     if hits:
         raise ValueError("FORBIDDEN in pack: " + ", ".join(hits))
     validate_mode_comment(mode, payload)
@@ -580,13 +642,54 @@ _FORBIDDEN_RE = re.compile(
     r"|RSCH_[A-Z_]+|\b134\d{3}\b"
     # Brand "Cursor" / "Cursor IDE" only (capital C) — do not ban verb "cursor"
     r"|(?-i:\bCursor(?:\s+IDE)?\b)"
+    # External links / prod ops content that must not appear in QA handoff.
+    r"|https?://(?:www\.)?github\.com/|github\.com/"
+    r"|\bPR\s*#?\d+\b"
+    r"|@\s*darpan\b"
     r")"
 )
 
 
-def scan_forbidden(text: str) -> list[str]:
-    """Return list of forbidden token matches. Empty = clean."""
-    return [m.group(0) for m in _FORBIDDEN_RE.finditer(text or "")]
+_ISSUE_KEY_RE = re.compile(r"\b[A-Z][A-Z0-9]{1,15}-\d+\b")
+
+
+def scan_forbidden(text: str, *, issue_key: str | None = None) -> list[str]:
+    """Return list of forbidden token matches. Empty = clean.
+
+    If `issue_key` is provided, enforce strict ticket scope:
+    - no other JIRA keys besides `issue_key` may appear in the handoff text
+    - for comment handoffs (TDPQA/HSQA/AUT), forbid prod-ops SQL snippets.
+    """
+    raw = text or ""
+    hits: list[str] = [m.group(0) for m in _FORBIDDEN_RE.finditer(raw)]
+
+    # Never mention list (names from mentions.json).
+    for nm in load_never_mention():
+        if not nm:
+            continue
+        if re.search(rf"(?i)@\s*{re.escape(nm)}\b", raw):
+            hits.append(f"never_mention @{nm}")
+
+    # Strict ticket scope: only current issue key.
+    if issue_key:
+        allowed = issue_key.strip().upper()
+        found = {k.upper() for k in _ISSUE_KEY_RE.findall(raw)}
+        others = sorted(k for k in found if k != allowed)
+        hits.extend(others)
+
+        # QA handoff: do not include SQL/DDL/DML snippets at all.
+        mode = project_mode(issue_key).get("mode")
+        if mode == "comment_handoff":
+            sql_like = re.search(
+                r"(?is)(\bflyway_schema_history\b|\.sql\b|"
+                r"\bUPDATE\b\s+\w+\s+\bSET\b|\bINSERT\b\s+INTO\b|\bDELETE\b\s+FROM\b|"
+                r"\bCREATE\b\s+TABLE\b|\bALTER\b\s+TABLE\b|\bDROP\b\s+TABLE\b)",
+                raw,
+            )
+            if sql_like:
+                hits.append("SQL/DDL content")
+
+    return hits
 
 
 def main() -> None:
@@ -686,13 +789,19 @@ def main() -> None:
         print(json.dumps({"accountId": "5e9d51241067100c195f7b12"}))
     elif cmd == "scan":
         raw = sys.argv[2] if len(sys.argv) > 2 else sys.stdin.read()
-        hits = scan_forbidden(raw)
+        issue_key = None
+        if "--issue-key" in sys.argv:
+            i = sys.argv.index("--issue-key")
+            if i + 1 < len(sys.argv):
+                issue_key = sys.argv[i + 1]
+        hits = scan_forbidden(raw, issue_key=issue_key)
         if hits:
             print("FORBIDDEN:", ", ".join(hits), file=sys.stderr)
             sys.exit(2)
         print("OK")
     elif cmd == "comment":
         raw = sys.argv[2] if len(sys.argv) > 2 else sys.stdin.read()
+        # No issue_key scope here (comment output alone); run `pack` for strict scope.
         hits = scan_forbidden(raw)
         if hits:
             print("FORBIDDEN in comment:", ", ".join(hits), file=sys.stderr)

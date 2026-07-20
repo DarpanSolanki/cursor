@@ -1,7 +1,23 @@
 {
   "_comment": "SDCP name -> Jira accountId for ADF mention nodes. Markdown @name does NOT tag; comments must use ADF mention nodes. Keys are matched case-insensitively, longest-first. Add aliases (first name / handle) pointing to the same accountId. Re-resolve via lookupJiraAccountId when a name is missing.",
-  "Darpan Solanki": "5e9d51241067100c195f7b12",
-  "Darpan": "5e9d51241067100c195f7b12",
+  "never_mention": [
+    "darpan",
+    "darpan solanki"
+  ],
+  "qa_owner_defaults": {
+    "SDCP": {
+      "displayName": "Srikant Sulpule",
+      "accountId": "5efab45c61665e0b9ed294bd"
+    },
+    "TDPQA": {
+      "displayName": "Srikant Sulpule",
+      "accountId": "5efab45c61665e0b9ed294bd"
+    },
+    "OTHER": {
+      "displayName": "Srikant Sulpule",
+      "accountId": "5efab45c61665e0b9ed294bd"
+    }
+  },
   "Sudheer Pandey": "5c1890329f443a65fecaef05",
   "Sudheer": "5c1890329f443a65fecaef05",
   "Srikant Sulpule": "5efab45c61665e0b9ed294bd",
@@ -28,5 +44,9 @@
   "Vikram S J": "712020:ccef1e34-6430-47e2-b1c7-d711474631e5",
   "Vikram": "712020:ccef1e34-6430-47e2-b1c7-d711474631e5",
   "Rahul Menon": "712020:8bb0f8ac-1e88-4e74-a61f-530a0217c127",
-  "Rahul": "712020:8bb0f8ac-1e88-4e74-a61f-530a0217c127"
+  "Rahul": "712020:8bb0f8ac-1e88-4e74-a61f-530a0217c127",
+  "Praveen T S": "632aadf2a84c7f79c384258d",
+  "Praveen TS": "632aadf2a84c7f79c384258d",
+  "Abhishek Pandey": "5f5f439804897f006af55bf8",
+  "Abhishek": "5f5f439804897f006af55bf8"
 }

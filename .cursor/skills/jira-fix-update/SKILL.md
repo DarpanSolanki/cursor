@@ -35,9 +35,19 @@ After a code fix is shipped (or ready for QA), update the ticket with **business
 
 **Do not** duplicate release mail Special notes (SQL, masterdata) into RCA/Impact/Dev unless the user asks.
 
+## One-page: how to enrich JIRA correctly (fast + clean)
+1. Route by key: `SDCP-*` = SDCP field handoff; `TDPQA-*` / other non-SDCP = structured comment handoff.
+2. Draft functional text only (no branch/SHA/harness jargon). For comment payload, use `rca` + `impact` + `dev` (and optional `notes`).
+3. Preflight scan (fail closed): run `python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-KEY>`.
+4. Build the pack once: `bash scripts/bin/jira-enrich.sh pack <ISSUE-KEY> payload.json` (single forbidden scan, single ADF build).
+5. Apply:
+   - SDCP: update RCA/Impact/Dev custom fields (short ping comment optional)
+   - TDPQA/other: update exactly one structured handoff comment (edit in place when `comment_id` exists)
+6. Verify: ensure the handoff comment shows the required sections and real ADF mentions; transition only when the workflow allows.
+
 ## Fast path (mandatory — avoids slow multi-step enrich)
 
-**Root causes of slow JIRA updates:** (1) 10+ separate `jira-fix-adf.py` subprocess calls + repeated scans, (2) `getJiraIssueTypeMetaWithFields` on every handoff (skip — use [fields-reference.md](fields-reference.md)), (3) `getJiraIssue` with `*all` fields, (4) shell subagent without MCP (retry loops), (5) OAuth re-decrypt on every REST call (fixed — token cache + `.venv-jira`).
+**Root causes of slow JIRA updates:** see `cursor-bundle/memory/feedback_jira_enrich_fast_pack.md` (use one pack build + token cache + fields-reference).
 
 **One pack → one or two MCP writes:**
 
@@ -77,11 +87,18 @@ python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-102
 1. Call `project_mode` before drafting. Never assume SDCP fields exist on TDPQA.
 2. **Never invent a companion SDCP ticket** just to have somewhere to put RCA fields — enrich the ticket the user named (unless they explicitly ask for an SDCP tracker).
 3. On `comment_handoff`, the handoff **comment is the product** (like field values on SDCP). Edit that comment in place on re-handoff; do not leave a vague “ready for QA” one-liner as the only handoff. Pass `comment_id` / `existing_comment_id` in the pack payload so `apply-pack` updates instead of creating a duplicate.
-4. Still run `jira-fix-adf.py scan` on every draft (same forbidden tokens). **Machine validation:** `pack` / `validate_mode_comment` — SDCP ping ≤4 sentences / no section headers (or omit comment); TDPQA requires rca+impact+dev structured handoff (not ping-only). Tests: `scripts/lib/test_jira_fix_adf.py`.
+4. Still run `python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-KEY>` on every draft. The scan is strict: no other JIRA keys besides the target ticket, no GitHub URLs, and (for TDPQA/other comment handoffs) no prod-ops SQL snippets. Never tag `@darpan` (enforced via `never_mention`). **Machine validation:** `pack` / `validate_mode_comment` — SDCP ping ≤4 sentences / no section headers (or omit comment); TDPQA requires rca+impact+dev structured handoff (not ping-only). Tests: `scripts/lib/test_jira_fix_adf.py`.
+
+5. **Strict ticket scope:** RCA/Root Cause/Fix/Impact/Dev Verification/QA Retest/Notes must only describe the concern for the exact issue key you’re enriching. Do not cross-contaminate with other tickets (e.g. CLB vs NEFT mixes).
 
 ### TDPQA comment handoff (canonical)
 
 TDPQA has: assignee, Dev Owner (`customfield_11952`), QA Owner (`customfield_11953`), Fix Version labels, Bug Track, Environment. It does **not** have RCA / Impact / Dev Test / MICRO / Pre-Post / AITDP custom **fields** — so those go in the handoff **comment**, including **AITDP % + remarks** (mandatory).
+
+The handoff comment must follow this template (clean, scan-friendly ADF sections):
+Summary, Root Cause, Fix, Impact, Dev Verification, QA Retest, Notes, Pre / Post deployment, AITDP.
+
+Common failure mode on TDPQA: agents attempted SDCP fields or created companion SDCP tickets. See `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md` for the correct pattern.
 
 ```bash
 python3 scripts/bin/jira-fix-adf.py owners_tdpqa
@@ -89,7 +106,7 @@ python3 scripts/bin/jira-fix-adf.py owners_tdpqa
 
 python3 scripts/bin/jira-fix-adf.py handoff_comment <<'EOF'
 {
-  "lead_in": "@Reema @Srikant Fix is ready for QA retest.",
+  "lead_in": "@Srikant Fix is ready for QA retest.",
   "rca": {
     "situation": "...",
     "cause": "...",
@@ -105,6 +122,7 @@ python3 scripts/bin/jira-fix-adf.py handoff_comment <<'EOF'
   "service": "Accounting",
   "pre": "NA",
   "post": "NA",
+  "notes": "NA",
   "aitdp_percent": 0.75,
   "aitdp_remarks": "AI-assisted RCA using QA screenshots and loan data; traced root cause; implemented the functional fix; developer verified the scenarios."
 }
@@ -117,7 +135,7 @@ Then:
 1. `editJiraIssue` — `assignee` + `owners_tdpqa` only (do **not** send SDCP customfield_11137 / 11676 etc.).
 2. `addCommentToJiraIssue(contentFormat=adf, commentBody=<handoff ADF>)` — or edit existing handoff comment id in place.
 3. Transition toward QA when workflow allows.
-4. Verify comment has **RCA / Impact / Dev / AITDP** sections and real mentions.
+4. Verify comment has **Summary / Root Cause / Fix / Impact / Dev Verification / QA Retest / Notes / Pre / Post / AITDP** sections and real mentions.
 
 **AITDP in TDPQA comment (mandatory):**
 
@@ -172,13 +190,17 @@ JIRA is read by QA, product, and client-facing folks. Keep it **functional and b
 **Before** every `editJiraIssue` or comment create/update, concatenate all draft text (RCA, Impact, Dev Test, scenario titles, test results, AITDP remarks, comment) and scan:
 
 ```bash
-python3 scripts/bin/jira-fix-adf.py scan "<full draft text>"
+python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-KEY>
 # exit 2 = FORBIDDEN hits — rewrite until OK
 ```
 
+Rationale + example forbidden drafts: `cursor-bundle/memory/feedback_jira_enrich_forbidden_scan_assignee.md`.
+
 Reject and rewrite if any of these appear (case-insensitive):
 
-`mfi_integration`, `mfi_release`, `feature/`, `ntest`, `registry.json`, `registry case`, commit SHA (8+ hex), `Processor`, `DAOService`, `apiName`, `N=1..20`, `member counts 1–20`, `\be2e\b`, `unit test`, `fixture`, `poisoned rows`, version `\b3.x.y(.z)?\b`, table/column names listed above, `RSCH_*`, `134xxx`, **`Cursor` / `Cursor IDE`** (capital-C brand only — verb "cursor" is fine).
+`mfi_integration`, `mfi_release`, `feature/`, `ntest`, `registry.json`, `registry case`, commit SHA (8+ hex), `Processor`, `DAOService`, `apiName`, `N=1..20`, `member counts 1–20`, `\be2e\b`, `unit test`, `fixture`, `poisoned rows`, version `\b3.x.y(.z)?\b`, table/column names listed above, `RSCH_*`, `134xxx`, **`Cursor` / `Cursor IDE`** (capital-C brand only — verb "cursor" is fine), `github.com`, `PR #123`, `@darpan`, and any *other* JIRA issue key besides the target you passed via `--issue-key`.
+
+For TDPQA/other comment handoffs only: SQL/DDL/DML snippets (e.g. `.sql`, `flyway_schema_history`, `UPDATE ... SET`, etc.) are rejected.
 
 `Result: Pass.` at the end of a Dev Test Details item is **allowed** (field convention). Do **not** put harness shouty `PASS` / pass-counts in **comments**.
 
@@ -232,7 +254,9 @@ Hard limits for SDCP ping comments:
 
 ### TDPQA handoff comment (comment_handoff) — structured, complete
 
-On TDPQA there are **no** RCA/Impact/Dev/AITDP fields. The handoff comment **must** carry the same substance SDCP puts in fields, using `jira-fix-adf.py handoff_comment`. Required section headings: **RCA**, **Impact**, **Dev test / QA retest**, **Pre / Post deployment**, **AITDP** (Yes + effectiveness % + remarks). Optional: **Service** / **Test result**.
+On TDPQA there are **no** RCA/Impact/Dev/AITDP fields. The handoff comment **must** carry the same substance SDCP puts in fields, using `jira-fix-adf.py handoff_comment`.
+Required section headings: **Summary**, **Root Cause**, **Fix**, **Impact**, **Dev Verification**, **QA Retest**, **Notes**, **Pre / Post deployment**, **AITDP** (Yes + effectiveness % + remarks).
+Optional: **Service** / **Test result**.
 
 Still: no harness jargon, no branch/SHA/version in the body, real ADF `@mentions`. One comment — edit in place when content changes.
 
@@ -258,7 +282,7 @@ SDCP ping (fields already filled):
 </good-example>
 
 <good-example>
-TDPQA handoff comment (via handoff_comment helper) — lead-in + RCA + Impact + Dev retest + Pre/Post NA. QA can start without opening another ticket.
+TDPQA handoff comment (via handoff_comment helper) — lead-in + Summary/Root Cause/Fix + Impact + Dev Verification/QA Retest + Notes + Pre/Post NA. QA can start without opening another ticket.
 </good-example>
 
 **Minimal fix (mandatory):** Read `.cursor/skills/minimal-fix/SKILL.md`. Impact Analysis **must** include: what is **not** changed, whether read-path dedupe was **rejected**, and post-deploy SQL for existing poison rows (not code guards for dirty data).
@@ -266,6 +290,7 @@ TDPQA handoff comment (via handoff_comment helper) — lead-in + RCA + Impact + 
 ## Mentions / tagging (@ — mandatory for comments)
 
 **Markdown `@Name` does NOT tag anyone** — it posts as plain grey text. Real tagging needs ADF `mention` nodes with the person's `accountId`:
+In Jira UI these appear as `"[~accountid:<id>]"`.
 
 ```json
 {"type": "mention", "attrs": {"id": "<accountId>", "text": "@Sudheer Pandey"}}
@@ -284,6 +309,7 @@ python3 scripts/bin/jira-fix-adf.py comment "@Sudheer Pandey done as per your la
 Rules:
 
 - Always post comments with `contentFormat: "adf"` when they contain mentions — never markdown `@`.
+- Never tag/comment-mention `@darpan` / `@Darpan Solanki` (enforced by `never_mention` in `mentions.json` + scan).
 - If a name is missing from `mentions.json`, resolve it with `lookupJiraAccountId(cloudId=novopay.atlassian.net, searchString="<name>")` and **add it to the map** (name + first-name alias) so the next run works offline.
 - Verify the update/create response body shows `data-type="mention"` for each tagged person; plain `@Name` text means the tag failed.
 
