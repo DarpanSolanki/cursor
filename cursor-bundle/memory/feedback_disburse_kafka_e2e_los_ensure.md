@@ -18,3 +18,8 @@
 ## Deploy
 Ship **accounting before/with LOS** for 4-segment Kafka message
 (`apiName|json|cacheKey|ownerToken`).
+
+## Push
+`push-origin.sh` has **no `--repo` flag** — run from the service cwd:
+`cd trustt-platform-accounting && SHIP_PUSH_NO_AUTO_CLOSE=1 bash ../scripts/bin/push-origin.sh -u origin HEAD`
+(same for LOS). Workspace knowledge-sync: `cd sliProd && push-origin.sh -u origin HEAD`.
