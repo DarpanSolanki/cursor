@@ -32,9 +32,11 @@ aops_is_money_test() {
 
 aops_repo_dir() {
   case "$1" in
-    accounting) echo "$_AOPS_ROOT/novopay-platform-accounting-v2" ;;
-    actor) echo "$_AOPS_ROOT/novopay-platform-actor" ;;
-    task) echo "$_AOPS_ROOT/novopay-platform-task" ;;
+    accounting) echo "$_AOPS_ROOT/trustt-platform-accounting" ;;
+    actor) echo "$_AOPS_ROOT/trustt-platform-actor" ;;
+    task) echo "$_AOPS_ROOT/trustt-platform-task" ;;
+    los) echo "$_AOPS_ROOT/trustt-platform-los" ;;
+    simulators) echo "$_AOPS_ROOT/trustt-platform-simulators/chameleon" ;;
     *) return 1 ;;
   esac
 }
@@ -101,6 +103,34 @@ aops_before_test() {
   [[ "$compile" == "yes" ]] && compile=1 || compile=0
   echo "agent-ops: ensure $svc compile=$compile (api=$api)"
   aops_run_ensure "$svc" "$compile"
+
+  # Kafka-path disburse (TDPQA-54): accounting consumer + LOS producer + bank sim + actor + Kafka.
+  if [[ "${api,,}" == *disburse* ]]; then
+    local los_compile=0 sim_compile=0 actor_compile=0
+    if aops_java_newer_than_boot los 2>/dev/null; then los_compile=1; fi
+    echo "agent-ops: ensure los compile=$los_compile (kafka producer path)"
+    aops_run_ensure los "$los_compile" || {
+      echo "FAIL: LOS required for Kafka-path disburse (novopay-service ensure los)" >&2
+      return 1
+    }
+    if aops_java_newer_than_boot actor 2>/dev/null; then actor_compile=1; fi
+    echo "agent-ops: ensure actor compile=$actor_compile (getCustomerDetails during disburse)"
+    aops_run_ensure actor "$actor_compile" || {
+      echo "FAIL: actor required for disburseLoan (getCustomerDetails)" >&2
+      return 1
+    }
+    echo "agent-ops: ensure masterdata (getBulkUniqueMasterData via actor)"
+    aops_run_ensure masterdata 0 || {
+      echo "FAIL: masterdata required at :8014 for actor getCustomerDetails" >&2
+      return 1
+    }
+    echo "agent-ops: ensure simulators (GST SOAP :8018)"
+    aops_run_ensure simulators 0 || {
+      echo "FAIL: bank simulator required at :8018" >&2
+      return 1
+    }
+    nps_assert_disburse_kafka_ready "${NPS_KAFKA_CONSUMER_WAIT:-120}" || return 1
+  fi
 }
 
 aops_on_failure() {
@@ -122,7 +152,7 @@ aops_write_state() {
     echo "Updated: ${utc}"
     echo ""
     echo "## Local services"
-    for svc in accounting actor task; do
+    for svc in accounting actor task los simulators; do
       if status="$(nps_status_service "$svc" 2>&1)"; then
         echo "- **${svc}**: ${status}"
       else
@@ -130,19 +160,38 @@ aops_write_state() {
       fi
     done
     echo ""
+    echo "## Disburse Kafka (TDPQA-54)"
+    if nps_kafka_tcp_ok; then
+      echo "- **Kafka :9092**: UP"
+    else
+      echo "- **Kafka :9092**: DOWN"
+    fi
+    echo "- topic: \`${nps_disburse_topic}\` · group: \`${nps_disburse_group}\`"
+    if nps_kafka_consumer_assigned; then
+      echo "- consumer assigned: YES"
+    else
+      echo "- consumer assigned: NO (accounting LmsMessageBrokerConsumer)"
+    fi
+    echo ""
     echo "## Autonomous playbook (agents)"
     echo "| Trigger | Auto action |"
     echo "|---------|-------------|"
     echo "| Session start | Read this file + \`workspace-kg-state.md\` |"
     echo "| Before batch/DPI/disburse test | \`agent-ops.sh before-test <api>\` |"
+    echo "| Before Kafka-path disburse | ensure accounting + los + simulators; fail if Kafka consumer not assigned |"
     echo "| After accounting Java edit + test | ensure + compile if .java newer than boot log |"
     echo "| DPI code shipped / user says sanity | \`agent-ops.sh verify-dpi\` |"
     echo "| Wait >10s or HTTP 000 | \`novopay-logs.sh snap accounting\` |"
     echo "| ntest failure | auto snap + batch log if batch API |"
     echo ""
     echo "## Log paths (accounting)"
-    echo "- app: \`$(nps_app_log accounting)\`"
-    echo "- boot: \`$(nps_boot_log accounting)\`"
+    # nps_app_log can return non-zero for unknown svc; never leave empty under set -e
+    _app_log="$(nps_app_log accounting 2>/dev/null || echo "$_AOPS_ROOT/trustt-platform-accounting/logs/mfi/accounting-mfi.log")"
+    _boot_log="$(nps_boot_log accounting 2>/dev/null || echo "$_AOPS_ROOT/scripts/scratch/services/accounting-bootrun.log")"
+    echo "- app: \`${_app_log}\`"
+    echo "- boot: \`${_boot_log}\`"
+    _los_boot="$(nps_boot_log los 2>/dev/null || echo "$_AOPS_ROOT/scripts/scratch/services/los-bootrun.log")"
+    echo "- los boot: \`${_los_boot}\`"
     echo ""
     echo "Rule: \`.cursor/rules/autonomous-workspace-ops.mdc\`"
   } >"$state"

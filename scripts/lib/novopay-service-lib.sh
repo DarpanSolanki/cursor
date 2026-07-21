@@ -8,11 +8,14 @@ mkdir -p "$_NPS_STATE"
 
 nps_service_repo() {
   case "$1" in
-    accounting) echo "novopay-platform-accounting-v2" ;;
-    actor) echo "novopay-platform-actor" ;;
-    authorization) echo "novopay-platform-authorization" ;;
-    notifications) echo "novopay-platform-notifications" ;;
-    task) echo "novopay-platform-task" ;;
+    accounting) echo "trustt-platform-accounting" ;;
+    actor) echo "trustt-platform-actor" ;;
+    authorization) echo "trustt-platform-authorization" ;;
+    notifications) echo "trustt-platform-notifications" ;;
+    task) echo "trustt-platform-task" ;;
+    los) echo "trustt-platform-los" ;;
+    simulators) echo "trustt-platform-simulators/chameleon" ;;
+    masterdata) echo "trustt-platform-masterdata-management" ;;
     *) return 1 ;;
   esac
 }
@@ -24,13 +27,17 @@ nps_service_port() {
     authorization) echo "8007" ;;
     notifications) echo "8015" ;;
     task) echo "8019" ;;
+    los) echo "8013" ;;
+    simulators) echo "8018" ;;
+    masterdata) echo "8014" ;;
     *) return 1 ;;
   esac
 }
 
 nps_service_profile() {
   case "$1" in
-    accounting|actor|authorization|notifications|task) echo "mfi" ;;
+    accounting|actor|authorization|notifications|task|los|masterdata) echo "mfi" ;;
+    simulators) echo "" ;;
     *) return 1 ;;
   esac
 }
@@ -42,6 +49,9 @@ nps_service_probe_url() {
     authorization) echo "http://localhost:8007/authorization/api/v1/getPermissionList" ;;
     notifications) echo "http://localhost:8015/notifications/api/v1/getNotificationsCount" ;;
     task) echo "http://localhost:8019/task/api/v1/getTaskList" ;;
+    los) echo "http://localhost:8013/los/api/v1/getOriginateLoanCount" ;;
+    simulators) echo "http://localhost:8018/" ;;
+    masterdata) echo "http://localhost:8014/masterdata/api/v1/getBulkUniqueMasterData" ;;
     *) return 1 ;;
   esac
 }
@@ -63,12 +73,33 @@ nps_service_probe_body() {
     task)
       echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"DEFAULT","run_mode":"REAL"},"request":{}}'
       ;;
+    los)
+      echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"DEFAULT","run_mode":"REAL","transmission_datetime":"'"$(date +%s%3N)"'"},"request":{}}'
+      ;;
+    simulators)
+      echo ''
+      ;;
+    masterdata)
+      echo '{"headers":{"tenant_code":"mfi","user_id":"53","stan":"nps_probe","client_code":"NOVOPAY","channel_code":"WEB","function_code":"DEFAULT","function_sub_code":"DEFAULT","run_mode":"REAL","transmission_datetime":"'"$(date +%s%3N)"'"},"request":{"data_type_unique_codes":["GENDER"]}}'
+      ;;
     *) return 1 ;;
   esac
 }
 
 nps_pid_file() { echo "$_NPS_STATE/$1.pid"; }
 nps_boot_log() { echo "$_NPS_STATE/$1-bootrun.log"; }
+# App runtime log (same paths as npl_app_log) — used by agent-ops state writer
+nps_app_log() {
+  case "$1" in
+    accounting) echo "$_NPS_ROOT/trustt-platform-accounting/logs/mfi/accounting-mfi.log" ;;
+    actor) echo "$_NPS_ROOT/trustt-platform-actor/logs/mfi/actor-mfi.log" ;;
+    task) echo "$_NPS_ROOT/trustt-platform-task/logs/mfi/task-mfi.log" ;;
+    los) echo "$_NPS_ROOT/trustt-platform-los/logs/mfi/los-mfi.log" ;;
+    simulators) echo "$_NPS_ROOT/scripts/scratch/services/simulators-bootrun.log" ;;
+    masterdata) echo "$_NPS_ROOT/trustt-platform-masterdata-management/logs/mfi/masterdata-mfi.log" ;;
+    *) return 1 ;;
+  esac
+}
 
 nps_pids_on_port() {
   local port="$1"
@@ -148,11 +179,27 @@ nps_stop_service() {
 
 nps_probe_service() {
   local svc="$1"
-  local url body code
+  local url body code port
+  # Simulators: TCP listen is enough (GST SOAP root may not be POST-JSON).
+  if [[ "$svc" == "simulators" ]]; then
+    port="$(nps_service_port "$svc")"
+    if command -v ss >/dev/null 2>&1; then
+      ss -tln | grep -qE ":${port}\\b"
+      return $?
+    fi
+    (echo >/dev/tcp/127.0.0.1/"$port") >/dev/null 2>&1
+    return $?
+  fi
   url="$(nps_service_probe_url "$svc")"
   body="$(nps_service_probe_body "$svc")"
   code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST "$url" \
     -H 'Content-Type: application/json' -d "$body" 2>/dev/null || echo 000)"
+  # LOS gateway often returns 4xx for empty probe bodies once the servlet is up.
+  # Masterdata same posture for thin probe bodies.
+  if [[ "$svc" == "los" || "$svc" == "masterdata" ]]; then
+    [[ "$code" =~ ^(200|4[0-9][0-9])$ ]]
+    return $?
+  fi
   [[ "$code" == "200" ]]
 }
 
@@ -207,17 +254,56 @@ nps_start_service() {
   fi
 
   : >"$bl"
-  echo "  $svc: bootRun profile=$profile (log $bl)"
+  echo "  $svc: bootRun profile=${profile:-default} (log $bl)"
   (
     cd "$dir"
-    if [[ "$svc" == "accounting" ]]; then
+    if [[ "$svc" == "accounting" || "$svc" == "los" ]]; then
       export MESSAGE_BROKER_XML_PATH="$dir/deploy/application/messagebroker"
       export SPRING_APPLICATION_JSON='{"message.broker.bootstrap.servers":"127.0.0.1:9092"}'
     fi
-    nohup ./gradlew bootRun --args="--spring.profiles.active=${profile}" >>"$bl" 2>&1 &
+    if [[ -n "$profile" ]]; then
+      nohup ./gradlew bootRun --args="--spring.profiles.active=${profile}" >>"$bl" 2>&1 &
+    else
+      nohup ./gradlew bootRun >>"$bl" 2>&1 &
+    fi
     echo $! >"$pf"
   )
   nps_wait_service "$svc" "${NPS_START_TIMEOUT:-180}"
+}
+
+# Fail-closed Kafka readiness for disburseLoan consumer path (TDPQA-54).
+nps_kafka_bootstrap="${NPS_KAFKA_BOOTSTRAP:-127.0.0.1:9092}"
+nps_disburse_topic="${NPS_DISBURSE_TOPIC:-disburse_loan_api_mfi_local}"
+nps_disburse_group="${NPS_DISBURSE_GROUP:-disburse_loan_api_consumer_mfi_local}"
+
+nps_kafka_tcp_ok() {
+  (echo >/dev/tcp/127.0.0.1/9092) >/dev/null 2>&1
+}
+
+nps_kafka_consumer_assigned() {
+  local kg="${KAFKA_HOME:-/home/darpan/Documents/kafka_2.12-3.7.0}/bin/kafka-consumer-groups.sh"
+  [[ -x "$kg" ]] || return 1
+  "$kg" --bootstrap-server "$nps_kafka_bootstrap" --describe --group "$nps_disburse_group" 2>/dev/null \
+    | awk 'NR>1 && $1!="" && $6!="-" {found=1} END{exit found?0:1}'
+}
+
+nps_assert_disburse_kafka_ready() {
+  local timeout="${1:-90}" elapsed=0
+  if ! nps_kafka_tcp_ok; then
+    echo "FAIL: Kafka not listening on 127.0.0.1:9092 (required for Kafka-path disburse)" >&2
+    return 1
+  fi
+  echo "  kafka: waiting up to ${timeout}s for consumer group $nps_disburse_group on $nps_disburse_topic..."
+  while [[ "$elapsed" -lt "$timeout" ]]; do
+    if nps_kafka_consumer_assigned; then
+      echo "  kafka: consumer assigned (${elapsed}s)"
+      return 0
+    fi
+    sleep 3
+    elapsed=$((elapsed + 3))
+  done
+  echo "FAIL: no active members in consumer group $nps_disburse_group (accounting LmsMessageBrokerConsumer not ready)" >&2
+  return 1
 }
 
 nps_status_service() {

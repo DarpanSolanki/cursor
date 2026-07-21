@@ -12,3 +12,6 @@
 - Topic `disburse_loan_api_mfi_local`, group `disburse_loan_api_consumer_mfi_local`.
 - Redis DB 5 keys `localmfi_<cacheKey>` (producer) / `localmfi_dl<cacheKey>` (consumer), TTL ~600000ms.
 - Direct HTTP Accounting `disburseLoan` does **not** take these locks — Kafka consumer path does.
+- **E2E:** `bash scripts/bin/disburse-indl-kafka-quick.sh` (ensures los+accounting+sim; fail-closed preflight).
+- Message: `disburseLoan|{json}|disburseLoan{productId}_{INDL|JLG|SHG}_{extRef}|{ownerToken}`.
+- See also `feedback_disburse_kafka_e2e_los_ensure.md`.

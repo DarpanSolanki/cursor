@@ -1213,6 +1213,49 @@ def _http_post_json(url: str, payload: dict[str, Any], timeout_s: int) -> tuple[
         body = e.read().decode("utf-8", errors="replace") if e.fp else ""
         return e.code, body
 
+
+def _kafka_publish_disburse(payload: dict[str, Any], timeout_s: int) -> tuple[int, str]:
+    """LOS-shaped Kafka publish + Redis producer NX (TDPQA-54). Returns synthetic SUCCESS envelope."""
+    import subprocess
+    import tempfile
+
+    publisher = Path("/home/darpan/Documents/sliProd/scripts/testing/disbursement/disburse_kafka_publish.py")
+    if not publisher.is_file():
+        publisher = Path(__file__).resolve().parent / "testing" / "disbursement" / "disburse_kafka_publish.py"
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json", delete=False) as f:
+        json.dump(payload, f)
+        tmp = f.name
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(publisher), "--request-file", tmp],
+            capture_output=True,
+            text=True,
+            timeout=max(timeout_s, 30),
+            check=False,
+        )
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+    out = (proc.stdout or "") + (proc.stderr or "")
+    print(out, flush=True)
+    if proc.returncode != 0:
+        return 500, json.dumps(
+            {
+                "response_status": {"status": "FAILED", "code": "KAFKA_PUBLISH", "message": out[-2000:]},
+            }
+        )
+    return 200, json.dumps(
+        {
+            "response_status": {
+                "status": "SUCCESS",
+                "code": "000",
+                "message": "Request pushed to Kafka successfully",
+            }
+        }
+    )
+
 def _is_successful_disburse_response(http_status: int | None, body: str) -> bool:
     if http_status is None or http_status < 200 or http_status >= 300:
         return False
@@ -4166,6 +4209,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=bool(os.environ.get("DISBURSE_DPI_CERTIFY")),
         help="DPI certify path: LOAN_BOOKED + ACTIVE + schedule is acceptable when GL/MFT leg is unavailable locally.",
     )
+    p.add_argument(
+        "--via-kafka",
+        action="store_true",
+        default=bool(os.environ.get("DISBURSE_VIA_KAFKA")),
+        help="Publish LOS-shaped Kafka message (apiName|json|cacheKey|ownerToken) instead of HTTP disburseLoan.",
+    )
     return p
 
 
@@ -4240,7 +4289,8 @@ def main() -> int:
     if not url:
         url = args.base_url.rstrip("/") + args.context_path.rstrip("/") + args.api_path
     print(
-        f"[suite] product={product_type} child_flow={child_flow} mode={mode} bank_leg={bank_leg} endpoint={url}",
+        f"[suite] product={product_type} child_flow={child_flow} mode={mode} bank_leg={bank_leg} "
+        f"endpoint={'KAFKA:' + os.environ.get('NPS_DISBURSE_TOPIC', 'disburse_loan_api_mfi_local') if args.via_kafka else url}",
         flush=True,
     )
 
@@ -4283,7 +4333,13 @@ def main() -> int:
                     diag["before_dues"] = _count_dues(snap_before.account_id)
                     diag["before_utr"] = _get_utr(snap_before.account_id)
 
-            http_status, body = _http_post_json(url, payload, timeout_s=args.http_timeout_s)
+            http_status, body = (
+                _kafka_publish_disburse(payload, timeout_s=args.http_timeout_s)
+                if args.via_kafka
+                else _http_post_json(url, payload, timeout_s=args.http_timeout_s)
+            )
+            if args.via_kafka:
+                diag["via_kafka"] = True
             diag["response_body_prefix"] = (body or "")[:2000]
 
             checks.append(_mk_check("http_2xx", http_status is not None and 200 <= http_status < 300, f"http_status={http_status}"))
