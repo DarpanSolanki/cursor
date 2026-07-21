@@ -1,3 +1,6 @@
+2026-07-21 | initial-setup (uncommitted) | mfi_integration_v3.4.2.5 | TDPQA-54 masterdata V000125 seeds disburse Redis TTL configs
+- product `V000125__tdpqa54_disburse_redis_inflight_ttl_config.sql`: `mfi.disburse.loan.producer.marker.ttl.ms` (LOS) + `mfi.disburse.loan.consumer.lock.ttl.ms` (ACCOUNTING) = 600000. Prod pack: `scripts/sql/deploy/prod_pre_V000125_tdpqa54_disburse_redis_ttl_config.sql` (Pre; `schema_version`).
+
 2026-07-20 | accounting 7e1642a57e | mfi_integration_v3.4.2.4 | Parent disburse 134126 on member multi REP_ACCT; remove CLB keepAtMostOneRepAcct trim
 ## 2026-07-20 | workspace | no auto-open documents (opt-in IDE open)
 - `open-final.sh` default prints path only; `--open` / `OPEN_FINAL=1` to open. Rule+skill flipped; memory `feedback_no_auto_open_documents.md`. sessionStart hooks do not open HTML.
@@ -447,3 +450,5 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 - 2026-07-20 | WORKSPACE | JIRA skills sync-up: master `jira-fix-update` template + stricter `jira-fix-adf.py` scans (never_mention, strict ticket scope, GitHub + comment-handoff SQL ban) and updated TDPQA ADF sections (Summary/Root Cause/Fix/Dev Verification/QA Retest/Notes) | .cursor/skills/jira-fix-update/SKILL.md, .cursor/skills/jira-fix-update/mentions.json, .cursor/skills/jira-fix-update/fields-reference.md, scripts/bin/jira-fix-adf.py, scripts/bin/jira-enrich.sh, changelog.md
 
 - 2026-07-20 | BUG_FIX | TDPQA-54 disbursement Redis in-flight locks: LOS producer and Accounting consumer now use atomic owner-token acquire with configurable 600000 ms TTL; platform-lib adds Lua compare-and-delete; ambiguous intermediate `DEFAULT` replay fails closed. Builds PASS; `disbursement.redis_inflight_lock_sim` PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME PASS; live INDL fixture blocked before loan creation by existing mandate validation. | lib `9c5c82d2d8`, LOS `0e4a0be2bd`, accounting `f9d803c4e`; `scripts/testing/registry.json`
+
+- 2026-07-21 | OPS | TDPQA-54 V000125 masterdata seed (disburse Redis in-flight TTL props) + prod pre-deploy pack for manual Flyway/DBA | initial-setup `53aadb49`, `scripts/sql/deploy/prod_pre_V000125_tdpqa54_disburse_redis_ttl_config.sql`
