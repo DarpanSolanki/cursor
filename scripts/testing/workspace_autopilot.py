@@ -378,7 +378,7 @@ def build_plan(
         "Run autopilot on EVERY new user message in this tab — task type may have changed.",
         "Extended session: re-read `.cursor/workspace-kg-state.md` + run `kg watermark` when resuming after branch checkout.",
         "Do not ask the user to run scripts — autopilot + hooks handle ops.",
-        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/hot-path-perf-gate.mdc.",
+        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/10-quality-gates.mdc.",
         "After verified test + commit: push runs via ship-and-continue (do not wait for session end).",
     ]
     if task_shift:
@@ -406,6 +406,17 @@ def build_plan(
             "VERIFIED_FIXED_CLEAN. Never implement from FILE_TOUCH_HINTS or VERIFIED_FIXED_DIVERGED. "
             "Stale upstream refs / ✗ fixed_elsewhere = do not invent a port."
         )
+
+    # Mixed-train banner (always computed from git-workspace-state.json)
+    try:
+        from train_banner import banner_and_stop  # type: ignore
+
+        banner, stop = banner_and_stop(text, kind)
+        directives.insert(0, banner)
+        if stop:
+            directives.insert(1, stop)
+    except Exception as exc:  # noqa: BLE001
+        directives.insert(0, f"TRAINS: (banner failed: {exc})")
 
     return Plan(
         classification=kind,
@@ -580,6 +591,10 @@ def cmd_task(args: argparse.Namespace) -> int:
         return 0
 
     print("## Workspace autopilot — task plan")
+    # Always surface train banner first when present
+    train_lines = [d for d in plan.agent_directives if d.startswith("TRAINS:") or d.startswith("HARD STOP")]
+    for line in train_lines:
+        print(f"**{line}**")
     if plan.task_shift:
         print(f"**TASK SHIFT:** {plan.shift_reason}")
     elif light or continuation:
@@ -599,6 +614,8 @@ def cmd_task(args: argparse.Namespace) -> int:
         print("\n**After fix verified (auto):** close → cooldown → `ship-and-continue` → next task")
     print("\n**Directives:**")
     for d in plan.agent_directives:
+        if d.startswith("TRAINS:") or d.startswith("HARD STOP"):
+            continue  # already printed at top
         print(f"- {d}")
     failed = [r for r in results if r.get("rc", 0) != 0 and not r.get("dry_run")]
     return 1 if failed else 0

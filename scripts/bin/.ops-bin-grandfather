@@ -1,0 +1,14 @@
+# Pre-U5 scripts/bin/*.sh with zero inbound refs (grandfathered).
+# ops-bin-hygiene.sh fails only for NEW zero-ref scripts not listed here.
+# Do not add new names casually — wire a caller or delete the script instead.
+accounting-flow-proof.sh
+brain-gap-capture.sh
+dpi-june-slice-proof.sh
+flyway-checksum.sh
+foreclosure-local-setup.sh
+ftg-enrich.sh
+ftg.sh
+initial-setup-local.sh
+jira-fix-handoff.sh
+setup-qa-db.sh
+workspace-bootstrap.sh

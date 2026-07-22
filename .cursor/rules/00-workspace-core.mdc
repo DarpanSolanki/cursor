@@ -42,6 +42,11 @@ After bootstrap, for every user instruction except narrow exceptions below, prin
 
 If unsure whether mutation will follow → treat as **MUTATION** (STOP-AND-WAIT).
 
+## Mixed-train banner (Gate A — before any RCA conclusion)
+
+Autopilot prints a computed `TRAINS: … [MIXED|ALIGNED]` line from `.cursor/git-workspace-state.json` (never hand-written).
+When **`[MIXED]`** + money/cross-service task: **HARD STOP** — scope to one train (`sync-branches.sh --domain … --train …`) or get explicit user acknowledgment before cross-repo conclusions. Full wording: `10-quality-gates.mdc` Gate A.
+
 ## Workspace autopilot (mandatory)
 
 On every substantive user message (first action):

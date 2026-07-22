@@ -8,6 +8,19 @@ alwaysApply: true
 
 Archives: `.cursor/skills/workspace-gates-reference/agent-quality-gates.md`, `minimal-fix-impact-gate.md`, `discuss-before-updating.md`, `reuse-queries-java-filter.md`, `hot-path-perf-gate.md`, `upstream-sync-no-unrelated-diff.md`
 
+## Gate A — Mixed-train banner (mandatory before RCA conclusions)
+
+Every `workspace-autopilot.sh task` prints a computed line from `.cursor/git-workspace-state.json`, e.g.:
+`TRAINS: acc=3.4.2.4 pay=3.7.1 actor+3=DPI libs=3.3.1.2 [MIXED]`
+Never invent trains by hand — refresh state via `scripts/bin/git-workspace-status.sh` if missing.
+
+When the banner ends with **`[MIXED]`** and the task is **cross-service or money**:
+**HARD STOP** — do not conclude cross-repo contracts until you (a) scope to one named train
+(`sync-branches.sh --domain <dfc|disburse|dpi|…> --train mfi_integration_vX.Y.Z`) or
+(b) get **explicit user acknowledgment** of mixed-train risk.
+
+State the banner (and HARD STOP when applicable) **before** any RCA / cross-service conclusion.
+
 ## Discuss before updating
 
 - **Do not** update, add, or remove code or configuration unless the user has explicitly asked you to make that change.
@@ -65,6 +78,9 @@ Resolve apiName; `kg flow` then **read** orch XML; check `accounting_flow_domain
 
 ### Gate C — KG is not enough
 After kg orient/why: orch XML read; processors grepped; money path → gaps-digest High rows (escalate to full SoT when flagged); RCA → db-local/qaN or label NOT VERIFIED. `KG_STRICT=1` when drift/dirty possible.
+
+### Gate C-env — Cross-env evidence (fail-closed)
+If the user names a **QA/UAT/prod env or LAN** and the evidence was read from **local DB** (or any other env): the claim **MUST** be labeled `NOT VERIFIED ON <env>`. The word **verified** is **forbidden** for cross-env evidence. Use env wrappers from `scripts/env/env-matrix.json` / `db-qa{N}.sh`; read reachability from `.cursor/workspace-ops-state.md` (env-smoke) instead of re-guessing.
 
 ### Gate D — Honest testing & JIRA
 Pass claims only when ntest/script PASS this session. `ORCH_SIBLING_SIM` / `PROCESSOR_MIRROR_SIM` **never** label as full E2E / LAN Pass. Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unrelated registry cases.

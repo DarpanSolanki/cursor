@@ -236,6 +236,10 @@ PY
       echo "→ testing paths touched — workspace tier smoke"
       bash "$ROOT/scripts/bin/ntest.sh" smoke --tier workspace || exit 1
     fi
+    if [[ -x "$ROOT/scripts/bin/ops-bin-hygiene.sh" ]]; then
+      echo "→ ops bin hygiene"
+      bash "$ROOT/scripts/bin/ops-bin-hygiene.sh" || exit 1
+    fi
     ;;
   service)
     echo "→ ntest validate (service tier)"

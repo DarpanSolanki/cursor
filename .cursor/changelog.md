@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 5 — mixed-train banner + scoped sync + env-matrix
+Computed TRAINS banner in autopilot + HARD STOP on [MIXED] money/cross-service (00/10 gates). sync-branches --domain/--train/--yes foot-gun guard; sync_branches_v2 thin deprecated wrapper. scripts/env/env-matrix.json + TODO + env-smoke → ops-state. OPS-INDEX + ops-bin-hygiene (grandfather pre-U5 orphans). Cross-env: NOT VERIFIED ON &lt;env&gt;; forbid “verified” for local evidence vs named QA.
+
 ## 2026-07-22 | workspace | Upgrade 4 — KG MCP + gate tiering + arch digest
 trustt-kg MCP (stdio wrapper over kg.py); mcp-atlassian dead entry removed (use plugin; rotate exposed token). Self-expansion READ-ONLY proceed / MUTATION stop-wait. architecture-digest.md bootstrap. TASK0 archive-only mandates promoted or justified.
 

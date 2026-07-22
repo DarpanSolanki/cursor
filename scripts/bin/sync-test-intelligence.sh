@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Test intelligence sync — fingerprint-gated (fast default).
+# Alias: scripts/bin/test-map.sh delegates here.
 #
 # Usage:
 #   sync-test-intelligence.sh              # fast — rebuild only stale layers

@@ -33,6 +33,19 @@ if [[ -f "$ARCH_SRC" ]]; then
   fi
 fi
 
+# Regenerate OPS-INDEX when any scripts/bin/*.sh is newer than the index
+OPS_INDEX="$ROOT/scripts/bin/OPS-INDEX.md"
+if [[ -x "$ROOT/scripts/bin/build-ops-index.sh" ]]; then
+  newest_bin="$(find "$ROOT/scripts/bin" -maxdepth 1 -name '*.sh' -printf '%T@\n' 2>/dev/null | sort -n | tail -1 || true)"
+  index_mtime="$(stat -c %Y "$OPS_INDEX" 2>/dev/null || echo 0)"
+  if [[ -n "$newest_bin" ]]; then
+    newest_bin="${newest_bin%%.*}"
+    if [[ ! -f "$OPS_INDEX" ]] || [[ "${newest_bin:-0}" -gt "$index_mtime" ]]; then
+      bash "$ROOT/scripts/bin/build-ops-index.sh" >>"$LOG" 2>&1 || true
+    fi
+  fi
+fi
+
 export SKIP_KG_ENSURE="$SKIP_KG"
 RESULT=$(timeout 50 python3 "$ROOT/scripts/testing/sync_engine.py" fast-session --quiet \
   >>"$LOG" 2>&1 && cat "$LOG" | tail -1 || echo '{"ok":false}')

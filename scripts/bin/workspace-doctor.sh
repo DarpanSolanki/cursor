@@ -4,18 +4,21 @@
 #   workspace-doctor.sh           # quick (default)
 #   workspace-doctor.sh --full    # smoke-workspace (KG CLI + hooks offline)
 #   workspace-doctor.sh --services # include DPIC service HTTP checks
+#   workspace-doctor.sh --env-smoke # db ping per env-matrix → workspace-ops-state.md
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 MODE=quick
+ENV_SMOKE=0
 for arg in "$@"; do
   case "$arg" in
     --full) MODE=full ;;
     --services) MODE=services ;;
     --quick) MODE=quick ;;
+    --env-smoke) ENV_SMOKE=1 ;;
     -h|--help)
-      echo "Usage: workspace-doctor.sh [--quick|--full|--services]"
+      echo "Usage: workspace-doctor.sh [--quick|--full|--services|--env-smoke]"
       exit 0
       ;;
   esac
@@ -80,6 +83,16 @@ echo ""
 echo "--- hygiene ---"
 if bash scripts/bin/workspace-hygiene.sh --verbose 2>/dev/null | tail -5; then
   ok "workspace hygiene"
+fi
+
+if [[ "$ENV_SMOKE" == 1 || "$MODE" == "full" ]]; then
+  echo ""
+  echo "--- env-smoke ---"
+  if bash scripts/bin/env-smoke.sh --write-state; then
+    ok "env-smoke → workspace-ops-state.md"
+  else
+    die "env-smoke"
+  fi
 fi
 
 echo ""

@@ -6,10 +6,11 @@
 #   agent-ops.sh on-failure [svc] [api] [job_time]
 #   agent-ops.sh verify-dpi             # full DPI sanity chain
 #   agent-ops.sh write-state
+#   agent-ops.sh env-smoke              # db ping per env-matrix → workspace-ops-state.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-# shellcheck disable=SC1091
+# shellcheck source=../lib/agent-ops-lib.sh
 source "$ROOT/scripts/lib/agent-ops-lib.sh"
 
 cmd="${1:-preflight}"
@@ -18,7 +19,14 @@ shift || true
 case "$cmd" in
   preflight|state|write-state)
     aops_write_state
+    # Refresh env reachability when matrix exists (non-fatal)
+    if [[ -f "$ROOT/scripts/env/env-matrix.json" ]]; then
+      bash "$ROOT/scripts/bin/env-smoke.sh" --write-state >/dev/null 2>&1 || true
+    fi
     cat "$ROOT/.cursor/workspace-ops-state.md" 2>/dev/null | head -20
+    ;;
+  env-smoke|--env-smoke)
+    bash "$ROOT/scripts/bin/env-smoke.sh" --write-state "$@"
     ;;
   before-test)
     api="${1:?apiName required}"
