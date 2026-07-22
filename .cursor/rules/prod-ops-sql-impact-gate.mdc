@@ -1,0 +1,75 @@
+---
+description: "Prod/ops SQL impact gate — mandatory caller + status/column blast analysis before adhoc UPDATE scripts (CRR, loan_account money patches)"
+globs:
+  - "scripts/sql/adhoc/**"
+  - "scripts/sql/deploy/**"
+  - "scripts/sql/setup/**"
+alwaysApply: false
+---
+
+# Prod / ops SQL impact gate
+
+**When:** User asks for (or agent drafts) a **production / QA / ops** mutation script under `scripts/sql/` that UPDATEs money-path tables — especially `client_request_response_log`, `loan_account`, `loan_account_events_queue`, `loan_disbursement_mode_details`, ledger/posting tables.
+
+**Do not** invent column values (status strings, LAN transforms) without proving callers ignore them.
+
+Memory: `cursor-bundle/memory/feedback_prod_ops_sql_crr_impact_gate.md`
+
+## Decision order (status / CRR — fail closed)
+
+1. **Can we leave `status` as the current contract value?** (`FAIL` / `SUCCESS` / `UNKNOWN`) — prefer yes; use `eligible_for_retry` and other code-filtered columns for safety.
+2. **Only then soft-archive LAN** (`loan_account_number = '~'||id`) when LAN-scoped finders must detach the row.
+3. **Never invent `status`** unless Java already recognizes the literal. Do **not** default to `LOCAL_RESET_ARCHIVED` / `PROD_*_ARCHIVED` — those are local-forensic or rejected; copy local-reset only after proving contract-native is insufficient.
+
+Challenge neutralize/archive when **FAIL (or existing enum) already satisfies** SUCCESS-skip / retry / money-path safety.
+
+## Mandatory before writing or shipping the SQL
+
+0. **Minimal permanent one-liner** — smallest UPDATE set that satisfies SUCCESS-skip + retry + re-fire entry (output block below).
+1. **Name touched columns** — every SET column + new literal values.
+2. **Grep callers** (accounting + platform-lib on the **deployed train**):
+   - Entity / repository / DAO for the table
+   - Exact equality: `status = 'SUCCESS'|'FAIL'|'UNKNOWN'`, `status IN (…)`, `!= SUCCESS`
+   - Soft-archive: `~` prefix (LAN detach); local forensic statuses only if already proven needed
+   - Retry / batch readers (`eligible_for_retry`, `findAllFailed*`)
+   - Bank callbacks keyed by `client_reference_number` (survive LAN soft-archive)
+3. **Impact matrix** (path × uses column? × broken by new value? × safe?) covering at least:
+   - Parent INDL / reinit NEFT v2
+   - JLG/SHG child EXTREF / CLMT
+   - Inquiry / ST_NEF SUCCESS skip
+   - Bank callback by client_ref
+   - Retry job
+   - Adjacent money legs (MFT, excess refund, penny-drop) if same table
+4. **Contract-native first** — do not copy `scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql` wholesale until step 1–2 prove need. Prefer keep `FAIL` + `eligible_for_retry=false` (+ optional `~`).
+5. **CRR contract** — runtime statuses are `SUCCESS` / `FAIL` / `UNKNOWN`. Soft-archive markers (`LOCAL_RESET_ARCHIVED`, `LOCAL_FORCE_STAGE_ARCHIVED`) are **local forensic only**.
+6. **Default** `ROLLBACK;` — human `COMMIT` only after bank/ops confirm. Never agent-execute against prod.
+
+## Mandatory self-check (output in every prod SQL proposal)
+
+```text
+Minimal permanent: <one line>
+Contract-native values: Yes (FAIL/…) | No (why)
+Anything lost: No | Yes (<what>)
+Code-proven: <repo paths that prove SUCCESS-skip / retry>
+```
+
+## Unsafe anti-patterns
+
+| Pattern | Why |
+|---------|-----|
+| Invented `status` (e.g. `PROD_*_ARCHIVED`) | Unproven; reporting/ops won't know it; contract drift |
+| Defaulting to `LOCAL_RESET_ARCHIVED` for prod | Local-reset habit — often redundant when `FAIL` + retry flag (+ optional `~`) already works |
+| Change `status` only, keep real LAN | `ExternalReferenceNoUtil` bumps only on `FAIL` — non-FAIL archived status **reuses** bank counter |
+| Soft-archive without `eligible_for_retry = false` if status stays `FAIL` | Retry job still selects `status = 'FAIL' AND eligible_for_retry = TRUE` |
+| Assume client_ref callbacks are inert after `~` LAN | Callbacks resolve by client_ref; then `findOneByAccountNumber(crr.lan)` misses |
+
+## Skill
+
+`.cursor/skills/prod-ops-sql-impact/SKILL.md`
+
+## Pair with
+
+- `10-quality-gates.mdc` — applies to **prod/ops SQL**, not only Java
+- `20-ship-gates.mdc` — **Ops / prod hotfix** front
+- `00-workspace-core.mdc` — print final SQL path after edit; IDE open only if user asks
+- `10-quality-gates.mdc` — still wait for implement approval unless user asked for the SQL

@@ -56,10 +56,11 @@ Then write the **paste body** — translate findings into short Impact bullets a
 When release details are produced **and** there are **unpushed fix commits** in the affected service repo:
 
 1. **Before push:** `./gradlew compileJava` or `./gbuild.sh` green in that repo; correct branch; only intended files in commit.
-2. **Push** from the **service repo root** (not workspace root): `git push origin <branch>` (DarpanSolanki fork per `feedback_darpan_git_via_darpansolanki.md`).
-3. **Do not** push to khoslalabs upstream unless user explicitly asks.
-4. **After push:** prepend brain CHANGELOG (`changelog-add.sh --kg-flow` for money-path fixes), append `.cursor/changelog.md`, state in chat: `Pushed: <repo> <branch> @ <short sha>`.
-5. If nothing to push, say `Already on origin` — still deliver release details.
+2. **Train sync-first:** If branch is `mfi_integration_vX.Y.Z`, fetch origin+upstream, base on `upstream/<train>` tip, reconcile unique origin commits (`feedback_train_branch_sync_origin_upstream.md`) — never push from stale origin-behind-upstream.
+3. **Push** from the **service repo root** (not workspace root): `git push origin <branch>` / `bash scripts/bin/push-origin.sh` (DarpanSolanki fork per `feedback_darpan_git_via_darpansolanki.md`).
+4. **Do not** push to `trusttai` upstream unless user explicitly asks.
+5. **After push:** prepend brain CHANGELOG (`changelog-add.sh --kg-flow` for money-path fixes), append `.cursor/changelog.md`, state in chat: `Pushed: <repo> <branch> @ <short sha>`.
+6. If nothing to push, say `Already on origin` — still deliver release details.
 
 User should **not** have to say “push” after “release details” when fixes were part of the same task.
 
