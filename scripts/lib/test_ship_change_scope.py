@@ -26,7 +26,7 @@ def _reg() -> dict:
 class PartitionPathsTest(unittest.TestCase):
     def test_splits_service_harness_kb(self) -> None:
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/DpiBillingBatchService.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/DpiBillingBatchService.java",
             "scripts/dpic/sql/helpers/verify_dpi_full_pipeline.sql",
             "scripts/testing/registry.json",
             ".cursor/changelog.md",
@@ -52,7 +52,7 @@ class HarnessOnlyTest(unittest.TestCase):
 class ServiceOnlyDpiTest(unittest.TestCase):
     def test_billing_java_minimal_cases(self) -> None:
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/DpiBillingBatchService.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/DpiBillingBatchService.java",
         ]
         scope = resolve_change_scope(
             [str(ROOT / p) for p in paths], reg=_reg()
@@ -73,7 +73,7 @@ class ServiceOnlyDpiTest(unittest.TestCase):
 class ForeclosureServiceTest(unittest.TestCase):
     def test_foreclosure_processor_scoped(self) -> None:
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/foreclosure/processor/ChildLoanForeclosureProcessor.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/foreclosure/processor/ChildLoanForeclosureProcessor.java",
         ]
         scope = resolve_change_scope(
             [str(ROOT / p) for p in paths], reg=_reg()

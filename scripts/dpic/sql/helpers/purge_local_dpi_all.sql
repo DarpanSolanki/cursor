@@ -88,3 +88,5 @@ SELECT COUNT(*) AS dpi_accrual_rows FROM mfi_accounting.dpi_accrual_details;
 SELECT COUNT(*) AS dpi_due_rows
 FROM mfi_accounting.loan_due_details
 WHERE component_type = 'DPI' AND is_deleted = false;
+
+DROP TABLE IF EXISTS _dpi_txn_purge_ids;

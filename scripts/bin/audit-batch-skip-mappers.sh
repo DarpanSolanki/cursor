@@ -12,8 +12,8 @@
 #   audit-batch-skip-mappers.sh --dpi-only
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-ACCT="$ROOT/novopay-platform-accounting-v2/src/main/java"
-LIB="$ROOT/novopay-platform-lib/infra-batch/src/main/java"
+ACCT="$ROOT/trustt-platform-accounting/src/main/java"
+LIB="$ROOT/trustt-platform-lib/infra-batch/src/main/java"
 DPI_ONLY=0
 FAIL=0
 

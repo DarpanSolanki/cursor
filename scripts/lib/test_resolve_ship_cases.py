@@ -19,7 +19,7 @@ def _load_reg() -> dict:
 
 class ResolveDpiCasesTest(unittest.TestCase):
     def test_booking_path_uses_consolidated_ship_close(self) -> None:
-        blob = "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/dpiaccrualbookingbatchservice.java"
+        blob = "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/dpiaccrualbookingbatchservice.java"
         apis = {"dpiAccrualBooking"}
         out = resolve_dpi_cases(blob, apis, [])
         self.assertIn("batch.dpi_booking", out)
@@ -28,7 +28,7 @@ class ResolveDpiCasesTest(unittest.TestCase):
         self.assertNotIn("dpic.cross_eod_replay_134497", out)
 
     def test_billing_path_uses_consolidated_ship_close(self) -> None:
-        blob = "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/dpibillingbatchservice.java"
+        blob = "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/dpibillingbatchservice.java"
         apis = {"dpiBilling"}
         out = resolve_dpi_cases(blob, apis, [])
         self.assertIn("batch.dpi_billing", out)
@@ -38,7 +38,7 @@ class ResolveDpiCasesTest(unittest.TestCase):
     def test_money_tier_booking_ship_auto_includes_ship_close(self) -> None:
         reg = _load_reg()
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java"
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java"
         ]
         apis = ["dpiAccrualBooking"]
         out = resolve_ship_cases(paths, apis, "money", reg)
@@ -49,7 +49,7 @@ class ResolveDpiCasesTest(unittest.TestCase):
         reg = _load_reg()
         paths = [
             "scripts/dpic/sql/helpers/setup_qa1_month_end_npa_fixture.sql",
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java",
         ]
         apis = ["dpiAccrualBooking"]
         out = resolve_ship_cases(paths, apis, "money", reg)
@@ -59,8 +59,8 @@ class ResolveDpiCasesTest(unittest.TestCase):
     def test_read_overview_ship_does_not_pull_unrelated_dpi_e2e(self) -> None:
         reg = _load_reg()
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/GetLoanAccountOverviewDetailsProcessor.java",
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/recurring/batch/LoanRecurringPaymentBatchProcessor.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/GetLoanAccountOverviewDetailsProcessor.java",
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/recurring/batch/LoanRecurringPaymentBatchProcessor.java",
         ]
         apis = ["getLoanAccountOverviewDetails", "loanRecurringPaymentBatchApi"]
         out = resolve_ship_cases(paths, apis, "money", reg)

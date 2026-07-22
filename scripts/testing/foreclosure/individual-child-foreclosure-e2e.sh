@@ -29,6 +29,6 @@ WHERE a.id = la.account_id AND la.account_id = pd.loan_account_id
 EOSQL
 
 # Template must exist for ntest auto / JTF parse
-test -f "$ROOT/novopay-platform-accounting-v2/deploy/application/templates/request/product/individualChildLoanForeclosure_requestTemplate.json"
+test -f "$ROOT/trustt-platform-accounting/deploy/application/templates/request/product/individualChildLoanForeclosure_requestTemplate.json"
 
 python3 "$ROOT/scripts/testing/foreclosure/individual_child_foreclosure_ntest.py"

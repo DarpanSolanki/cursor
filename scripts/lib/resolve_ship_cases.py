@@ -25,6 +25,7 @@ PATH_TRIGGERED_CASES = frozenset(
         "foreclosure.dpi_waiver_smoke",
         "foreclosure.loan_prepayment_real",
         "foreclosure.sdcp10255_e2e",
+        "reopening.child_payments_parity_sim",
         "dpic.go_live_ud",
         "dpic.grace_e2e",
         "dpic.multi_emi_installment_e2e",
@@ -243,6 +244,14 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "dcf_sanity",
             "/death/",
         ),
+        "reopening.child_payments_parity_sim": (
+            "childloanreopening",
+            "loanaccountreopening",
+            "loanaccountpaymentsdetailsreversal",
+            "tdpqa102",
+            "reopening/",
+            "group_mfi_orc",
+        ),
     }
     hints = rules.get(cid)
     if not hints:
@@ -298,6 +307,10 @@ def expand_path_cases(blob: str, apis: set[str], reg: dict) -> list[str]:
     if any(x in blob for x in ("foreclosuresimulation", "fetchloanforeclosure")):
         if "fetchLoanForeclosureSimulationDetails" in apis:
             add("dpic.foreclosure_sim")
+
+    # BPD day-window (DpiForeclosureBrokenPeriodService) — prefer code-backed sim
+    if "dpiforeclosurebrokenperiod" in blob or "foreclosurebrokenperiod" in blob:
+        add("dpic.foreclosure_bpd_day_window_sim")
 
     return out
 
@@ -438,8 +451,8 @@ def resolve_ship_cases(
     repos: list[str] = []
     for p in paths or []:
         pl = p.replace("\\", "/").lower()
-        if "novopay-platform-accounting-v2" in pl:
-            repos.append("novopay-platform-accounting-v2")
+        if "trustt-platform-accounting" in pl:
+            repos.append("trustt-platform-accounting")
 
     try:
         from accounting_flow_domains import (  # noqa: WPS433

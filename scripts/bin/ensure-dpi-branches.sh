@@ -3,7 +3,7 @@
 set -euo pipefail
 ROOT="${SLIPROD_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 BRANCH="feature/delayed_payment_interest"
-REPOS=(novopay-platform-accounting-v2 novopay-platform-initial-setup novopay-platform-webapp)
+REPOS=(trustt-platform-accounting trustt-platform-initial-setup trustt-platform-webapp)
 FAIL=0
 
 for repo in "${REPOS[@]}"; do

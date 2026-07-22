@@ -24,8 +24,10 @@ ROOT = Path(__file__).resolve().parents[2]
 CURSOR = ROOT / ".cursor"
 STATE_FILE = CURSOR / "git-workspace-state.json"
 MANIFEST_FILE = CURSOR / "git-branch-manifest.json"
-UPSTREAM_ORG = "khoslalabs"
 INTEGRATION = re.compile(r"^mfi_(integration|release)_v[0-9]")
+
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+from github_repo_map import UPSTREAM_ORG, github_upstream_repo  # noqa: E402
 
 
 def _git(d: Path, *args: str) -> str:
@@ -86,7 +88,15 @@ def repo_status(name: str) -> dict:
     sha = _git(d, "rev-parse", "--short=10", "HEAD") or "?"
     dirty = bool(_git(d, "status", "--porcelain"))
     origin_url = _git(d, "remote", "get-url", "origin") if _git(d, "remote") and "origin" in _git(d, "remote") else ""
+    upstream_url = _git(d, "remote", "get-url", "upstream") if _git(d, "remote") and "upstream" in _git(d, "remote") else ""
     has_upstream = "upstream" in (_git(d, "remote") or "")
+    expected_gh = github_upstream_repo(name)
+    remotes_ok = bool(
+        expected_gh
+        and expected_gh in (origin_url or "")
+        and expected_gh in (upstream_url or "")
+        and "trusttai" in (upstream_url or "")
+    )
     upstream_br = ""
     origin_br = ""
     if has_upstream and _git(d, "rev-parse", "--verify", f"refs/remotes/upstream/{br}"):
@@ -100,6 +110,9 @@ def repo_status(name: str) -> dict:
         "dirty": dirty,
         "provisional": bool(br and not INTEGRATION.match(br)),
         "origin_url": origin_url,
+        "upstream_url": upstream_url,
+        "github_repo": expected_gh,
+        "remotes_ok": remotes_ok,
         "has_upstream": has_upstream,
         "origin_behind": _count(origin_br, d) if origin_br else None,
         "origin_ahead": _behind(origin_br, d) if origin_br else None,
@@ -177,7 +190,12 @@ def cmd_status(write: bool, as_json: bool) -> int:
         oa = v.get("origin_ahead")
         if oa is not None and oa > 0:
             tag += f" +{oa}vs-origin"
-        short = r.replace("novopay-platform-", "np-").replace("novopay-", "n-")
+        short = (
+            r.replace("trustt-platform-", "tp-")
+            .replace("novopay-platform-", "np-")
+            .replace("novopay-", "n-")
+            .replace("trustt-", "t-")
+        )
         print(f"  {short:<28} {v['branch'][:36]:<36} @{v['sha']}{tag}")
     if write:
         print(f"\n→ {STATE_FILE.relative_to(ROOT)}")

@@ -29,6 +29,6 @@
       "serves": ["getCountByClaimNumber"]
     }
   ],
-  "flyway": "novopay-platform-initial-setup/flyway/sli/accounting/sql/product/V000198__dfisd_staging_composite_indexes.sql",
+  "flyway": "trustt-platform-initial-setup/flyway/sli/accounting/sql/product/V000198__dfisd_staging_composite_indexes.sql",
   "ops_script": "scripts/sql/setup/dfc_insurance_staging_indexes.sql"
 }

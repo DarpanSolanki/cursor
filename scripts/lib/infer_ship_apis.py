@@ -79,7 +79,7 @@ WORKSPACE_MARKERS = (
 )
 
 MONEY_REPO_HINTS: dict[str, tuple[str, ...]] = {
-    "novopay-platform-accounting-v2": (
+    "trustt-platform-accounting": (
         "Processor.java",
         "BatchService",
         "ItemWriter",
@@ -98,7 +98,7 @@ MONEY_REPO_HINTS: dict[str, tuple[str, ...]] = {
         "_responseTemplate.json",
         "templates/",
     ),
-    "novopay-mfi-los": (
+    "trustt-platform-los": (
         "Disburse",
         "Foreclos",
         "Repay",
@@ -107,7 +107,7 @@ MONEY_REPO_HINTS: dict[str, tuple[str, ...]] = {
         "disburse",
         "foreclos",
     ),
-    "novopay-platform-payments": (
+    "trustt-platform-payments": (
         "Processor.java",
         "collection",
         "repay",
@@ -123,10 +123,10 @@ SERVICE_HEALTH: dict[str, str] = {
 }
 
 REPO_SERVICE: dict[str, str] = {
-    "novopay-platform-accounting-v2": "accounting",
-    "novopay-platform-actor": "actor",
-    "novopay-platform-task": "task",
-    "novopay-platform-payments": "payments",
+    "trustt-platform-accounting": "accounting",
+    "trustt-platform-actor": "actor",
+    "trustt-platform-task": "task",
+    "trustt-platform-payments": "payments",
 }
 
 
@@ -179,7 +179,7 @@ def is_money_path(path: str) -> bool:
         return True
     if "LmsMessageBrokerConsumer" in s or "MessageBroker.xml" in s:
         return True
-    if "novopay-platform-lib/" in s and any(
+    if "trustt-platform-lib/" in s and any(
         x in s for x in ("RedisCache", "message-broker", "navigation", "service-gateway")
     ):
         return True
@@ -447,7 +447,10 @@ def build_impact(paths: list[str]) -> dict:
         "ntest_cases": ntest_cases,
         "dpi_scoped": touches_dpi(paths, apis),
         "impact_scoped": bool(paths),
-        "accounting_scoped": any("novopay-platform-accounting" in p for p in paths),
+        "accounting_scoped": any(
+            ("trustt-platform-accounting" in p or "novopay-platform-accounting" in p)
+            for p in paths
+        ),
         "smoke_money_cases": smoke_money,
         "smoke_service_cases": smoke_service,
         "health_cases": health,

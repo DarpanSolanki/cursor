@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SQL="$(readlink -f "$1")"
 DIR="$(dirname "$SQL")"
 FILE="$(basename "$SQL")"
-FLYWAY_CP="$ROOT/novopay-platform-initial-setup/flyway/lib/community/*"
+FLYWAY_CP="$ROOT/trustt-platform-initial-setup/flyway/lib/community/*"
 SRC="$ROOT/scripts/lib/flyway_checksum/FlywayChecksum.java"
 OUT="$ROOT/scripts/lib/flyway_checksum/FlywayChecksum.class"
 if [[ ! -f "$OUT" ]] || [[ "$SRC" -nt "$OUT" ]]; then

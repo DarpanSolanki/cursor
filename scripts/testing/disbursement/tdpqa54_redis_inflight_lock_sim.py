@@ -32,6 +32,62 @@ def redis(*args: str) -> str:
     return result.stdout.strip()
 
 
+def parse_lms_message(raw: str) -> dict:
+    first_pipe = raw.index("|")
+    api_name = raw[:first_pipe]
+    last_pipe = raw.rfind("|")
+    prev_pipe = raw.rfind("|", 0, last_pipe)
+    last_segment = raw[last_pipe + 1 :]
+    second_last = raw[prev_pipe + 1 : last_pipe] if prev_pipe >= 0 else ""
+
+    if prev_pipe >= 0 and second_last.startswith("disburseLoan"):
+        original_cache_key = second_last
+        producer_owner_token = last_segment
+        body_end = prev_pipe
+    elif last_segment.startswith("disburseLoan"):
+        original_cache_key = last_segment
+        producer_owner_token = None
+        body_end = last_pipe
+    else:
+        original_cache_key = last_segment
+        producer_owner_token = None
+        body_end = last_pipe
+
+    request_body = raw[first_pipe + 1 : body_end]
+    return {
+        "api_name": api_name,
+        "request_body": request_body,
+        "original_cache_key": original_cache_key,
+        "producer_owner_token": producer_owner_token,
+    }
+
+
+def verify_message_parse_contracts() -> None:
+    old_msg = (
+        'disburseLoan|{"function_sub_code":"DEFAULT","payment_reinitiation_update":"false"}'
+        "|disburseLoan45_INDL_370164"
+    )
+    old_parts = parse_lms_message(old_msg)
+    require(old_parts["original_cache_key"] == "disburseLoan45_INDL_370164", "old format cache key")
+    require(old_parts["producer_owner_token"] is None, "old format must not carry owner token")
+    require(
+        '"function_sub_code":"DEFAULT"' in old_parts["request_body"],
+        "old format body must exclude cache key segment",
+    )
+
+    token = "11111111-2222-3333-4444-555555555555"
+    new_msg = old_msg + "|" + token
+    new_parts = parse_lms_message(new_msg)
+    require(new_parts["original_cache_key"] == "disburseLoan45_INDL_370164", "new format cache key")
+    require(new_parts["producer_owner_token"] == token, "new format owner token")
+    require(new_parts["request_body"] == old_parts["request_body"], "new format body unchanged")
+
+    accounting = ACCOUNTING.read_text()
+    require("parseLmsMessage" in accounting, "Accounting must centralize Kafka pipe parsing")
+    require("static LmsMessageParts parseLmsMessage" in accounting,
+            "parseLmsMessage must be reusable for orchestration body extraction")
+
+
 def verify_source_contracts() -> None:
     lib = LIB.read_text()
     los = LOS.read_text()
@@ -52,6 +108,12 @@ def verify_source_contracts() -> None:
             "LOS exception cleanup must be owner-safe")
     require("removeIfValueEquals(tenant.getTenantCode(), cacheKey, ownerToken" in accounting,
             "Accounting finally cleanup must be owner-safe")
+    require("clearProducerMarker" in accounting and "removeIfValueEquals(tenant.getTenantCode(), originalCacheKey, producerOwnerToken" in accounting,
+            "Accounting producer marker cleanup must be owner-safe when token is present")
+    require("publishResult = true" in accounting and accounting.index("catch (NovopayFatalException e)") < accounting.index("publishResult = true", accounting.index("catch (NovopayFatalException e)")),
+            "NovopayFatalException must publish FAILED sync and clear producer marker")
+    require('cacheKey + "|" + ownerToken' in los,
+            "LOS must append producer owner token to Kafka message after cache key")
     require("disbursementStatus.equalsIgnoreCase(functionSubCode)" in accounting,
             "Intermediate rows must require an explicit matching continuation stage")
     require("DEFAULT_FUNCTION_SUB_CODE.equalsIgnoreCase(functionSubCode)" in accounting,
@@ -91,6 +153,7 @@ def verify_local_redis_atomicity() -> None:
 
 
 def main() -> None:
+    verify_message_parse_contracts()
     verify_source_contracts()
     verify_local_redis_atomicity()
     print("PASS TDPQA-54 PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME")

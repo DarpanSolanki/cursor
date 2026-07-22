@@ -12,4 +12,4 @@ YB_SCHEMA = os.environ.get("YB_SCHEMA", "mfi_accounting")
 ACCOUNTING_BASE_URL = os.environ.get("ACCOUNTING_BASE_URL", "http://localhost:8002")
 ACCOUNTING_CONTEXT_PATH = os.environ.get("ACCOUNTING_CONTEXT_PATH", "/accounting")
 
-DEFAULT_LOG_REL = "novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log"
+DEFAULT_LOG_REL = "trustt-platform-accounting/logs/mfi/accounting-mfi.log"

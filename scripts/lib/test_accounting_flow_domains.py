@@ -20,7 +20,7 @@ def _reg() -> dict:
 
 class AccountingDomainsTest(unittest.TestCase):
     def test_read_processor_maps_read_inquiry(self) -> None:
-        blob = "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/processor/getloanaccountoverviewdetailsprocessor.java"
+        blob = "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/processor/getloanaccountoverviewdetailsprocessor.java"
         self.assertIn("read_inquiry", detect_domains(blob, set()))
 
     def test_interest_batch_maps_domain(self) -> None:
@@ -29,7 +29,7 @@ class AccountingDomainsTest(unittest.TestCase):
 
     def test_service_tier_adds_read_smoke(self) -> None:
         paths = [
-            "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/processor/GetLoanAccountSummaryDetailsProcessor.java"
+            "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/processor/GetLoanAccountSummaryDetailsProcessor.java"
         ]
         out = resolve_ship_cases(paths, ["getLoanAccountSummaryDetails"], "service", _reg())
         self.assertTrue(
@@ -39,9 +39,9 @@ class AccountingDomainsTest(unittest.TestCase):
     def test_touches_accounting_from_repo_path(self) -> None:
         self.assertTrue(
             touches_accounting(
-                "novopay-platform-accounting-v2/src/foo.java",
+                "trustt-platform-accounting/src/foo.java",
                 set(),
-                ["novopay-platform-accounting-v2"],
+                ["trustt-platform-accounting"],
             )
         )
 

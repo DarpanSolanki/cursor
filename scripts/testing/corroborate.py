@@ -8,6 +8,7 @@ Writes gap_discovered to learning_bus; persists last run to corroboration.jsonl.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -256,6 +257,39 @@ def _autopilot_verify() -> Check:
         return Check("autopilot", False, str(ex))
 
 
+def _cross_branch_tooling() -> Check:
+    fwd = ROOT / "scripts/bin/fwd-port.sh"
+    train = ROOT / "scripts/lib/branch_train.py"
+    if not fwd.is_file() or not os.access(fwd, os.X_OK):
+        return Check(
+            "cross_branch",
+            False,
+            "fwd-port.sh missing/not executable",
+            "chmod +x scripts/bin/fwd-port.sh",
+        )
+    if not train.is_file():
+        return Check("cross_branch", False, "branch_train.py missing")
+    try:
+        p = subprocess.run(
+            [sys.executable, "-m", "unittest", "scripts.lib.test_branch_train"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env={**os.environ, "PYTHONPATH": str(ROOT / "scripts/lib")},
+        )
+        if p.returncode != 0:
+            return Check(
+                "cross_branch",
+                False,
+                "branch_train tests failed",
+                "python3 -m unittest scripts.lib.test_branch_train -v",
+            )
+    except Exception as ex:
+        return Check("cross_branch", False, str(ex))
+    return Check("cross_branch", True, "fwd-port + fail-closed fixed-elsewhere tests")
+
+
 def run(*, mode: str = "quick", emit_bus: bool = True) -> Report:
     t0 = time.time()
     checks: list[Check] = [
@@ -270,6 +304,7 @@ def run(*, mode: str = "quick", emit_bus: bool = True) -> Report:
         _pending_ship(),
         _ops_state(),
         _bus_recent_failures(),
+        _cross_branch_tooling(),
     ]
     if mode == "full":
         checks.extend([_registry_gap_sample(), _autopilot_verify()])

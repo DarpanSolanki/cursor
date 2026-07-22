@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Push to origin after ship-loop gate (auto workspace-close if pending).
 #
+# Train-branch sync-first (mfi_integration_vX.Y.Z): before calling this script,
+# fetch origin+upstream, base local branch on upstream/<train> tip, replay any
+# unique origin commits, then push. Never push from an origin tip that is behind
+# upstream without saying STALE and syncing first. See:
+#   cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md
+#   .cursor/rules/10-quality-gates.mdc
+#
 # Usage:
 #   push-origin.sh                    # push current branch: git push -u origin HEAD
 #   push-origin.sh origin my-branch   # pass through to git push
@@ -47,7 +54,7 @@ fi
 
 # Block upstream — origin only
 for arg in "$@"; do
-  if [[ "$arg" =~ upstream|khoslalabs ]]; then
+  if [[ "$arg" =~ upstream|khoslalabs|trusttai ]]; then
     echo "push-origin: blocked — use origin only (darpan boundary)" >&2
     exit 1
   fi

@@ -99,8 +99,12 @@ fi
 # Python bytecode in scripts/testing
 if find scripts/testing -type d -name __pycache__ 2>/dev/null | grep -q .; then
   n=$(find scripts/testing -type d -name __pycache__ 2>/dev/null | wc -l)
-  warn "testing __pycache__ ($n dir(s))"
-  [[ "$CLEAN" == 1 ]] && find scripts/testing -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null && echo "    → removed"
+  if [[ "$CLEAN" == 1 ]]; then
+    find scripts/testing -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    echo "    → removed testing __pycache__ ($n)"
+  else
+    warn "testing __pycache__ ($n dir(s))"
+  fi
 fi
 
 # Misplaced temps in .cursor/
@@ -127,12 +131,62 @@ for f in Untitled* *_logs*.txt *.log; do
   [[ "$CLEAN" == 1 ]] && rm -f "$f" && echo "    → removed"
 done
 
-# KG cache LRU
+# Local Yugabyte orphan pg_temp_* schemas (CREATE TEMP leftovers from local scripts)
+if [[ "$CLEAN" == 1 ]]; then
+  if bash "$ROOT/scripts/bin/db-local-hygiene.sh" --clean 2>/dev/null; then
+    ok "local Yugabyte temp-schema hygiene"
+  else
+    warn "local Yugabyte temp-schema hygiene failed (is YB up on :5433?)"
+  fi
+else
+  if command -v psql >/dev/null 2>&1; then
+    temp_ns=$(PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h 127.0.0.1 -p 5433 -U yugabyte -d yugabyte -At -c \
+      "SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'pg_temp%' OR nspname LIKE 'pg_toast_temp%'" 2>/dev/null || echo "")
+    if [[ -n "$temp_ns" && "$temp_ns" =~ ^[0-9]+$ && "$temp_ns" -gt 20 ]]; then
+      warn "local Yugabyte orphan temp schemas: $temp_ns — run: bash scripts/bin/db-local-hygiene.sh --clean"
+    elif [[ -n "$temp_ns" && "$temp_ns" =~ ^[0-9]+$ ]]; then
+      ok "local Yugabyte temp schemas: $temp_ns"
+    fi
+  fi
+fi
+
+# KG cache LRU — top-level branch-set manifests only (newest KG_CACHE_MAX)
 if [[ -d cursor-bundle/kg/data/cache ]]; then
-  n=$(find cursor-bundle/kg/data/cache -name '*.manifest.json' 2>/dev/null | wc -l)
+  n=$(find cursor-bundle/kg/data/cache -maxdepth 1 -name '*.manifest.json' 2>/dev/null | wc -l)
   if [[ "$n" -gt "$KG_CACHE_MAX" ]]; then
-    warn "KG cache has $n snapshots (max $KG_CACHE_MAX)"
-    [[ "$CLEAN" == 1 ]] && KG_CACHE_MAX="$KG_CACHE_MAX" python3 cursor-bundle/kg/bin/kg.py cache --prune 2>/dev/null && echo "    → pruned"
+    if [[ "$CLEAN" == 1 ]]; then
+      python3 - <<PY
+from pathlib import Path
+import os
+cache = Path("cursor-bundle/kg/data/cache")
+max_n = int(os.environ.get("KG_CACHE_MAX", "$KG_CACHE_MAX"))
+mans = sorted(
+    (p for p in cache.glob("*.manifest.json") if p.is_file()),
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+keep = {p.name[: -len(".manifest.json")] for p in mans[:max_n]}
+removed = 0
+for p in mans[max_n:]:
+    key = p.name[: -len(".manifest.json")]
+    p.unlink(missing_ok=True)
+    removed += 1
+    for sib in cache.glob(key + ".*"):
+        if sib.name.endswith(".manifest.json"):
+            continue
+        sib.unlink(missing_ok=True)
+        removed += 1
+print(f"pruned_files={removed} keep={len(keep)}")
+PY
+      n2=$(find cursor-bundle/kg/data/cache -maxdepth 1 -name '*.manifest.json' 2>/dev/null | wc -l)
+      if [[ "$n2" -gt "$KG_CACHE_MAX" ]]; then
+        warn "KG cache still oversized after prune ($n2 > $KG_CACHE_MAX)"
+      else
+        echo "    → pruned KG cache $n → $n2"
+      fi
+    else
+      warn "KG cache has $n snapshots (max $KG_CACHE_MAX)"
+    fi
   else
     ok "KG cache snapshots: $n (max $KG_CACHE_MAX)"
   fi

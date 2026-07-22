@@ -109,6 +109,7 @@ def _grep_java_referencing(class_name: str, repo_dir: Path) -> list[str]:
 
 
 def _orchestration_processors_in_file(path: Path) -> list[str]:
+    """Return processor bean names only (not Request names)."""
     if path.suffix != ".xml" or "orchestration" not in str(path):
         return []
     try:
@@ -118,9 +119,21 @@ def _orchestration_processors_in_file(path: Path) -> list[str]:
     beans: list[str] = []
     for m in re.finditer(r'<Processor\s+bean="([^"]+)"', text):
         beans.append(m.group(1))
-    for m in re.finditer(r'<Request\s+name="([^"]+)"', text):
-        beans.append(m.group(1))  # some flows use request name as entry
     return sorted(set(beans))
+
+
+def _orchestration_request_names_in_file(path: Path) -> list[str]:
+    """Return Request name= apiNames from orchestration XML."""
+    if path.suffix != ".xml" or "orchestration" not in str(path):
+        return []
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return []
+    names: list[str] = []
+    for m in re.finditer(r'<Request\s+name="([^"]+)"', text):
+        names.append(m.group(1))
+    return sorted(set(names))
 
 
 def _domain_hint_api(path: str) -> str | None:
@@ -178,12 +191,11 @@ def resolve_apis_for_path(path: str) -> list[str]:
         for ref_bean in _grep_java_referencing(stem, repo_dir):
             apis.update(requests_for_processor_bean(ref_bean, conn))
 
-    # Orchestration XML — processors in file → requests; Request name if single entry
+    # Orchestration XML — Request names are apiNames; processor beans → requests via KG
+    for req in _orchestration_request_names_in_file(p):
+        apis.add(req)
     for b in _orchestration_processors_in_file(p):
-        if b[0].islower():  # bean name
-            apis.update(requests_for_processor_bean(b, conn))
-        else:
-            apis.add(b)  # Request name
+        apis.update(requests_for_processor_bean(b, conn))
 
     # MessageBroker / consumer config
     if "MessageBroker" in stem or p.name == "MessageBroker.xml":

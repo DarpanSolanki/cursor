@@ -54,7 +54,7 @@ def categorize_request(name: str, repo: str) -> str:
         return "general_ledger"
     if PRODUCT_PAT.search(name):
         return "product_config"
-    if GROUP_PAT.search(name) and "novopay-mfi-los" in repo:
+    if GROUP_PAT.search(name) and "trustt-platform-los" in repo:
         return "los_group"
     if READ_PAT.search(name):
         return "read_api"

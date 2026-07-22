@@ -11,12 +11,12 @@ from .paths import ROOT
 KG_DB = ROOT / "cursor-bundle" / "kg" / "data" / "kg.db"
 
 REPO_TO_SERVICE: dict[str, str] = {
-    "novopay-platform-accounting-v2": "accounting",
-    "novopay-platform-actor": "actor",
-    "novopay-platform-payments": "payments",
-    "novopay-platform-batch": "batch",
-    "novopay-platform-task": "task",
-    "novopay-mfi-los": "los",
+    "trustt-platform-accounting": "accounting",
+    "trustt-platform-actor": "actor",
+    "trustt-platform-payments": "payments",
+    "trustt-platform-batch": "batch",
+    "trustt-platform-task": "task",
+    "trustt-platform-los": "los",
 }
 
 # Request field → registry _correlators key

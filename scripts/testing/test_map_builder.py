@@ -25,7 +25,7 @@ TEST_MAP = FLOW / "test_map.jsonl"
 TEST_COVERAGE = FLOW / "test_coverage.jsonl"
 JUNIT_INDEX = FLOW / "junit_index.jsonl"
 TIERS = ("local", "smoke", "regression", "full")
-ACCOUNTING_TESTS = WORKSPACE / "novopay-platform-accounting-v2/src/test/java"
+ACCOUNTING_TESTS = WORKSPACE / "trustt-platform-accounting/src/test/java"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -106,7 +106,7 @@ def scan_junit_index() -> list[dict]:
         rows.append({
             "id": f"junit:{name}",
             "class": name,
-            "repo": "novopay-platform-accounting-v2",
+            "repo": "trustt-platform-accounting",
             "src": rel,
             "api_hint": hint,
         })

@@ -44,6 +44,31 @@ fi
 [[ -f "$ROOT/.cursor/hooks.json" ]] && pass "hooks.json" || fail "hooks.json missing"
 [[ -f "$ROOT/cursor-bundle/brain/skills-manifest.json" ]] && pass "skills-manifest" || fail "skills-manifest"
 [[ -x "$ROOT/scripts/bin/workspace-close.sh" ]] && pass "workspace-close executable" || fail "workspace-close"
+[[ -x "$ROOT/scripts/bin/fwd-port.sh" ]] && pass "fwd-port executable" || fail "fwd-port executable"
+[[ -x "$ROOT/cursor-bundle/kg/bin/fwd-port.sh" ]] && pass "kg fwd-port wrapper executable" \
+  || fail "kg fwd-port wrapper executable"
+if bash "$ROOT/cursor-bundle/kg/bin/fwd-port.sh" --help >/dev/null 2>&1 \
+  || bash "$ROOT/scripts/bin/fwd-port.sh" --help >/dev/null 2>&1; then
+  pass "fwd-port --help"
+else
+  fail "fwd-port --help"
+fi
+if python3 "$ROOT/cursor-bundle/kg/bin/kg.py" fixed-elsewhere --help >/dev/null 2>&1; then
+  pass "kg fixed-elsewhere --help"
+else
+  fail "kg fixed-elsewhere --help"
+fi
+if PYTHONPATH="$ROOT/scripts/lib" python3 -m unittest scripts.lib.test_branch_train >/dev/null 2>&1; then
+  pass "cross-branch train tests"
+else
+  fail "cross-branch train tests"
+fi
+if PYTHONPATH="$ROOT/cursor-bundle/kg/bin:$ROOT/scripts/lib" \
+  python3 -m unittest scripts.lib.test_build_cases >/dev/null 2>&1; then
+  pass "build_cases header parse tests"
+else
+  fail "build_cases header parse tests"
+fi
 
 # 3 — registry + ship gate lib
 if python3 "$ROOT/scripts/testing/ntest.py" validate >/dev/null 2>&1; then
@@ -76,12 +101,14 @@ else
   warn "intel fast-sync failed (non-fatal)"
 fi
 
-# 7 — learnings.jsonl readable
-if python3 - <<'PY' 2>/dev/null
-import json, sys
+# 7 — learnings.jsonl readable (always absolute ROOT — never cwd-relative)
+if python3 - <<PY 2>/dev/null
+import json
 from pathlib import Path
-p = Path("cursor-bundle/brain/testing/learnings.jsonl")
-for line in p.read_text().splitlines():
+p = Path("$ROOT/cursor-bundle/brain/testing/learnings.jsonl")
+if not p.is_file():
+    raise SystemExit(f"missing {p}")
+for line in p.read_text(encoding="utf-8").splitlines():
     if not line.strip():
         continue
     o = json.loads(line)

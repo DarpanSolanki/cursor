@@ -39,6 +39,6 @@ ntest learn --api disburseLoan --kind gotcha --text "..."
 ntest learnings --api dpiAccrualBooking
 ```
 
-Rule: `.cursor/rules/workspace-developer-tester.mdc`
+Rule: `.cursor/rules/00-workspace-core.mdc`
 
-**Internal-only APIs** (prod uses `CallInternalOrchestrationWithoutJson`): still need JTF templates in the **service repo** for `ntest` HTTP tests. See `.cursor/rules/internal-api-local-test-harness.mdc`. Example: `foreclosure.individual_child` → `individualChildLoanForeclosure`.
+**Internal-only APIs** (prod uses `CallInternalOrchestrationWithoutJson`): still need JTF templates in the **service repo** for `ntest` HTTP tests. See `.cursor/rules/20-ship-gates.mdc`. Example: `foreclosure.individual_child` → `individualChildLoanForeclosure`.

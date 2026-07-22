@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DOMAIN_FILE = Path(__file__).with_name("accounting_flow_domains.json")
 
-ACCOUNTING_REPO = "novopay-platform-accounting-v2"
+ACCOUNTING_REPO = "trustt-platform-accounting"
 
 
 @lru_cache(maxsize=1)
@@ -63,7 +63,7 @@ def touches_accounting(
 ) -> bool:
     if ACCOUNTING_REPO in (repos or []):
         return True
-    if "novopay-platform-accounting-v2" in blob:
+    if "trustt-platform-accounting" in blob:
         return True
     if any(p in blob for p in ("/accounting/", "mfi_accounting", "scripts/dpic/")):
         return True

@@ -8,9 +8,9 @@ source "$_NPL_ROOT/scripts/lib/novopay-service-lib.sh"
 
 npl_app_log() {
   case "$1" in
-    accounting) echo "$_NPL_ROOT/novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log" ;;
-    actor) echo "$_NPL_ROOT/novopay-platform-actor/logs/mfi/actor-mfi.log" ;;
-    task) echo "$_NPL_ROOT/novopay-platform-task/logs/mfi/task-mfi.log" ;;
+    accounting) echo "$_NPL_ROOT/trustt-platform-accounting/logs/mfi/accounting-mfi.log" ;;
+    actor) echo "$_NPL_ROOT/trustt-platform-actor/logs/mfi/actor-mfi.log" ;;
+    task) echo "$_NPL_ROOT/trustt-platform-task/logs/mfi/task-mfi.log" ;;
     *) return 1 ;;
   esac
 }

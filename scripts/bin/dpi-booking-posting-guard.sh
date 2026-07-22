@@ -5,7 +5,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-FILE="$ROOT/novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java"
+FILE="$ROOT/trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualbooking/DpiAccrualBookingBatchService.java"
 
 if [[ ! -f "$FILE" ]]; then
   echo "dpi-booking-posting-guard: SKIP (no DpiAccrualBookingBatchService on disk)" >&2

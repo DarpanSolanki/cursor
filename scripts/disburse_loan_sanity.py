@@ -1058,9 +1058,8 @@ def _seed_member_mandates_for_shg(req: dict[str, Any]) -> None:
 def _fire_child_loan_event_batch() -> str:
     """Fire childLoanEventProcessingBatchJob and wait for COMPLETED (fixture path, not service hack)."""
     job_time = str(int(time.time() * 1000))
-    started = str(int(time.time()))
+    started = int(time.time())
     api_fire = ROOT / "scripts" / "testing" / "api-fire.py"
-    wait_script = ROOT / "scripts" / "dpic" / "lib" / "wait_batch_job.sh"
     print(f"[suite] firing childLoanEventProcessingBatchJob job_time={job_time}", flush=True)
     fire = subprocess.run(
         [sys.executable, str(api_fire), "childLoanEventProcessingBatchJob", "--batch", "--job-time", job_time],
@@ -1071,15 +1070,22 @@ def _fire_child_loan_event_batch() -> str:
     )
     if fire.returncode != 0:
         print(f"[suite] child batch fire rc={fire.returncode} stdout={fire.stdout[-500:]} stderr={fire.stderr[-500:]}", flush=True)
-    if wait_script.is_file():
-        wait = subprocess.run(
-            ["bash", str(wait_script), "childLoanEventProcessingBatchJob", job_time, started],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        print(f"[suite] child batch wait rc={wait.returncode} {wait.stdout[-300:]}", flush=True)
+    # Batch stores param as `time`; poll by create_time >= started (not job_time param name).
+    harness = ROOT / "scripts" / "dcf_sanity" / "clb_queue_harness.py"
+    wait = subprocess.run(
+        [sys.executable, "-c", f"""
+import sys
+sys.path.insert(0, {str(ROOT / "scripts" / "dcf_sanity")!r})
+from clb_queue_harness import wait_batch_by_start
+wait_batch_by_start("childLoanEventProcessingBatchJob", {started}, timeout_s={int(os.environ.get("BATCH_POLL_TIMEOUT_S", "120"))})
+print("COMPLETED")
+"""],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    print(f"[suite] child batch wait rc={wait.returncode} {wait.stdout[-300:]}{wait.stderr[-300:]}", flush=True)
     return job_time
 
 
@@ -1094,10 +1100,24 @@ def _drive_shg_child_events(
     members = req.get("member_details") or []
     expected = len(members) if isinstance(members, list) else 0
     diag: dict[str, Any] = {"shg_child_drive": True, "expected_children": expected}
+    dedupe_mod = ROOT / "scripts" / "dcf_sanity" / "clb_queue_harness.py"
     deadline = time.time() + max(30, timeout_s)
     attempts = 0
     while time.time() < deadline:
         attempts += 1
+        if dedupe_mod.is_file():
+            subprocess.run(
+                [sys.executable, "-c", f"""
+import sys
+sys.path.insert(0, {str(ROOT / "scripts" / "dcf_sanity")!r})
+from clb_queue_harness import dedupe_clb_rep_acct_for_parent
+dedupe_clb_rep_acct_for_parent({int(parent.account_id)})
+"""],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         children = _psql_rows(
             f"""
             SELECT account_id::text, a.account_number, la.loan_status, la.disbursement_status

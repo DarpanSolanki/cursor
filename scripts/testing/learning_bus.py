@@ -23,6 +23,11 @@ VALID_TYPES = frozenset({
     "hub_refresh",
     "sanity_pass",
     "sanity_fail",
+    "learning_captured",
+    "learning_proposed",
+    "learning_adopted",
+    "learning_verified",
+    "learning_stale",
 })
 
 # High-signal types shown in hub (exclude noisy hub_refresh spam)
@@ -36,6 +41,10 @@ SIGNAL_TYPES = frozenset({
     "fix_shipped",
     "sanity_pass",
     "sanity_fail",
+    "learning_captured",
+    "learning_proposed",
+    "learning_adopted",
+    "learning_verified",
 })
 
 # Rate-limit noisy event types (seconds between same type+source)

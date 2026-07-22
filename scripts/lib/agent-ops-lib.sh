@@ -193,6 +193,6 @@ aops_write_state() {
     _los_boot="$(nps_boot_log los 2>/dev/null || echo "$_AOPS_ROOT/scripts/scratch/services/los-bootrun.log")"
     echo "- los boot: \`${_los_boot}\`"
     echo ""
-    echo "Rule: \`.cursor/rules/autonomous-workspace-ops.mdc\`"
+    echo "Rule: \`.cursor/rules/00-workspace-core.mdc\`"
   } >"$state"
 }

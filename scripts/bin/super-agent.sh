@@ -5,6 +5,7 @@
 #   super-agent.sh orient disburseLoan
 #   super-agent.sh sync [--kg]
 #   super-agent.sh gaps --money
+#   super-agent.sh clean [--apply]
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 exec python3 "$ROOT/scripts/testing/super_agent.py" "$@"

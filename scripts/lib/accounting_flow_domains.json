@@ -1,7 +1,7 @@
 {
-  "version": 1,
-  "repo": "novopay-platform-accounting-v2",
-  "description": "Accounting orchestration domain map \u2014 ship-loop + coverage (ALL flows, not money-only)",
+  "version": 2,
+  "repo": "trustt-platform-accounting",
+  "description": "Accounting orchestration domain map \u2014 ship-loop + coverage (ALL flows). Canonical train: mfi_integration_v3.7.1. Domains must not be conflated (esp. death_foreclosure vs foreclosure vs dpi).",
   "domains": {
     "disbursement": {
       "label": "Disbursement & bank rails",
@@ -20,9 +20,20 @@
         "childLoanDisbursement"
       ],
       "impact_cases": [
-        "disbursement.quick"
+        "disbursement.quick",
+        "disbursement.child_sanction_date_sim",
+        "disbursement.clb_rep_acct_dedupe_sim",
+        "disbursement.neft_crr_exact_audit_callback_sim",
+        "disbursement.jlg",
+        "disbursement.shg",
+        "disbursement.indl",
+        "disbursement.any"
       ],
-      "deep_cases": [],
+      "deep_cases": [
+        "disbursement.shg",
+        "disbursement.indl",
+        "disbursement.jlg"
+      ],
       "release_cases": [
         "disbursement.quick"
       ],
@@ -46,7 +57,26 @@
         "dpic.repayment_e2e"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "dpic.repayment_e2e"
+      ]
+    },
+    "recurring_collection": {
+      "label": "Recurring payment \u2192 payments collection sync",
+      "path_hints": [
+        "loanrecurringpayment",
+        "loan/recurring/batch"
+      ],
+      "api_hints": [
+        "loanRecurringPaymentBatchApi"
+      ],
+      "impact_cases": [
+        "collections.tdpfr547_dpi_amountmap_sim"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "collections.tdpfr547_dpi_amountmap_sim"
+      ]
     },
     "prepayment": {
       "label": "Part / full prepayment",
@@ -66,7 +96,9 @@
       "deep_cases": [
         "foreclosure.loan_prepayment_real"
       ],
-      "release_cases": []
+      "release_cases": [
+        "dpic.part_prepayment_write_e2e"
+      ]
     },
     "foreclosure": {
       "label": "Foreclosure & closure",
@@ -87,7 +119,9 @@
       ],
       "deep_cases": [
         "dpic.foreclosure_sim",
-        "dpic.foreclosure_details_flow"
+        "dpic.foreclosure_details_flow",
+        "dpic.foreclosure_bpd_growth",
+        "dpic.loan_prepayment_billed_dpi_e2e"
       ],
       "release_cases": [
         "foreclosure.individual_child"
@@ -144,15 +178,16 @@
         "dpic.repayment_reversal_e2e"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "dpic.repayment_reversal_e2e"
+      ]
     },
     "restructuring": {
       "label": "Restructuring / reschedule / rebook",
       "path_hints": [
         "restruct",
         "resched",
-        "rebook",
-        "reopen"
+        "rebook"
       ],
       "api_hints": [
         "childLoanRestructuring",
@@ -163,7 +198,30 @@
         "dpic.summary_api"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "dpic.overview_api"
+      ]
+    },
+    "reopening": {
+      "label": "Loan account reopening (parent + child events)",
+      "path_hints": [
+        "reopen",
+        "reopening",
+        "LoanAccountPaymentsDetailsReversal",
+        "ChildLoanReopening"
+      ],
+      "api_hints": [
+        "loanAccountReopening",
+        "childLoanReopening",
+        "getLoanAccountReopeningDetails"
+      ],
+      "impact_cases": [
+        "reopening.child_payments_parity_sim"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "reopening.child_payments_parity_sim"
+      ]
     },
     "dpi": {
       "label": "Delayed payment interest (DPI)",
@@ -181,7 +239,8 @@
       ],
       "impact_cases": [
         "dpic.posting_calendar_regression",
-        "dpic.cross_eod_replay_134497"
+        "dpic.cross_eod_replay_134497",
+        "dpic.shg_parent_child_parity"
       ],
       "billing_cases": [
         "dpic.billing_ud_next_emi"
@@ -214,7 +273,9 @@
         "batch.interest_accrual_posting"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "batch.interest_accrual_calc"
+      ]
     },
     "loan_billing": {
       "label": "Loan account billing (EMI due generation)",
@@ -230,7 +291,9 @@
         "batch.loan_account_billing"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "batch.loan_account_billing"
+      ]
     },
     "npa_dpd": {
       "label": "DPD, asset criteria, NPA classification",
@@ -252,7 +315,9 @@
       "deep_cases": [
         "dpic.npa_dpi_movement_e2e"
       ],
-      "release_cases": []
+      "release_cases": [
+        "batch.dpd_calc"
+      ]
     },
     "eod_bod": {
       "label": "EOD / BOD orchestration",
@@ -271,7 +336,9 @@
         "accounting.eod_core_batches"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "accounting.eod_core_batches"
+      ]
     },
     "read_inquiry": {
       "label": "Read / inquiry / Loan 360 APIs",
@@ -295,7 +362,9 @@
         "accounting.read_smoke"
       ],
       "deep_cases": [],
-      "release_cases": [],
+      "release_cases": [
+        "accounting.read_smoke"
+      ],
       "fallback_case": "health.accounting"
     },
     "write_ops": {
@@ -311,8 +380,11 @@
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],
-      "release_cases": [],
-      "fallback_case": "health.accounting"
+      "release_cases": [
+        "health.accounting"
+      ],
+      "fallback_case": "health.accounting",
+      "release_cases_note": "fallback_case used until dedicated e2e exists"
     },
     "mandates_si": {
       "label": "Mandates & standing instructions",
@@ -330,30 +402,45 @@
         "si.fetch_failed_presentation_list"
       ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "si.fetch_failed_presentation_list"
+      ]
     },
     "insurance": {
       "label": "Insurance legs",
       "path_hints": [
         "insurance",
-        "outbounddisbursement"
+        "outbounddisbursement",
+        "deathforeclosure",
+        "dfisd"
       ],
       "api_hints": [],
-      "impact_cases": [],
+      "impact_cases": [
+        "dcf.insurance_reupload_index_audit"
+      ],
       "deep_cases": [],
-      "release_cases": []
+      "release_cases": [
+        "dcf.insurance_reupload_index_audit"
+      ]
     },
     "portfolio": {
       "label": "Portfolio transfer",
       "path_hints": [
         "portfoliotransfer",
-        "portfolio_transfer"
+        "portfolio_transfer",
+        "executeLMSPortfolioTransfer",
+        "portfolio"
       ],
-      "api_hints": [],
+      "api_hints": [
+        "executeLMSPortfolioTransfer"
+      ],
       "impact_cases": [],
       "deep_cases": [],
-      "release_cases": [],
-      "fallback_case": "health.accounting"
+      "release_cases": [
+        "health.accounting"
+      ],
+      "fallback_case": "health.accounting",
+      "release_cases_note": "fallback_case used until dedicated e2e exists"
     },
     "batch_other": {
       "label": "Other batch / bulk jobs",
@@ -368,8 +455,33 @@
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],
-      "release_cases": [],
-      "fallback_case": "health.accounting"
+      "release_cases": [
+        "health.accounting"
+      ],
+      "fallback_case": "health.accounting",
+      "release_cases_note": "fallback_case used until dedicated e2e exists"
+    },
+    "writeoff": {
+      "label": "Loan write-off",
+      "path_hints": [
+        "writeoff",
+        "write_off",
+        "loanwriteoff"
+      ],
+      "api_hints": [
+        "loanWriteoff"
+      ],
+      "impact_cases": [],
+      "deep_cases": [],
+      "release_cases": [
+        "health.accounting"
+      ],
+      "fallback_case": "health.accounting",
+      "release_cases_note": "fallback_case used until dedicated e2e exists"
     }
-  }
+  },
+  "jira_graph": "cursor-bundle/brain/jira/jira-flow-graph.json",
+  "jira_index": "cursor-bundle/brain/jira/JIRA-INDEX.md",
+  "canonical_train_observed": "mfi_integration_v3.7.1",
+  "evidence_policy": "api_hints must exist as Request name= in accounting orch; impact/release_cases must exist in registry.json; no speculative jira families"
 }

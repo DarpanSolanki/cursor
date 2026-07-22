@@ -2,7 +2,7 @@
 # Tail accounting log with error-focused grep (local RCA).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LOG="${ACCOUNTING_LOG:-$ROOT/novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log}"
+LOG="${ACCOUNTING_LOG:-$ROOT/trustt-platform-accounting/logs/mfi/accounting-mfi.log}"
 PATTERN="${PATTERN:-ERROR|FATAL|NovopayFatal|writeSkipCount|error_code|Exception}"
 
 if [[ ! -f "$LOG" ]]; then

@@ -157,7 +157,7 @@ def _build_request(sim: dict, lan: str, fd: str, receipt: str) -> dict:
 def _processor_verified_in_log(stan: str) -> bool:
     log_path = os.environ.get(
         "ACCOUNTING_LOG",
-        "/home/darpan/Documents/sliProd/novopay-platform-accounting-v2/logs/mfi/accounting-mfi.log",
+        "/home/darpan/Documents/sliProd/trustt-platform-accounting/logs/mfi/accounting-mfi.log",
     )
     try:
         tail = Path(log_path).read_text(encoding="utf-8", errors="ignore").splitlines()[-1200:]

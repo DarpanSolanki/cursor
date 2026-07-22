@@ -19,7 +19,19 @@ def load_manifest() -> dict:
 
 def classify(text: str) -> dict:
     t = text.lower()
-    if re.search(r"\b(sanity|ntest|test|verify|regression|smoke|batch job|eod|dpi)\b", t):
+    if (
+        re.search(r"https://github\.com/[^/\s]+/[^/\s]+/pull/\d+", t)
+        or re.search(r"\b[^/\s]+/[^/#\s]+#\d+\b", t)
+        or re.search(r"\b(review|audit)\s+(this\s+)?(pr|pull request)\b", t)
+        or re.search(r"\bpr[- ]review\b", t)
+    ):
+        kind = "PR_REVIEW"
+        skills = ["pr-review"]
+        scripts = [
+            "scripts/bin/pr-review.sh <PR_URL|owner/repo#number> [--jira KEY] [--env ENV]",
+        ]
+        risk = "Medium"
+    elif re.search(r"\b(sanity|ntest|test|verify|regression|smoke|batch job|eod|dpi)\b", t):
         kind = "TEST"
         skills = ["workspace-router", "autonomous-workspace-ops"]
         scripts = [

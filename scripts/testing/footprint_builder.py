@@ -59,11 +59,11 @@ def git_branch(repo: str) -> str:
 
 def branch_watermark() -> dict:
     core = [
-        "novopay-platform-accounting-v2",
-        "novopay-platform-payments",
-        "novopay-mfi-los",
-        "novopay-platform-actor",
-        "novopay-platform-batch",
+        "trustt-platform-accounting",
+        "trustt-platform-payments",
+        "trustt-platform-los",
+        "trustt-platform-actor",
+        "trustt-platform-batch",
     ]
     import subprocess
     wm = {"target": "mfi_integration_v3.3.1.1", "repos": {}, "scanned_at": ""}
@@ -145,7 +145,7 @@ def build_footprints() -> list[dict]:
     for flow in flows:
         fid = flow["id"]
         req = flow.get("request", "")
-        repo = (flow.get("producer") or {}).get("service") or "novopay-platform-accounting-v2"
+        repo = (flow.get("producer") or {}).get("service") or "trustt-platform-accounting"
         chain = chain_for_request(chains, repo, req)
         rel_contracts = contracts_for_request(contracts, req)
         tests = flow.get("tests") or {}

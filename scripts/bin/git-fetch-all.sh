@@ -16,7 +16,7 @@ for d in "$ROOT"/novopay-* "$ROOT"/trustt-*; do
   [[ -d "$d/.git" ]] || continue
   repo=$(basename "$d")
   case "$repo" in
-    novopay-platform-simulators) continue ;;
+    trustt-platform-simulators) continue ;;
   esac
   cd "$d"
   if git remote | grep -qx origin; then
