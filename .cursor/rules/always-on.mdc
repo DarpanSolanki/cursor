@@ -12,7 +12,7 @@ alwaysApply: true
 **Order (silent — do not ask permission):**
 
 1. `.cursor/onboarding.md`
-2. `.cursor/gaps-and-risks.md` — at least **summary table + all High** items; add Medium/Low **GAP-ids** when the ask clearly touches that area
+2. `.cursor/gaps-and-risks-digest.md` — open **High** rows verbatim + Medium/Low index (generated from SoT). **Escalate** to full `.cursor/gaps-and-risks.md` only when the task touches a GAP-id/area the digest flags, Medium/Low narrative is needed, or the digest is missing/stale
 3. `.cursor/architecture.md`
 4. **If money, Kafka, multi-service, or cross-repo:** `.cursor/knowledge-graph.md` (name the **money path** + walk **Edge Registry**); add `.cursor/cross-service-transactions.md` when debugging **partial failure** across HTTP/Kafka.
 5. `.cursorrules` — **AGENT SELF-KNOWLEDGE SUMMARY** (and deeper sections when the task needs them)
@@ -43,7 +43,7 @@ This applies to **read-only RCA and log analysis** when the topic is **high blas
 **What I understand:** [precise interpretation]
 **Service(s) involved:** [from architecture.md]
 **Flow(s) involved:** [from **knowledge-graph.md** money path + edges, then `orchestration-map.md` / `accounting-flows.md` / `system_brain/flows/`]
-**Known gaps in this area:** [from gaps-and-risks.md — list gap IDs]
+**Known gaps in this area:** [from gaps-and-risks-digest.md — list gap IDs; escalate to full gaps-and-risks.md if area flagged]
 **Files / evidence I will use:** [paths, correlators, log IDs — before touching]
 **Risk level:** High / Medium / Low
 **Blast radius if I get this wrong:** [services, contracts, money paths]
@@ -56,7 +56,7 @@ This applies to **read-only RCA and log analysis** when the topic is **high blas
 3. **Wait for confirmation** (or an explicit *proceed / go ahead / yes* in reply).
 4. Only then: edits, deep reads, log drill-down, or multi-file search **for that scope**.
 
-**Mandatory expansion (no shortcut):** production or prod-like **logs**, **incidents**, **money** (ledger, disbursement, repayment, collections, GL, batches), **multi-service** flows, **API/Kafka/ExecutionContext contracts**, **DB/cluster** errors, **security/compliance** — even if the user asked for **analysis only** and **no code**.
+**Mandatory expansion (no shortcut):** production or prod-like **logs**, **incidents**, **money** (ledger, disbursement, repayment, collections, GL, batches), **multi-service** flows, **API/Kafka/ExecutionContext contracts**, **DB/cluster** errors, **security/compliance**, **prod/ops mutation SQL** (adhoc UPDATE / CRR / loan_account money patches — load `prod-ops-sql-impact` / `.cursor/rules/prod-ops-sql-impact-gate.mdc` **and** answer “is contract-native FAIL enough?” before soft-archive/invented status) — even if the user asked for **analysis only** and **no code**.
 
 ### EXCEPTION — skip expansion + confirmation gate (rare)
 
@@ -72,9 +72,10 @@ If unsure whether the ask is high blast radius → **use expansion**.
 
 ## On every file open — check silently
 
-- Path listed in `gaps-and-risks.md` evidence? → flag known gap area
+- Path listed in `gaps-and-risks-digest.md` (or full SoT on escalate)? → flag known gap area
 - Money path (orchestration processor, posting, disburse, repayment, batch writer)? → apply financial + idempotency discipline from workspace rules
-- Under `novopay-platform-lib/`? → platform-lib blast radius
+- Under `trustt-platform-lib/`? → platform-lib blast radius
+- Under `scripts/sql/{adhoc,deploy,setup}/` with UPDATE/SET on money tables? → **prod-ops-sql-impact** gate (caller matrix; contract-native FAIL first; no invented CRR `status`)
 
 ## On every suggestion — verify
 
@@ -220,7 +221,7 @@ Apply when adding or editing files under **`system_brain/`**.
 
 ## Content standards
 
-- **Factual only**: Tie claims to **service paths** (e.g. `novopay-platform-accounting-v2/.../FooProcessor.java`), orchestration XML filenames, or verified DB observations. Mark guesses as **UNVERIFIED** if you must keep them.
+- **Factual only**: Tie claims to **service paths** (e.g. `trustt-platform-accounting/.../FooProcessor.java`), orchestration XML filenames, or verified DB observations. Mark guesses as **UNVERIFIED** if you must keep them.
 - **No secrets**: No passwords, tokens, or production URLs; use placeholders.
 - **Symptom-first in edge_cases**: Title or opening line should match how someone searches (error code, stuck status, duplicate symptom).
 - **Flows**: State **entry API / consumer / batch**, **major status fields**, and **where partial failure** can occur; point to rules (`events.mdc`, `execution-context-discipline`) when relevant—do not duplicate full rule text.
@@ -229,7 +230,7 @@ Apply when adding or editing files under **`system_brain/`**.
 
 - **Glossary**: New domain terms → add a line to `system_brain/glossary.md` if reused.
 - **Rule inventory**: When you add a **new** `.cursor/rules/*.mdc`, add one row to `system_brain/rules/rule_inventory.md`.
-- **Accounting code changes**: If the brain doc reflects behaviour implemented in `novopay-platform-accounting-v2/`, sync **`accounting.mdc`** when appropriate (see **Accounting knowledge sync** in that file); brain stays **short orientation**, `accounting.mdc` holds **module deep detail**.
+- **Accounting code changes**: If the brain doc reflects behaviour implemented in `trustt-platform-accounting/`, sync **`accounting.mdc`** when appropriate (see **Accounting knowledge sync** in that file); brain stays **short orientation**, `accounting.mdc` holds **module deep detail**.
 
 ## What not to do
 

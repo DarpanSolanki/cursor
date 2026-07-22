@@ -1,8 +1,8 @@
 ---
-description: "Auto-loads when editing novopay-mfi-los"
+description: "Auto-loads when editing trustt-platform-los"
 globs:
-  - "**/novopay-mfi-los/**/*.java"
-  - "**/novopay-mfi-los/**/*.xml"
+  - "**/trustt-platform-los/**/*.java"
+  - "**/trustt-platform-los/**/*.xml"
 alwaysApply: false
 ---
 
@@ -12,14 +12,14 @@ alwaysApply: false
 
 - LOS is a **disbursement originator** and origination hub
 - LOS → Kafka (`disburse_loan_api_`) → accounting `LmsMessageBrokerConsumer` is a core money path
-- **Redis** in-flight / dedupe on disburse path: **TTL gap** called out in `gaps-and-risks.md` — verify before changing keys
-- **DisbursementSyncService** / `entity_type`: contract vs accounting sync payload — **High** gap pair in `gaps-and-risks.md`
+- **Redis** in-flight / dedupe on disburse path: **TTL gap** — verify via `gaps-and-risks-digest.md` (escalate to full SoT when flagged) before changing keys
+- **DisbursementSyncService** / `entity_type`: contract vs accounting sync payload — **High** gap pair in digest/SoT
 - LOS is a **dependency hub** for origination; many flows start here (see `.cursor/service-dependency-graph.md`)
 
 ## Before touching disbursement or sync
 
 1. `.cursor/accounting-flows.md` + `system_brain/flows/disbursement.md` as needed
-2. `entity_type` + sync rows in `gaps-and-risks.md`
+2. `entity_type` + sync rows in `gaps-and-risks-digest.md` (escalate to full SoT when flagged)
 3. Redis key behaviour on LOS producer path
 4. Trace: LOS produce → `disburse_loan_api_*` → accounting consumer → `los_lms_disbursement_sync*` → `DisbursementSyncConsumer` / `DisbursementSyncService`
 

@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | gaps digest token-tax cut
+Session bootstrap reads `.cursor/gaps-and-risks-digest.md` (≤10KB, High verbatim) instead of full gaps-and-risks.md; escalate to SoT when GAP-id/area flagged. Builder `scripts/bin/build-gaps-digest.sh`; regen in intel-session-sync.sh. Added `.cursorindexingignore` (excludes cursor-bundle/kg/ etc from indexer).
+
 2026-07-22 | workspace harness | DCF matrix true-results — full scope + fresh disburse PASS
 - Registry `dcf.group_parent_last_child_e2e_full` (ACCEPTANCE_SCOPE=full); RSTCRE drain retry; non-last txn-audit phase. Matrix @935c527430: S1/S2/full/fresh(SEED_EXTRA=0) PASS. GAP-074 still OPEN (INT-180 parked). Fresh+EXTRA seed 134253 documented.
 

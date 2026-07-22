@@ -1,0 +1,25 @@
+# Exclude generated / vendor trees from Cursor codebase indexing/embedding.
+# Agents retain filesystem Read access; only the indexer/embedder is affected.
+# kg.py CLI and local SQLite KG are unaffected.
+
+cursor-bundle/kg/
+cursor-bundle/flow-test/
+scripts/scratch/
+**/build/
+**/target/
+**/.gradle/
+**/*.log
+logs/
+**/node_modules/
+**/.git/
+**/__pycache__/
+**/*.class
+**/*.jar
+**/dist/
+**/out/
+.cursor/retrieval/
+**/checkpoints/
+**/schema_structure_dump/
+**/*.db
+**/*.db-wal
+**/*.db-shm

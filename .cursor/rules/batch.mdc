@@ -1,7 +1,7 @@
 ---
 description: "Auto-loads when editing batch service or batch-shaped Spring Batch artifacts"
 globs:
-  - "**/novopay-platform-batch/**/*.java"
+  - "**/trustt-platform-batch/**/*.java"
   - "**/*BatchConfig*.java"
   - "**/*JobConfig*.java"
   - "**/*Tasklet*.java"
@@ -17,9 +17,9 @@ alwaysApply: false
 
 1. Read `.cursor/multinode-batch.md` — scheduler vs Spring Batch multi-node distinction
 2. Check `.cursor/scheduler-registry.md` — what runs and on what cadence
-3. Check `gaps-and-risks.md` for batch / scheduler / writer rows
+3. Check `gaps-and-risks-digest.md` for batch / scheduler / writer High rows (escalate to full `gaps-and-risks.md` when flagged)
 
-## Never forget these active themes (confirm in `gaps-and-risks.md`)
+## Never forget these active themes (confirm in `gaps-and-risks-digest.md`; escalate to full SoT when flagged)
 
 - Multi-instance **scheduler** safety: distributed leader/lock, dependency visibility
 - **Time-based** `client_reference_number` → replay / double-post class of bugs

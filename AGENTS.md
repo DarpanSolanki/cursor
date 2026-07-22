@@ -33,7 +33,7 @@ The graph is the **system-level picture**; `system_brain/flows/` and processors 
 **Efficient spawn recipe**
 
 1. **Lead agent** (or human) pastes: goal, **branch**, correlators, and **which knowledge-graph path** is in scope.
-2. **Helper agents**: explicit **read-only** brief — “`novopay-mfi-los` only: all references to `X`” / “payments only: `collectionLoanRepayment` call sites” — return **paths + line refs**, no edits.
+2. **Helper agents**: explicit **read-only** brief — “`trustt-platform-los` only: all references to `X`” / “payments only: `collectionLoanRepayment` call sites” — return **paths + line refs**, no edits.
 3. **Integrator** merges findings, runs **contract** checks (`api-contract-safety.mdc`), updates **one** set of files for the fix.
 
 **Non-negotiable:** Do **not** assign two agents to **write** the same processor or orchestration `Request` without sequence control.
@@ -41,13 +41,13 @@ The graph is the **system-level picture**; `system_brain/flows/` and processors 
 ## Read first (by task)
 
 1. **Money, accounting, disbursement, repayment, GL, reversals, batches**  
-   Open `system_brain/system_overview.md`, then the matching file under `system_brain/flows/` or `system_brain/debugging/`. Check `system_brain/edge_cases/` if the symptom sounds familiar. **Then** align to **`.cursor/knowledge-graph.md`** money path + **`.cursor/gaps-and-risks.md`** for known landmines.
+   Open `system_brain/system_overview.md`, then the matching file under `system_brain/flows/` or `system_brain/debugging/`. Check `system_brain/edge_cases/` if the symptom sounds familiar. **Then** align to **`.cursor/knowledge-graph.md`** money path + **`.cursor/gaps-and-risks-digest.md`** (escalate to full `gaps-and-risks.md` when GAP-id/area flagged) for known landmines.
 
 2. **Standards and non‑negotiables**  
    Workspace root `.cursorrules` (Java/XML) and `.cursor/rules/*.mdc` (always-on rules plus domain rules). **Architecture map**: `.cursor/architecture.md`, `.cursor/platform-lib.md`, `.cursor/accounting-flows.md`, `.cursor/service-contracts.md`, `.cursor/gaps-and-risks.md`, `.cursor/conventions.md`. **ExecutionContext contracts**: `.cursor/execution-context-contracts.md`. **Short refs**: `.cursor/docs/glossary.md`, `patterns-and-examples.md`, `anti-patterns.md`, `faq.md`. **Money-path runbooks**: `system_brain/flows/*.md` (index in `.cursor/architecture.md` §12). Do not ship contract-breaking API changes; see `api-contract-safety.mdc`.
 
 3. **Accounting module specifics**  
-   After brain orientation, use `.cursor/rules/accounting.mdc` when working in `novopay-platform-accounting-v2/` (module reference + sync section). Update that file when accounting behaviour changes.
+   After brain orientation, use `.cursor/rules/accounting.mdc` when working in `trustt-platform-accounting/` (module reference + sync section). Update that file when accounting behaviour changes.
 
 4. **Framework and codegen documentation**  
    `.cursor/index.mdc` lists priority paths under `trustt-platform-ai-codegen-artifacts-java/` (orchestration, infra deep-dives, data dictionaries).
@@ -64,11 +64,11 @@ Before you change code or config, walk this list (order is flexible; skip only w
 
 1. **Graph & flow** — Which **nodes and edges** in `knowledge-graph.md` does this touch? Downstream **Kafka topic**, **Redis key group**, **DB schema**?
 2. **Contracts** — HTTP **JTF / `apiName`**, Kafka **payload keys**, **ExecutionContext** keys (`.cursor/execution-context-contracts.md`). Changes **additive-only** unless explicitly approved (`api-contract-safety.mdc`).
-3. **Gaps** — Does `.cursor/gaps-and-risks.md` already list this area (**GAP-***)? Fixing one layer without the paired service (e.g. `entity_type` producer **and** LOS consumer) can **silently** fail.
+3. **Gaps** — Does `.cursor/gaps-and-risks-digest.md` list this area (**GAP-***)? Escalate to full `.cursor/gaps-and-risks.md` when flagged. Fixing one layer without the paired service (e.g. `entity_type` producer **and** LOS consumer) can **silently** fail.
 4. **Idempotency & retries** — `client_reference_number`, Redis guards, consumer replay, `@Retryable` + non-idempotent callee (`cross-service-transactions.md`, **GAP-068**-style patterns).
 5. **Partial failure** — No automatic **compensation** across HTTP; what **reconciliation** or **ops** path picks up the pieces?
 6. **Observability** — Can you trace with **`stan`** / tenant / business key across hops (**GAP-066**)? Entry/exit logs, failure persistence, alerts?
-7. **Blast radius** — **`novopay-platform-lib`** change → all dependent services (`.cursorrules` P1). **Event** add/change → `.cursor/event-registry.md`.
+7. **Blast radius** — **`trustt-platform-lib`** change → all dependent services (`.cursorrules` P1). **Event** add/change → `.cursor/event-registry.md`.
 8. **Knowledge sync** — If behaviour or risk changed: `.cursor/changelog.md` append; update gaps/registry/accounting docs per `.cursorrules` checklist.
 
 ## Where things live
@@ -79,7 +79,7 @@ Before you change code or config, walk this list (order is flexible; skip only w
 | Curated flow/runbook notes | `system_brain/` |
 | Cursor agent rules | `.cursor/rules/*.mdc` |
 | Cross-cutting workspace docs (not in service repos) | `docs/` (see `docs-outside-service-repos.mdc`, including workspace `docs/` maintenance section) |
-| Microservice source | `novopay-platform-*/`, `novopay-mfi-los/`, … |
+| Microservice source | `novopay-platform-*/`, `trustt-platform-los/`, … |
 
 ## Session handoff
 
@@ -91,6 +91,6 @@ Follow **`always-on.mdc`** (system_brain maintenance section: factual notes, lin
 
 ## Git note
 
-**Multi-repo**: run `git` in the correct **`novopay-platform-*` / `novopay-mfi-los`** directory, not necessarily the workspace root.
+**Multi-repo**: run `git` in the correct **`novopay-platform-*` / `trustt-platform-los`** directory, not necessarily the workspace root.
 
 `system_brain/` is **workspace working memory**. Optional root `.gitignore`: uncomment `system_brain/` only if the team wants it excluded when the workspace root is tracked.

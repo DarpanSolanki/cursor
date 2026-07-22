@@ -16,6 +16,12 @@
 !.cursor/rules/**
 !.cursor/skills/
 !.cursor/skills/**
+!.cursor/gaps-and-risks.md
+!.cursor/gaps-and-risks-digest.md
+!.cursor/onboarding.md
+!.cursor/architecture.md
+!.cursor/changelog.md
+!.cursorindexingignore
 
 !cursor-bundle/
 cursor-bundle/*

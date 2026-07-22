@@ -13,6 +13,10 @@ Full scan narrative: `cursor-bundle/memory/feedback_agent_quality_gates_scan.md`
 1. Read `.cursor/workspace-kg-state.md` and `.cursor/git-workspace-state.json` (refresh: `bash scripts/bin/git-workspace-status.sh`).
 2. `python3 cursor-bundle/kg/bin/kg.py validate && kg watermark` — note **provisional** repos and built `@sha` per repo.
 3. If user/env names a **deployed branch or tag** → in **that repo**: `git fetch origin && git fetch upstream`, then read `upstream/<branch>` or tag — **not** assumed local checkout (`feedback_fetch_latest_before_checking_code.md`).
+4. After resolving the affected **apiName / processor** for a BUG/RCA/FIX on a lower train, run:
+   `python3 cursor-bundle/kg/bin/kg.py fixed-elsewhere <apiName> --base <reported-branch> --fetch-if-stale`.
+   Propose reuse **only** when output has `RESULT: REUSE_ALLOWED` / `VERIFIED_FIXED_CLEAN`.
+   `FILE_TOUCH_HINTS`, `VERIFIED_FIXED_DIVERGED`, stale refs, or unresolved SHA → **REUSE_FORBIDDEN** (never invent a port). Memory: `feedback_cross_branch_no_false_positive.md`.
 
 **Hard stop (state aloud before continuing):**
 
@@ -38,7 +42,7 @@ After `kg orient` / `kg why`:
 
 - [ ] Orchestration XML read for the request chain
 - [ ] Every processor in the changed path grepped for callers / EC keys
-- [ ] Money path: `.cursor/gaps-and-risks.md` High rows in area
+- [ ] Money path: `.cursor/gaps-and-risks-digest.md` High rows in area (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged or digest missing/stale)
 - [ ] RCA: `scripts/db-local.sh` or user-named `db-qaN.sh` — label NOT VERIFIED if not run
 
 `KG_STRICT=1` when branch drift or dirty trees possible.

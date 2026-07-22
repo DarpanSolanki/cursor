@@ -15,6 +15,15 @@ if [[ -f "$KG_STATE" ]]; then
   [[ "$age" -lt 90 ]] && SKIP_KG=1
 fi
 
+# Rebuild gaps digest when SoT is newer (session bootstrap token tax)
+GAPS_SRC="$ROOT/.cursor/gaps-and-risks.md"
+GAPS_DIGEST="$ROOT/.cursor/gaps-and-risks-digest.md"
+if [[ -f "$GAPS_SRC" ]]; then
+  if [[ ! -f "$GAPS_DIGEST" || "$GAPS_SRC" -nt "$GAPS_DIGEST" ]]; then
+    bash "$ROOT/scripts/bin/build-gaps-digest.sh" >>"$LOG" 2>&1 || true
+  fi
+fi
+
 export SKIP_KG_ENSURE="$SKIP_KG"
 RESULT=$(timeout 50 python3 "$ROOT/scripts/testing/sync_engine.py" fast-session --quiet \
   >>"$LOG" 2>&1 && cat "$LOG" | tail -1 || echo '{"ok":false}')

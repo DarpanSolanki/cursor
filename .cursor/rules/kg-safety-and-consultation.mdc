@@ -34,7 +34,7 @@ When `kg watermark` shows `provisional` or `WIP <- base …`:
 | 2 | `cursor-bundle/brain/CANONICAL-MAP.md` | Which file owns each topic |
 | 3 | `kg orient <api>` or `kg why <api>` | Structure + failure surface |
 | 4 | `cursor-bundle/brain/runbooks/00-INDEX.md` | Symptom → runbook |
-| 5 | `.cursor/gaps-and-risks.md` | Open High gaps in area |
+| 5 | `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) | Open High gaps in area |
 | 6 | Service orchestration XML + processors | **Authoritative behaviour** |
 | 7 | `scripts/db-local.sh` | **Authoritative local state** |
 
