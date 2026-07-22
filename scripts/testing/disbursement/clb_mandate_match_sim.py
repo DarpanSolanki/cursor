@@ -95,6 +95,12 @@ def main() -> int:
         "Must reuse MandateDetailsDAOService.findRegistrationPendingOrActiveMandateForGroupId",
     )
     _require(
+        "parent_account_id" in validator_src
+        and "findAllActiveMandates" in validator_src
+        and "findRegistrationPendingMandateByLoanAccountId" in validator_src,
+        "CLB child must fall back to parent LAN mandate (reuse findAllActiveMandates / findRegistrationPendingMandateByLoanAccountId)",
+    )
+    _require(
         'throw new NovopayFatalException("134382")' in validator_src,
         "No mandate → 134382 (MANDATE_DTLS-014)",
     )

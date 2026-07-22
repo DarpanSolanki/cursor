@@ -6,36 +6,69 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 
 | Branch | Latest | Service | Sha | Tag |
 |--------|--------|---------|-----|-----|
-| `feature/delayed_payment_interest` | 2026-06-25 | accounting-v2 | `80c3f6723` | kg-flow |
-| `mfi_integration_v3.3.1.2` | 2026-06-24 | accounting-v2 | `60c8d0f74f` | kg-flow |
-| `fix/sdcp-10199-parent-last-child-dfc-closure` | 2026-06-22 | accounting-v2 | `09c3d9ef7a` | kg-flow |
-| `mfi_integration_v3.3.1.1` | 2026-06-19 | accounting-v2 | `7d13ec7c4` | kg-flow |
+| `main` | 2026-07-21 | sliProd | `workspace` | kb-only |
+| `mfi_integration_v3.7.1` | 2026-07-21 | accounting-v2 | `ac8f185bbc` | kg-flow |
+| `mfi_integration_v3.4.2.4` | 2026-07-20 | accounting-v2 | `7e1642a57e` | kg-flow |
+| `feature/tdpqa72-dfc-acceptance-labd-lapd` | 2026-07-17 | accounting-v2 | `a7e6d1d1c4` | kg-flow |
+| `fix/sdcp-11058-shg-bpi-parity` | 2026-07-10 | accounting-v2 | `4acc7036d4` | kg-flow |
+| `fix/sdcp-10199-parent-int-dpi-last-child-dfc` | 2026-07-10 | accounting-v2 | `61278d5f8` | kg-flow |
+| `feature/delayed_payment_interest` | 2026-07-10 | accounting-v2 | `72e461e10` | kg-flow |
+| `mfi_integration_v3.4.2.2` | 2026-07-10 | accounting-v2 | `068247cc9` | kg-flow |
+| `NOT-ancestor-of-3.7.1-tip@b157b2d33` | 2026-07-09 | accounting-v2 | `b157b2d33` | kg-flow |
+| `mfi_integration_v3.4.2.1` | 2026-07-09 | accounting-v2 | `425472cab` | kg-flow |
+| `feature/sdcp-11012-shg-dpi-parity-3.7.1` | 2026-07-08 | accounting-v2 | `a66900048` | kg-flow |
 
 ## kg-flow by branch (for KG / reference enrichment)
 
+### `NOT-ancestor-of-3.7.1-tip@b157b2d33`
+- 2026-07-09 `b157b2d33` — loanAccountRebooking interest day-count guard
+
 ### `feature/delayed_payment_interest`
-- 2026-06-25 `80c3f6723` — DPI batch perf: precompute snapshots + due-day preload
-- 2026-06-25 `5ec2da58f` — DPI go-live UD: post-go-live base, maturity skip, accrual posting calendar
-- 2026-06-23 `8053210a5` — DPI billing next-EMI due_date + aggregated bill per anchor
-- 2026-06-23 `346d9efe6` — DPI client ref numeric format like interest jobs
-- 2026-06-23 `bfd172d86` — Death FC DPI loss waiver + child NPA DPI leg
-- 2026-06-23 `28a5f9ae6` — DPI chunk cache chunk-size agnostic + finally eviction
-- 2026-06-23 `2c98528d5` — DPI 4 indexed reads + Java filters all 3 jobs
-- 2026-06-23 `021662d48` — DPI booking preload partial-index + chunk cache
-- 2026-06-23 `de404e830` — DPI accrual scalable preload (partial index + MAX end_date)
-- 2026-06-23 `ebfdb51f10` — DPI accrual preload: findAllByLoanAccountIds + Java reduce
-- 2026-06-22 `e9f8d3348` — DPI accrual narrow sub-batched chunk preload
-- 2026-06-22 `498979676` — DPI accrual calc perf: preload + miss cache
+- 2026-07-10 `72e461e10` — DPI grace stored overdue + EMI1 seal
+- 2026-07-02 `8a60c6591` — DPI skip mapper cleanup
 
-### `fix/sdcp-10199-parent-last-child-dfc-closure`
-- 2026-06-22 `09c3d9ef7a` — SDCP-10199 parent zero OS on last-child DFC
+### `feature/sdcp-11012-shg-dpi-parity-3.7.1`
+- 2026-07-08 `a66900048` — DPI seals due/month-end only (grace day-walk)
+- 2026-07-08 `46f115199` — DPI per-EMI grace base/anchor + overdue boundaries (superseded for seals)
 
-### `mfi_integration_v3.3.1.1`
-- 2026-06-19 `7d13ec7c4` — Foreclosure: batch expiry unfreeze + duplicate pending guard (query ladder step 1)
-- 2026-06-19 `be08e59cb` — Foreclosure release: batch expiry unfreeze + duplicate pending create guard
+### `feature/tdpqa72-dfc-acceptance-labd-lapd`
+- 2026-07-17 `a7e6d1d1c4` — TDPQA-72 Obs3 Accrued≤Original reconcile
+- 2026-07-17 `cae54fd9d6` — TDPQA-72 dedicated force-bill labd + lapd EXTRA reconcile
 
-### `mfi_integration_v3.3.1.2`
-- 2026-06-24 `60c8d0f74f` — DCF L0-L2 amount hardening
-- 2026-06-24 `dfcd270a37` — DCF death-on-due-date settled EMI penal credit
-- 2026-06-22 `223bc2bbb` — Foreclosure CBC from LAN when scheme unconfigured (SDCP-10427)
-- 2026-06-19 `a28dc0a14` — Foreclosure fixes forward-port to release train 3.3.1.2
+### `fix/sdcp-10199-parent-int-dpi-last-child-dfc`
+- 2026-07-10 `61278d5f8` — SDCP-10199 last-child parent INT from parent pending
+
+### `fix/sdcp-11058-shg-bpi-parity`
+- 2026-07-10 `4acc7036d4` — SDCP-11058 SHG parent FC BPI = sum(children) any N
+
+### `mfi_integration_v3.4.2.1`
+- 2026-07-09 `425472cab` — SDCP-10199 QA6 display gaps
+- 2026-07-08 `66e830670` — parent DFC asset classification on closure
+- 2026-07-08 `e919e3b33` — SDCP-10199 schedule reduction formula L1
+- 2026-07-08 `63f2314c1` — SDCP-10199 negative parent PRIN guard
+- 2026-07-08 `82cb142e7` — SDCP-10295 interest billed original + outstanding
+
+### `mfi_integration_v3.4.2.2`
+- 2026-07-10 `068247cc9` — SDCP-10227 bank error filler REQUIRES_NEW persist
+
+### `mfi_integration_v3.4.2.4`
+- 2026-07-20 `7e1642a57e` — Parent disburse rejects multi member REP_ACCT (134126)
+- 2026-07-17 `b256efd054` — DCF force-bill client_ref platform-numeric
+- 2026-07-17 `dfec1e60f1` — TDPQA-72 Obs3 Accrued≤Original (port)
+- 2026-07-17 `29bd01e8a6` — TDPQA-72 dedicated force-bill labd + lapd EXTRA (port)
+- 2026-07-15 `59e9686a80` — SDCP-11085 SHG child sanction_date on CLB
+- 2026-07-15 `5b1b928ed` — last-child DFC A2 EXTRA-net + B force-bill labd
+
+### `mfi_integration_v3.7.1`
+- 2026-07-21 `ac8f185bbc` — TDPFR-547 DPI amountMap no EC leak
+- 2026-07-17 `e2789d5f05` — DPI foreclosure BPD include business day
+- 2026-07-10 `f45dbe3bd` — SDCP-10199 forward-merge + dead waive removed
+- 2026-07-10 `workspace` — DPI quick regression + booking-anchor harness
+- 2026-07-10 `77921d275f` — dpiAccrualBooking EMI due seal anchor
+- 2026-07-10 `412f4d03e3` — DPI slice by EMI due not grace anchor
+- 2026-07-10 `4321639df` — DPI grace stored overdue gate
+- 2026-07-10 `f5c4e0a25` — SDCP-11016 foreclosure sim DPI projection (changelog-sha `1baf3f4d8f` not ancestor of tip; labeled HEAD-eq)
+- 2026-07-10 `1b34dee4b` — loanPrepayment billed DPI + BPD in approve validation (changelog-sha `167d0942db` not ancestor of tip; labeled HEAD-eq)
+- 2026-07-09 `f5c4e0a25` — SDCP-11016 foreclosure sim DPI future date (changelog-sha `e175b78cb` not ancestor of tip; labeled HEAD-eq)
+- 2026-07-09 `f5c4e0a25` — SDCP-11016 foreclosure sim bpd_amount future dates (changelog-sha `e175b78cb` not ancestor of tip; labeled HEAD-eq)
+- 2026-07-09 `1b34dee4b` — loanPrepayment approve 132268 billed DPI+BPD (changelog-sha `844081f83` not ancestor of tip; labeled HEAD-eq)

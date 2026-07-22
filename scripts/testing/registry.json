@@ -1367,6 +1367,22 @@
     },
     "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
   },
+  "disbursement.redis_inflight_lock_sim": {
+    "type": "flow",
+    "api": "disburseLoan",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "disburse",
+      "redis",
+      "idempotency",
+      "simulation"
+    ],
+    "title": "TDPQA-54 \u2014 atomic Redis producer and consumer in-flight locks",
+    "cmd": "python3 scripts/testing/disbursement/tdpqa54_redis_inflight_lock_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME. Reads platform-lib/LOS/Accounting source and proves SET NX PX has one winner under 32 concurrent attempts, TTL is positive, orphaned locks auto-expire, Lua release is owner-safe, duplicate producer/consumer paths do not publish/orchestrate, and ambiguous DEFAULT intermediate replays fail closed. Full multi-pod process-kill E2E remains an environment test."
+  },
   "disbursement.jlg": {
     "type": "flow",
     "api": "disburseLoan",
@@ -1472,6 +1488,24 @@
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage."
     }
   },
+  "collections.tdpfr547_dpi_amountmap_sim": {
+    "type": "flow",
+    "api": "loanRecurringPaymentBatchApi",
+    "apis": [
+      "loanRecurringPaymentBatchApi"
+    ],
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "collections",
+      "dpi",
+      "simulation"
+    ],
+    "title": "TDPFR-547 \u2014 DPI due/overdue from per-LAN amountMap (no chunk EC leak)",
+    "cmd": "python3 scripts/testing/collections/tdpfr547_dpi_amountmap_sim.py",
+    "note": "PROCESSOR_MIRROR_SIM (not live recurring chunk E2E). Proves LoanRecurringPaymentBatchProcessor builds dpi_due/dpi_overdue from amountMap.getOrDefault(..., ZERO), not shared ExecutionContext. Full E2E needs chunk [hasDPI,noDPI] + Kafka/collection assert. Existing poison collection rows need batch re-run / LMS refresh."
+  },
   "disbursement.child_sanction_date_sim": {
     "type": "flow",
     "api": "childLoanDisbursement",
@@ -1532,7 +1566,7 @@
     ],
     "title": "CLB / createOrUpdateLoanAccount \u2014 REP_ACCT must match mandate CASA",
     "cmd": "python3 scripts/testing/disbursement/clb_mandate_match_sim.py",
-    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). After \u22641 REP_ACCT (134126), DIRDR/ACH require ACTIVE/REGISTRATION_PENDING mandate (loan_app then group_id) and REP_ACCT account_number == mandate CASA; CASH skips. Errors 134382 / 134348. CLB threads loan_application_id + group_id."
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). After \u22641 REP_ACCT (134126), DIRDR/ACH require ACTIVE/REGISTRATION_PENDING mandate (loan_app then group_id then parent_account_id LAN mandate) and REP_ACCT account_number == mandate CASA; CASH skips. Errors 134382 / 134348. CLB threads loan_application_id + group_id; child create falls back to parent LAN mandate."
   },
   "disbursement.neft_crr_exact_audit_callback_sim": {
     "type": "flow",
@@ -1737,6 +1771,90 @@
       "batch_completed": true
     }
   },
+  "batch.penal_interest_accrual_calc": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "penal",
+      "batch",
+      "eod",
+      "sp329"
+    ],
+    "title": "penalInterestAccrualCalculation EOD batch",
+    "service": "accounting",
+    "api": "penalInterestAccrualCalculation",
+    "batch_job_name": "penalInterestAccrualCalculation",
+    "note": "SP-329 reader nestloop/BNL off via NestloopDisabledJdbcCursorItemReader",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.penal_interest_accrual_booking": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "penal",
+      "batch",
+      "eod",
+      "sp329"
+    ],
+    "title": "penalInterestAccrualBooking EOD batch",
+    "service": "accounting",
+    "api": "penalInterestAccrualBooking",
+    "batch_job_name": "penalInterestAccrualBooking",
+    "note": "SP-329 reader nestloop/BNL off via NestloopDisabledJdbcCursorItemReader",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.loan_advance_repayment": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "advance",
+      "batch",
+      "eod",
+      "sp329"
+    ],
+    "title": "loanAdvanceRepayment EOD batch",
+    "service": "accounting",
+    "api": "loanAdvanceRepayment",
+    "batch_job_name": "loanAdvanceRepayment",
+    "note": "SP-329 reader nestloop/BNL off via NestloopDisabledJdbcCursorItemReader",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
+  "batch.loan_account_closure": {
+    "type": "batch",
+    "quick": true,
+    "wait_batch": true,
+    "smoke_tier": "service",
+    "tags": [
+      "closure",
+      "batch",
+      "eod",
+      "sp329"
+    ],
+    "title": "loanAccountClosure EOD batch",
+    "service": "accounting",
+    "api": "loanAccountClosure",
+    "batch_job_name": "loanAccountClosure",
+    "note": "SP-329 reader nestloop/BNL off via NestloopDisabledJdbcCursorItemReader",
+    "expect": {
+      "status": "SUCCESS",
+      "batch_completed": true
+    }
+  },
   "accounting.eod_core_batches": {
     "type": "flow",
     "smoke_tier": "service",
@@ -1914,22 +2032,6 @@
     "title": "DPI foreclosure BPD day-window (business start + HALF_UP \u2192 \u20b929)",
     "cmd": "python3 scripts/testing/dpi/foreclosure_bpd_day_window_sim.py",
     "note": "PROCESSOR_MIRROR_SIM for DpiForeclosureBrokenPeriodService. Local schema is aligned (dpi_suspense_amount present); runtime dpic.foreclosure_sim currently reaches business validation and fails 134389 because fixture LAN 6004055825 is not ACTIVE."
-  },
-  "disbursement.redis_inflight_lock_sim": {
-    "type": "flow",
-    "api": "disburseLoan",
-    "smoke_tier": "money",
-    "ship_auto": true,
-    "verify_mode": "processor_mirror_sim",
-    "tags": [
-      "disburse",
-      "redis",
-      "idempotency",
-      "simulation"
-    ],
-    "title": "TDPQA-54 \u2014 atomic Redis producer and consumer in-flight locks",
-    "cmd": "python3 scripts/testing/disbursement/tdpqa54_redis_inflight_lock_sim.py",
-    "note": "PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME. Reads platform-lib/LOS/Accounting source and proves SET NX PX has one winner under 32 concurrent attempts, TTL is positive, orphaned locks auto-expire, Lua release is owner-safe, duplicate producer/consumer paths do not publish/orchestrate, and ambiguous DEFAULT intermediate replays fail closed. Full multi-pod process-kill E2E remains an environment test."
   },
   "disbursement.any": {
     "type": "flow",

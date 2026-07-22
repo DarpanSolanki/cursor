@@ -3,6 +3,21 @@
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
 ---
+## 2026-07-21 | workspace | sliProd | main | kb-only | Fail-closed cross-branch reuse gate
+
+## createOrUpdateLoanAccount
+## 2026-07-22 | acct `ae8e98a70f` | accounting-v2 | fix/clb-child-parent-mandate-fallback | CLB child mandate via parent_account_id
+
+---
+
+`VERIFIED_FIXED_CLEAN` + `REUSE_ALLOWED` only after unique SHA + auto diverge; FILE_TOUCH_HINTS/DIVERGED/stale = REUSE_FORBIDDEN; watermark honesty + corroborate/smoke stitch.
+
+## 2026-07-21 | workspace | sliProd | main | kb-only | Cross-branch verified-fix discovery
+`kg fixed-elsewhere` + `scripts/bin/fwd-port.sh`: live upstream ancestry DAG, KG precedent SHA containment, candidate-only file overlap, divergence/path/missing/audit, and BUG/FIX autopilot preflight.
+
+## 2026-07-21 | acct `ac8f185bbc` | accounting-v2 | mfi_integration_v3.7.1 | kg-flow | TDPFR-547 DPI amountMap no EC leak
+loanRecurringPaymentBatchApi: dpi_due/dpi_overdue from per-LAN amountMap.getOrDefault(ZERO); Kafka bulk_collection_data_; collection.dpi_overdue; PROCESSOR_MIRROR_SIM collections.tdpfr547_dpi_amountmap_sim.
+
 ## 2026-07-20 | lib `9c5c82d2d8` · LOS `0e4a0be2bd` · acct `f9d803c4e` | platform-lib + LOS + accounting | mfi_integration_v3.4.2.5 | TDPQA-54 Redis in-flight locks
 disburseLoan | kg-flow | Owner-token `SET NX` + default 600000 ms TTL on LOS producer and Accounting consumer locks; Lua compare-and-delete release; terminal/LOCK/explicit-continuation decision matrix prevents concurrent orchestration and blind intermediate `DEFAULT` restart. `ntest run disbursement.redis_inflight_lock_sim` PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME PASS.
 
