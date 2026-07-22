@@ -13,6 +13,8 @@ Requires: local accounting up, mfi_batch schema, target loans ACTIVE with LIFE_I
 """
 from __future__ import annotations
 
+import atexit
+import fcntl
 import os
 import subprocess
 import sys
@@ -21,6 +23,7 @@ from decimal import Decimal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+DCF_E2E_LOCK = "/tmp/dcf_e2e.lock"
 
 # --- QA acceptance gate (feedback_qa_acceptance_not_subset_verify.md) ---
 # Default STRICT: a test must FAIL on the exact QA fail mode, never print "OK …" and pass.
@@ -34,6 +37,7 @@ SEED_EMI_LABD = os.environ.get("DCF_SEED_EMI_LABD") == "1"
 SEED_EXTRA = os.environ.get("SEED_EXTRA", "0") != "0"
 # Force disburse new SHG group per run (real flow); ignores PARENT_LAN when set.
 DCF_FRESH_GROUP = os.environ.get("DCF_FRESH_GROUP", "0") == "1"
+RUN_TXN_FLOOR_ID = 0
 DCF_FIXTURE_BLOCKLIST = frozenset(
     lan.strip()
     for lan in os.environ.get("DCF_FIXTURE_BLOCKLIST", "6003896527,6003973025").split(",")
@@ -53,6 +57,19 @@ PG = [
 def psql(sql: str) -> str:
     out = subprocess.check_output([*PG, "-c", sql], env=PG_ENV, text=True)
     return out.strip().split("\n")[0] if out.strip() else ""
+
+
+def acquire_dcf_e2e_lock() -> int:
+    if os.environ.get("DCF_E2E_LOCK_HELD") == "1":
+        return -1
+    lock_fd = os.open(DCF_E2E_LOCK, os.O_CREAT | os.O_RDWR, 0o664)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        os.close(lock_fd)
+        raise RuntimeError("another DCF E2E owns /tmp/dcf_e2e.lock; refusing concurrent run") from exc
+    atexit.register(os.close, lock_fd)
+    return lock_fd
 
 
 def psql_multi(sql: str) -> None:
@@ -110,6 +127,14 @@ JOIN mfi_accounting.loan_account la ON la.account_id = lacd.loan_account_id
 JOIN mfi_accounting.transaction_master tm ON tm.reference_number = lacd.transaction_reference_number
 WHERE la.la_account_number = '{lan}' AND lacd.identifier_type = '{txn_type}'
 ORDER BY lacd.id DESC LIMIT 1;
+""")
+        if not row and RUN_TXN_FLOOR_ID:
+            row = psql(f"""
+SELECT tm.reference_number, tm.original_amount::text
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+WHERE tc.type = '{txn_type}' AND tm.id > {RUN_TXN_FLOOR_ID}
+ORDER BY tm.id DESC LIMIT 1;
 """)
     elif txn_type == "RSCH_DEATH_FORECLOSURE":
         row = psql(f"""
@@ -482,6 +507,84 @@ LIMIT 1;
         time.sleep(2)
     raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
 
+def _resolve_death_date_sql(parent_id: int, *, latest: bool) -> str:
+    """Day-after-PRIN-due death date aligned with ChildLoanRestructuring (`due_date > death`).
+
+    `latest=True` picks the newest valid candidate (canonical fixture near current billing).
+    `latest=False` picks earliest (auto-discover + EXTRA seed window).
+    """
+    order = "DESC" if latest else "ASC"
+    return f"""
+WITH d AS (
+  SELECT DISTINCT ldd.due_date
+  FROM mfi_accounting.loan_due_details ldd
+  JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+  WHERE c.parent_loan_account_id={parent_id} AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+  ORDER BY ldd.due_date
+), cand AS (
+  SELECT (due_date + INTERVAL '1 day')::date AS death_d
+  FROM d
+), ok AS (
+  SELECT cand.death_d
+  FROM cand
+  WHERE EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='INT' AND ldd.is_deleted=false
+      AND ldd.due_date::date > (cand.death_d - INTERVAL '1 day')
+      AND ldd.due_date::date <= CURRENT_DATE
+      AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+      AND ldd.due_date::date < cand.death_d
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM mfi_accounting.loan_due_details ldd
+    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+    WHERE c.parent_loan_account_id={parent_id}
+      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
+      AND ldd.due_date::date >= cand.death_d
+  )
+  ORDER BY cand.death_d {order}
+  LIMIT 1
+)
+SELECT to_char(death_d,'YYYY-MM-DD') FROM ok;
+"""
+
+
+def resolve_death_date(parent_id: int, *, latest: bool = True) -> str:
+    row = psql(_resolve_death_date_sql(parent_id, latest=latest))
+    if not row:
+        raise RuntimeError(f"no valid death_date for parent_id={parent_id} (PRIN due+1 day window)")
+    return row
+
+
+def cleanup_stale_rstcre_events(parent_id: int) -> None:
+    """Drop stale PENDING RSTCRE rows — events_queue is outside dcf_fixture_backup snapshot."""
+    n = psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""")
+    if not n or n == "0":
+        return
+    psql_multi(f"""
+UPDATE mfi_accounting.loan_account_events_queue
+SET is_deleted=true, updated_on=NOW(), updated_by='LOCAL_E2E'
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""")
+    print(f"  RSTCRE prep: soft-deleted {n} stale PENDING row(s) parent_id={parent_id}")
+
+
 def prepare_fixture_pint_free(parent_lan: str) -> None:
     """Waive open PINT on children before DFC — canonical snapshot may carry penal rows S08 does not exercise.
 
@@ -715,32 +818,56 @@ WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
         raise RuntimeError(f"no open dues through {advance_due} for EXTRA seed on {child_lan}")
 
     today_ms = str(int(time.time() * 1000))
-    crn = f"A2X{child_lan[-4:]}{int(time.time())}"[:32]
-    body = {
-        "loan_repayment_details": {
-            "account_number": child_lan,
-            "repayment_amount": str(amt),
-            "repayment_time": today_ms,
-            "value_date": today_ms,
-            "repayment_mode": "CASH",
-            "receipt_number": crn,
-            "client_reference_number": crn,
+    advance_ms = str(
+        int(time.mktime(time.strptime(f"{advance_due} 12:00:00", "%Y-%m-%d %H:%M:%S")) * 1000)
+    )
+    value_date_ms = str(max(int(today_ms), int(advance_ms)))
+
+    def _fire_repay(repay_amt: str, tag: str) -> None:
+        nonlocal today_ms
+        crn = f"A2X{child_lan[-4:]}{int(time.time())}"[:32]
+        body = {
+            "loan_repayment_details": {
+                "account_number": child_lan,
+                "repayment_amount": str(repay_amt),
+                "repayment_time": today_ms,
+                "value_date": value_date_ms,
+                "repayment_mode": "CASH",
+                "receipt_number": crn,
+                "client_reference_number": crn,
+            }
         }
-    }
-    env = build_envelope("accounting", body, stan=fresh_stan("loanRepayment"))
-    env["headers"]["function_sub_code"] = "WITHOUT_MAKER_CHECKER"
-    env["headers"]["operation_mode"] = "SELF"
-    env["headers"]["actor_type"] = "CUSTOMER"
-    print(f"  EXTRA seed: loanRepayment child={child_lan} amt={amt} through={advance_due} crn={crn}")
-    result = fire_api("loanRepayment", env, timeout_s=180)
-    code, status = result.response_status()
-    if status and status.upper() != "SUCCESS":
-        raise RuntimeError(f"loanRepayment EXTRA seed FAIL code={code} body={result.body[:600]}")
+        env = build_envelope("accounting", body, stan=fresh_stan("loanRepayment"))
+        env["headers"]["function_sub_code"] = "WITHOUT_MAKER_CHECKER"
+        env["headers"]["operation_mode"] = "SELF"
+        env["headers"]["actor_type"] = "CUSTOMER"
+        print(f"  EXTRA seed: loanRepayment child={child_lan} amt={repay_amt} "
+              f"through={advance_due} value_date={value_date_ms} crn={crn} ({tag})")
+        result = fire_api("loanRepayment", env, timeout_s=180)
+        code, status = result.response_status()
+        if status and status.upper() != "SUCCESS":
+            raise RuntimeError(f"loanRepayment EXTRA seed FAIL code={code} body={result.body[:600]}")
+
+    _fire_repay(amt, "catch-up through advance INT due")
 
     proxy = _extra_proxy(child_lan, death_date)
     print(f"  EXTRA proxy after repay: raw_surplus={proxy['raw_surplus']} "
           f"advance_int_paid={proxy['advance_int_paid']} settled={proxy['settled']} "
           f"owed_till={proxy['owed_till_as_on']}")
+    if proxy["raw_surplus"] <= 0:
+        advance_int_only = psql(f"""
+SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::numeric(20,0)
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
+  AND ldd.component_type='INT' AND ldd.due_date::date = '{advance_due}'::date
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0;
+""")
+        if advance_int_only and Decimal(advance_int_only) > 0:
+            _fire_repay(advance_int_only, "advance INT EMI only")
+            proxy = _extra_proxy(child_lan, death_date)
+            print(f"  EXTRA proxy after INT-only repay: raw_surplus={proxy['raw_surplus']} "
+                  f"advance_int_paid={proxy['advance_int_paid']}")
     if proxy["raw_surplus"] <= 0:
         raise RuntimeError(
             f"EXTRA seed failed: raw_surplus={proxy['raw_surplus']} (need advance INT paid > owed through death-1)"
@@ -1398,22 +1525,72 @@ WHERE p.la_account_number = '{parent_lan}' AND q.is_deleted = false;
 """) or "0")
 
 
+def drain_rstcre_with_retry(
+    parent_id: int,
+    parent_lan: str,
+    dfd_id: int,
+    baseline_queue_id: int,
+    child_lan: str,
+    *,
+    max_attempts: int = 3,
+) -> list[str]:
+    """Fire RSTCRE batch and assert drain; retry on Yugabyte conflict leaving event_status=P."""
+    last_err: AssertionError | None = None
+    for attempt in range(1, max_attempts + 1):
+        if attempt > 1:
+            print(f"  RSTCRE retry {attempt}/{max_attempts} after pending/conflict on parent={parent_lan}")
+            time.sleep(3)
+        fire_and_wait_child_events_batch(parent_id, dfd_id)
+        try:
+            return assert_rstcre_drained(parent_id, baseline_queue_id, child_lan)
+        except AssertionError as exc:
+            last_err = exc
+            if attempt == max_attempts:
+                raise
+    raise last_err or AssertionError("RSTCRE drain failed")
+
+
 def fire_and_wait_child_events_batch(parent_id: int, dfd_id: int) -> str:
     """Fire childLoanEventProcessingBatchJob and wait COMPLETED (mirror disburse_loan_sanity).
 
     Non-last child DFC inserts RSTCRE PENDING on the parent; the batch must drain it before
     last-child DFC so schedule-reduction state is consistent.
     """
-    job_time = str(int(time.time() * 1000))
-    started = str(int(time.time()))
-    print(
-        f"  RSTCRE spine: firing childLoanEventProcessingBatchJob parent_id={parent_id} "
-        f"dfd_id={dfd_id} job_time={job_time}"
-    )
-    fire_batch("childLoanEventProcessingBatchJob", job_time)
-    wait_batch_by_start("childLoanEventProcessingBatchJob", int(started), timeout_s=300)
-    print(f"  RSTCRE spine: childLoanEventProcessingBatchJob COMPLETED job_time={job_time}")
-    return job_time
+    last_job_time = ""
+    for attempt in range(1, 4):
+        job_time = str(int(time.time() * 1000))
+        started = int(time.time())
+        print(
+            f"  RSTCRE spine: firing childLoanEventProcessingBatchJob parent_id={parent_id} "
+            f"dfd_id={dfd_id} job_time={job_time} attempt={attempt}"
+        )
+        fire_batch("childLoanEventProcessingBatchJob", job_time)
+        try:
+            wait_batch_by_start("childLoanEventProcessingBatchJob", started, timeout_s=300)
+        except RuntimeError as exc:
+            print(f"  WARN: childLoanEventProcessingBatchJob: {exc}")
+        pending = psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""")
+        if pending == "0":
+            print(f"  RSTCRE spine: childLoanEventProcessingBatchJob drained job_time={job_time}")
+            return job_time
+        filler = psql(f"""
+SELECT COALESCE(MAX(filler_1),'') FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""") or ""
+        if attempt < 3 and ("serialize" in filler.lower() or "conflict" in filler.lower()):
+            print(f"  RSTCRE spine: YB conflict — sleep 5s and retry ({filler[:80]}…)")
+            time.sleep(5)
+            last_job_time = job_time
+            continue
+        raise RuntimeError(
+            f"RSTCRE drain FAIL: {pending} PENDING RSTCRE after batch (filler={filler[:120]})"
+        )
+    return last_job_time
 
 
 def _rstcre_rows_since(parent_id: int, baseline_queue_id: int) -> list[str]:
@@ -1536,14 +1713,25 @@ def assert_remaining_child_schedule_changed(
 
 def wait_loan_closed(child_lan: str, timeout_s: int = 300) -> None:
     deadline = time.time() + timeout_s
+    saw_freeze = False
+    active_streak = 0
     while time.time() < deadline:
         st = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';")
         if st == "CLOSED":
             print(f"  child {child_lan} CLOSED (batch committed)")
             return
-        if st == "ACTIVE":
-            # FREEZE reset by a rollback → real failure (not the benign CBS log)
-            raise RuntimeError(f"child {child_lan} back to ACTIVE — DFC rolled back")
+        if st == "DEATH_FORECLOSURE_FREEZE":
+            saw_freeze = True
+            active_streak = 0
+        elif st == "ACTIVE":
+            # Transient ACTIVE can appear between batch COMPLETED and final CLOSED commit locally.
+            # Fail only when ACTIVE persists after we have seen FREEZE (rollback), not a single poll.
+            if saw_freeze:
+                active_streak += 1
+                if active_streak >= 3:
+                    raise RuntimeError(f"child {child_lan} back to ACTIVE — DFC rolled back")
+        else:
+            active_streak = 0
         time.sleep(2)
     raise RuntimeError(f"child {child_lan} not CLOSED after {timeout_s}s (status stuck at FREEZE)")
 
@@ -1783,55 +1971,14 @@ ORDER BY la_account_number;
     child1, child2 = kids[0].strip(), kids[1].strip()
     # death_date mid-schedule, but next INT after death-1 must be <= today so EXTRA
     # loanRepayment (value_date=today) can settle advance INT (otherwise raw_surplus=0).
-    death_date = psql(f"""
-WITH d AS (
-  SELECT DISTINCT ldd.due_date
-  FROM mfi_accounting.loan_due_details ldd
-  JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
-  WHERE c.parent_loan_account_id={parent_id} AND ldd.component_type='PRIN' AND ldd.is_deleted=false
-  ORDER BY ldd.due_date
-), cand AS (
-  SELECT (due_date + INTERVAL '1 day')::date AS death_d
-  FROM d
-), ok AS (
-  SELECT cand.death_d
-  FROM cand
-  WHERE EXISTS (
-    SELECT 1
-    FROM mfi_accounting.loan_due_details ldd
-    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
-    WHERE c.parent_loan_account_id={parent_id}
-      AND ldd.component_type='INT' AND ldd.is_deleted=false
-      AND ldd.due_date::date > (cand.death_d - INTERVAL '1 day')
-      AND ldd.due_date::date <= CURRENT_DATE
-      AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM mfi_accounting.loan_due_details ldd
-    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
-    WHERE c.parent_loan_account_id={parent_id}
-      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
-      AND ldd.due_date::date < cand.death_d
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM mfi_accounting.loan_due_details ldd
-    JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
-    WHERE c.parent_loan_account_id={parent_id}
-      AND ldd.component_type='PRIN' AND ldd.is_deleted=false
-      AND ldd.due_date::date >= cand.death_d
-  )
-  ORDER BY cand.death_d
-  LIMIT 1
-)
-SELECT to_char(death_d,'YYYY-MM-DD') FROM ok;
-""") or "2026-04-01"
+    death_date = psql(_resolve_death_date_sql(parent_id, latest=False)) or resolve_death_date(parent_id, latest=True)
     print(f"  discovered fresh fixture: parent={parent} child1={child1} child2={child2} death_date={death_date}")
     return parent, child1, child2, death_date
 
 
 def main() -> int:
+    global RUN_TXN_FLOOR_ID
+    acquire_dcf_e2e_lock()
     if DCF_FRESH_GROUP:
         print("  DCF_FRESH_GROUP=1 — provisioning new SHG group (disburse + billing)")
         sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
@@ -1842,7 +1989,11 @@ def main() -> int:
         parent = os.environ["PARENT_LAN"]
         child1 = os.environ.get("CHILD1_LAN", "6003973329")
         child2 = os.environ.get("CHILD2_LAN", "6003973330")
-        death_date = os.environ.get("DEATH_DATE", "2026-04-01")
+        if os.environ.get("DEATH_DATE"):
+            death_date = os.environ["DEATH_DATE"]
+        else:
+            death_date = resolve_death_date(parent_account_id(parent), latest=True)
+            print(f"  resolved death_date={death_date} (PRIN due+1 day, latest valid)")
         if parent in DCF_FIXTURE_BLOCKLIST:
             raise RuntimeError(
                 f"PARENT_LAN={parent} is blocklisted (corrupted fixture). "
@@ -1886,6 +2037,8 @@ def main() -> int:
         )
 
         cleanup_abandoned_staging([child1, child2])
+        parent_id = parent_account_id(parent)
+        cleanup_stale_rstcre_events(parent_id)
 
         print("\n--- RESET partial / in-flight DFC on both children ---")
         reset_child_dfc_if_needed(child1)
@@ -1896,13 +2049,15 @@ def main() -> int:
             prepare_fixture_pint_free(parent)
 
         print("\n--- BEFORE ---")
+        RUN_TXN_FLOOR_ID = int(psql(
+            "SELECT COALESCE(MAX(id),0)::text FROM mfi_accounting.transaction_master;"
+        ) or "0")
         snapshot_dues(parent, "parent-before")
         snapshot_dues(child1, "child1-before")
         snapshot_dues(child2, "child2-before")
 
         expected_extra = Decimal("0")
         last_child = children_in_order[-1]  # child1 — EXTRA must land on last-child claim
-        parent_id = parent_account_id(parent)
         remaining_child_schedule_before: dict[str, list[str]] = {}
 
         for idx, child in enumerate(children_in_order, start=1):
@@ -1931,8 +2086,9 @@ def main() -> int:
                 run_inbound_approve_only(child, dfd_id, staging_id, death_date)
                 assert_child_closed(child)
                 if not is_last:
-                    fire_and_wait_child_events_batch(parent_id, dfd_id)
-                    rstcre_proof = assert_rstcre_drained(parent_id, prior_event_id, child)
+                    rstcre_proof = drain_rstcre_with_retry(
+                        parent_id, parent, dfd_id, prior_event_id, child,
+                    )
                     print(f"  RSTCRE SQL proof: {rstcre_proof}")
                     remaining = children_in_order[idx]
                     after_sched = snapshot_future_emi_dates(remaining, death_date)

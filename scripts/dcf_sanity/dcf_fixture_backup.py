@@ -17,9 +17,12 @@ Usage:
 """
 from __future__ import annotations
 
+import atexit
+import fcntl
 import os
 import subprocess
 import sys
+import time
 
 PG_ENV = {**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")}
 PG = [
@@ -30,6 +33,20 @@ PG = [
     "-v", "ON_ERROR_STOP=1",
 ]
 SCH = "mfi_accounting"
+DCF_E2E_LOCK = "/tmp/dcf_e2e.lock"
+
+
+def acquire_dcf_e2e_lock() -> int:
+    if os.environ.get("DCF_E2E_LOCK_HELD") == "1":
+        return -1
+    lock_fd = os.open(DCF_E2E_LOCK, os.O_CREAT | os.O_RDWR, 0o664)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        os.close(lock_fd)
+        raise SystemExit("DCF E2E already owns /tmp/dcf_e2e.lock; refusing fixture mutation") from exc
+    atexit.register(os.close, lock_fd)
+    return lock_fd
 
 # Tables the DFC flow updates / inserts / soft-deletes, scoped to the fixture's loans.
 SCOPED_BY_LOAN_ACCOUNT_ID = [
@@ -54,8 +71,19 @@ def q1(sql: str) -> str:
     return out.strip().split("\n")[0] if out.strip() else ""
 
 
-def run(sql: str) -> None:
-    subprocess.check_call([*PG, "-c", sql], env=PG_ENV)
+def run(sql: str, *, retries: int = 1) -> None:
+    last_err: subprocess.CalledProcessError | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            subprocess.check_call([*PG, "-c", sql], env=PG_ENV)
+            return
+        except subprocess.CalledProcessError as exc:
+            last_err = exc
+            if attempt >= retries:
+                raise
+            time.sleep(min(2 * attempt, 8))
+    if last_err:
+        raise last_err
 
 
 def bak_schema(parent_lan: str) -> str:
@@ -81,8 +109,17 @@ def resolve_fixture(parent_lan: str) -> tuple[str, list[str], list[str]]:
 
 
 def _dfc_test_crn_clause(ids: list[str]) -> str:
-    """Partial-cycle billing posts use GL account_number in transaction_details, not LAN — purge by CRN."""
-    return " OR ".join(f"tm.client_reference_number LIKE 'DFC_PRTL_BILL_{aid}_%'" for aid in ids)
+    """Partial-cycle billing posts use GL account_number in transaction_details, not LAN — purge by CRN.
+
+    Force-bill client_ref is platform-numeric: accountId||valueDateMs (all digits). Restrict to BILLING
+    so we do not sweep unrelated numeric CRNs.
+    """
+    return " OR ".join(
+        f"(tm.client_reference_number ~ '^{aid}[0-9]+$' AND EXISTS ("
+        f"SELECT 1 FROM {SCH}.transaction_catalogue tc "
+        f"WHERE tc.id = tm.transaction_catalogue_id AND tc.type = 'BILLING'))"
+        for aid in ids
+    )
 
 
 def _test_txn_ids_subquery(id_list: str, lan_list: str, ids: list[str], bak: str) -> str:
@@ -118,6 +155,7 @@ def snapshot(parent_lan: str) -> None:
 
 
 def restore(parent_lan: str) -> None:
+    acquire_dcf_e2e_lock()
     parent_id, ids, lans = resolve_fixture(parent_lan)
     id_list = ",".join(ids)
     lan_list = ",".join(f"'{x}'" for x in lans)
@@ -144,7 +182,7 @@ def restore(parent_lan: str) -> None:
         stmts.append(f"DELETE FROM {SCH}.{t} WHERE account_number IN ({lan_list});")
         stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
     stmts.append("SET session_replication_role = origin;")
-    run("\n".join(stmts))
+    run("\n".join(stmts), retries=6)
     print("  restore done")
     verify(parent_lan)
 

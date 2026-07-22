@@ -40,4 +40,6 @@ else
   bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting
 fi
 
+bash "$ROOT/scripts/bin/novopay-service.sh" ensure task
+
 echo "=== DCF local stack ready ==="

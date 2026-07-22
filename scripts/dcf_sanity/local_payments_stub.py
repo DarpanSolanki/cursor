@@ -5,7 +5,7 @@ Accounting internal API calls:
   GET  /payments/template/{request|response}/mfi/v1/cancelCollections
   POST /payments/api/v1/cancelCollections
 
-No changes to novopay-platform-accounting-v2 or novopay-platform-payments source.
+No changes to trustt-platform-accounting or trustt-platform-payments source.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PAYMENTS_DEPLOY = ROOT / "novopay-platform-payments" / "deploy" / "application" / "templates"
+PAYMENTS_DEPLOY = ROOT / "trustt-platform-payments" / "deploy" / "application" / "templates"
 PORT = int(__import__("os").environ.get("DCF_PAYMENTS_STUB_PORT", "8594"))
 
 SUCCESS_BODY = json.dumps(

@@ -16,7 +16,7 @@ Accounting internal API calls served here:
   POST /notifications/api/v1/getMessage
   POST /notifications/api/v1/sendEmail
 
-No changes to novopay-platform-accounting-v2 or novopay-platform-notifications source.
+No changes to trustt-platform-accounting or trustt-platform-notifications source.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-NOTIF_DEPLOY = ROOT / "novopay-platform-notifications" / "deploy" / "application" / "templates"
+NOTIF_DEPLOY = ROOT / "trustt-platform-notifications" / "deploy" / "application" / "templates"
 PORT = int(os.environ.get("DCF_NOTIFICATIONS_STUB_PORT", "8015"))
 
 # response bodies must match the JTF response template root keys
