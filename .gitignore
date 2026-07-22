@@ -79,3 +79,11 @@ scripts/**/__pycache__/
 .cursor/.process-money-floor.json
 .cursor/.local-hand-patch-log.jsonl
 .cursor/.local-parity-result.json
+.cursor/.kg-branch-set.json
+
+# SELF-REPORT weekly archives (keep tip SELF-REPORT.md tracked)
+cursor-bundle/memory/self-reports/
+
+# Compiled helpers
+*.class
+scripts/lib/flyway_checksum/*.class
