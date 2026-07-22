@@ -48,4 +48,4 @@ When implementing **any** fix (bug, gap, small feature), watch for **significant
 - `cursor-bundle/memory/feedback_query_reuse_vs_performance.md` — ladder + slight vs significant
 - `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md` — don’t let perf work balloon past minimal fix
 - `.cursor/skills/reuse-queries-java-filter/SKILL.md`
-- `.cursor/rules/minimal-fix-impact-gate.mdc`
+- `.cursor/rules/10-quality-gates.mdc`

@@ -53,4 +53,4 @@ Custom_rule / review suggestions to merge loops into `IN (...)` SQL **do not ove
 
 - `cursor-bundle/memory/feedback_keep_code_simple.md` RULE 3
 - `.cursor/skills/reuse-queries-java-filter/SKILL.md`
-- `.cursor/rules/reuse-queries-java-filter.mdc`
+- `.cursor/rules/10-quality-gates.mdc`

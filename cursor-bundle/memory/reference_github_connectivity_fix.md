@@ -15,4 +15,4 @@ Auth itself is fine: `gh` CLI is logged in as **AiTdpBugFixer** (`/home/darpan/.
 ```
 gh auth setup-git
 ```
-This registers `credential.https://github.com.helper = !/usr/bin/gh auth git-credential` in `~/.gitconfig`, after which `git fetch`/`git ls-remote` over the existing HTTPS remotes authenticate via the gh token. Verified working across repos (accounting-v2, batch). Fetch is a read — within boundary; pushing to upstream is still forbidden by [[feedback_darpan_boundary]] (push is khoslalabs upstream = DISABLE_PUSH_TO_UPSTREAM anyway).
+This registers `credential.https://github.com.helper = !/usr/bin/gh auth git-credential` in `~/.gitconfig`, after which `git fetch`/`git ls-remote` over the existing HTTPS remotes authenticate via the gh token. Verified working across repos (accounting-v2, batch). Fetch is a read — within boundary; pushing to upstream is still forbidden by [[feedback_darpan_boundary]] (push to `trusttai` upstream = blocked by `push-origin.sh` / hooks anyway).

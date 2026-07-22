@@ -17,4 +17,4 @@ Session: read `.cursor/workspace-ops-state.md` (hook: `agent-ops.sh preflight`).
 
 Compile on ensure **only when** `.java` newer than boot log (smart default).
 
-Rule: `.cursor/rules/autonomous-workspace-ops.mdc`
+Rule: `.cursor/rules/00-workspace-core.mdc`

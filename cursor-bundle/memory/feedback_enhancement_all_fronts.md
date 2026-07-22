@@ -29,4 +29,4 @@ metadata:
 Present **L0–L3 in discussion** for trade-offs; **implement L1+ together** when mode = Improvement.
 
 Skill: `.cursor/skills/query-index-perf-gate/SKILL.md`  
-Rule: `.cursor/rules/enhancement-all-fronts-gate.mdc`
+Rule: `.cursor/rules/20-ship-gates.mdc`

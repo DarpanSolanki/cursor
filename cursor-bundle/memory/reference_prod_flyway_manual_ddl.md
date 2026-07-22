@@ -47,5 +47,5 @@ VALUES
  -1807997428, 'yugabyte', NOW(), 0, true);
 ```
 
-Rule: `.cursor/rules/prod-flyway-manual-ddl.mdc`  
+Rule: `.cursor/rules/20-ship-gates.mdc`  
 Tools: `scripts/bin/flyway-checksum.sh`, `scripts/bin/flyway-prod-deploy-pack.sh`

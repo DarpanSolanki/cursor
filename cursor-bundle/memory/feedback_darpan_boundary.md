@@ -7,7 +7,7 @@ metadata:
   originSessionId: 7fc30f42-df07-4d0a-8093-68fff3c6147e
 ---
 
-**Never write outside `/home/darpan/darpan/`.** No `Edit`/`Write`/`cp`/`mv`/`rm`/`sed -i`/`mkdir`/`chmod`/`git checkout -- <path>` targeting paths outside this tree. No KG mutations (`mcp__kms-kb__kg_*` write tools), no Jira writes (`jira_create_issue`/`jira_update_issue`/`jira_transition_issue`/comments/worklogs), no `git__create_pr`/`git__push_to_fork`/Camunda-write/Postman-run. **Reads anywhere, read-only MCP, and writes inside `/home/darpan/darpan/`** (plus memory under `/home/darpan/.claude/projects/-home-darpan-darpan/`) are fine. Push only to **origin** (DarpanSolanki fork) via the `github-darpan` SSH alias, on explicit confirm — never to upstream/khoslalabs.
+**Never write outside `/home/darpan/darpan/`.** No `Edit`/`Write`/`cp`/`mv`/`rm`/`sed -i`/`mkdir`/`chmod`/`git checkout -- <path>` targeting paths outside this tree. No KG mutations (`mcp__kms-kb__kg_*` write tools), no Jira writes (`jira_create_issue`/`jira_update_issue`/`jira_transition_issue`/comments/worklogs), no `git__create_pr`/`git__push_to_fork`/Camunda-write/Postman-run. **Reads anywhere, read-only MCP, and writes inside `/home/darpan/darpan/`** (plus memory under `/home/darpan/.claude/projects/-home-darpan-darpan/`) are fine. Push only to **origin** (DarpanSolanki fork) via the `github-darpan` SSH alias, on explicit confirm — never to upstream/`trusttai` (formerly khoslalabs).
 
 **Why:** This is the workspace's #1 safety contract — it prevents touching other users' homes, the shared environment, or external systems of record.
 

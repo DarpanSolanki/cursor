@@ -32,10 +32,10 @@ Same ship window as the service commit (workspace commit OK if same task turn):
 
 ## Automation
 
-- Rule: `.cursor/rules/post-ship-knowledge-gate.mdc` rows 9–11 (registry, runbook, gaps).
+- Rule: `.cursor/rules/20-ship-gates.mdc` rows 9–11 (registry, runbook, gaps).
 - `scripts/bin/ship-knowledge-gate.sh --full` WARNs when top kg-flow mentions DeathForeclosure / DCF and companions lack EXTRA/labd or registry note lag.
 - Memory index: this file.
 
 ## Pair with
 
-`feedback_keep_knowledge_current.md`, `enrichment-ship-gate.mdc`, `flow-cross-learn.mdc`, `ship-test-mandatory.mdc`.
+`feedback_keep_knowledge_current.md`, `20-ship-gates.mdc`, `30-kg-discipline.mdc`, `20-ship-gates.mdc`.

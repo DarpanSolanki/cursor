@@ -45,7 +45,7 @@
 
 | Gap class | Mitigation |
 |-----------|------------|
-| Wrong git branch (`mfi_integration_*` vs feature) | `dpi-feature-branch-gate.mdc`, `ensure-dpi-branches.sh` |
+| Wrong git branch (`mfi_integration_*` vs feature) | `30-kg-discipline.mdc`, `ensure-dpi-branches.sh` |
 | Agent sign-off without EOD | `dpi-sanity.sh` → `ud_compliance` only |
 | Happy-path single overdue only | `certify_dpi_scenarios` (3 fresh LANs) |
 | KG stale on branch switch | `kg-switch.sh` on checkout |
