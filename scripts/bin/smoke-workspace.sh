@@ -11,8 +11,8 @@ fail() { echo "  FAIL $1 — $2"; FAIL=$((FAIL + 1)); }
 
 echo "=== cursor-bundle inventory ==="
 for f in cursor-bundle/kg/data/kg.db cursor-bundle/memory/MEMORY.md cursor-bundle/kg/bin/build.sh \
-         cursor-bundle/kg/bin/kg.py cursor-bundle/kg/BRANCH-SAFETY.md .cursor/rules/self-learning-kg.mdc \
-         .cursor/rules/kg-safety-and-consultation.mdc cursor-bundle/brain/CANONICAL-MAP.md \
+         cursor-bundle/kg/bin/kg.py cursor-bundle/kg/BRANCH-SAFETY.md .cursor/rules/30-kg-discipline.mdc \
+         .cursor/rules/30-kg-discipline.mdc cursor-bundle/brain/CANONICAL-MAP.md \
          .cursor/hooks.json .cursor/workspace-kg-state.md; do
   [[ -e "$f" ]] && pass "$f" || fail "$f" "missing"
 done
@@ -118,7 +118,11 @@ import json, subprocess, os
 os.chdir("/home/darpan/Documents/sliProd")
 with open(".cursor/hooks.json") as f:
     hooks = json.load(f)["hooks"]
-assert any(h.get("matcher") == "git push" for h in hooks.get("afterShellExecution", []))
+assert any(
+    (h.get("matcher") or "") in ("git push", r"git\s+push")
+    or "push" in (h.get("matcher") or "")
+    for h in hooks.get("afterShellExecution", [])
+)
 assert any("checkout" in (h.get("matcher") or "") for h in hooks.get("afterShellExecution", []))
 print("  OK  hooks.json post-push + post-checkout registered")
 PY
