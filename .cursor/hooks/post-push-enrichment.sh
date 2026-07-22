@@ -9,7 +9,7 @@ if [[ ! "$command" =~ git[[:space:]]+push ]]; then
   echo '{}'
   exit 0
 fi
-if [[ "$command" =~ upstream|khoslalabs ]]; then
+if [[ "$command" =~ upstream|khoslalabs|trusttai ]]; then
   echo '{}'
   exit 0
 fi

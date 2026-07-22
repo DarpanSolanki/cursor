@@ -17,7 +17,7 @@
     ],
     "afterFileEdit": [
       {
-        "command": ".cursor/hooks/after-money-path-edit.sh"
+        "command": ".cursor/hooks/after-ship-path-edit.sh"
       }
     ],
     "beforeShellExecution": [
@@ -33,6 +33,10 @@
     "afterShellExecution": [
       {
         "command": ".cursor/hooks/post-commit-kg-flag.sh",
+        "matcher": "git\\s+commit"
+      },
+      {
+        "command": ".cursor/hooks/post-commit-ship-test.sh",
         "matcher": "git\\s+commit"
       },
       {

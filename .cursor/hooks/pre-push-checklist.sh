@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# beforeShellExecution — git push checklist + block upstream/khoslalabs + ship-loop gate.
+# beforeShellExecution — git push checklist + block upstream/trusttai/khoslalabs + ship-loop gate.
 set -euo pipefail
 input=$(cat)
 command=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('command',''))" <<<"$input")
@@ -66,11 +66,11 @@ EOF
   fi
 fi
 
-if [[ "$command" =~ upstream|khoslalabs ]]; then
+if [[ "$command" =~ upstream|khoslalabs|trusttai ]]; then
   cat <<'EOF'
 {
   "permission": "deny",
-  "user_message": "Push to upstream/khoslalabs is blocked in this workspace (darpan boundary).",
+  "user_message": "Push to upstream/trusttai (or legacy khoslalabs) is blocked in this workspace (darpan boundary).",
   "agent_message": "Do not push to upstream. Use origin only; bash scripts/bin/push-origin.sh"
 }
 EOF
