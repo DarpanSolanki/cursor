@@ -17,7 +17,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `capture-flow.sh` | After a fix + test on a money path — capture full API footprint for the suite. | scripts/bin/workspace-close.sh, scripts/testing/agent_router.py |
 | `contract-sync.sh` | Scan cross-service contracts (orchestration XML + Kafka) and refresh contracts.jsonl | scripts/testing/ftg.py |
 | `db-local-hygiene.sh` | Local Yugabyte hygiene — orphan pg_temp / pg_toast_temp schemas. | scripts/bin/workspace-hygiene.sh |
-| `db-local-write.sh` | Local Yugabyte writes only (127.0.0.1:5433). Agents use this instead of raw psql to remote | scripts/bin/purge-local-dpi.sh |
+| `db-local-write.sh` | Local Yugabyte writes only (127.0.0.1:5433). Agents use this instead of raw psql to remote | scripts/bin/purge-local-dpi.sh, scripts/lib/local_parity_gate.py |
 | `disburse-any-quick.sh` | Unified local disburseLoan entry — PRODUCT_TYPE=INDL/JLG/SHG (default JLG). | — |
 | `disburse-indl-kafka-quick.sh` | Fast local disburseLoan — INDL via Kafka (TDPQA-54): LOS-shaped message + Redis producer N | — |
 | `disburse-indl-quick.sh` | Fast local disburseLoan — INDL minimal stage suite (flat payload, member_details null, NEF | scripts/bin/disburse-any-quick.sh |
@@ -48,6 +48,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `java-comment-lint.sh` | Fail-closed Java comment verbosity lint (DPI paths). Agents only. | scripts/bin/ship-loop-gate.sh |
 | `jira-enrich.sh` | Fast JIRA handoff: one pack build + optional REST apply (single OAuth decrypt). | — |
 | `jira-fix-handoff.sh` | Build ADF JSON for SDCP fix handoff fields. No API calls — pipe into editJiraIssue. | — |
+| `jira-handoff.sh` | Jira handoff bridge — validates Dev-Test ADF BEFORE any post (Upgrade 7). | scripts/bin/capture-flow.sh |
 | `kg-enrich.sh` | Tiered KG enrich — see scripts/bin/enrichment-sync.sh and 20-ship-gates.mdc. | .cursor/hooks/kg-write-state.sh, .cursor/hooks/post-commit-kg-flag.sh, .cursor/hooks/pre-commit-kg-reminder.sh, scripts/bin/enrichment-audit.sh, scripts/bin/smoke-workspace.sh, scripts/bin/workspace-close.sh |
 | `kg-ensure-fresh.sh` | Ensure KG matches live multi-repo branch-set before money-path analysis. | .cursor/hooks/kg-session-watermark.sh, scripts/bin/enrichment-audit.sh, scripts/bin/setup-local.sh, scripts/bin/ship-knowledge-gate.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-health.sh, scripts/bin/workspace-sanity.sh |
 | `kg-quick-check.sh` | Cheap branch-set check — no sync. Exit 0=fresh, 1=stale/missing. | scripts/bin/kg-ensure-fresh.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-health.sh, scripts/testing/workspace_autopilot.py |
@@ -92,5 +93,5 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `workspace-verify.sh` | Back-compat entrypoint: older rules/tools call `workspace-verify.sh`. | scripts/bin/install-user-cursor-gates.sh, scripts/bin/workspace-bootstrap.sh |
 | `write-intelligence-hub.sh` | Regenerate session intelligence hub (--fast skips slow kg subprocess). | scripts/bin/ship-knowledge-gate.sh, scripts/bin/smoke-workspace.sh, scripts/bin/sync-intelligence.sh, scripts/bin/sync-test-intelligence.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-sanity.sh, scripts/testing/agent_router.py, scripts/testing/workspace_autopilot.py |
 
-_Generated 87 entries._
+_Generated 88 entries._
 

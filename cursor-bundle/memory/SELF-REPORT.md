@@ -1,6 +1,6 @@
 # SELF-REPORT — week of 2026-07-22
 
-Generated: 2026-07-22T15:35:43Z · Upgrade 8 self-metrics
+Generated: 2026-07-22T15:49:44Z · Upgrade 8 self-metrics
 
 ## Fixed tax
 - alwaysApply bytes: **30120** / soft ceiling **35000** — OK
@@ -8,10 +8,11 @@ Generated: 2026-07-22T15:35:43Z · Upgrade 8 self-metrics
 
 ## Speed (wall-clock by process class)
 - `question`: p50=0.01s p95=0.01s n=1
+- `read-only-rca`: p50=0.02s p95=0.02s n=1
 
 ## KG
-- cache hit ratio (telemetry window): 0% (hit=0 miss=2)
-- gate hits (PROVISIONAL): 6 — revisit kg-profiles.md if ≥8/week
+- cache hit ratio (telemetry window): 0% (hit=0 miss=5)
+- gate hits (PROVISIONAL): 8 — revisit kg-profiles.md if ≥8/week
 
 ## QA bar
 - enforced acceptance domains: **4/21** — death_foreclosure, disbursement, repayment, foreclosure
@@ -25,4 +26,5 @@ Generated: 2026-07-22T15:35:43Z · Upgrade 8 self-metrics
 
 ## Red flags
 - gap stubs still high (18)
+- KG gate hits 8 — consider kg-profiles
 
