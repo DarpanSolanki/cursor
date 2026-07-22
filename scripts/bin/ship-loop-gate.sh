@@ -240,6 +240,8 @@ PY
       echo "→ ops bin hygiene"
       bash "$ROOT/scripts/bin/ops-bin-hygiene.sh" || exit 1
     fi
+    echo "→ acceptance ratchet + money verify_mode"
+    python3 "$ROOT/scripts/lib/registry_proposals.py" check || exit 1
     ;;
   service)
     echo "→ ntest validate (service tier)"
@@ -381,3 +383,7 @@ print(f"ship-loop PASS at {now} ({label})")
 PY
 
 echo "=== ship-loop-gate: PASS ==="
+# Auto-draft regression pin for money/service ships (human promotes)
+if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then
+  python3 "$ROOT/scripts/lib/registry_proposals.py" draft --force 2>/dev/null | head -20 || true
+fi

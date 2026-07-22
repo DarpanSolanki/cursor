@@ -1,0 +1,654 @@
+{
+  "version": 1,
+  "updated": "2026-07-22T15:25:40Z",
+  "proposals": [
+    {
+      "id": "proposal.unknown.unknownApi.20260722",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "unknown",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "unknownApi",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [],
+        "pending_files": [
+          "scripts/lib/registry_proposals.py",
+          "scripts/lib/acceptance_coverage_manifest.json",
+          "scripts/lib/acceptance_coverage.py",
+          "scripts/testing/ntest_telemetry.py",
+          "scripts/bin/jira-handoff.sh",
+          "scripts/testing/ntest.py",
+          "scripts/lib/ship_discipline_gate.py",
+          "scripts/bin/intel-automation.sh",
+          "scripts/bin/capture-flow.sh",
+          "scripts/bin/workspace-doctor.sh",
+          "scripts/testing/.verify-mode-grandfather",
+          "scripts/bin/ship-loop-gate.sh"
+        ],
+        "tier": "workspace"
+      }
+    },
+    {
+      "id": "gap.batch_other.batch_other",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "batch_other",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "batch_other",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain batch_other gap=30 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 30,
+        "apis": 30,
+        "registry_apis": 0,
+        "guard_cases": []
+      }
+    },
+    {
+      "id": "gap.death_foreclosure.loanDeathForeclosure",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanDeathForeclosure",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain death_foreclosure gap=9 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 9,
+        "apis": 9,
+        "registry_apis": 0,
+        "guard_cases": [
+          "dcf.force_bill_crn_sim",
+          "dcf.principal_split_sim",
+          "dcf.group_parent_last_child_e2e",
+          "dcf.group_parent_last_child_e2e_clean",
+          "dcf.group_parent_last_child_e2e_full",
+          "dcf.group_parent_last_child_fresh_e2e"
+        ]
+      }
+    },
+    {
+      "id": "gap.disbursement.disburseLoan",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "disbursement",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "disburseLoan",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain disbursement gap=31 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 31,
+        "apis": 34,
+        "registry_apis": 3,
+        "guard_cases": [
+          "disbursement.quick",
+          "disbursement.child_sanction_date_sim",
+          "disbursement.clb_rep_acct_dedupe_sim",
+          "disbursement.neft_crr_exact_audit_callback_sim",
+          "disbursement.jlg",
+          "disbursement.shg",
+          "disbursement.indl",
+          "disbursement.any"
+        ]
+      }
+    },
+    {
+      "id": "gap.eod_bod.runEODJobs",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "eod_bod",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "runEODJobs",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain eod_bod gap=5 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 5,
+        "apis": 5,
+        "registry_apis": 0,
+        "guard_cases": [
+          "accounting.eod_core_batches"
+        ]
+      }
+    },
+    {
+      "id": "gap.foreclosure.individualChildLoanForeclosure",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "individualChildLoanForeclosure",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain foreclosure gap=11 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 11,
+        "apis": 16,
+        "registry_apis": 5,
+        "guard_cases": [
+          "foreclosure.individual_child"
+        ]
+      }
+    },
+    {
+      "id": "gap.insurance.insurance",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "insurance",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "insurance",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain insurance gap=7 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 7,
+        "apis": 7,
+        "registry_apis": 0,
+        "guard_cases": [
+          "dcf.insurance_reupload_index_audit"
+        ]
+      }
+    },
+    {
+      "id": "gap.mandates_si.fetchFailedSIPresentationList",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "mandates_si",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "fetchFailedSIPresentationList",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain mandates_si gap=12 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 12,
+        "apis": 13,
+        "registry_apis": 1,
+        "guard_cases": [
+          "si.fetch_failed_presentation_list"
+        ]
+      }
+    },
+    {
+      "id": "gap.npa_dpd.loanAccountDpdCalcJob",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "npa_dpd",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "loanAccountDpdCalcJob",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain npa_dpd gap=12 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 12,
+        "apis": 13,
+        "registry_apis": 1,
+        "guard_cases": [
+          "batch.dpd_calc"
+        ]
+      }
+    },
+    {
+      "id": "gap.other.other",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "other",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "other",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain other gap=44 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 44,
+        "apis": 45,
+        "registry_apis": 1,
+        "guard_cases": []
+      }
+    },
+    {
+      "id": "gap.portfolio.executeLMSPortfolioTransfer",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "portfolio",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "executeLMSPortfolioTransfer",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain portfolio gap=1 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 1,
+        "apis": 1,
+        "registry_apis": 0,
+        "guard_cases": []
+      }
+    },
+    {
+      "id": "gap.prepayment.loanAccountPartPrepayment",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "prepayment",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanAccountPartPrepayment",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain prepayment gap=3 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 3,
+        "apis": 7,
+        "registry_apis": 4,
+        "guard_cases": [
+          "dpic.part_prepayment_write_e2e"
+        ]
+      }
+    },
+    {
+      "id": "gap.read_inquiry.getLoanAccountOverviewDetails",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "read_inquiry",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "getLoanAccountOverviewDetails",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain read_inquiry gap=90 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 90,
+        "apis": 94,
+        "registry_apis": 4,
+        "guard_cases": [
+          "accounting.read_smoke"
+        ]
+      }
+    },
+    {
+      "id": "gap.reopening.loanAccountReopening",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "reopening",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanAccountReopening",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain reopening gap=2 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 2,
+        "apis": 3,
+        "registry_apis": 1,
+        "guard_cases": [
+          "reopening.child_payments_parity_sim"
+        ]
+      }
+    },
+    {
+      "id": "gap.repayment.loanRepayment",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "repayment",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanRepayment",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain repayment gap=2 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 2,
+        "apis": 5,
+        "registry_apis": 3,
+        "guard_cases": [
+          "dpic.repayment_e2e"
+        ]
+      }
+    },
+    {
+      "id": "gap.restructuring.childLoanRestructuring",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "restructuring",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "childLoanRestructuring",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain restructuring gap=12 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 12,
+        "apis": 12,
+        "registry_apis": 0,
+        "guard_cases": [
+          "dpic.overview_api",
+          "dpic.summary_api"
+        ]
+      }
+    },
+    {
+      "id": "gap.reversal.loanAccountTransactionReversal",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "reversal",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanAccountTransactionReversal",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain reversal gap=5 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 5,
+        "apis": 6,
+        "registry_apis": 1,
+        "guard_cases": [
+          "dpic.repayment_reversal_e2e"
+        ]
+      }
+    },
+    {
+      "id": "gap.write_ops.write_ops",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "write_ops",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "write_ops",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain write_ops gap=44 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 44,
+        "apis": 45,
+        "registry_apis": 1,
+        "guard_cases": []
+      }
+    },
+    {
+      "id": "gap.writeoff.loanWriteoff",
+      "status": "stub",
+      "source": "gap_miner",
+      "created_at": "2026-07-22T15:25:15Z",
+      "domain": "writeoff",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "loanWriteoff",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "GAP STUB — domain writeoff gap=1 apis; human designs fixture",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path"
+          ]
+        }
+      },
+      "evidence": {
+        "gap": 1,
+        "apis": 1,
+        "registry_apis": 0,
+        "guard_cases": []
+      }
+    },
+    {
+      "id": "proposal.foreclosure.individualChildLoanForeclosure.20260722",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-22T15:25:40Z",
+      "domain": "foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "individualChildLoanForeclosure",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "loan_account",
+              "assert": "TODO: value-level expect for loan_account from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+            },
+            {
+              "table": "loan_due_details",
+              "assert": "TODO: value-level expect for loan_due_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+            },
+            {
+              "table": "loan_account_payments_details",
+              "assert": "TODO: value-level expect for loan_account_payments_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+            },
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "individualChildLoanForeclosure"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/ForeclosureProcessor.java"
+        ],
+        "tier": "money"
+      }
+    }
+  ]
+}

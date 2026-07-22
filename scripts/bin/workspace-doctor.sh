@@ -101,6 +101,16 @@ else
   ok "KG telemetry (no consecutive-miss / slow-build flags)"
 fi
 
+echo ""
+echo "--- ntest flaky ---"
+_flaky="$(PYTHONPATH=scripts/testing python3 -c "from ntest_telemetry import doctor_report; print(doctor_report())" 2>/dev/null || echo none)"
+if [[ "$_flaky" == "none flaky" || "$_flaky" == "none" ]]; then
+  ok "ntest telemetry: none flaky"
+else
+  echo "  WARN $_flaky"
+  ok "ntest telemetry (flaky flagged — money never auto-skipped)"
+fi
+
 if [[ "$ENV_SMOKE" == 1 || "$MODE" == "full" ]]; then
   echo ""
   echo "--- env-smoke ---"

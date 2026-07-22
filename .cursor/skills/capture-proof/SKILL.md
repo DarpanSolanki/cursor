@@ -32,6 +32,8 @@ Money path fix is coded **and** test passed (unit / ntest / sanity).
 
 ```bash
 scripts/bin/capture-flow.sh --ftg ftf:<flow_id> --jira SDCP-XXXX --test "<TestClass>"
+# Dev-Test ADF → scripts/scratch/jira-handoff/; validate then human go:
+bash scripts/bin/jira-handoff.sh --dry-run --jira SDCP-XXXX
 cursor-bundle/kg/bin/changelog-add.sh --kg-flow "## DATE | acct \`sha\` | ... | kg-flow | title" "apiName …"
 scripts/bin/sync-intelligence.sh --quick
 scripts/bin/ship-knowledge-gate.sh

@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "description": "Acceptance-coverage contract \u2014 fail-closed for enforced domains on money/service ship. Existing domains migrate via backlog_domains until annotated.",
+  "version": 2,
+  "description": "Acceptance-coverage contract \u2014 fail-closed for enforced domains on money/service ship. Enforced list is RATCHET-only (may grow, never shrink without replacement).",
   "required_dimensions_default": [
     "happy_path",
     "dirty_state",
@@ -15,15 +15,46 @@
       "replay_idempotency",
       "downstream_ui",
       "adjacent_sibling"
+    ],
+    "disbursement": [
+      "happy_path",
+      "dirty_state",
+      "replay_idempotency",
+      "downstream_ui"
+    ],
+    "repayment": [
+      "happy_path",
+      "dirty_state",
+      "replay_idempotency",
+      "downstream_ui"
+    ],
+    "foreclosure": [
+      "happy_path",
+      "dirty_state",
+      "replay_idempotency",
+      "downstream_ui"
     ]
   },
   "enforced_domains": [
-    "death_foreclosure"
+    "death_foreclosure",
+    "disbursement",
+    "repayment",
+    "foreclosure"
+  ],
+  "enforced_domains_min": [
+    "death_foreclosure",
+    "disbursement",
+    "repayment",
+    "foreclosure"
   ],
   "require_db_value_asserts": true,
   "db_assert_enforced_on_money_tier": [
-    "disbursement"
+    "disbursement",
+    "repayment",
+    "foreclosure",
+    "death_foreclosure"
   ],
+  "require_money_verify_mode": true,
   "domain_money_tables": {
     "death_foreclosure": [
       "loan_account_billing_details",
@@ -39,6 +70,18 @@
       "loan_disbursement_transaction",
       "transaction_master",
       "client_request_response_log"
+    ],
+    "repayment": [
+      "loan_account",
+      "loan_due_details",
+      "loan_account_payments_details",
+      "transaction_master"
+    ],
+    "foreclosure": [
+      "loan_account",
+      "loan_due_details",
+      "loan_account_payments_details",
+      "transaction_master"
     ]
   },
   "domain_money_table_required_columns": {
@@ -77,16 +120,116 @@
     "transaction_master": [
       "client_reference_number",
       "original_amount"
+    ],
+    "loan_account_payments_details": [
+      "amount",
+      "principal_amount"
     ]
   },
+  "backlog_domains_ranked": [
+    {
+      "domain": "dpi",
+      "severity": "high",
+      "note": "DPI jobs + certify paths \u2014 next enforce after foreclosure soak"
+    },
+    {
+      "domain": "prepayment",
+      "severity": "high",
+      "note": "part/full prepayment write paths"
+    },
+    {
+      "domain": "reversal",
+      "severity": "medium",
+      "note": "repayment/foreclosure reversal"
+    },
+    {
+      "domain": "restructuring",
+      "severity": "medium",
+      "note": "restructure BPI + schedule"
+    },
+    {
+      "domain": "reopening",
+      "severity": "medium",
+      "note": "child reopen payments parity"
+    },
+    {
+      "domain": "batch",
+      "severity": "medium",
+      "note": "generic batch_other / interest billing"
+    },
+    {
+      "domain": "interest_accrual",
+      "severity": "medium",
+      "note": "accrual booking"
+    },
+    {
+      "domain": "npa_dpd",
+      "severity": "low",
+      "note": "NPA/DPD transitions"
+    },
+    {
+      "domain": "writeoff",
+      "severity": "low",
+      "note": "writeoff posting"
+    },
+    {
+      "domain": "insurance",
+      "severity": "low",
+      "note": "non-death insurance paths"
+    },
+    {
+      "domain": "recurring_collection",
+      "severity": "low",
+      "note": "bulk collection"
+    },
+    {
+      "domain": "eod_bod",
+      "severity": "low",
+      "note": "EOD/BOD orchestration"
+    },
+    {
+      "domain": "read_inquiry",
+      "severity": "low",
+      "note": "read APIs \u2014 lighter bar"
+    },
+    {
+      "domain": "write_ops",
+      "severity": "low",
+      "note": "misc write ops"
+    },
+    {
+      "domain": "mandates_si",
+      "severity": "low",
+      "note": "SI/mandates"
+    },
+    {
+      "domain": "portfolio",
+      "severity": "low",
+      "note": "portfolio transfers"
+    },
+    {
+      "domain": "loan_billing",
+      "severity": "medium",
+      "note": "EMI billing batch"
+    }
+  ],
   "backlog_domains": {
-    "disbursement": "partial \u2014 dimensions backlog; value-level db_asserts enforced for full disbursement money tables on money tier (2026-07-20 column-audit upgrade)",
-    "repayment": "severity \u2014 severity=high",
-    "prepayment": "severity \u2014 severity=medium",
-    "foreclosure": "migrate \u2014 severity=high",
-    "dpi": "migrate \u2014 severity=high",
-    "batch": "migrate \u2014 severity=medium",
-    "reversal": "migrate \u2014 severity=medium",
-    "restructuring": "migrate \u2014 severity=low"
+    "dpi": "ranked #1 \u2014 severity=high",
+    "prepayment": "ranked #2 \u2014 severity=high",
+    "reversal": "ranked #3 \u2014 severity=medium",
+    "restructuring": "ranked #4 \u2014 severity=medium",
+    "reopening": "ranked #5 \u2014 severity=medium",
+    "batch": "ranked #6 \u2014 severity=medium",
+    "interest_accrual": "ranked #7 \u2014 severity=medium",
+    "loan_billing": "ranked \u2014 severity=medium",
+    "npa_dpd": "ranked \u2014 severity=low",
+    "writeoff": "ranked \u2014 severity=low",
+    "insurance": "ranked \u2014 severity=low",
+    "recurring_collection": "ranked \u2014 severity=low",
+    "eod_bod": "ranked \u2014 severity=low",
+    "read_inquiry": "ranked \u2014 severity=low",
+    "write_ops": "ranked \u2014 severity=low",
+    "mandates_si": "ranked \u2014 severity=low",
+    "portfolio": "ranked \u2014 severity=low"
   }
 }

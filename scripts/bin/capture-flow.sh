@@ -29,6 +29,7 @@ SOURCES="$ROOT/cursor-bundle/flow-test/sources.jsonl"
 LINE=$(python3 - <<PY
 import json
 ftg = "$FTG"
+fid = "$FID"
 test = "$TEST"
 jira = "$JIRA"
 verified = "$VERIFIED"
@@ -54,6 +55,57 @@ PY
 
 echo "$LINE" >> "$SOURCES"
 echo "Appended capture row to sources.jsonl"
+
+# Dev-Test ADF export for Jira handoff (Upgrade 7) — does NOT post
+PROOF_DIR="$ROOT/scripts/scratch/jira-handoff"
+mkdir -p "$PROOF_DIR"
+ADF_OUT="$PROOF_DIR/${JIRA:-NOJIRA}-dev-test.adf.json"
+python3 - "$ADF_OUT" "$FTG" "$JIRA" "$TEST" "$VERIFIED" <<'PY'
+import json, sys
+from pathlib import Path
+out, ftg, jira, test, verified = sys.argv[1:6]
+doc = {
+  "version": 1,
+  "type": "doc",
+  "content": [
+    {"type": "heading", "attrs": {"level": 3}, "content": [{"type": "text", "text": "Dev Test evidence"}]},
+    {"type": "table", "content": [
+      {"type": "tableRow", "content": [
+        {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Field"}]}]},
+        {"type": "tableHeader", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Value"}]}]},
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "FTG"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": ftg}]}]},
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Jira"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": jira or "-"}]}]},
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Test"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": test or "-"}]}]},
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Verified"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": verified}]}]},
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Result"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "PASS (captured)"}]}]},
+      ]},
+    ]},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Post via jira-handoff.sh --dry-run then explicit user go + MCP."}]},
+  ],
+}
+Path(out).write_text(json.dumps(doc, indent=2), encoding="utf-8")
+print(out)
+PY
+echo "Dev-Test ADF → $ADF_OUT"
+if [[ -n "$JIRA" ]]; then
+  bash "$ROOT/scripts/bin/jira-handoff.sh" --dry-run --jira "$JIRA" --adf "$ADF_OUT" || true
+fi
+
 python3 - <<PY 2>/dev/null || true
 import sys
 sys.path.insert(0, "$ROOT/scripts/testing")

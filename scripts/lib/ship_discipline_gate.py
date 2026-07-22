@@ -220,6 +220,22 @@ def check(*, hard: bool = True) -> int:
             + (detail[-1] if detail else "required dimensions missing / anti-pattern")
         )
 
+    # Money cases must declare verify_mode (Upgrade 7); domain money ships fail if any
+    # touched domain's money impact cases lack verify_mode.
+    try:
+        import registry_proposals
+
+        vm_errs = registry_proposals.check_money_verify_modes()
+        if vm_errs and (pending.get("tier") or "").lower() == "money":
+            errors.extend(vm_errs[:12])
+            if len(vm_errs) > 12:
+                errors.append(f"… +{len(vm_errs) - 12} more money cases missing verify_mode")
+        # Ratchet on every money/service check
+        if (pending.get("tier") or "").lower() in ("money", "service", "workspace"):
+            errors.extend(registry_proposals.check_ratchet())
+    except Exception as exc:  # pragma: no cover
+        errors.append(f"verify_mode/ratchet gate error: {exc}")
+
     # Fail-closed reuse-query gate for any *Repository.java / *DAOService.java query change.
     try:
         import reuse_query_gate

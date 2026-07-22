@@ -234,7 +234,16 @@ def db_value_asserts_ok(domain: str, ordered_cases: list[str], reg: dict, man: d
     money_tables = list((man.get("domain_money_tables") or {}).get(domain) or [])
     if not money_tables:
         return []
-    required_cols = man.get("domain_money_table_required_columns") or {}
+    required_cols_raw = man.get("domain_money_table_required_columns") or {}
+    # Prefer domain-scoped map when present: domain_money_table_required_columns_by_domain
+    by_dom = (man.get("domain_money_table_required_columns_by_domain") or {}).get(domain) or {}
+    required_cols = {**required_cols_raw, **by_dom} if by_dom else required_cols_raw
+    # For non-disbursement domains, do not require disbursement-only columns on loan_account
+    if domain != "disbursement" and "loan_account" in required_cols:
+        required_cols = dict(required_cols)
+        required_cols["loan_account"] = [
+            c for c in required_cols["loan_account"] if c not in ("disbursement_status", "loan_product_id", "loan_amount")
+        ] or ["loan_status"]
     errors: list[str] = []
     covered: set[str] = set()
     covered_cols: dict[str, set[str]] = {t: set() for t in money_tables}

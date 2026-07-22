@@ -1,0 +1,3 @@
+# Non-money cases missing verify_mode may be listed here while chipping away (Upgrade 7).
+# Money cases are NEVER grandfathered — ship-discipline fails closed.
+# Format: one case_id per line

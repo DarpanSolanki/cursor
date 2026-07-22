@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 7 — QA bar self-improving
+Enforced acceptance: death_foreclosure+disbursement+repayment+foreclosure (ratchet). All 56 money cases declare verify_mode. registry-proposals auto-draft + gap miner; ntest telemetry + flaky quarantine proposals; capture-flow Dev-Test ADF + jira-handoff --dry-run (post gated).
+
 ## 2026-07-22 | workspace | Upgrade 6 — KG train-safety (light)
 Money-task KG STATE banner + HARD STOP on PROVISIONAL/mismatch; MCP/CLI provenance header; kg-session-sync/kg-switch telemetry (last 20); doctor consecutive-miss/slow-build flags; decision doc defers multi-profile overlays (`brain/decisions/kg-profiles.md`).
 

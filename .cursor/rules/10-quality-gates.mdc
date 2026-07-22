@@ -90,6 +90,7 @@ Pass claims only when ntest/script PASS this session. `ORCH_SIBLING_SIM` / `PROC
 Anti-patterns forbidden as Pass: amount≠principal without documented legs; "a labd exists" without dedicated force-bill visibility (EMI-labd hijack must FAIL); happy-path-only without dirty fixture; parent scope silently dropped (Must be Pass or Out-of-scope-documented); SQL-only as "webapp"; presence-only DB asserts.
 Debug relax flags (`ACCEPTANCE_STRICT=0`, etc.) **never** produce a handoff Pass.
 Machine gate: `acceptance_coverage.py` — fail closed on subset / SQL-only webapp / presence-only.
+**Enforced domains (ratchet):** `death_foreclosure`, `disbursement`, `repayment`, `foreclosure` — may only GROW (`registry_proposals.py ratchet`). All `smoke_tier:money` cases must declare `verify_mode` (ship-discipline fails otherwise).
 
 ### Gate E — Outputs
 Diplomatic RCA; tiered L0/L1 minimum; minimal-fix gate before propose.

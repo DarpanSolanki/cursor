@@ -152,7 +152,17 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _telemetry(case_id: str, passed: bool, duration_s: float = 0.0) -> None:
+    try:
+        from ntest_telemetry import append_case_result
+
+        append_case_result(case_id, passed, duration_s)
+    except Exception:
+        pass
+
+
 def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
+    t0 = time.time()
     env = {**_correlators(), **_resolve_defaults(case)}
     service = case.get("service", "accounting")
     api = case.get("api", case_id)
@@ -160,10 +170,12 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         ok, msg = health_check(service)
         print(f"health: {'OK' if ok else 'FAIL'} — {msg}")
         if not ok:
+            _telemetry(case_id, False, time.time() - t0)
             return 2, None
 
     r = _auto_before_test(api, service, case)
     if r != 0:
+        _telemetry(case_id, False, time.time() - t0)
         return r, None
 
     stan = fresh_stan(case_id.replace(".", "_"))
@@ -216,6 +228,7 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
             if wb.returncode != 0:
                 print(f"  [FAIL] batch_completed: wait_batch_job exited {wb.returncode}", file=sys.stderr)
                 _auto_on_failure(service, api, job_time)
+                _telemetry(case_id, False, time.time() - t0)
                 return 1, result
             print("  [PASS] batch_completed: COMPLETED")
         elif case.get("wait_batch"):
@@ -243,6 +256,7 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         except Exception:
             pass
         _trigger_intel_sync()
+        _telemetry(case_id, False, time.time() - t0)
         return 1, result
     try:
         from cross_learn import record_test_result
@@ -251,6 +265,7 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         pass
     _trigger_intel_sync()
     print("✓ PASS")
+    _telemetry(case_id, True, time.time() - t0)
     return 0, result
 
 
@@ -259,7 +274,10 @@ def _run_flow_case(case_id: str, case: dict) -> int:
     env = os.environ.copy()
     env.update({k: str(v) for k, v in (case.get("env") or {}).items()})
     print(f"=== {case_id} [flow] ===\n$ {cmd}")
-    return subprocess.call(cmd, shell=True, cwd=str(ROOT), env=env)
+    t0 = time.time()
+    rc = subprocess.call(cmd, shell=True, cwd=str(ROOT), env=env)
+    _telemetry(case_id, rc == 0, time.time() - t0)
+    return rc
 
 
 def cmd_run(args: argparse.Namespace) -> int:
