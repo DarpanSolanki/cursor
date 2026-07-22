@@ -26,6 +26,8 @@
 
 !cursor-bundle/
 cursor-bundle/*
+!cursor-bundle/kg/mcp/
+!cursor-bundle/kg/mcp/**
 !cursor-bundle/brain/
 !cursor-bundle/brain/**
 !cursor-bundle/memory/

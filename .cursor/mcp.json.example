@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "trustt-kg": {
+      "command": "python3",
+      "args": [
+        "cursor-bundle/kg/mcp/kg_mcp_server.py"
+      ]
+    }
+  },
+  "_comment": "Project MCP. mcp-atlassian removed (broken command + plaintext token). Use Cursor plugin-atlassian for Jira. Local trustt-kg wraps kg.py read-only."
+}
