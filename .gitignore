@@ -45,6 +45,8 @@ scripts/*
 !scripts/bin/**
 !scripts/lib/
 !scripts/lib/**
+!scripts/env/
+!scripts/env/**
 !scripts/testing/
 !scripts/testing/**
 !scripts/sql/

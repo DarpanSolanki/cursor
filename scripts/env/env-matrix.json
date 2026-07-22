@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "updated": "2026-07-22",
+  "notes": "Paths/names only \u2014 credentials live in scripts/db/env/*.env (gitignored). Cells verified from disk; never invent values.",
+  "environments": {
+    "local": {
+      "db_wrapper": "scripts/db-local.sh",
+      "db_host": "127.0.0.1",
+      "db_port": 5433,
+      "db_name": "yugabyte",
+      "api_base": {
+        "accounting": "http://localhost:8002",
+        "source": "scripts/testing/lib/config.py ACCOUNTING_BASE_URL default"
+      },
+      "deploy_method": "local gradle / novopay-service.sh",
+      "log_access": "scripts/bin/novopay-logs.sh (local service logs)",
+      "reachable_from_here": true,
+      "write_policy": "full (local Yugabyte via db-local-write / approved helpers only)",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa1": {
+      "db_wrapper": "scripts/db-qa1.sh",
+      "db_cred_env": "scripts/db/env/qa1.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa1",
+      "db_host": "172.31.2.82",
+      "db_port": 5433,
+      "db_name": "mfi_qa1",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa2": {
+      "db_wrapper": "scripts/db-qa2.sh",
+      "db_cred_env": "scripts/db/env/qa2.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa2",
+      "db_host": "172.31.2.70",
+      "db_port": 5433,
+      "db_name": "mfi_qa2",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa3": {
+      "db_wrapper": "scripts/db-qa3.sh",
+      "db_cred_env": "scripts/db/env/qa3.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa3",
+      "db_host": "172.31.2.98",
+      "db_port": 5433,
+      "db_name": "mfi_qa3",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa4": {
+      "db_wrapper": "scripts/db-qa4.sh",
+      "db_cred_env": "scripts/db/env/qa4.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa4",
+      "db_host": "172.31.2.147",
+      "db_port": 5433,
+      "db_name": "mfi_qa4",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa5": {
+      "db_wrapper": "scripts/db-qa5.sh",
+      "db_cred_env": "scripts/db/env/qa5.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa5",
+      "db_host": "172.31.2.7",
+      "db_port": 5433,
+      "db_name": "mfi_qa5",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "qa6": {
+      "db_wrapper": "scripts/db-qa6.sh",
+      "db_cred_env": "scripts/db/env/qa6.env",
+      "db_manifest": "scripts/db/env/qa-manifest.json#qa6",
+      "db_host": "172.31.2.61",
+      "db_port": 5433,
+      "db_name": "mfi_qa6",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": true,
+      "write_policy": "read-only unless user explicitly directs write",
+      "reachable_checked_at": "2026-07-22T15:07:05Z"
+    },
+    "uat": {
+      "db_wrapper": "unknown",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": "unknown",
+      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)"
+    },
+    "prod": {
+      "db_wrapper": "unknown",
+      "api_base": "unknown",
+      "deploy_method": "unknown",
+      "log_access": "unknown",
+      "reachable_from_here": false,
+      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)"
+    }
+  }
+}

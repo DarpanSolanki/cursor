@@ -1,0 +1,29 @@
+# env-matrix TODO — human-fill cells (agents must not invent values)
+
+- qa1.api_base — HTTP base for QA1 accounting/gateway (unknown on disk)
+- qa1.deploy_method — how code lands on QA1
+- qa1.log_access — log path or log tool for QA1
+- qa2.api_base
+- qa2.deploy_method
+- qa2.log_access
+- qa3.api_base
+- qa3.deploy_method
+- qa3.log_access
+- qa4.api_base
+- qa4.deploy_method
+- qa4.log_access
+- qa5.api_base
+- qa5.deploy_method
+- qa5.log_access
+- qa6.api_base
+- qa6.deploy_method
+- qa6.log_access
+- uat.db_wrapper — no wrapper on disk
+- uat.api_base
+- uat.deploy_method
+- uat.log_access
+- uat.reachable_from_here
+- prod.db_wrapper — no wrapper on disk (reads via ops only if ever added)
+- prod.api_base
+- prod.deploy_method
+- prod.log_access
