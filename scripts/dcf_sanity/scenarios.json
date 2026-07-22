@@ -133,7 +133,59 @@
         "f45dbe3bd",
         "5b1b928ed"
       ],
-      "note": "DO NOT waive parent PRIN on last child \u2014 pay full parent POS via appropriation + RSCH. A2 (5b1b928ed): EXTRA>0 \u2192 parent RSCH nets EXCESS/EXTRA (not full POS statement). B: force-bill labd txn_ref \u2192 DFC_PRTL_BILL_*. e2e asserts assert_a2_extra_parent_rsch + assert_force_bill_labd. Non-last: parent ACTIVE + schedule regen. Last: loan_status+account.status CLOSED, net_amount=0 before payment_details save. GAP-074 INT-180 still open/parked on 3.7.1. | Obs3 Accrued<=Original + webapp summary/overview/statement (2026-07-17)."
+      "note": "DO NOT waive parent PRIN on last child \u2014 pay full parent POS via appropriation + RSCH. Two-path reschedule spine: (1) non-last child DFC inserts RSTCRE PENDING on parent loan_account_events_queue; (2) childLoanEventProcessingBatchJob must fire+wait before last-child DFC \u2014 assert event_status=C and filler_1 IS NULL; assert no PENDING RSTCRE pre-last-child. A2 (5b1b928ed): EXTRA>0 \u2192 parent RSCH nets EXCESS/EXTRA on last child only. B: force-bill labd via BILLING + prin=0 + client_ref accountId||valueDateMs. e2e matrix S1-S8 @ 9b6454df6. GAP-074 INT-180 (parent INT pending e.g. \u20b9317) still open/parked on 3.7.1 \u2014 separate from RSTCRE; e2e FAILs not WARNs."
+    },
+    {
+      "id": "S08_matrix",
+      "label": "SDCP-10199 local test matrix S1-S8 (group SHG parent+2 children)",
+      "parent_scenario": "S08_shg_parent_last_child",
+      "matrix_runs": [
+        {
+          "id": "S1",
+          "env": {
+            "ACCEPTANCE_STRICT": "1",
+            "SEED_EXTRA": "0",
+            "DCF_SEED_EMI_LABD": "0"
+          }
+        },
+        {
+          "id": "S2_S3",
+          "env": {
+            "ACCEPTANCE_STRICT": "1",
+            "SEED_EXTRA": "1",
+            "DCF_SEED_EMI_LABD": "1"
+          }
+        }
+      ],
+      "local_e2e": "python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",
+      "canonical_branch": "mfi_integration_v3.4.2.4",
+      "key_commit": "9b6454df6"
+    },
+    {
+      "id": "S09_fresh_group",
+      "label": "Fresh SHG group per run — disburse parent+2 children, billing sync, full DFC matrix",
+      "loan_prep": "DCF_FRESH_GROUP=1 real disburseLoan + childLoanEventProcessingBatchJob + loanAccountBillingJob through death-1",
+      "expected_txn_types": [
+        "DEATH_FORECLOSURE",
+        "BILLING",
+        "RSCH_DEATH_FORECLOSURE"
+      ],
+      "expected_db": {
+        "parent_loan_status": "CLOSED",
+        "parent_account_status": "CLOSED",
+        "a2_extra_parent_rsch_net": true,
+        "b_force_bill_labd_linked": true,
+        "rsch_payment_principal_not_doubled": true
+      },
+      "local_e2e": "DCF_FRESH_GROUP=1 DCF_E2E_NO_SNAPSHOT=1 ntest run dcf.group_parent_last_child_fresh_e2e",
+      "env": {
+        "DCF_FRESH_GROUP": "1",
+        "DCF_E2E_NO_SNAPSHOT": "1",
+        "ACCEPTANCE_STRICT": "1",
+        "SEED_EXTRA": "1",
+        "DCF_SEED_EMI_LABD": "1"
+      },
+      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore."
     },
     {
       "id": "S09_reverse_feed_reupload",

@@ -1314,9 +1314,105 @@
       "na": {
         "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same numeric client_ref no-op). Blocker: no second insurance-job fire harness without claim reset."
       },
-      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; Product excess=0 + parent FB; column-level fail-closed asserts."
+      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; Product excess=0 + parent FB; non-last RSCH parity; GL assert_gl_balance_for_loan; txn assert_transaction_posting_audit; amount assert_amount_calculations_*; matrix S1-S8 @ 9b6454df6."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199): ACCEPTANCE_STRICT=1. Obs1 dedicated force-bill labd (child+parent, no EMI hijack); Obs2 amount==principal and excess_amount=0 on parent RSCH; Obs3 Accrued<=Original. Non-last child DFC + parent RSCH in same e2e. Webapp-bound summary/overview/statement. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. GAP-075 Product excess=0+parent FB (any-child, not last-child-only)."
+    "note": "QA acceptance (TDPQA-72/SDCP-10199): full matrix S1-S8. RSTCRE two-path spine: non-last child DFC \u2192 RSTCRE PENDING \u2192 fire+wait childLoanEventProcessingBatchJob \u2192 assert_rstcre_drained (event_status=C, filler_1 NULL) \u2192 no PENDING RSTCRE before last-child. GAP-074 parent INT pending FAIL (not WARN). Fresh fixture: DCF_FRESH_GROUP=1 or unset PARENT_LAN. Clean: ACCEPTANCE_STRICT=1 SEED_EXTRA=0 DCF_SEED_EMI_LABD=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py."
+  },
+  "dcf.group_parent_last_child_e2e_clean": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "shg",
+      "sdcp-10199"
+    ],
+    "title": "SHG group last-child DFC clean path (S1: no EXTRA, no dirty EMI labd)",
+    "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+    "defaults": {
+      "SEED_EXTRA": "0",
+      "DCF_SEED_EMI_LABD": "0",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "boundary_zero"
+      ],
+      "verify_mode": "runtime",
+      "db_asserts": [
+        {
+          "table": "loan_account_payments_details",
+          "assert": "parent RSCH amount==principal_amount excess_amount=0; child DFC amount matches parent RSCH when EXTRA=0",
+          "checked_by": "assert_amount_calculations_last_child clean path"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn",
+          "checked_by": "assert_gl_balance_for_loan"
+        }
+      ]
+    },
+    "note": "Matrix S1 — last-child clean. Auto-discovers fresh fixture unless PARENT_LAN set."
+  },
+  "dcf.group_parent_last_child_fresh_e2e": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "ship_auto": true,
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "shg",
+      "sdcp-10199",
+      "fresh_fixture"
+    ],
+    "title": "SHG group DFC e2e on fresh-disbursed group (S09_fresh_group)",
+    "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+    "defaults": {
+      "DCF_FRESH_GROUP": "1",
+      "DCF_E2E_NO_SNAPSHOT": "1",
+      "SEED_EXTRA": "1",
+      "DCF_SEED_EMI_LABD": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "dirty_state",
+        "downstream_ui",
+        "adjacent_sibling"
+      ],
+      "verify_mode": "runtime",
+      "db_asserts": [
+        {
+          "table": "loan_account_billing_details",
+          "assert": "dedicated force-bill labd prin=0 on parent+children; EMI labd preserved when DCF_SEED_EMI_LABD=1",
+          "checked_by": "assert_force_bill_labd + assert_parent_force_bill_labd"
+        },
+        {
+          "table": "loan_account_payments_details",
+          "assert": "parent RSCH amount==principal_amount excess_amount=0",
+          "checked_by": "assert_a2_extra_parent_rsch + assert_parent_rsch_lapd_columns"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING",
+          "checked_by": "assert_gl_balance_for_loan"
+        }
+      ],
+      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
+    },
+    "note": "S09_fresh_group — one-shot LANs per run; DCF_FIXTURE_BLOCKLIST excludes corrupted fixtures."
   },
   "disbursement.quick": {
     "type": "flow",

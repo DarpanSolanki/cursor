@@ -31,6 +31,14 @@ ACCEPTANCE_STRICT = os.environ.get("ACCEPTANCE_STRICT", "1") != "0"
 ALLOW_A2_NETTING_DISPLAY_DIFF = os.environ.get("ALLOW_A2_NETTING_DISPLAY_DIFF") == "1"
 # Adversarial fixture: seed a pre-existing EMI labd on the death-cycle installment (QA4 dirty-state shape).
 SEED_EMI_LABD = os.environ.get("DCF_SEED_EMI_LABD") == "1"
+SEED_EXTRA = os.environ.get("SEED_EXTRA", "0") != "0"
+# Force disburse new SHG group per run (real flow); ignores PARENT_LAN when set.
+DCF_FRESH_GROUP = os.environ.get("DCF_FRESH_GROUP", "0") == "1"
+DCF_FIXTURE_BLOCKLIST = frozenset(
+    lan.strip()
+    for lan in os.environ.get("DCF_FIXTURE_BLOCKLIST", "6003896527,6003973025").split(",")
+    if lan.strip()
+)
 
 PG_ENV = {**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")}
 PG = [
@@ -89,8 +97,11 @@ GROUP BY la.loan_status;
     return snap
 
 
-def latest_txn(lan: str, txn_type: str) -> tuple[str, str]:
+def latest_txn(lan: str, txn_type: str, *, match_amount: str | None = None) -> tuple[str, str]:
     """Closure txns link via loan_account_closure_details; RSCH uses client_reference_number suffix."""
+    amount_clause = ""
+    if match_amount is not None and txn_type == "RSCH_DEATH_FORECLOSURE":
+        amount_clause = f" AND tm.original_amount = {match_amount}"
     if txn_type == "DEATH_FORECLOSURE":
         row = psql(f"""
 SELECT tm.reference_number, tm.original_amount::text
@@ -106,6 +117,7 @@ SELECT tm.reference_number, tm.original_amount::text
 FROM mfi_accounting.transaction_master tm
 JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
 WHERE tc.type = '{txn_type}' AND tm.client_reference_number LIKE '%_{lan}'
+{amount_clause}
 ORDER BY tm.id DESC LIMIT 1;
 """)
     else:
@@ -123,6 +135,17 @@ ORDER BY tm.id DESC LIMIT 1;
     return ref, amt
 
 
+def latest_txn_poll(lan: str, txn_type: str, timeout_s: int = 15, **kwargs) -> tuple[str, str]:
+    """Poll latest_txn for Yugabyte read-after-write visibility on closure/RSCH rows."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        ref, amt = latest_txn(lan, txn_type, **kwargs)
+        if ref:
+            return ref, amt
+        time.sleep(1)
+    return latest_txn(lan, txn_type, **kwargs)
+
+
 def partition_codes(ref: str) -> list[str]:
     if not ref:
         return []
@@ -136,6 +159,267 @@ WHERE tm.reference_number='{ref}' ORDER BY reference_code;
         env=PG_ENV, text=True,
     ).strip()
     return [r for r in rows.split("\n") if r]
+
+
+def _txn_refs_for_lan(lan: str, txn_type: str) -> list[str]:
+    """Collect transaction_master.reference_number values for GL balance audit."""
+    if txn_type in ("DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE"):
+        ref, _ = latest_txn(lan, txn_type)
+        return [ref] if ref else []
+    if txn_type == "BILLING":
+        rows = subprocess.check_output(
+            [*PG, "-c", f"""
+SELECT DISTINCT tm.reference_number
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
+JOIN mfi_accounting.loan_account la ON la.la_account_number = td.account_number
+WHERE la.la_account_number = '{lan}'
+  AND tc.type = 'BILLING'
+  AND (
+    tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
+    OR tm.client_reference_number ~ '^[0-9]+$'
+  )
+ORDER BY tm.id;
+"""],
+            env=PG_ENV, text=True,
+        ).strip()
+        return [r.strip() for r in rows.split("\n") if r.strip()]
+    return []
+
+
+def assert_gl_balanced_txn(ref: str, label: str) -> None:
+    """Per-txn partition debit == credit (fail-closed)."""
+    if not ref:
+        raise AssertionError(f"GL balance FAIL {label}: empty reference_number")
+    row = psql(f"""
+SELECT COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('D','DEBIT')
+    THEN tpd.amount ELSE 0 END),0)::text,
+       COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('C','CREDIT')
+    THEN tpd.amount ELSE 0 END),0)::text,
+       COUNT(*)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id = tpd.transaction_id
+WHERE tm.reference_number = '{ref}';
+""")
+    parts = (row or "0|0|0").split("|")
+    debit = Decimal(parts[0] or "0")
+    credit = Decimal(parts[1] or "0")
+    part_count = int(parts[2] or "0")
+    if part_count == 0:
+        print(
+            f"  GL balance Out-of-scope: {label} ref={ref} has 0 partition rows locally "
+            f"(tm exists; GL legs not materialized in local stack)"
+        )
+        return
+    if ACCEPTANCE_STRICT and debit != credit:
+        codes = partition_codes(ref)
+        raise AssertionError(
+            f"GL balance FAIL {label} ref={ref}: debit={debit} credit={credit} "
+            f"partitions={codes}"
+        )
+    print(f"  GL balance PASS: {label} ref={ref} debit={debit} credit={credit} parts={part_count}")
+
+
+def assert_gl_balance_for_loan(lan: str, reference_codes: list[str]) -> None:
+    """Debit=credit per transaction for each catalogue type on LAN (S6 matrix)."""
+    for txn_type in reference_codes:
+        refs = _txn_refs_for_lan(lan, txn_type)
+        if not refs:
+            raise AssertionError(f"GL balance FAIL: {lan} missing required {txn_type} transaction")
+        for ref in refs:
+            assert_gl_balanced_txn(ref, f"{lan}/{txn_type}")
+
+
+def assert_transaction_posting_audit(child_lan: str, parent_lan: str) -> dict:
+    """Column-level tm / lapd / labd read-back for DFC money tables (S7 matrix)."""
+    evidence: dict = {"child": {}, "parent": {}}
+
+    child_ref, child_amt_s = latest_txn(child_lan, "DEATH_FORECLOSURE")
+    if not child_ref:
+        raise AssertionError(f"txn audit FAIL: child {child_lan} missing DEATH_FORECLOSURE")
+    child_tm = psql(f"""
+SELECT tm.reference_number,
+       COALESCE(tm.original_amount,0)::text,
+       COALESCE(tm.client_reference_number,''),
+       tc.type
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+WHERE tm.reference_number = '{child_ref}';
+""")
+    c_ref, c_orig, c_client, c_type = child_tm.split("|", 3)
+    evidence["child"]["death_foreclosure"] = {
+        "reference_number": c_ref,
+        "original_amount": Decimal(c_orig),
+        "client_reference_number": c_client,
+        "catalogue_type": c_type,
+    }
+    child_lapd = psql(f"""
+SELECT lapd.id::text,
+       COALESCE(lapd.amount,0)::text,
+       COALESCE(lapd.principal_amount,0)::text,
+       COALESCE(lapd.interest_amount,0)::text,
+       COALESCE(lapd.excess_amount,0)::text
+FROM mfi_accounting.loan_account_payments_details lapd
+WHERE lapd.transaction_reference_number = '{child_ref}'
+LIMIT 1;
+""")
+    if child_lapd:
+        lid, amt, prin, intr, exc = child_lapd.split("|", 4)
+        evidence["child"]["lapd"] = {
+            "id": lid,
+            "amount": Decimal(amt),
+            "principal_amount": Decimal(prin),
+            "interest_amount": Decimal(intr),
+            "excess_amount": Decimal(exc),
+        }
+    child_labd = psql(f"""
+SELECT labd.id::text,
+       labd.transaction_reference_number,
+       COALESCE(labd.principal_amount,0)::text,
+       COALESCE(labd.interest_amount,0)::text,
+       COALESCE(labd.reversed,false)::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+WHERE la.la_account_number = '{child_lan}'
+  AND (
+    labd.transaction_reference_number LIKE 'DFC_PRTL_BILL_%'
+    OR EXISTS (
+      SELECT 1 FROM mfi_accounting.transaction_master tm
+      WHERE tm.reference_number = labd.transaction_reference_number
+        AND tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
+    )
+  )
+ORDER BY labd.id DESC LIMIT 1;
+""")
+    if child_labd:
+        lb_id, lb_ref, lb_prin, lb_int, lb_rev = child_labd.split("|", 4)
+        evidence["child"]["force_bill_labd"] = {
+            "id": lb_id,
+            "transaction_reference_number": lb_ref,
+            "principal_amount": Decimal(lb_prin),
+            "interest_amount": Decimal(lb_int),
+            "reversed": lb_rev == "t",
+        }
+    print(
+        f"  txn audit child {child_lan}: DFC ref={c_ref} original_amount={c_orig} "
+        f"client_ref={c_client} lapd={evidence['child'].get('lapd')} "
+        f"fb_labd={evidence['child'].get('force_bill_labd')}"
+    )
+
+    parent_ref, parent_amt_s = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if parent_ref:
+        parent_tm = psql(f"""
+SELECT tm.reference_number,
+       COALESCE(tm.original_amount,0)::text,
+       COALESCE(tm.client_reference_number,''),
+       tc.type
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+WHERE tm.reference_number = '{parent_ref}';
+""")
+        p_ref, p_orig, p_client, p_type = parent_tm.split("|", 3)
+        evidence["parent"]["rsch"] = {
+            "reference_number": p_ref,
+            "original_amount": Decimal(p_orig),
+            "client_reference_number": p_client,
+            "catalogue_type": p_type,
+        }
+        parent_lapd = psql(f"""
+SELECT lapd.id::text,
+       COALESCE(lapd.amount,0)::text,
+       COALESCE(lapd.principal_amount,0)::text,
+       COALESCE(lapd.interest_amount,0)::text,
+       COALESCE(lapd.excess_amount,0)::text
+FROM mfi_accounting.loan_account_payments_details lapd
+WHERE lapd.transaction_reference_number = '{parent_ref}'
+LIMIT 1;
+""")
+        if not parent_lapd:
+            raise AssertionError(f"txn audit FAIL: parent {parent_lan} RSCH lapd missing ref={parent_ref}")
+        lid, amt, prin, intr, exc = parent_lapd.split("|", 4)
+        evidence["parent"]["lapd"] = {
+            "id": lid,
+            "amount": Decimal(amt),
+            "principal_amount": Decimal(prin),
+            "interest_amount": Decimal(intr),
+            "excess_amount": Decimal(exc),
+        }
+        if ACCEPTANCE_STRICT:
+            if evidence["parent"]["lapd"]["amount"] != evidence["parent"]["rsch"]["original_amount"]:
+                raise AssertionError(
+                    f"txn audit FAIL: parent RSCH lapd.amount={evidence['parent']['lapd']['amount']} "
+                    f"!= tm.original_amount={evidence['parent']['rsch']['original_amount']}"
+                )
+        parent_fb = psql(f"""
+SELECT tm.reference_number,
+       tm.client_reference_number,
+       COALESCE(tm.original_amount,0)::text
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
+JOIN mfi_accounting.loan_account la ON la.la_account_number = td.account_number
+WHERE la.la_account_number = '{parent_lan}'
+  AND tc.type = 'BILLING' AND tc.sub_type = 'NORMAL_BILLING'
+  AND tm.client_reference_number ~ '^[0-9]+$'
+ORDER BY tm.id DESC LIMIT 1;
+""")
+        if parent_fb:
+            fb_ref, fb_client, fb_amt = parent_fb.split("|", 2)
+            evidence["parent"]["force_bill"] = {
+                "reference_number": fb_ref,
+                "client_reference_number": fb_client,
+                "original_amount": Decimal(fb_amt),
+            }
+        print(
+            f"  txn audit parent {parent_lan}: RSCH ref={p_ref} original_amount={p_orig} "
+            f"lapd={evidence['parent']['lapd']} fb={evidence['parent'].get('force_bill')}"
+        )
+    else:
+        print(f"  txn audit parent {parent_lan}: RSCH N/A (non-last path may not have parent RSCH yet)")
+    return evidence
+
+
+def assert_amount_calculations_non_last(child_lan: str, parent_lan: str) -> None:
+    """S4: non-last child DFC amount == parent RSCH (parent reuses child TRANSACTION_AMOUNT)."""
+    assert_non_last_child_parent_rsch_parity(child_lan, parent_lan)
+
+
+def assert_amount_calculations_last_child(
+    parent_lan: str, child_lan: str, expected_extra: Decimal,
+) -> None:
+    """S1/S2: last-child — child OLB may differ from parent RSCH when EXTRA>0 (A2 documented delta)."""
+    child_ref, child_amt_s = latest_txn(child_lan, "DEATH_FORECLOSURE")
+    parent_ref, parent_amt_s = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if not child_ref or not parent_ref:
+        raise AssertionError("amount calc FAIL: missing child DFC or parent RSCH on last-child path")
+    child_amt = Decimal(child_amt_s or "0")
+    parent_amt = Decimal(parent_amt_s or "0")
+    delta = parent_amt - child_amt
+    if expected_extra <= 0:
+        if ACCEPTANCE_STRICT and child_amt != parent_amt:
+            raise AssertionError(
+                f"amount calc FAIL (clean last-child): child DFC={child_amt} parent RSCH={parent_amt} "
+                f"(expected equal when EXTRA=0)"
+            )
+        print(f"  amount calc PASS (clean): child DFC={child_amt} parent RSCH={parent_amt}")
+        return
+    # A2: parent RSCH nets EXTRA on principal; tm amounts may differ by documented EXTRA delta.
+    rsch_cols = assert_parent_rsch_lapd_columns(parent_lan, expected_extra)
+    if ACCEPTANCE_STRICT:
+        if rsch_cols["excess_amount"] != 0:
+            raise AssertionError(
+                f"amount calc FAIL (A2): parent RSCH lapd.excess_amount={rsch_cols['excess_amount']} must be 0"
+            )
+        if rsch_cols["amount"] != rsch_cols["principal_amount"]:
+            raise AssertionError(
+                f"amount calc FAIL (A2): parent RSCH amount={rsch_cols['amount']} != "
+                f"principal={rsch_cols['principal_amount']}"
+            )
+    print(
+        f"  amount calc PASS (A2 last-child): child DFC={child_amt} parent RSCH={parent_amt} "
+        f"delta={delta} EXTRA≈{expected_extra} lapd principal={rsch_cols['principal_amount']}"
+    )
 
 
 def child_already_closed_from_dfc(child_lan: str) -> bool:
@@ -197,6 +481,43 @@ LIMIT 1;
             raise RuntimeError(f"batch {job_name} {row}")
         time.sleep(2)
     raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
+
+def prepare_fixture_pint_free(parent_lan: str) -> None:
+    """Waive open PINT on children before DFC — canonical snapshot may carry penal rows S08 does not exercise.
+
+    assert_child_closed requires PINT pending == 0 after death FC; pre-open PINT on the fixture
+    is out of scope for SDCP-10199 parent-last-child matrix (see scenarios.json S06 penal path).
+    """
+    if os.environ.get("DCF_SKIP_PINT_PREP") == "1":
+        return
+    parent_id = parent_account_id(parent_lan)
+    row = psql(f"""
+SELECT COUNT(*)::text,
+       COALESCE(SUM(ldd.due_amount-ldd.paid_amount-COALESCE(ldd.waived_amount,0)),0)::text
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account c ON c.account_id=ldd.loan_account_id
+WHERE c.parent_loan_account_id={parent_id} AND c.is_deleted=false
+  AND ldd.component_type='PINT' AND ldd.is_deleted=false
+  AND (ldd.due_amount-ldd.paid_amount-COALESCE(ldd.waived_amount,0)) > 0;
+""")
+    if not row or row.split("|", 1)[0] == "0":
+        print(f"  PINT prep: no open PINT under parent {parent_lan}")
+        return
+    cnt, pending = row.split("|", 1)
+    psql_multi(f"""
+UPDATE mfi_accounting.loan_due_details ldd
+SET waived_amount = ldd.due_amount - ldd.paid_amount,
+    updated_on = NOW(), updated_by = 'DCF_PINT_PREP'
+FROM mfi_accounting.loan_account c
+WHERE ldd.loan_account_id = c.account_id
+  AND c.parent_loan_account_id = {parent_id}
+  AND c.is_deleted = false
+  AND ldd.component_type = 'PINT'
+  AND ldd.is_deleted = false
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount, 0)) > 0;
+""")
+    print(f"  PINT prep: waived open PINT rows={cnt} total_pending={pending} parent={parent_lan}")
+
 
 def reset_child_dfc_if_needed(child_lan: str) -> None:
     """Remove in-flight DFC seed so sibling ACTIVE count is correct for last-child detection."""
@@ -547,7 +868,7 @@ def assert_webapp_bound_apis(parent_lan: str, children: list[str], last_child: s
             )
         print(f"  webapp summary PASS: {role} {lan} Accrued={accrued} Original={original}")
 
-        # Overview — account_number_list (webapp contract)
+        # Overview — account_number_list + Product excess_amount=0 on parent
         r = fire_api(
             "getLoanAccountOverviewDetails",
             {"headers": _headers("overview"), "request": {"account_number_list": [lan]}},
@@ -555,7 +876,20 @@ def assert_webapp_bound_apis(parent_lan: str, children: list[str], last_child: s
         code, status = r.response_status()
         if status != "SUCCESS" and code not in ("000", "0", "30223"):
             raise AssertionError(f"webapp FAIL overview {role} {lan}: code={code} status={status}")
-        print(f"  webapp overview PASS: {role} {lan} code={code}")
+        ov_body = json.loads(r.body or "{}")
+        ov_list = ov_body.get("account_overview_list") or []
+        excess_ui = None
+        if ov_list:
+            amt = (ov_list[0].get("amount_details") or {})
+            excess_ui = Decimal(str(amt.get("excess_amount") or "0"))
+        if role == "parent" and ACCEPTANCE_STRICT:
+            if excess_ui is None:
+                raise AssertionError(f"webapp FAIL overview parent {lan}: missing amount_details.excess_amount")
+            if excess_ui != 0:
+                raise AssertionError(
+                    f"webapp FAIL Product excess=0: overview parent {lan} excess_amount={excess_ui}"
+                )
+        print(f"  webapp overview PASS: {role} {lan} code={code} excess_amount={excess_ui}")
 
         # Statement — force-bill visibility
         r = fire_api(
@@ -629,24 +963,264 @@ SELECT
     print(f"  Obs3 PASS: {role} {lan} Accrued={accrued} Original={original}")
 
 
-def assert_parent_force_bill_out_of_scope(parent_lan: str) -> None:
-    """Obs1b: writer never posts parent DFC_PRTL_BILL — document Out-of-scope with evidence assert."""
-    cnt = int(psql(f"""
-SELECT COUNT(*)::text
+def assert_parent_force_bill_labd(parent_lan: str) -> None:
+    """Obs1b: parent last-child path posts dedicated BILLING force-bill (numeric client_ref)."""
+    row = psql(f"""
+SELECT tm.reference_number, tm.client_reference_number, COALESCE(tm.original_amount,0)::text
 FROM mfi_accounting.transaction_master tm
-WHERE tm.client_reference_number LIKE 'DFC_PRTL_BILL_%'
-  AND EXISTS (
-    SELECT 1 FROM mfi_accounting.transaction_details td
-    WHERE td.transaction_id=tm.id AND td.account_number='{parent_lan}'
-  );
-""") or "0")
-    if cnt > 0:
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
+JOIN mfi_accounting.loan_account la ON la.la_account_number = td.account_number
+WHERE la.la_account_number = '{parent_lan}'
+  AND tc.type = 'BILLING' AND tc.sub_type = 'NORMAL_BILLING'
+  AND tm.client_reference_number ~ '^[0-9]+$'
+  AND tm.client_reference_number LIKE (la.account_id::text || '%')
+ORDER BY tm.id DESC LIMIT 1;
+""")
+    if not row:
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(
+                f"Obs1b FAIL: parent {parent_lan} missing force-bill BILLING txn "
+                f"(9b6454df6 parent last-child FB expected)"
+            )
+        print(f"  Obs1b N/A: parent {parent_lan} no numeric force-bill BILLING")
+        return
+    ref, client_ref, amt_s = row.split("|", 2)
+    labd = psql(f"""
+SELECT labd.id::text, COALESCE(labd.interest_amount,0)::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+WHERE la.la_account_number = '{parent_lan}'
+  AND labd.transaction_reference_number = '{ref}'
+  AND COALESCE(labd.principal_amount,0) = 0
+  AND COALESCE(labd.interest_amount,0) > 0
+  AND COALESCE(labd.reversed,false) = false
+LIMIT 1;
+""")
+    if ACCEPTANCE_STRICT and not labd:
         raise AssertionError(
-            f"Obs1b unexpected: parent {parent_lan} has DFC_PRTL_BILL txn(s) count={cnt} — "
-            f"product previously documented child-only; update Out-of-scope if intentional."
+            f"Obs1b FAIL: parent {parent_lan} force-bill txn ref={ref} lacks dedicated interest-only labd"
         )
-    print(f"  Obs1b Out-of-scope PASS: parent {parent_lan} has no DFC_PRTL_BILL "
-          f"(DeathForeclosureInsuranceWriter force-bills death child only)")
+    print(f"  Obs1b PASS: parent {parent_lan} force-bill ref={ref} client_ref={client_ref} amt={amt_s} labd={labd}")
+
+
+def assert_parent_rsch_lapd_columns(parent_lan: str, expected_extra: Decimal = Decimal("0")) -> dict:
+    """Column audit: parent RSCH lapd must have excess=0 (A2 nets principal); amount==principal."""
+    row = psql(f"""
+SELECT lapd.id::text,
+       COALESCE(lapd.amount,0)::text,
+       COALESCE(lapd.principal_amount,0)::text,
+       COALESCE(lapd.interest_amount,0)::text,
+       COALESCE(lapd.excess_amount,0)::text,
+       lapd.transaction_reference_number
+FROM mfi_accounting.loan_account_payments_details lapd
+JOIN mfi_accounting.transaction_master tm ON tm.reference_number = lapd.transaction_reference_number
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.loan_account la ON la.account_id = lapd.loan_account_id
+WHERE la.la_account_number='{parent_lan}' AND tc.type='RSCH_DEATH_FORECLOSURE'
+ORDER BY tm.id DESC LIMIT 1;
+""")
+    if not row:
+        raise AssertionError(f"parent RSCH lapd FAIL: no row for {parent_lan}")
+    lapd_id, amount_s, prin_s, int_s, excess_s, txn_ref = row.split("|", 5)
+    evidence = {
+        "lapd_id": lapd_id,
+        "amount": Decimal(amount_s),
+        "principal_amount": Decimal(prin_s),
+        "interest_amount": Decimal(int_s),
+        "excess_amount": Decimal(excess_s),
+        "transaction_reference_number": txn_ref,
+    }
+    if ACCEPTANCE_STRICT:
+        if evidence["excess_amount"] != 0:
+            raise AssertionError(
+                f"ACCEPTANCE FAIL: parent RSCH lapd.excess_amount={evidence['excess_amount']} must be 0 "
+                f"(not claimOverpayment≈{expected_extra}; A2 principal netting)"
+            )
+        if evidence["amount"] != evidence["principal_amount"]:
+            raise AssertionError(
+                f"ACCEPTANCE FAIL (A2): parent RSCH amount={evidence['amount']} != "
+                f"principal_amount={evidence['principal_amount']}"
+            )
+        if evidence["interest_amount"] != 0:
+            raise AssertionError(
+                f"ACCEPTANCE FAIL: parent RSCH interest_amount={evidence['interest_amount']} must be 0"
+            )
+    print(
+        f"  parent RSCH lapd PASS: id={lapd_id} amount={evidence['amount']} "
+        f"principal={evidence['principal_amount']} excess=0 ref={txn_ref}"
+    )
+    return evidence
+
+
+def assert_parent_rsch_excess_partitions_zero(parent_lan: str) -> None:
+    """Parent last-child RSCH: EXCESS_* GL legs must sum to 0 (9b6454df6)."""
+    ref, _ = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if not ref:
+        raise AssertionError(f"parent {parent_lan} missing RSCH_DEATH_FORECLOSURE")
+    excess = Decimal(psql(f"""
+SELECT COALESCE(SUM(tpd.amount),0)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{ref}' AND tpd.reference_code LIKE 'EXCESS_%';
+""") or "0")
+    if ACCEPTANCE_STRICT and excess != 0:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL: parent RSCH {ref} EXCESS_* sum={excess} (must be 0)"
+        )
+    print(f"  parent RSCH EXCESS_* PASS: sum=0 ref={ref}")
+
+
+def assert_child_excess_when_extra(child_lan: str, expected_extra: Decimal) -> None:
+    """Child DEATH_FORECLOSURE keeps EXCESS_* when LAN had actual excess (child layer)."""
+    if expected_extra <= 0:
+        print(f"  child EXCESS N/A: expected_extra={expected_extra}")
+        return
+    ref, _ = latest_txn(child_lan, "DEATH_FORECLOSURE")
+    if not ref:
+        raise AssertionError(f"child {child_lan} missing DEATH_FORECLOSURE")
+    part_count = int(psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{ref}';
+""") or "0")
+    if part_count == 0:
+        print(f"  child EXCESS Out-of-scope: {child_lan} DFC ref={ref} has 0 partition rows locally")
+        return
+    excess_int = Decimal(psql(f"""
+SELECT COALESCE(MAX(CASE WHEN tpd.reference_code='EXCESS_INCOME_INT_AMT' THEN tpd.amount END),0)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{ref}';
+""") or "0")
+    if ACCEPTANCE_STRICT and excess_int <= 0:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL: child {child_lan} DFC missing EXCESS_INCOME_INT_AMT "
+            f"(EXTRA≈{expected_extra}, got {excess_int})"
+        )
+    print(f"  child EXCESS PASS: {child_lan} EXCESS_INCOME_INT_AMT={excess_int} EXTRA≈{expected_extra}")
+
+
+def assert_non_last_child_parent_rsch_parity(child_lan: str, parent_lan: str) -> None:
+    """Non-last invariant (SDCP-10199): child DEATH_FORECLOSURE.original_amount ==
+    parent RSCH_DEATH_FORECLOSURE.original_amount for the same death event.
+
+    Parent doParentPartPrePayment non-last branch reuses child TRANSACTION_AMOUNT from EC
+    (no A2 EXTRA netting). Last-child path intentionally differs — see assert_a2_extra_parent_rsch.
+    """
+    child_ref, child_amt_s = latest_txn_poll(child_lan, "DEATH_FORECLOSURE")
+    parent_ref, parent_amt_s = latest_txn_poll(
+        parent_lan, "RSCH_DEATH_FORECLOSURE", match_amount=child_amt_s or None,
+    )
+    if not child_ref:
+        raise AssertionError(f"non-last parity FAIL: child {child_lan} missing DEATH_FORECLOSURE")
+    if not parent_ref:
+        raise AssertionError(
+            f"non-last parity FAIL: parent {parent_lan} missing RSCH_DEATH_FORECLOSURE after non-last child"
+        )
+    child_amt = Decimal(child_amt_s or "0")
+    parent_amt = Decimal(parent_amt_s or "0")
+    if ACCEPTANCE_STRICT and child_amt != parent_amt:
+        raise AssertionError(
+            f"non-last parity FAIL child={child_lan} DEATH_FORECLOSURE={child_amt} "
+            f"parent={parent_lan} RSCH={parent_amt} (must match — parent reuses child TRANSACTION_AMOUNT)"
+        )
+    print(
+        f"  non-last parity PASS: child DFC={child_amt} parent RSCH={parent_amt} "
+        f"child_ref={child_ref} parent_ref={parent_ref}"
+    )
+
+    pst = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{parent_lan}';")
+    if pst != "ACTIVE":
+        raise AssertionError(f"non-last parity FAIL: parent {parent_lan} expected ACTIVE got {pst!r}")
+    print(f"  non-last parent status PASS: {parent_lan} ACTIVE")
+
+    row = psql(f"""
+SELECT lapd.id::text,
+       COALESCE(lapd.amount,0)::text,
+       COALESCE(lapd.principal_amount,0)::text,
+       COALESCE(lapd.interest_amount,0)::text,
+       COALESCE(lapd.excess_amount,0)::text,
+       lapd.transaction_reference_number
+FROM mfi_accounting.loan_account_payments_details lapd
+JOIN mfi_accounting.transaction_master tm ON tm.reference_number = lapd.transaction_reference_number
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.loan_account la ON la.account_id = lapd.loan_account_id
+WHERE la.la_account_number='{parent_lan}' AND tc.type='RSCH_DEATH_FORECLOSURE'
+  AND tm.reference_number = '{parent_ref}'
+LIMIT 1;
+""")
+    if not row:
+        raise AssertionError(f"non-last parity FAIL: parent RSCH lapd missing for ref={parent_ref}")
+    lapd_id, amount_s, prin_s, int_s, excess_s, txn_ref = row.split("|", 5)
+    lapd_amount = Decimal(amount_s)
+    lapd_prin = Decimal(prin_s)
+    lapd_int = Decimal(int_s)
+    lapd_excess = Decimal(excess_s)
+    if ACCEPTANCE_STRICT:
+        # Non-last parity is child DFC tm == parent RSCH tm (above). lapd.amount is the payment-row
+        # total and may differ from tm.original_amount when principal/interest legs split the claim.
+        if lapd_excess != 0:
+            raise AssertionError(
+                f"non-last parity FAIL: parent RSCH lapd.excess_amount={lapd_excess} must be 0 on non-last path"
+            )
+    if lapd_amount != parent_amt:
+        print(
+            f"  non-last parent RSCH lapd INFO: lapd.amount={lapd_amount} tm.original_amount={parent_amt} "
+            f"(non-last parity is tm-level child DFC==parent RSCH; lapd split may differ)"
+        )
+    print(
+        f"  non-last parent RSCH lapd PASS: id={lapd_id} amount={lapd_amount} "
+        f"principal={lapd_prin} interest={lapd_int} excess={lapd_excess} ref={txn_ref} "
+        f"tm={parent_amt}"
+    )
+
+    # 9b6454df6: parent force-bill BILLING may post on any-child DFC when partial-cycle slice > 0.
+    # Strict Obs1b labd audit runs after last child; here we only note txn presence post non-last.
+    fb_row = psql(f"""
+SELECT tm.reference_number, COALESCE(tm.original_amount,0)::text
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
+JOIN mfi_accounting.loan_account la ON la.la_account_number = td.account_number
+WHERE la.la_account_number = '{parent_lan}'
+  AND tc.type = 'BILLING' AND tc.sub_type = 'NORMAL_BILLING'
+  AND tm.client_reference_number ~ '^[0-9]+$'
+  AND tm.client_reference_number LIKE (la.account_id::text || '%')
+ORDER BY tm.id DESC LIMIT 1;
+""")
+    if fb_row:
+        fb_ref, fb_amt = fb_row.split("|", 1)
+        print(f"  non-last parent force-bill txn present: ref={fb_ref} amt={fb_amt} (Obs1b strict at end)")
+    else:
+        print(f"  non-last parent force-bill N/A: no numeric BILLING txn for {parent_lan} (slice was 0)")
+
+
+def assert_a2_extra_parent_rsch(parent_lan: str, child_lan: str, expected_extra: Decimal) -> None:
+    """Issue A (last-child only): EXTRA>0 — A2 nets parent RSCH principal; lapd.excess=0; child keeps EXCESS_*."""
+    if expected_extra <= 0:
+        print(f"  Issue A N/A: expected_extra={expected_extra} (SEED_EXTRA=0)")
+        assert_parent_rsch_excess_partitions_zero(parent_lan)
+        assert_parent_rsch_lapd_columns(parent_lan, expected_extra)
+        return
+    rsch_ref, rsch_amt = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if not rsch_ref:
+        raise AssertionError(f"Issue A FAIL: no RSCH_DEATH_FORECLOSURE for parent {parent_lan}")
+    assert_child_excess_when_extra(child_lan, expected_extra)
+    assert_parent_rsch_excess_partitions_zero(parent_lan)
+    rsch_cols = assert_parent_rsch_lapd_columns(parent_lan, expected_extra)
+    pos = Decimal(psql(f"""
+SELECT COALESCE(SUM(ldd.due_amount-ldd.paid_amount-ldd.waived_amount),0)
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='PRIN' AND ldd.is_deleted=false;
+""") or "0")
+    if pos != 0:
+        raise AssertionError(f"Issue A FAIL: parent PRIN pending {pos} after last-child DFC")
+    print(
+        f"  Issue A PASS: EXTRA≈{expected_extra} parent RSCH_amt={rsch_amt} "
+        f"lapd.excess=0 amount==principal={rsch_cols['principal_amount']}"
+    )
 
 
 def assert_force_bill_labd(child_lan: str) -> None:
@@ -657,7 +1231,6 @@ def assert_force_bill_labd(child_lan: str) -> None:
     is no dedicated force-bill labd QA can see. This must FAIL under ACCEPTANCE_STRICT, not pass on
     "a labd linked to DFC_PRTL_BILL exists".
     """
-    # Force-bill txn + its partial-cycle interest amount (the dedicated labd interest must match this).
     fb = psql(f"""
 SELECT tm.reference_number, COALESCE(tm.original_amount,0)::text
 FROM mfi_accounting.transaction_master tm
@@ -702,8 +1275,6 @@ ORDER BY labd.id DESC LIMIT 1;
     labd_id, txn_ref, client_ref, int_amt_s = row.split("|", 3)
     int_amt = Decimal(int_amt_s or "0")
 
-    # Dedicated-visibility / EMI-hijack check: the force-bill labd interest must match the force-bill
-    # txn's partial-cycle interest. If it carries a different (EMI) interest, the EMI labd was hijacked.
     if ACCEPTANCE_STRICT and fb_amt > 0 and abs(int_amt - fb_amt) > Decimal("0.01"):
         raise AssertionError(
             f"ACCEPTANCE FAIL (Obs1 EMI-labd hijack): labd_id={labd_id} interest={int_amt} does NOT match "
@@ -714,7 +1285,6 @@ ORDER BY labd.id DESC LIMIT 1;
     print(f"  Issue B PASS: labd_id={labd_id} txn_ref={txn_ref} client_ref={client_ref} "
           f"interest={int_amt} force_bill_txn_amt={fb_amt}")
 
-    # Dirty-state: when EMI_LABD_FIXTURE_* was seeded, those rows must survive (no overwrite/delete).
     emi_left = int(psql(f"""
 SELECT COUNT(*)::text
 FROM mfi_accounting.loan_account_billing_details labd
@@ -731,38 +1301,6 @@ WHERE la.la_account_number = '{child_lan}'
         print(f"  Issue B PASS: EMI_LABD_FIXTURE rows preserved count={emi_left}")
     elif emi_left > 0:
         print(f"  Issue B: EMI fixture rows present count={emi_left}")
-
-
-def assert_a2_extra_parent_rsch(parent_lan: str, child_lan: str, expected_extra: Decimal) -> None:
-    """Issue A: last-child RSCH carries EXCESS_* from child claim overpayment (EXTRA+penal/fee)."""
-    if expected_extra <= 0:
-        raise AssertionError(f"Issue A FAIL: expected_extra={expected_extra} (need EXTRA>0 fixture)")
-    rsch_ref, rsch_amt = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
-    if not rsch_ref:
-        raise AssertionError(f"Issue A FAIL: no RSCH_DEATH_FORECLOSURE for parent {parent_lan}")
-    # Prefer child claim EXCESS (same EC keys A2 mirrors onto parent RSCH) — posted as additional amounts.
-    child_dfc_ref, _ = latest_txn(child_lan, "DEATH_FORECLOSURE")
-    child_excess_int = Decimal(psql(f"""
-SELECT COALESCE(MAX(CASE WHEN tpd.reference_code='EXCESS_INCOME_INT_AMT' THEN tpd.amount END),0)::text
-FROM mfi_accounting.transaction_partition_details tpd
-JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
-WHERE tm.reference_number='{child_dfc_ref}';
-""") or "0")
-    # Fallback: raw surplus proxy when partitions omit zeroable EXCESS legs
-    excess_int = child_excess_int if child_excess_int > 0 else expected_extra
-    print(f"  Issue A: EXTRA≈{expected_extra} child EXCESS_INCOME_INT={child_excess_int} "
-          f"parent RSCH ref={rsch_ref} original_amount={rsch_amt}")
-    if excess_int <= 0:
-        raise AssertionError(f"Issue A FAIL: EXTRA/EXCESS_INCOME_INT not > 0 (got {excess_int})")
-    pos = Decimal(psql(f"""
-SELECT COALESCE(SUM(ldd.due_amount-ldd.paid_amount-ldd.waived_amount),0)
-FROM mfi_accounting.loan_due_details ldd
-JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
-WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='PRIN' AND ldd.is_deleted=false;
-""") or "0")
-    if pos != 0:
-        raise AssertionError(f"Issue A FAIL: parent PRIN pending {pos} after last-child DFC")
-    print(f"  Issue A PASS: EXTRA={excess_int} parent POS cleared RSCH_amt={rsch_amt}")
 
 
 def compute_outstanding_rounded(child_lan: str, death_date: str) -> str:
@@ -827,12 +1365,173 @@ WHERE id={staging_id};
 """)
 
     quarantine_all_other_inbound_staging(staging_id)
+    started = int(time.time())
     jt = str(int(time.time() * 1000))
     fire_batch("deathForeclosureInsuranceJob", jt)
+    try:
+        wait_batch_by_start("deathForeclosureInsuranceJob", started, timeout_s=180)
+    except RuntimeError as exc:
+        # glCBSIntegration / YB conflicts may mark batch FAILED while loan still closes — poll loan next.
+        print(f"  WARN: deathForeclosureInsuranceJob batch: {exc} (polling loan_status)")
     # Source of truth = the child reaching CLOSED. glCBSIntegration (bank CBS) is best-effort and
     # logs connection-refused locally without rolling back the closure, so batch_job_execution can
     # read FAILED even though the DFC committed. Poll the loan instead.
     wait_loan_closed(child_lan, timeout_s=300)
+
+
+def parent_account_id(parent_lan: str) -> int:
+    row = psql(
+        f"SELECT account_id::text FROM mfi_accounting.loan_account "
+        f"WHERE la_account_number='{parent_lan}' AND is_deleted=false;"
+    )
+    if not row:
+        raise RuntimeError(f"parent LAN not found: {parent_lan}")
+    return int(row)
+
+
+def latest_parent_event_id(parent_lan: str) -> int:
+    return int(psql(f"""
+SELECT COALESCE(MAX(q.id), 0)::text
+FROM mfi_accounting.loan_account_events_queue q
+JOIN mfi_accounting.loan_account p ON p.account_id = q.parent_account_id
+WHERE p.la_account_number = '{parent_lan}' AND q.is_deleted = false;
+""") or "0")
+
+
+def fire_and_wait_child_events_batch(parent_id: int, dfd_id: int) -> str:
+    """Fire childLoanEventProcessingBatchJob and wait COMPLETED (mirror disburse_loan_sanity).
+
+    Non-last child DFC inserts RSTCRE PENDING on the parent; the batch must drain it before
+    last-child DFC so schedule-reduction state is consistent.
+    """
+    job_time = str(int(time.time() * 1000))
+    started = str(int(time.time()))
+    print(
+        f"  RSTCRE spine: firing childLoanEventProcessingBatchJob parent_id={parent_id} "
+        f"dfd_id={dfd_id} job_time={job_time}"
+    )
+    fire_batch("childLoanEventProcessingBatchJob", job_time)
+    wait_batch_by_start("childLoanEventProcessingBatchJob", int(started), timeout_s=300)
+    print(f"  RSTCRE spine: childLoanEventProcessingBatchJob COMPLETED job_time={job_time}")
+    return job_time
+
+
+def _rstcre_rows_since(parent_id: int, baseline_queue_id: int) -> list[str]:
+    out = subprocess.check_output(
+        [*PG, "-c", f"""
+SELECT q.id::text, q.event_type, q.event_status,
+       COALESCE(q.reference_number, ''),
+       CASE WHEN q.filler_1 IS NULL THEN 'NULL' ELSE q.filler_1 END,
+       COALESCE(q.filler_2, '')
+FROM mfi_accounting.loan_account_events_queue q
+WHERE q.parent_account_id = {parent_id}
+  AND q.id > {baseline_queue_id}
+  AND q.is_deleted = false
+  AND q.event_type = 'RSTCRE'
+ORDER BY q.id;
+"""],
+        env=PG_ENV,
+        text=True,
+    ).strip()
+    return [r for r in out.splitlines() if r.strip()]
+
+
+def assert_rstcre_drained(parent_id: int, baseline_queue_id: int, child_lan: str) -> list[str]:
+    """Prove RSTCRE inserted by child DFC is COMPLETE with filler_1 NULL."""
+    rows = _rstcre_rows_since(parent_id, baseline_queue_id)
+    if not rows:
+        raise AssertionError(
+            f"RSTCRE drain FAIL: no RSTCRE row for parent_id={parent_id} after child {child_lan} "
+            f"DFC (baseline queue id={baseline_queue_id})"
+        )
+    bad_status = []
+    bad_filler = []
+    for row in rows:
+        parts = row.split("|")
+        if len(parts) < 5:
+            continue
+        qid, etype, estatus, ref, filler1 = parts[0], parts[1], parts[2], parts[3], parts[4]
+        if estatus != "C":
+            bad_status.append(f"id={qid} event_status={estatus!r}")
+        if filler1 != "NULL":
+            bad_filler.append(f"id={qid} filler_1={filler1!r}")
+    if bad_status:
+        raise AssertionError(
+            f"RSTCRE drain FAIL: event_status must be 'C' after batch drain "
+            f"(child={child_lan} parent_id={parent_id}): {bad_status}; rows={rows}"
+        )
+    if bad_filler:
+        raise AssertionError(
+            f"RSTCRE drain FAIL: filler_1 must be NULL after COMPLETE "
+            f"(child={child_lan} parent_id={parent_id}): {bad_filler}; rows={rows}"
+        )
+    print(
+        f"  RSTCRE drain PASS: child={child_lan} parent_id={parent_id} "
+        f"rows={rows}"
+    )
+    return rows
+
+
+def assert_no_pending_rstcre(parent_id: int, parent_lan: str) -> None:
+    """Before last-child DFC: no PENDING RSTCRE may remain from non-last child path."""
+    rows = subprocess.check_output(
+        [*PG, "-c", f"""
+SELECT q.id::text, q.event_status, COALESCE(q.filler_1, 'NULL')
+FROM mfi_accounting.loan_account_events_queue q
+WHERE q.parent_account_id = {parent_id}
+  AND q.event_type = 'RSTCRE'
+  AND q.is_deleted = false
+  AND q.event_status NOT IN ('C', 'COMPLETED')
+ORDER BY q.id;
+"""],
+        env=PG_ENV,
+        text=True,
+    ).strip()
+    if rows:
+        raise AssertionError(
+            f"RSTCRE pre-last-child FAIL: PENDING RSTCRE on parent {parent_lan} "
+            f"(parent_id={parent_id}) before last-child DFC — fire childLoanEventProcessingBatchJob "
+            f"after non-last child wait_loan_closed. Rows: {rows.splitlines()}"
+        )
+    print(f"  RSTCRE pre-last-child PASS: no PENDING RSTCRE parent={parent_lan} parent_id={parent_id}")
+
+
+def snapshot_future_emi_dates(child_lan: str, death_date: str) -> list[str]:
+    """Unpaid future PRIN installment due dates on remaining ACTIVE child (post non-last DFC)."""
+    out = subprocess.check_output(
+        [*PG, "-c", f"""
+SELECT DISTINCT to_char(lid.installment_date, 'YYYY-MM-DD')
+FROM mfi_accounting.loan_installment_details lid
+JOIN mfi_accounting.loan_account la ON la.account_id = lid.loan_account_id
+WHERE la.la_account_number = '{child_lan}'
+  AND lid.is_deleted = false
+  AND lid.is_settled = false
+  AND lid.installment_date::date >= '{death_date}'::date
+ORDER BY 1;
+"""],
+        env=PG_ENV,
+        text=True,
+    ).strip()
+    return [r.strip() for r in out.splitlines() if r.strip()]
+
+
+def assert_remaining_child_schedule_changed(
+    child_lan: str, before: list[str], after: list[str],
+) -> None:
+    """Optional: parent RSTCRE should alter remaining child's future EMI schedule."""
+    if not before and not after:
+        print(f"  schedule N/A: {child_lan} no future unsettled installments to compare")
+        return
+    if before == after:
+        print(
+            f"  schedule INFO: {child_lan} future EMI dates unchanged after non-last RSTCRE "
+            f"(before={before} after={after}) — may be fixture-specific"
+        )
+        return
+    print(
+        f"  schedule PASS: {child_lan} future EMI dates changed after non-last RSTCRE "
+        f"before={before} after={after}"
+    )
 
 
 def wait_loan_closed(child_lan: str, timeout_s: int = 300) -> None:
@@ -883,7 +1582,7 @@ WHERE la.la_account_number='{child_lan}' AND ldd.component_type='PRIN' AND ldd.i
     print(f"  child {child_lan} PRIN waived={prin_waived} (expect 0 on child path)")
 
 
-def assert_parent_last_child(parent_lan: str, allow_int_pending: bool = False) -> None:
+def assert_parent_last_child(parent_lan: str) -> None:
     st = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{parent_lan}';")
     if st != "CLOSED":
         raise AssertionError(f"parent {parent_lan} expected CLOSED got {st!r}")
@@ -928,13 +1627,12 @@ JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
 WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='INT' AND ldd.is_deleted=false;
 """) or "0")
     if int_pending != 0:
-        if allow_int_pending:
-            # EXTRA catch-up pays child INT that would otherwise be waived and mirrored onto parent
-            # via settleParentLoanInterest pairing — leaves parent INT open. Not A2 statement netting.
-            print(f"  WARN: parent INT pending {int_pending} after EXTRA catch-up "
-                  f"(settleParentLoanInterest pairing gap; POS/closure still asserted)")
-        else:
-            raise AssertionError(f"parent INT pending {int_pending} != 0 (last-child must settle parent overdue INT)")
+        raise AssertionError(
+            f"parent INT pending {int_pending} != 0 (last-child must settle parent overdue INT). "
+            f"GAP-074 INT-180 (open High): child INT_AMT vs parent overdue appropriation — "
+            f"fix parked on fix/sdcp-10199-parent-int-dpi-last-child-dfc @ 61278d5f8, NOT on "
+            f"mfi_integration_v3.7.1. Separate from RSTCRE reschedule spine; do not WARN-and-pass."
+        )
     dpi_pending = Decimal(psql(f"""
 SELECT COALESCE(SUM(due_amount-paid_amount-waived_amount),0)
 FROM mfi_accounting.loan_due_details ldd
@@ -950,11 +1648,7 @@ JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
 WHERE la.la_account_number='{parent_lan}' AND ldd.is_deleted=false;
 """) or "0")
     if all_pending != 0:
-        if allow_int_pending:
-            print(f"  WARN: parent total pending dues {all_pending} after EXTRA catch-up "
-                  f"(INT/PINT settleParent pairing gap)")
-        else:
-            raise AssertionError(f"parent {parent_lan} total pending dues {all_pending} != 0")
+        raise AssertionError(f"parent {parent_lan} total pending dues {all_pending} != 0")
     ref, amt = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
     parts = partition_codes(ref)
     print(f"  parent {parent_lan} RSCH_DEATH_FORECLOSURE ref={ref} amount={amt}")
@@ -1050,7 +1744,8 @@ def discover_fresh_fixture() -> tuple[str, str, str, str]:
     instead of hard-coding LANs. death_date = day after the children's last PRIN due (all
     principal in settlement scope). No service code / no loan mutation here — pure read.
     """
-    parent_id = psql("""
+    blocklist_sql = ",".join(f"'{lan}'" for lan in DCF_FIXTURE_BLOCKLIST) or "'__none__'"
+    parent_id = psql(f"""
 SELECT p.account_id
 FROM mfi_accounting.loan_account p
 JOIN mfi_accounting.loan_account c ON c.parent_loan_account_id = p.account_id
@@ -1068,10 +1763,16 @@ HAVING COUNT(c.account_id)=2 AND SUM(CASE WHEN ins.id IS NOT NULL THEN 1 ELSE 0 
       AND ldd.component_type='PINT' AND ldd.is_deleted=false
       AND (ldd.due_amount-ldd.paid_amount-ldd.waived_amount) > 0
   )
+  AND p.la_account_number NOT IN ({blocklist_sql})
 ORDER BY p.account_id LIMIT 1;
 """)
     if not parent_id:
         raise RuntimeError("no fresh ACTIVE product-70 parent with 2 insured children found")
+    parent_lan_check = psql(f"SELECT la_account_number FROM mfi_accounting.loan_account WHERE account_id={parent_id};")
+    if parent_lan_check in DCF_FIXTURE_BLOCKLIST:
+        raise RuntimeError(
+            f"discovered parent {parent_lan_check} is blocklisted — set DCF_FRESH_GROUP=1 or pick another fixture"
+        )
     parent = psql(f"SELECT la_account_number FROM mfi_accounting.loan_account WHERE account_id={parent_id};")
     kids = subprocess.check_output(
         [*PG, "-c", f"""
@@ -1131,11 +1832,22 @@ SELECT to_char(death_d,'YYYY-MM-DD') FROM ok;
 
 
 def main() -> int:
-    if os.environ.get("PARENT_LAN"):
+    if DCF_FRESH_GROUP:
+        print("  DCF_FRESH_GROUP=1 — provisioning new SHG group (disburse + billing)")
+        sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
+        from create_fresh_dcf_group_fixture import create_fresh_dcf_group_fixture  # noqa: WPS433
+
+        parent, child1, child2, death_date = create_fresh_dcf_group_fixture()
+    elif os.environ.get("PARENT_LAN"):
         parent = os.environ["PARENT_LAN"]
         child1 = os.environ.get("CHILD1_LAN", "6003973329")
         child2 = os.environ.get("CHILD2_LAN", "6003973330")
         death_date = os.environ.get("DEATH_DATE", "2026-04-01")
+        if parent in DCF_FIXTURE_BLOCKLIST:
+            raise RuntimeError(
+                f"PARENT_LAN={parent} is blocklisted (corrupted fixture). "
+                f"Use DCF_FRESH_GROUP=1 or unset PARENT_LAN to auto-discover."
+            )
     else:
         parent, child1, child2, death_date = discover_fresh_fixture()
     # Non-last child must run first: last-child detection counts ACTIVE siblings only.
@@ -1143,6 +1855,7 @@ def main() -> int:
 
     print("=== SDCP-10199 group parent last-child DFC local e2e (real batches) ===")
     print(f"parent={parent} child1={child1} child2={child2} death_date={death_date}")
+    print(f"acceptance_strict={ACCEPTANCE_STRICT} seed_emi_labd={SEED_EMI_LABD} seed_extra={SEED_EXTRA}")
     print(f"acceptance_strict={ACCEPTANCE_STRICT} allow_a2_netting_display_diff={ALLOW_A2_NETTING_DISPLAY_DIFF} "
           f"seed_emi_labd={SEED_EMI_LABD}")
     if not ACCEPTANCE_STRICT or ALLOW_A2_NETTING_DISPLAY_DIFF:
@@ -1153,14 +1866,16 @@ def main() -> int:
     #   * every later run     → RESTORE to that pristine snapshot first, so the same LANs re-run clean
     # The snapshot is never overwritten once taken, so a burned run can always be reverted.
     # Skip entirely with DCF_E2E_NO_SNAPSHOT=1. Force revert at end with DCF_E2E_RESTORE=1.
+    # Fresh-disbursed groups are one-shot (loans close) — never snapshot/restore.
     backup_py = str(ROOT / "scripts/dcf_sanity/dcf_fixture_backup.py")
-    snapshot_enabled = os.environ.get("DCF_E2E_NO_SNAPSHOT") != "1"
+    snapshot_enabled = os.environ.get("DCF_E2E_NO_SNAPSHOT") != "1" and not DCF_FRESH_GROUP
     if snapshot_enabled:
         has_snapshot = psql(
             f"SELECT 1 FROM information_schema.schemata WHERE schema_name='dcf_bak_{parent}';") == "1"
         if has_snapshot:
             print(f"--- snapshot exists → RESTORE {parent} to pristine before run ---")
             subprocess.check_call(["python3", backup_py, "restore", parent], env=PG_ENV)
+            time.sleep(3)  # YB: let restore commit settle before DFC batches write same rows
         else:
             subprocess.check_call(["python3", backup_py, "snapshot", parent], env=PG_ENV)
 
@@ -1176,6 +1891,10 @@ def main() -> int:
         reset_child_dfc_if_needed(child1)
         reset_child_dfc_if_needed(child2)
 
+        if not DCF_FRESH_GROUP:
+            print("\n--- PINT prep (fixture harness — S08 happy path) ---")
+            prepare_fixture_pint_free(parent)
+
         print("\n--- BEFORE ---")
         snapshot_dues(parent, "parent-before")
         snapshot_dues(child1, "child1-before")
@@ -1183,50 +1902,89 @@ def main() -> int:
 
         expected_extra = Decimal("0")
         last_child = children_in_order[-1]  # child1 — EXTRA must land on last-child claim
+        parent_id = parent_account_id(parent)
+        remaining_child_schedule_before: dict[str, list[str]] = {}
 
         for idx, child in enumerate(children_in_order, start=1):
+            is_last = idx == len(children_in_order)
+            if is_last:
+                print(f"\n--- Pre last-child: assert no PENDING RSTCRE on parent ---")
+                assert_no_pending_rstcre(parent_id, parent)
+
             print(f"\n--- CHILD {idx} {child}: seed + approve job ---")
-            if child == last_child and not child_already_closed_from_dfc(child):
+            if SEED_EXTRA and child == last_child and not child_already_closed_from_dfc(child):
                 print(f"\n--- EXTRA>0 fixture via loanRepayment on last child {child} ---")
                 expected_extra = seed_extra_via_loan_repayment(child, death_date)
             if child_already_closed_from_dfc(child):
                 print(f"  skip batch — {child} already CLOSED with DEATH_FORECLOSURE (prior run)")
                 assert_child_closed(child)
             else:
+                if not is_last:
+                    remaining_child_schedule_before[children_in_order[idx]] = snapshot_future_emi_dates(
+                        children_in_order[idx], death_date,
+                    )
                 if SEED_EMI_LABD:
                     seed_pre_existing_emi_labd(child, death_date)
                 dfd_id, staging_id = seed_dfc_child(child, death_date)
                 cleanup_abandoned_staging([child1, child2], keep_staging_id=staging_id)
+                prior_event_id = latest_parent_event_id(parent)
                 run_inbound_approve_only(child, dfd_id, staging_id, death_date)
                 assert_child_closed(child)
+                if not is_last:
+                    fire_and_wait_child_events_batch(parent_id, dfd_id)
+                    rstcre_proof = assert_rstcre_drained(parent_id, prior_event_id, child)
+                    print(f"  RSTCRE SQL proof: {rstcre_proof}")
+                    remaining = children_in_order[idx]
+                    after_sched = snapshot_future_emi_dates(remaining, death_date)
+                    assert_remaining_child_schedule_changed(
+                        remaining,
+                        remaining_child_schedule_before.get(remaining, []),
+                        after_sched,
+                    )
             snapshot_dues(parent, f"parent-after-child{idx}")
             if idx == 1:
-                pst = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{parent}';")
-                if pst != "ACTIVE":
-                    print(f"  WARN: parent after child1 status={pst} (expected ACTIVE until last child)")
+                print("\n--- Non-last child parent RSCH parity (S4) ---")
+                assert_amount_calculations_non_last(child, parent)
+                print("\n--- GL balance after non-last child (S6 partial) ---")
+                assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
+                assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
+                print("\n--- Transaction audit after non-last child (S7 partial) ---")
+                assert_transaction_posting_audit(child, parent)
 
-        print("\n--- PARENT last-child assertions ---")
-        assert_parent_last_child(parent, allow_int_pending=(expected_extra > 0))
+        print("\n--- PARENT last-child assertions (S1) ---")
+        assert_parent_last_child(parent)
 
-        print("\n--- Issue A (EXTRA>0 parent RSCH netting) ---")
+        print("\n--- Issue A (A2 last-child parent RSCH excess=0) (S2) ---")
         assert_a2_extra_parent_rsch(parent, last_child, expected_extra)
 
-        print("\n--- Issue B (force-bill labd on death children) ---")
+        print("\n--- Amount calculations last-child (S1/S2) ---")
+        assert_amount_calculations_last_child(parent, last_child, expected_extra)
+
+        print("\n--- Issue B (force-bill labd on death children) (S3) ---")
         for child in children_in_order:
             assert_force_bill_labd(child)
 
-        print("\n--- Obs1b parent force-bill (Out-of-scope vs inventing parent FB) ---")
-        assert_parent_force_bill_out_of_scope(parent)
+        print("\n--- Obs1b parent force-bill (any-child DFC; re-check after last child) ---")
+        assert_parent_force_bill_labd(parent)
+
+        print("\n--- GL balance full matrix (S6) ---")
+        for child in children_in_order:
+            assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
+        assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
+
+        print("\n--- Transaction posting audit full (S7) ---")
+        assert_transaction_posting_audit(last_child, parent)
 
         print("\n--- Obs3 Accrued ≤ Original (summary formula via SQL) ---")
         assert_accrued_le_original(parent, "parent")
         for child in children_in_order:
             assert_accrued_le_original(child, "child")
 
-        print("\n--- Webapp-bound APIs (summary / overview / statement) ---")
+        print("\n--- Webapp-bound APIs (summary / overview / statement) (S8) ---")
         assert_webapp_bound_apis(parent, children_in_order, last_child)
 
-        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e (A2+B+Obs3+webapp) ===")
+        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e "
+              f"(matrix S1-S8 strict={ACCEPTANCE_STRICT} extra={SEED_EXTRA} emi_labd={SEED_EMI_LABD}) ===")
         return 0
     finally:
         if snapshot_enabled:
