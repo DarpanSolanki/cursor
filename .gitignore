@@ -77,3 +77,5 @@ scripts/**/__pycache__/
 # Upgrade 8 process router state
 .cursor/.process-ttl-state.json
 .cursor/.process-money-floor.json
+.cursor/.local-hand-patch-log.jsonl
+.cursor/.local-parity-result.json

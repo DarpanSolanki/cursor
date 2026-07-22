@@ -198,6 +198,19 @@
         "docs-kb": "skip"
       }
     },
+    "local_parity": {
+      "ttl_key": null,
+      "comment": "GAP-076/077 class — only when schema/masterdata or DDL hand-patch on money tables",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(schema_or_masterdata_touched)",
+        "money-fix": "conditional(schema_or_masterdata_touched)",
+        "batch-dpi": "conditional(schema_or_masterdata_touched)",
+        "release": "conditional(schema_or_masterdata_touched)",
+        "docs-kb": "skip"
+      }
+    },
     "dev_test_bridge": {
       "ttl_key": null,
       "cells": {

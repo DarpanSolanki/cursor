@@ -16,6 +16,8 @@ export PGPASSWORD
 
 # Ignore inherited QA/prod PGHOST from shell profile — local writes are always localhost.
 
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
 SQL=""
 FILE=""
 declare -a PSQL_VARS=()
@@ -36,11 +38,16 @@ done
 
 if [[ -n "$FILE" ]]; then
   [[ -f "$FILE" ]] || { echo "File not found: $FILE" >&2; exit 1; }
+  # Parity sense: log DDL on money tables (fixture UPDATEs ignored)
+  PYTHONPATH="$ROOT/scripts/lib" python3 "$ROOT/scripts/lib/local_parity_gate.py" log-sql \
+    --file "$FILE" --source db-local-write >/dev/null 2>&1 || true
   exec psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
     -v ON_ERROR_STOP=1 "${PSQL_VARS[@]}" -f "$FILE"
 fi
 
 if [[ -n "$SQL" ]]; then
+  PYTHONPATH="$ROOT/scripts/lib" python3 "$ROOT/scripts/lib/local_parity_gate.py" log-sql \
+    --sql "$SQL" --source db-local-write >/dev/null 2>&1 || true
   exec psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
     -v ON_ERROR_STOP=1 "${PSQL_VARS[@]}" -c "$SQL"
 fi

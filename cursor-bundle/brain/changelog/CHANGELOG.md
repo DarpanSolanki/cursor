@@ -5,6 +5,12 @@
 ---
 ## 2026-07-21 | workspace | sliProd | main | kb-only | Fail-closed cross-branch reuse gate
 
+## 2026-07-22 | workspace | sliProd | main | kb-only | Upgrade 8 TASK E local-parity gate
+local_parity_gate in ship-discipline; process_matrix conditional; db-local-write DDL log; GAP-076/077 class — local PASS predicts train envs only when migrations/seeds cover schema
+
+---
+
+
 ## 2026-07-22 | workspace | sliProd | main | kb-only | Upgrade 8 process router + LEARN + SELF-REPORT
 process_matrix 18x7 PLAN/TTL/money-cell ratchet; super-agent close LEARN lifecycle; weekly SELF-REPORT.md; autopilot honors SKIP/CACHED
 

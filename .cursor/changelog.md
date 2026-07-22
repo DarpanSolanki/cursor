@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 8 TASK E — local-parity gate
+ship-discipline + process_matrix `local_parity` (conditional schema/masterdata): migrations/seeds must back local schema; duplicate Flyway versions fail (GAP-077); DDL hand-patches via db-local-write logged and must match Flyway/initial-setup (GAP-076 class). Fixture UPDATEs ignored. Summary: `LOCAL PASS — parity: migrations ✓ / seeds ✓ (predicts <train> envs)`.
+
 ## 2026-07-22 | workspace | Upgrade 8 — process router + LEARN + SELF-REPORT
 process_matrix.json (18×7) + process_router PLAN/TTL/money-cell ratchet; autopilot prints PLAN and honors SKIP/CACHED on steps. super-agent close = LEARN lifecycle (captured→proposed→…); weekly intel: bus age + SELF-REPORT.md. Doctor WARN alwaysApply >35KB soft ceiling. Fast = selection, never weaken money required cells.
 

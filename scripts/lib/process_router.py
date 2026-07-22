@@ -146,6 +146,26 @@ def eval_trigger(trigger: str, text: str, ctx: dict) -> bool:
         return "dpi" in t
     if trigger == "flyway_touched":
         return "flyway" in t or "migration" in t
+    if trigger == "schema_or_masterdata_touched":
+        if any(
+            x in t
+            for x in (
+                "flyway",
+                "migration",
+                "masterdata",
+                "initial-setup",
+                "local_setup",
+                "schema",
+                "add column",
+            )
+        ):
+            return True
+        try:
+            from local_parity_gate import schema_or_masterdata_touched
+
+            return schema_or_masterdata_touched()
+        except Exception:
+            return False
     if trigger == "jira_handoff":
         return "jira" in t or "handoff" in t or "dev test" in t
     if trigger == "shipped_code":

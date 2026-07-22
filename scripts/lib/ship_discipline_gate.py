@@ -250,6 +250,26 @@ def check(*, hard: bool = True) -> int:
     except Exception as exc:  # pragma: no cover - defensive
         errors.append(f"reuse-query gate error: {exc}")
 
+    # Local-parity (Upgrade 8 TASK E): schema/masterdata/DDL hand-patch must be migration-backed
+    try:
+        import local_parity_gate
+
+        if local_parity_gate.schema_or_masterdata_touched(pending):
+            pr = local_parity_gate.check_parity(pending)
+            print(pr.get("summary") or "")
+            if not pr.get("ok"):
+                errors.extend(pr.get("errors") or ["local-parity failed"])
+            elif disc is not None and disc:
+                # stamp ship summary for agents / release notes
+                disc = dict(disc)
+                disc["local_parity"] = pr.get("summary")
+                try:
+                    DISCIPLINE.write_text(json.dumps(disc, indent=2) + "\n", encoding="utf-8")
+                except OSError:
+                    pass
+    except Exception as exc:  # pragma: no cover
+        errors.append(f"local-parity gate error: {exc}")
+
     if errors:
         print("ship-discipline FAIL:", file=sys.stderr)
         for e in errors:
@@ -266,6 +286,8 @@ def check(*, hard: bool = True) -> int:
         "|",
         (disc.get("minimal_fix") or "")[:80],
     )
+    if disc.get("local_parity"):
+        print(disc["local_parity"])
     return 0
 
 
