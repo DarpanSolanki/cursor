@@ -11,7 +11,7 @@ alwaysApply: true
 |--------------|--------|------------------|
 | **Shipped code** in `novopay-*` / `trustt-*` (processor, orchestration XML, entity, batch) | **Tier FULL** — graph spine may have changed | `cursor-bundle/kg/bin/build.sh` or `scripts/bin/kg-switch.sh` after branch checkout |
 | **Shipped fix** — brain changelog only (behaviour note, no new apiName in code) | **Tier CASES** — precedents from CHANGELOG | `cursor-bundle/kg/bin/changelog-add.sh` (auto) or `build.sh --cases-only` / `refresh_cases.py` |
-| **KB only** — `.cursor/changelog.md`, `gaps-and-risks.md`, `accounting-module-knowledge.mdc`, demo scripts, `system_brain/` notes | **Tier SKIP** — no KG rebuild | Append/update docs only |
+| **KB only** — `.cursor/changelog.md`, `gaps-and-risks.md`, `.cursor/skills/accounting-knowledge/*`, demo scripts, `system_brain/` notes | **Tier SKIP** — no KG rebuild | Append/update docs only |
 | **Repo branch/sha drift** or orchestration XML newer than `kg.db` | **Tier FULL** | `kg doctor` → `kg-switch.sh` |
 | **Gap resolved / runbook** | **Tier SKIP** (unless new apiName or orchestration fact) | `gaps-and-risks.md` / `cursor-bundle/brain/runbooks/` |
 

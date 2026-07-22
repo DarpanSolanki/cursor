@@ -100,8 +100,8 @@ Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-d
 
 1. **Orient by symptom / domain** → `system_brain/` (maps, flows, runbooks, edge cases, glossary). **Not** a substitute for verifying code/DB.
 2. **Cross-service or “which hop failed?”** → **`.cursor/knowledge-graph.md`** + **`.cursor/cross-service-transactions.md`** before spelunking multiple repos.
-3. **Standards + gates** → `.cursorrules` (Java/XML); glob-scoped `.mdc` rules when editing matching paths (execution context, architect-thinking, contract safety, `accounting.mdc` preflight/signoff when in accounting-v2).
-4. **Accounting module behaviour (detailed)** → `accounting.mdc` after brain orientation when the change is in accounting-v2.
+3. **Standards + gates** → `.cursorrules` (Java/XML); glob-scoped `.mdc` rules when editing matching paths (execution context, architect-thinking (thin + skill), contract safety, `accounting.mdc` gates + `accounting-knowledge` skill when in accounting-v2).
+4. **Accounting module behaviour (detailed)** → `.cursor/skills/accounting-knowledge/` (routed from thin `accounting.mdc`) after brain orientation when the change is in accounting-v2.
 5. **Framework / API templates** → `.cursor/index.mdc` and codegen paths it names (`trustt-platform-ai-codegen-artifacts-java/...`).
 6. **Source of truth** → service repos: orchestration XML, processors, services, `deploy/application/`, migrations, **actual DB state** for incidents.
 
@@ -121,7 +121,7 @@ Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-d
 ## Rules vs brain
 
 - **`.mdc` rules**: Enforce discipline (ExecutionContext, contracts, financial checks, git, etc.).
-- **`system_brain/`**: Curated **orientation and proven gotchas**; keep factual; if you change accounting-v2 behaviour, sync **`accounting.mdc`** per its **Accounting knowledge sync** section.
+- **`system_brain/`**: Curated **orientation and proven gotchas**; keep factual; if you change accounting-v2 behaviour, sync the matching **`.cursor/skills/accounting-knowledge/`** topic per knowledge-sync.
 
 ## Other workspace artifacts
 
@@ -230,7 +230,7 @@ Apply when adding or editing files under **`system_brain/`**.
 
 - **Glossary**: New domain terms → add a line to `system_brain/glossary.md` if reused.
 - **Rule inventory**: When you add a **new** `.cursor/rules/*.mdc`, add one row to `system_brain/rules/rule_inventory.md`.
-- **Accounting code changes**: If the brain doc reflects behaviour implemented in `trustt-platform-accounting/`, sync **`accounting.mdc`** when appropriate (see **Accounting knowledge sync** in that file); brain stays **short orientation**, `accounting.mdc` holds **module deep detail**.
+- **Accounting code changes**: If the brain doc reflects behaviour implemented in `trustt-platform-accounting/`, sync **`.cursor/skills/accounting-knowledge/`** topic files when appropriate; brain stays **short orientation**, skill topics hold **module deep detail**.
 
 ## What not to do
 

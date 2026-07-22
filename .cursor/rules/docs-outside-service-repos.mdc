@@ -12,7 +12,7 @@ Service-specific documentation and artifacts must **not** live inside the servic
 ## Rule
 
 - **Workspace docs folder**: Put such files under the **workspace root** `docs/` in a subfolder named after the service, e.g. `docs/accounting/`, `docs/mfi-los/`, `docs/payments/`.
-- **Not in service repo**: Do not add or commit these inside the service module (e.g. `novopay-platform-accounting-v2/docs/`, or repo root). That keeps them out of that repo's git history and avoids accidental commits.
+- **Not in service repo**: Do not add or commit these inside the service module (e.g. `trustt-platform-accounting/docs/`, or repo root). That keeps them out of that repo's git history and avoids accidental commits.
 - **Applies to all services**: Same pattern for accounting, LOS, payments, actor, batch, initial-setup, and any other service in sliProd.
 
 ## Structure (whole sliProd workspace)
@@ -53,10 +53,10 @@ Apply when adding or editing files under **`docs/`** at the workspace root. **Pl
 
 ## Content standards
 
-- **Factual**: Link to **service repo paths** (`novopay-platform-accounting-v2/...`), ticket IDs, or environment names (non-secret). Mark **UNVERIFIED** where code was not checked.
+- **Factual**: Link to **service repo paths** (`trustt-platform-accounting/...`), ticket IDs, or environment names (non-secret). Mark **UNVERIFIED** where code was not checked.
 - **No secrets**: No passwords, API keys, production connection strings, or full PII; redact or use placeholders.
 - **Scope label**: Prefer a one-line header or folder README note: e.g. “Local QA only”, “Release email draft”, “LLD v3.2.x” so agents do not treat drafts as prod runbooks.
-- **Duplication**: Do not paste large slabs of **live** source here to “replace” the repo—**short excerpts** only; pointer to real file path. Long procedural write-ups belong here; **deep accounting behaviour** stays in **`accounting.mdc`** + code, with **links** from `docs/` when needed.
+- **Duplication**: Do not paste large slabs of **live** source here to “replace” the repo—**short excerpts** only; pointer to real file path. Long procedural write-ups belong here; **deep accounting behaviour** stays in **`.cursor/skills/accounting-knowledge/`** + code (thin `accounting.mdc` = gates only), with **links** from `docs/` when needed.
 
 ## Cross-links
 

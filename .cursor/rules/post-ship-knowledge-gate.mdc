@@ -25,11 +25,11 @@ Any turn that **ships** (commit/push) or **completes** a fix touching:
 | 2 | Append `.cursor/changelog.md` | **No `(pending)`** on any line for this fix |
 | 3 | Resolve gaps | `.cursor/gaps-and-risks.md` — RESOLVED row + **GAP-0xx** narrative if gap existed or was discovered |
 | 4 | Flow docs | `.cursor/accounting-flows.md` if accounting behaviour changed |
-| 5 | Module deep ref | `.cursor/rules/accounting.mdc` if accounting-v2 behaviour changed |
+| 5 | Module deep ref | `.cursor/skills/accounting-knowledge/` topic file if accounting-v2 behaviour changed |
 | 6 | Edge case (optional) | `system_brain/edge_cases/` one short note if symptom is searchable |
 | 7 | KG sync | `scripts/bin/kg-switch.sh` after **any** repo branch checkout; `kg-enrich.sh --cases` after kg-flow prepend |
 | 8 | Freshness | `python3 cursor-bundle/kg/bin/kg.py fresh` → must print **FRESH** before closing |
-| 9 | **Testing suite** | `scripts/testing/registry.json` case for the fix path updated (note/defaults/expects encode **new asserts**). Surgical edit if unrelated WIP dirties the file — **never exclude the money case**. |
+| 9 | **Testing suite** | `scripts/testing/registry.json` case for the fix path updated (note/defaults/expects encode **QA ACCEPTANCE SHAPES**, not only "linked somehow"). Asserts must FAIL on the exact QA fail mode (amount==principal OR documented components; dedicated force-bill labd / no EMI hijack; product-scope items Pass\|Out-of-scope). Surgical edit if unrelated WIP dirties the file — **never exclude the money case**. |
 | 10 | **Runbook** | Matching `cursor-bundle/brain/runbooks/*` (or INDEX link) documents symptom + SHA + `ntest run …` |
 | 11 | **Scenarios / learnings** | Domain `scenarios.json` / `ntest learn` when new regression class |
 
@@ -43,6 +43,7 @@ Any turn that **ships** (commit/push) or **completes** a fix touching:
 - brain CHANGELOG kg-flow row cites wrong sha (e.g. BPD fix under earlier commit)
 - Money fix added asserts / behaviour but **registry case note still describes the old weak path** (e.g. closure-only while e2e now asserts EXTRA/labd)
 - Money fix shipped without runbook/gap touch when symptom class is searchable (DFC, disburse sync, DPI, …)
+- **The e2e / assert allows the exact QA fail mode** (prints "OK …"/"WARN …" and passes for a state QA rejects — amount≠principal, EMI-labd hijack, dropped parent scope). See `feedback_qa_acceptance_not_subset_verify.md`. A green subset is **not** RESOLVED while acceptance is broken — keep the gap open (do not mark RESOLVED).
 
 ## End-of-task output (required format)
 

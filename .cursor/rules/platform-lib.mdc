@@ -1,8 +1,8 @@
 ---
-description: "Auto-loads when editing any file in novopay-platform-lib"
+description: "Auto-loads when editing any file in trustt-platform-lib"
 globs:
-  - "**/novopay-platform-lib/**/*.java"
-  - "**/novopay-platform-lib/**/*.xml"
+  - "**/trustt-platform-lib/**/*.java"
+  - "**/trustt-platform-lib/**/*.xml"
 alwaysApply: false
 ---
 
@@ -17,7 +17,7 @@ Never make a change here without understanding blast radius. See `.cursor/platfo
 1. Read `.cursor/platform-lib.md` — what this module/class does
 2. Check `.cursor/service-dependency-graph.md` — which services route through this?
 3. Check `.cursor/service-contracts.md` — contract / HTTP / Kafka impact?
-4. Check `.cursor/gaps-and-risks.md` — active gap on this path?
+4. Check `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) — active gap on this path?
 
 ## Global injections you must not break casually
 

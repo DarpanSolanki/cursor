@@ -168,7 +168,7 @@ Chain (intentionally **not** going through `clientReferenceNumberDedupProcessor`
 
 ## 7. Where `postTransaction` is called from (13 ORC call-sites)
 
-`postTransaction` is invoked nested as `<API>` from many flows — full enumeration in `accounting.mdc`. The recurring shape:
+`postTransaction` is invoked nested as `<API>` from many flows — full enumeration in `.cursor/skills/accounting-knowledge/flows.md`. The recurring shape:
 
 ```xml
 <API id="postTransaction" name="postTransaction" version="v1">

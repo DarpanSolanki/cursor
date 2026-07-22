@@ -12,7 +12,7 @@ Goal: **shorter wall-clock time** when work **decomposes cleanly**—without dup
 
 ## When parallel agents **are worth it**
 
-- **Broad discovery**: Find all callers/usages/orchestration references across many modules; partition by **service** (`novopay-platform-accounting-v2` vs `novopay-mfi-los` vs `payments`) or by **keyword/API name**.
+- **Broad discovery**: Find all callers/usages/orchestration references across many modules; partition by **service** (`trustt-platform-accounting` vs `trustt-platform-los` vs `payments`) or by **keyword/API name**.
 - **Read-heavy audits**: Trace impact, map flows, collect grep results—**no writes** or **writes confined to disjoint paths** agreed upfront.
 - **Isolated experiments**: Two **alternative** approaches (e.g. design A vs B) in **separate chats/agents**; **merge only one** after comparison—never blend incompatible patches blindly.
 - **Large refactors with explicit slices**: e.g. one agent per subtree, **after** a short written contract (interfaces, error codes, ExecutionContext keys) that all slices obey.
@@ -34,7 +34,7 @@ Goal: **shorter wall-clock time** when work **decomposes cleanly**—without dup
 ## Safety rails (non-negotiable)
 
 - **API/Kafka/ExecutionContext contract changes**: **Additive-only**; one owner verifies **all callers** (`api-contract-safety.mdc`).
-- **Accounting money/state**: **One** implementation path through **`accounting.mdc`** (financial preflight + signoff sections)—parallel agents must not each “fix” the same flow differently.
+- **Accounting money/state**: **One** implementation path through **`accounting.mdc`** gates + **`accounting-knowledge/preflight-signoff.md`**—parallel agents must not each “fix” the same flow differently.
 - **Do not** run **multiple writers** on the **same files** without sequence control—race → broken merges and missed invariants.
 
 ## Heuristic

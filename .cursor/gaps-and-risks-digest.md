@@ -28,8 +28,43 @@ SoT: `.cursor/gaps-and-risks.md`. Escalate to full file when task touches a GAP-
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
 | **No `src/test` coverage for API Gateway `RequestForward*` (`RequestForwardProcessor`, controller)** | **High** | Workspace `grep` `RequestForward` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-055** | `/forward/*` ingress (documented as filter-bypass + payload logging risk) has no automated regression tests. |
 | **`loanWriteoff` orchestration vs `PrepaymentApproppriationProcessor` ExecutionContext contract mismatch** | **High** | `loans_orc.xml` `loanWriteoff` passes `prepayment_amount` (not `total_foreclosure_amount`); `ValidateLoanWriteOffDataProcessor` sets `penalty_amount` but processor reads `penal_amount`; write-off uses `value_date`, processor reads `foreclosure_date`; `fee_amount` not set pre-processor — **GAP-062** | Appropriation/posting branch can **NPE** or apply **wrong component splits** for final write-off ledger and dues updates. |
+
 ## Medium/Low index
 
-(cap) 10 Medium / 0 Low — see full gaps-and-risks.md
+GAP-018 | Platform-lib crypto utilities swallow exceptions and hardcod | see-full
+GAP-019 | Kafka producer wrapper swallows send failures (no signal to  | see-full
+GAP-020 | Async orchestration execution is fire-and-forget (no complet | see-full
+GAP-021 | Hardcoded credentials committed across multiple services (Gr | see-full
+GAP-022 | Notifications OTP/SMS/email flows ignore errors at orchestra | see-full
+GAP-023 | Notifications service logs sensitive payloads and access tok | see-full
+GAP-024 | DMS download endpoint is query-param based and uses caller-s | see-full
+GAP-025 | DMS S3 util writes temp files using `urn` directly (path tra | see-full
+GAP-026 | API Gateway logs decrypted secret keys and full request/resp | see-full
+GAP-027 | API Gateway outbound HttpClient trusts all certificates and  | see-full
+GAP-028 | Authorization service logs access tokens and has doc-vs-conf | see-full
+GAP-029 | Masterdata business-date cache invalidation failures are non | see-full
+GAP-030 | Task service has multiple replay/consistency risks (no TTL c | see-full
+GAP-061 | Child MFT post-processor CRR response can diverge from callb | see-full
+GAP-062 | [High] `loanWriteoff` posting branch — ExecutionContext key… | see-full
+GAP-063 | `PopulateAndValidateAccountDetailsProcessor` — no null guard | see-full
+GAP-065 | Accounting MessageBroker consumers — no explicit `maxPollRec | see-full
+GAP-066 | Disburse sync Kafka message lacks correlation IDs (`stan` /  | see-full
+GAP-067 | LOS → Accounting disburse Kafka message — implicit pipe-deli | see-full
+GAP-068 | `collectionLoanRepayment` retry loop — nested `loanRepayment | see-full
+GAP-069 | Critical money paths — partial observability vs six-point co | see-full
+GAP-070 | Accounting disburse sync producer does not emit `entity_type | see-full
+GAP-071 | Accounting consumer skip paths do not always publish LOS syn | see-full
+GAP-072 | Consumer payload parsing happens before try/finally lock cle | see-full
+GAP-073 | NEFT callback UTR map key mismatch in array branch | see-full
+ROW-accounting-money-path-kafka-consumers-om | Accounting money-path Kafka consumers omit explicit `maxPol… | accounting
+ROW-createorupdatebulkcollectionconsumer-col | `CreateOrUpdateBulkCollectionConsumer` — `collection_list` … | payments
+ROW-lock-recovery-on-crr-save-failure-locks- | Lock recovery on CRR save failure locks loan but doesn’t se… | accounting
+ROW-los-acc-disburse-pipe-delimiter-contract | LOS→ACC disburse pipe delimiter contract (`api\ | platform
+ROW-money-path-observability-six-point-check | Money-path observability — six-point checklist not met unif… | .cursor
+ROW-multi-node-batch-dependency-tracking-is- | Multi-node batch dependency tracking is in-memory only | batch
+ROW-payments-collectionloanrepayment-retry-l | Payments `collectionLoanRepayment` retry loop over nested `… | MfiCollectionsDAOService.cal
+ROW-posttransaction-populateandvalidateaccou | `postTransaction` — `PopulateAndValidateAccountDetailsProce… | accounting
+ROW-proactive-excess-refund-uses-time-based- | Proactive excess refund uses time-based `client_reference_n… | ...
+ROW-reopened-2026-04-22-los-lms-disbursement | REOPENED (2026-04-22) — `los_lms_disbursement_sync` still o… | accounting
 
-<!-- digest high=20 medium=10 low=0 idx=0 max=10000 -->
+<!-- digest high=20 medium=10 low=0 idx=35 max=14000 -->

@@ -1,10 +1,8 @@
----
-description: "Accounting module (novopay-platform-accounting-v2) deep knowledge — transaction types, entities, GL codes, flows, column semantics"
-globs: "novopay-platform-accounting-v2/**/*.java"
-alwaysApply: false
----
+<!-- Relocated verbatim from .cursor/rules/accounting.mdc / accounting-module-knowledge.mdc. Edit these skill topic files; thin accounting.mdc only routes here. -->
 
-# Accounting Module — LMS Core Knowledge
+<!-- Near-duplicate deep copy from accounting.mdc (2nd Module reference). Kept for zero-loss. -->
+
+## Module reference (LMS core knowledge)
 
 ## Transaction types and sub-types
 
@@ -57,11 +55,11 @@ alwaysApply: false
 - **disbursement_status**: BANK_SUCCESS, COMPLETED, NEFT stages, etc.
 
 ### Group / individual child loan — bank `externalReferenceNo` vs `client_request_response_log`
-- **Dedupe / lookup**: `CallBankAPIForIndividualChildLoanDisbursementProcessor` keeps **`client_request_response_log.loan_account_number` = parent loan account number** (same key as verified parent dedupe), with **child-scoped `transaction_type`** (suffix includes child id, e.g. `…_EXTREF<childExternalRef>_MFT` / `_NEFT_NEF` / `_NEFT_NEI`).
+- **Dedupe / lookup**: `CallBankAPIForIndividualChildLoanDisbursementProcessor` + `ChildDisbursementBankCallService` (`loan.disbursement.bank.child`) keep **`client_request_response_log.loan_account_number` = parent loan account number** (same key as verified parent dedupe), with **child-scoped `transaction_type`** (suffix includes child id, e.g. `…_EXTREF<childExternalRef>_MFT` / `_NEFT_NEF` / `_NEFT_NEI`).
 - **Generated bank reference string**: `ExternalReferenceNoUtil.computeDeterministicExternalReferenceNo(..., clientReferenceBaseOverride)` uses **`clientReferenceBaseOverride = parentLAN + child_seq_no`** for child disbursement bank calls (`CreateClmtLoanAccountEventsProcessor` sets `child_seq_no` as 1..N and `ChildLoanMoneyTransferEventsQueueDataPopulator` carries it in queue payload). `CallBankAPIForIndividualChildLoanDisbursementProcessor` now treats `child_seq_no` as mandatory and fails fast (`MFI-40001`) if missing, to avoid long `externalReferenceNo` fallback paths. Lookup stays parent LAN + child-scoped `transaction_type`.
 - **GL CBS disbursement NET-OFF external key**: `DisbGLCBSIntegrationProcessor` uses leg prefix `01` + `DISB_GL_CBS_INTEGRATION` for the main leg and `04` + `DISB_GL_CBS_INTEGRATION_NETOFF` for NET-OFF so full `client_reference_number` never collides with the main leg while counters stay per-type (standard `ExternalReferenceNoUtil` FAIL/SUCCESS retry). `GLCBSIntegrationService` dedupe remains by `loan_account_number` + `transaction_type` + SUCCESS for both disbursement types.
 - **Child money-transfer queue payload** (`ChildLoanMoneyTransferEventsQueueDataPopulator`): `ACCOUNT_NUMBER` in the JSON is the **parent** LAN from the batch execution context (not a resolved child LAN).
-- **`client_request_response_log.status = UNKNOWN` (MFT/NEFT disbursement bank calls only)**: `CallBankAPIForDisbursementProcessor` / `CallBankAPIForIndividualChildLoanDisbursementProcessor` persist **UNKNOWN** for ambiguous/non-success outcomes on bank calls, not just uncertain transport:
+- **`client_request_response_log.status = UNKNOWN` (MFT/NEFT disbursement bank calls only)**: `ParentDisbursementBankCallService` (`bank.parent`) / `ChildDisbursementBankCallService` (`bank.child`) persist **UNKNOWN** for ambiguous/non-success outcomes on bank calls, not just uncertain transport:
   - **MFT status inquiry**: if the parsed inquiry outcome is **not** a definitive success (`isMFTTransactionSuccess == false`), log **UNKNOWN** (instead of logging SUCCESS).
   - **MFT status inquiry (try-path mapping)**: when `errorCode=0` and parsing can extract `transactionStat`:
     - `transactionStat != "Failure"` => log **SUCCESS**
@@ -87,7 +85,12 @@ alwaysApply: false
 - **Multi-path persistence reminder (child disbursement)**: CLMT status can be persisted via multiple entry points — (a) bank callback processors (`DoGenericSyncSTPBankNeftCallBackProcessor`), (b) inquiry/WebClient post-processors (`PostNEFTChildLoanBankDisbursementProcessor` / `PostMFTChildLoanBankDisbursementProcessor`), and (c) the pending-events batch (`childLoanEventProcessingBatchJob`). Any change to completion/status must keep **both** the queue row (`event_status`) and embedded JSON (`disbursement_status`) consistent across all paths, otherwise parent status sync can stall.
 - **NEFT v2 STP inquiry success detection (parent + child-safe)**: HDFC `doGenericSyncSTPInquiry` returns numeric `errorcode` (e.g. `0`). The parent NEFT inquiry processor compares using `String.valueOf(executionContext.get("errorCode"))` (type-tolerant) so a successful inquiry is not misclassified as `FAIL` due to `getStringValue(...)` returning null for numeric values.
 - **NEFT v2 inquiry reference key (parent + child, strict)**: inquiry/NEI resolve bank batch key from the persisted NEF request payload (`paymentrefno` preferred, fallback `batchnumext`) via `NeftV2BankReferenceUtil`. No fallback to `client_reference_number` in strict rollout mode; if payload is missing/unparseable or both keys are absent, flow fails fast with `MFI-40001` to avoid sending wrong inquiry keys to bank.
-- **NEFT v2 stage-2 idempotency (child-loans)**: if `disbursement_status=NEFT_STAGE_2_PENDING` and a `client_request_response_log` row with `status=SUCCESS` already exists for the parent loan account + the child-scoped `..._NEFT_NEI` `transaction_type`, the processor skips re-initiating `ST_NEI` and waits for the existing callback to complete CLMT -> `COMPLETED`.
+- **NEFT v2 stage-2 idempotency (child-loans)**: if a `client_request_response_log` row with `status=SUCCESS` already exists for the parent loan account + the child-scoped `..._NEFT_NEI` `transaction_type`, the processor skips re-initiating `ST_NEI` for **either** `disbursement_status=NEFT_STAGE_1_SUCCESS` or `NEFT_STAGE_2_PENDING` (queue can lag after a successful NEI); waits for callback to complete CLMT -> `COMPLETED`.
+- **NEFT v2 stage-2 idempotency (parent / JLG–INDL)**: `CallBankAPIForDisbursementProcessor` skips `ST_NEI` when a **SUCCESS** CRR exists for the orchestration-scoped `…_NEFT_NEI` type (from `transaction_type` + `_NEFT_NEI`), for **both** `NEFT_STAGE_1_SUCCESS` and `NEFT_STAGE_2_PENDING`, matching child behaviour; `doNEFTTransaction` defends again before `neftPaymentV2Stage2`.
+- **Disbursement status inquiry vs current rail**: `CallBankAPIForDisbursementProcessor` runs bank **status inquiry** only when `disbursement_mode` matches the latest `client_request_response_log` leg (**ACCTWB** + `…_MFT`, **OTHBACCT** + `…_NEFT_*`). If the user switches from MFT to NEFT, a stale latest MFT leg no longer drives MFT inquiry before the NEFT initiation path.
+- **NEFT v2 stage-1 inquiry gate (parent + child, `NeftStage1InquiryGate`)**: run bank stage-1 inquiry when `disbursement_status=NEFT_STAGE_1_PENDING` **or** when `disbursement_status=DTFC_SUCCESS` and the selected NEF CRR row is **not** `status=SUCCESS` (reconcile before controlled ST_NEF retry). When `DTFC_SUCCESS` and NEF CRR is already `SUCCESS`, skip inquiry and set `DO_TRANSACTION=false` (no duplicate ST_NEF leg from inquiry routing). For `NEFT_STAGE_1_SUCCESS` / `NEFT_STAGE_2_PENDING` without entering stage-1 inquiry, `DO_TRANSACTION=true` allows leg-2 NEI.
+- **NEFT v2 ST_NEF idempotency (parent + child)**: before initiating ST_NEF from `DTFC_SUCCESS`, if a **SUCCESS** NEF CRR already exists for the same scoped `transaction_type`, skip the bank initiation (`DO_TRANSACTION=false`) as defence-in-depth vs duplicate debit.
+- **PostNEFT child CRR `transaction_type`**: `PostNEFTChildLoanBankDisbursementProcessor` derives child-scoped `…_EXTREF{n}_NEFT_NEF` / `…_NEFT_NEI` from `transaction_type`, `external_ref_number`, and `next_disbursement_status` when the WebClient callback omits `transactionIdentifier`, so `client_request_response_log.transaction_type` is always populated for STP callbacks and forensics.
 - **CLMT `loan_account_events_queue`**: `PerformChildLoanBankDisbursementProcessor` relies on `CreateClmtLoanAccountEventsProcessor` to **`saveAll`** member CLMT rows up front (pending **P**), not `create_event_data_only=false` (which skipped `saveAll` and left child-loan bank calls without a persisted row). **`filler_2`** is set at CLMT row creation from the child **`external_ref_number`** on the same member `eventData` that `ChildLoanMoneyTransferEventsQueueDataPopulator` uses for queue `data`, so **`DisbursementClmtCashOverrideHandler`** / LAR can correlate pending CLMT even when the bank leg fails before **`PostNEFTChildLoanBankDisbursementProcessor`** runs (post-processors may still refresh `filler_2` on success paths). For **NEFT v2**, WebClient calls invoke `PostNEFTChildLoanBankDisbursementProcessor` to update CLMT after bank responses; for **NEFT v1**, `doNEFTTransactionVersion1` calls `PostNEFTChildLoanBankDisbursementProcessor.updateChildClmtQueueAfterNeftV1` after inline CRR because `neftPayment` does not invoke the WebClient post-processor. After processing all children, `PerformChildLoanBankDisbursementProcessor` calls **`ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress`** (fresh DB read of CLMT rows). **Gap closed**: child bank calls can finish on **WebClient** threads **after** that synchronous sync runs — **`PostMFTChildLoanBankDisbursementProcessor`** and **`PostNEFTChildLoanBankDisbursementProcessor`** (NEF/NEI WebClient path) call **`syncParentAfterChildQueueProgress`** again after persisting CLMT so mixed MFT/NEFT multi-child runs still move the parent from **`PARENT_SUCCESS`** to **`CHILD_SUCCESS`** when all CLMT are **C** and CLB is still **P**.
 
 ### interest_accrual_details (InterestAccrualDetailsEntity)
@@ -143,7 +146,7 @@ alwaysApply: false
 ## Orchestration-ledger engines (code-verified)
 
 ### `postTransaction` (ORC Request) - processor chain + persistence points
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postTransaction"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postTransaction"`).
 
 Processors executed (ordered):
 - `validateTransactionDataProcessor` → `in.novopay.accounting.transaction.processor.ValidateTransactionDataProcessor`
@@ -209,7 +212,7 @@ REAL branch additional persistence processors:
   - Persists via `TransactionDetailsDAOService.save(...)`.
 
 ### `reverseTransaction` (ORC Request) - ledger inversion engine
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseTransaction"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseTransaction"`).
 
 Processors:
 - `reverseTransactionProcessor` → `in.novopay.accounting.transaction.reverse.processor.ReverseTransactionProcessor`
@@ -287,7 +290,7 @@ These 6 ORC requests include an explicit processor node `Processor bean="reverse
 | `childLoanReopening` | `value_date` | (none) (code-verified: `created_by` and `created_on` are not passed on this node; `ReverseTransactionProcessor` falls back to `user_id` (for `created_by`) and system current date (for `created_on`) when those EC keys are absent). |
 
 ### Kafka entrypoint: `LmsMessageBrokerConsumer` → ORC request name
-Source: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`.
+Source: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`.
 
 Code-verified mapping:
 - Kafka message `consumerRec.value()` format comment: `apiName|requestBody|cacheKey`.
@@ -338,7 +341,7 @@ These requests are configuration/master-data APIs. They don’t directly perform
   - mapping deletion is handled by `logicalDeleteTaxGroupTaxComponentMapping` in the orchestration
 
 ### `createOrUpdateLoanAccount` (ORC entrypoint) -> initial loan account setup (CREATE) / mutate account attributes (UPDATE)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="createOrUpdateLoanAccount"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="createOrUpdateLoanAccount"`).
 
 #### CREATE path (function_sub_code=`CREATE`, run_mode=`REAL`)
 This path creates the core loan account and its supporting “mode/interest” rows:
@@ -374,7 +377,7 @@ This path mutates the existing loan rows and supporting mode/interest records:
   - Persists: `AccountInterestDetailsEntity` (loads by `account_id`, updates spread/setup/effective/penal rates and upfront-interest fields, then `AccountInterestDetailsDAOService.save(...)`)
 
 ### `postManualJournalEntry` (ORC entrypoint) -> persist manual JE + create GL posting partitions (transaction engine)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postManualJournalEntry"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="postManualJournalEntry"`).
 
 This request creates a *Manual Journal Entry* header + GL-lines, then (optionally via maker-checker) posts the accounting legs using the transaction engine.
 
@@ -409,7 +412,7 @@ Makers/checker behavior:
 - `maker_checker_enabled=0`: runs the posting path directly and updates `manual_je_status=APPROVED`.
 
 ### `reverseManualJournalEntry` (ORC entrypoint) -> reverse posted manual JE + mark reversed (reverseTransaction engine)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseManualJournalEntry"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="reverseManualJournalEntry"`).
 
 This request reverses an already-posted manual journal entry by:
 - populating reverse payload (processor in ORC wiring)
@@ -429,7 +432,7 @@ Verified entity updates:
   - Persists both via `ManualJournalEntryDetailsDAOService.saveOne(...)`
 
 ### `getManualJournalEntryList` (ORC entrypoint) -> paged listing of manual JE headers
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryList"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryList"`).
 
 Processors (code-verified):
 - `GetManualJournalEntryListProcessor`
@@ -442,7 +445,7 @@ Processors (code-verified):
     - `number_of_records`, and normalizes `page_size` / `offset`
 
 ### `getManualJournalEntryDetails` (ORC entrypoint) -> manual JE header + GL lines + documents (+ reversal fields)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryDetails"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="getManualJournalEntryDetails"`).
 
 Processors (code-verified):
 - `GetManualJournalEntryDetailsProcessor`
@@ -462,7 +465,7 @@ Processors (code-verified):
     - `document_details` (array of document metadata + files)
 
 ### `executeLMSPortfolioTransfer` (ORC entrypoint) -> create portfolio transfer detail rows + internal GL transfer
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="executeLMSPortfolioTransfer"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="executeLMSPortfolioTransfer"`).
 
 This is a *two-step* flow:
 1) `executeLMSPortfolioTransferProcessor` builds `PortfolioTransferDetailsEntity` rows (status `PENDING`) from existing loan GL balances.
@@ -473,8 +476,6 @@ This is a *two-step* flow:
   - `account_numbers` (JSONArray)
   - `source_office_id/code`, `destination_office_id/code`, `destination_emp_id`
   - `external_reference_code`, `auto_process`, `do_gl_transfer`, `do_employee_transfer`
-- Account scope (loan `account_id`s used for GL detail build, `doGLTransfer` `account_id_list`, and `servicing_emp_id` update):
-  - resolves request LANs → seed `loan_account.account_id`s, then `LoanAccountDAOService.expandAccountIdsForPortfolioTransferWithActiveChildLoans`: **every seed is kept**, and for **each** seed id, **ACTIVE** child `account_id`s are added via `LoanAccountRepository.getChildLoanAccountListForParentAccountId` (same SQL as before portfolio work).
 - Idempotency:
   - queries existing `PortfolioTransferDetailsEntity` by `external_reference_code`
   - if existing rows contain any `status="PENDING"`:
@@ -516,7 +517,7 @@ This is a *two-step* flow:
   - `loanAccountDAOService.updateLoanAccountOfficeAndAuditByAccountIds(...)`
 
 ### `doGLTransfer` (ORC entrypoint) -> inter-branch GL transfer for portfolio transfer details
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="doGLTransfer"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (Request `name="doGLTransfer"`).
 
 ORC wiring:
 - Validators:
@@ -547,7 +548,7 @@ ORC wiring:
   - `loan_accounts_updated`
 
 ### `disburseLoan` (ORC entrypoint) -> loan setup + disbursement GL legs + schedule/due creation
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="disburseLoan"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="disburseLoan"`).
 
 High-level flow:
 - `populateUserDetails` → `validateLoanDisbursementDetailsProcessor` → `getLoanAccountDetails` (loads `loan_amount`, `expected_disbursement_date`, `disbursement_mode`, `upfront_interest_amount`, `upfront_interest_applicable`, etc.)
@@ -594,7 +595,7 @@ Loan/account + repayment schedule mutation (REAL, non-maker-checker path; code-v
   - `updateLoanInstallmentDetailsProcessor(expected_disbursement_date→value_date)`
 
 ### `loanAccountReopening` (ORC entrypoint) -> closure reversal + status reset + post-reversal recomputation
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountReopening"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountReopening"`).
 
 This request is a maker-checker task flow:
 - Validation + task creation (DEFAULT/create_task):
@@ -635,7 +636,7 @@ This request is a maker-checker task flow:
   - task deletion at end (`deleteTask`)
 
 ### `loanAccountTransactionReversal` (ORC entrypoint) -> transaction reversal task flow + ledger inversion + NPA bookkeeping
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountTransactionReversal"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountTransactionReversal"`).
 
 Task flow:
 - Validation + optional task flags (run_mode REAL):
@@ -668,7 +669,7 @@ Task flow:
   - task update + delete (`updateTransactionReversalTaskDetailsProcessor(task_status=APPROVED)` + `deleteTask`)
 
 ### `childLoanTransactionReversal` (ORC entrypoint) -> child txn reversal + reverseTransaction + recomputation
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanTransactionReversal"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanTransactionReversal"`).
 
 Chain (code-verified):
 - `executeTransactionReversalProcessor`
@@ -691,7 +692,7 @@ Chain (code-verified):
   - `loanAccountAssetClassificationProcessor`
 
 ### `childLoanReopening` (ORC entrypoint) -> closure reversal + set ACTIVE + post-reversal jobs
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanReopening"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanReopening"`).
 
 Chain (code-verified):
 - setup:
@@ -716,12 +717,12 @@ Chain (code-verified):
   - `bookingNonPostedPenalProcessor(job_time=${current_date_str})`
 
 ### `childLoanBooking` (ORC entrypoint) -> child events processing (booking)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanBooking"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanBooking"`).
 
 - For `function_code=DEFAULT`: runs `childLoanEventsProcessingProcessor`.
 
 ### `childLoanDisbursement` (ORC entrypoint) -> book child loan (disbursement booking)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursement"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursement"`).
 
 Chain (code-verified):
 - `populateDataForChildLoanBookingProcessor` — before `createOrUpdateLoanAccount`, if a non-deleted child already exists for `parent_loan_account_id` + member `external_ref_number` (oldest by `created_on`), reuses that `account_id` / LAN instead of creating another row (CLB replay idempotency). DB: **unique** partial index `uidx_accounting_la_child_parent_extref_active` on `mfi_accounting.loan_account` `(parent_loan_account_id, external_ref_number, loan_product_id)` where `parent_loan_account_id IS NOT NULL` — **created/maintained manually** (not shipped via accounting flyway in this workspace).
@@ -729,7 +730,7 @@ Chain (code-verified):
 - `bookChildLoanProcessor`
 
 ### `childLoanRepayment` (ORC entrypoint) -> child due settlement + GL posting + optional NPA reverse movement
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanRepayment"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanRepayment"`).
 
 Core chain (code-verified):
 - load child context: `populateChildLoanAccountDataProcessor`
@@ -943,7 +944,7 @@ Code-verified appropriation path (part prepayment transaction):
       - calls `TaxAmountUtiltyService.populateTaxExternalReference(...)` to create deterministic external tax reference ids
 
 ### `loanAccountRebooking` (ORC entrypoint) -> regenerate repayment schedule with new ROI (+ optional interest adjustment posting)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountRebooking"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="loanAccountRebooking"`).
 
 Validators (ORC):
 - `function_code=function_sub_code=DEFAULT` (`patternFieldValidator`)
@@ -990,7 +991,7 @@ Post Transaction (code-verified from ORC + processor EC flags):
   - `client_reference_number="LR"+accountId+<timestamp>`
 
 ### `childWaiveLoanAccountCharges` (ORC entrypoint) -> child due waivedAmount + waiver identifier linkage rows
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childWaiveLoanAccountCharges"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childWaiveLoanAccountCharges"`).
 
 Processor chain (code-verified wiring):
 - `populateChildLoanWaiverDataProcessor`
@@ -1009,7 +1010,7 @@ Idempotency/dedupe:
 - No explicit dedupe guard in this request chain; repeated invocations can re-apply waived amounts.
 
 ### `cancelLoanForeclosure` (ORC entrypoint) -> mark foreclosure/prepayment task rejected + reactivate loan
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="cancelLoanForeclosure"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="cancelLoanForeclosure"`).
 
 Validators (ORC):
 - `account_number` mandatory
@@ -1196,7 +1197,7 @@ Code-verified mutation path:
   - sets `loan_account.excessAmount = newExcessAmount - oldExcessAmount`
 
 ### `childLoanDisbursementCancellation` (ORC entrypoint) -> child-disbursement cancel txn + due/BPI/status mutation
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursementCancellation"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml` (Request `name="childLoanDisbursementCancellation"`).
 
 Processor chain (code-verified wiring):
 - `setCommonAttributesProcessor`
@@ -1257,7 +1258,7 @@ Code-verified mutation path:
   - `mode = payment_mode`
 
 ### `fetchLoanAccountChargeDetails` (ORC entrypoint) -> configured charge/tax breakdown + placeholder fallback
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanAccountChargeDetails"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanAccountChargeDetails"`).
 
 Validators (ORC):
 - `function_code=DEFAULT`
@@ -1277,7 +1278,7 @@ Processor:
   - includes `charge_identifier="PROC_FEE"` with `charge_value=0` when no configuration exists
 
 ### `calculateAnnualPercentageRate` (ORC entrypoint) -> APR (annual percentage rate)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateAnnualPercentageRate"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateAnnualPercentageRate"`).
 
 Processor:
 - `calculateAnnualPercentageRateProcessor`
@@ -1289,7 +1290,7 @@ EC outputs:
 - `annual_percentage_rate`
 
 ### `calculateStampDutyCharges` (ORC entrypoint) -> stamp duty + surcharge + POA
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateStampDutyCharges"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="calculateStampDutyCharges"`).
 
 Processor:
 - `calculateStampDutyChargesProcessor`
@@ -1304,7 +1305,7 @@ EC outputs (key shape):
   - `is_surcharge_applicable`, `surcharge_type`, `surcharge_amount`, `surcharge_percentage_value`
 
 ### `fetchPartPrepaymentRepaymentSchedule` (ORC entrypoint) -> part prepayment repayment schedule preview (generate_repayment_schedule=false)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchPartPrepaymentRepaymentSchedule"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchPartPrepaymentRepaymentSchedule"`).
 
 Processor chain (code-verified wiring):
 - `dummyProcessor` (sets `function_code=DEFAULT`)
@@ -1317,7 +1318,7 @@ Preview mode:
 - computes schedule keys into EC (no persistence).
 
 ### `fetchRestructuringRepaymentSchedule` (ORC entrypoint) -> restructuring repayment schedule preview (generate_repayment_schedule=false)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchRestructuringRepaymentSchedule"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchRestructuringRepaymentSchedule"`).
 
 Processor chain (code-verified wiring):
 - `populateUserDetails`
@@ -1331,7 +1332,7 @@ Preview mode:
 - computes schedule keys into EC (no persistence).
 
 ### `fetchLoanForeclosureSimulationDetails` (ORC entrypoint) -> foreclosure simulation amounts + charges (including fees and CBC components)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanForeclosureSimulationDetails"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchLoanForeclosureSimulationDetails"`).
 
 Processor chain (high-level wiring):
 - validates/prepares foreclosure inputs and super-data
@@ -1346,7 +1347,7 @@ Key EC outputs:
 - `charges_details` (JSONArray)
 
 ### `fetchDisbursementCancellationSimulationDetails` (ORC entrypoint) -> disbursement cancellation simulation amounts + fee/taxes
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchDisbursementCancellationSimulationDetails"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="fetchDisbursementCancellationSimulationDetails"`).
 
 Processor chain (high-level wiring):
 - prepares cancellation inputs
@@ -1360,7 +1361,7 @@ Key EC outputs:
 - `deducted_charges_details` (JSONArray)
 
 ### `generatePreEMIRepaymentSchedule` (ORC entrypoint) -> pre-EMI schedule generation (combined `installment_list`)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="generatePreEMIRepaymentSchedule"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="generatePreEMIRepaymentSchedule"`).
 
 Processor:
 - `generatePreEMIRepaymentScheduleProcessor`
@@ -1369,7 +1370,7 @@ EC outputs:
 - `installment_list` (combined across tranches)
 
 ### `generateOnDemandDocument` (ORC entrypoint) -> generate PDF documents via report microservice
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="generateOnDemandDocument"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="generateOnDemandDocument"`).
 
 Branching by `function_code/function_sub_code` selects which report template to generate, then uses `GenerateReportProcessor`.
 
@@ -1377,7 +1378,7 @@ EC outputs (key shape):
 - `document_details` (JSONArray; each contains `document_code`, `version`, and `file_names[]`)
 
 ### `extractCasaBalanceFor180ProductCode` (ORC entrypoint) -> CASA balance extraction batch trigger for product code 180
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor180ProductCode"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor180ProductCode"`).
 
 Processor:
 - `extractCasaBalanceFor180ProductCodeBatchProcessor`
@@ -1388,7 +1389,7 @@ EC/side-effects:
 - adds batch execution context via `BatchExecutionContextHolder`
 
 ### `extractCasaBalanceFor182ProductCode` (ORC entrypoint) -> CASA balance extraction batch trigger for product code 182
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor182ProductCode"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="extractCasaBalanceFor182ProductCode"`).
 
 Processor:
 - `extractCasaBalanceFor182ProductCodeBatchProcessor`
@@ -1399,7 +1400,7 @@ EC/side-effects:
 - adds batch execution context via `BatchExecutionContextHolder`
 
 ### `fetchLoanAccountsForCustomer` (ORC entrypoint) -> fetch active loans by customer IDs (status + product filters)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="fetchLoanAccountsForCustomer"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="fetchLoanAccountsForCustomer"`).
 
 Processor chain:
 - `fetchCustomerAccountNumberProcessor`
@@ -1412,7 +1413,7 @@ Key EC outputs:
   - `loan_account_list=[]`
 
 ### `bulkFileToSGManualJournalEntriesJob` (ORC entrypoint) -> bulk upload staging + trigger SG->Manual Journal posting
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGManualJournalEntriesJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGManualJournalEntriesJob"`).
 
 Processors executed (ordered):
 - `populateUserDetails`
@@ -1453,7 +1454,7 @@ Dedupe/idempotency guards:
 - Ledger/posting idempotency is handled in the later SGTo job via `bulkSGToManualJournalEntriesJob`.
 
 ### `bulkSGToManualJournalEntriesJob` (ORC entrypoint) -> staged manual journal postings (postManualJournalEntry, per-row status)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToManualJournalEntriesJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToManualJournalEntriesJob"`).
 
 Processors executed (ordered):
 - `populateUserDetails`
@@ -1511,7 +1512,7 @@ Idempotency/dedupe guards:
 - Ledger dedupe guard happens during `postManualJournalEntry`.
 
 ### `bulkFileToSGRefundMarkingJob` (ORC entrypoint) -> bulk upload staging + trigger SG->Refund marking
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkFileToSGRefundMarkingJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkFileToSGRefundMarkingJob"`).
 
 Processors executed (ordered):
 - `populateUserDetails`
@@ -1537,7 +1538,7 @@ Dedupe/idempotency guards:
 - `duplicateCheck()` at staging load stage.
 
 ### `bulkSGToRefundMarkingJob` (ORC entrypoint) -> evaluate refund eligibility and update loan flags
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToRefundMarkingJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToRefundMarkingJob"`).
 
 Processor:
 - `bulkSGToRefundMarkingJobProcessor`
@@ -1571,7 +1572,7 @@ Dedupe/idempotency guards:
 - No explicit idempotency key; re-runs overwrite eligibility flags deterministically based on staging input and loan product config.
 
 ### `bulkFileToSGNocBlockUnblockJob` (ORC entrypoint) -> bulk upload staging + trigger SG->NOC block/unblock
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGNocBlockUnblockJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkFileToSGNocBlockUnblockJob"`).
 
 Processors executed (ordered):
 - `populateUserDetails`
@@ -1590,7 +1591,7 @@ File staging/table names:
 - downstream SGTo reader expects: `file_staging_noc_block_unblock`
 
 ### `bulkSGToNocBlockUnblockJob` (ORC entrypoint) -> validate/update NOC details and block/unblock statuses
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToNocBlockUnblockJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToNocBlockUnblockJob"`).
 
 Processor:
 - `bulkSGToNocBlockUnblockJobProcessor`
@@ -1616,7 +1617,7 @@ Idempotency/dedupe guards:
 - Also avoids updates when NOC is already dispatched or document already exists.
 
 ### `bulkSGToSecNpaReverseFeedFileJob` (ORC entrypoint) -> SEC NPA reverse feed + asset criteria movements
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToSecNpaReverseFeedFileJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml` (Request `name="bulkSGToSecNpaReverseFeedFileJob"`).
 
 Processor:
 - `bulkSGToSecNpaReverseFeedFileJobProcessor`
@@ -1642,7 +1643,7 @@ Idempotency/dedupe guards:
 - Loan SEC NPA fields update is guarded by the `secNpaReportingDate/misDate` condition.
 
 ### `bulkSGToTransactionReversalJob` (ORC entrypoint) -> batch reversal posting for staged transactions
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (Request `name="bulkSGToTransactionReversalJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (Request `name="bulkSGToTransactionReversalJob"`).
 
 Processors:
 - `bulkSGToTransactionReversalJobProcessor`
@@ -1671,7 +1672,7 @@ Idempotency/dedupe guards:
 - Ledger-level guard: `ReverseTransactionProcessor` (fatal if already reversed).
 
 ### `bulkSGToManualHoldMarkingJob` (ORC entrypoint) -> SI manual hold marking + hold presentation rows
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldMarkingJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldMarkingJob"`).
 
 Processors:
 - `populateUserDetails`
@@ -1696,7 +1697,7 @@ Dedupe/idempotency guards:
 - Presentation reference numbers are generated from sequences; re-runs can duplicate rows unless upstream re-execution is prevented.
 
 ### `bulkSGToManualHoldRemovalJob` (ORC entrypoint) -> SI manual hold removal + hold-unhold presentation rows
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldRemovalJob"`).
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request `name="bulkSGToManualHoldRemovalJob"`).
 
 Processors:
 - `populateUserDetails`
@@ -1719,7 +1720,7 @@ Spring Batch chain:
 - Tasklet: `SGToTypeTasklet` finalizes overall file type as `APPROVED`.
 
 ### `bulkSGToEnachRepresentationJob` (ORC entrypoint) -> create ENACH representation work rows (mandate + presentation linkage)
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`bulkSGToEnachRepresentationJob`)
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`bulkSGToEnachRepresentationJob`)
 
 Processor/tasklet chain:
 - `populateUserDetails` (populates `user_id` / `logged_user_employee_formatted_id`)
@@ -1748,7 +1749,7 @@ Success/failure handling:
 - Representation entities created as `status="I"` for successes.
 
 ### `generateEnachPresentationFile` (ORC entrypoint) -> generate ENACH ACH presentation request file + ACH control file
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachPresentationFile`)
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachPresentationFile`)
 
 Processor/tasklet chain:
 - `outboundEnachPresentationBatchProcessor` -> runs batch using job_time and op_code
@@ -1771,7 +1772,7 @@ Outputs:
 - `EnachPresentationFileDetailsEntity` (presentation file and control generation flag)
 
 ### `processingEnachPresentationResponseFiles` (ORC entrypoint) -> consume ENACH presentation reverse feed and trigger loanRepayment
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachPresentationResponseFiles`)
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachPresentationResponseFiles`)
 
 Processor/tasklet chain:
 - `inboundEnachPresentationBatchProcessor`
@@ -1793,7 +1794,7 @@ Rejected path:
 - increments bounce count via loan update logic
 
 ### `generateEnachRepresentationFile` (ORC entrypoint) -> generate ENACH representation request + ACH control file
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachRepresentationFile`)
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`generateEnachRepresentationFile`)
 
 Processor/tasklet chain:
 - `outboundEnachRepresentationBatchProcessor` -> runs batch with job_time/op_code
@@ -1810,7 +1811,7 @@ Outputs:
 - `EnachPresentationFileDetailsEntity` with fileCategory `REPRESENTATION`
 
 ### `processingEnachRepresentationResponseFiles` (ORC entrypoint) -> consume ENACH representation reverse feed and trigger loanRepayment
-Source: `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachRepresentationResponseFiles`)
+Source: `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml` (Request name=`processingEnachRepresentationResponseFiles`)
 
 Processor/tasklet chain:
 - `inboundEnachRepresentationBatchProcessor`
@@ -1859,9 +1860,9 @@ Rejected path:
 ## Batch platform: scheduler service ↔ accounting ↔ Spring Batch (framework, code-verified)
 
 ### Roles of each codebase
-- **`novopay-platform-batch`** (separate microservice): owns **scheduling metadata** (batch groups, job definitions, schedules, execution status in the **batch service database**). It does **not** run LMS Spring Batch steps locally for accounting jobs.
-- **`novopay-platform-accounting-v2`**: hosts **orchestration `Request`s**, **`*BatchProcessor` entry beans**, and the **Spring Batch job definitions** under `batchnew/` (plus legacy `batch/` e.g. disbursement-cancellation insurance files).
-- **`novopay-platform-lib/infra-batch`**: shared **Spring Batch framework** — job lifecycle, partitioning, bulk file helpers, optional multi-node Kafka workers.
+- **`trustt-platform-batch`** (separate microservice): owns **scheduling metadata** (batch groups, job definitions, schedules, execution status in the **batch service database**). It does **not** run LMS Spring Batch steps locally for accounting jobs.
+- **`trustt-platform-accounting`**: hosts **orchestration `Request`s**, **`*BatchProcessor` entry beans**, and the **Spring Batch job definitions** under `batchnew/` (plus legacy `batch/` e.g. disbursement-cancellation insurance files).
+- **`trustt-platform-lib/infra-batch`**: shared **Spring Batch framework** — job lifecycle, partitioning, bulk file helpers, optional multi-node Kafka workers.
 
 ### How a scheduled job reaches accounting
 1. **`SchedulerCommonService.callJobAPi`** (and **`processSingleJob`** / **`DirectJobExecutor.startNormalJob`** for restart paths) calls  
@@ -1887,7 +1888,7 @@ Rejected path:
 
 ### Where to tune performance (checklist)
 - **DB-stored job parameters** for each `jobName` (grid size, chunk, `is_multi_node`, `force_grid_size`, etc.) — loaded by **`BatchDBHandlerService`**.
-- **Partition SQL / readers** under `novopay-platform-accounting-v2/.../batchnew/**/…ItemReader.java` and **failure row mappers** (chunk boundaries, min/max id queries).
+- **Partition SQL / readers** under `trustt-platform-accounting/.../batchnew/**/…ItemReader.java` and **failure row mappers** (chunk boundaries, min/max id queries).
 - **Multi-node**: **`ParallelKafkaBatchJob`** path vs single-JVM **`ParallelBatchJobV2`** (throughput vs operational complexity).
 - **Hot writers/processors** that call **`postTransaction`**, internal APIs, or external bank/file IO — profile per job in the sections below.
 

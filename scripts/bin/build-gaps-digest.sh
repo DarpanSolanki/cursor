@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build .cursor/gaps-and-risks-digest.md from .cursor/gaps-and-risks.md (≤10KB).
+# Build .cursor/gaps-and-risks-digest.md from .cursor/gaps-and-risks.md (≤14KB).
 # Source of truth remains gaps-and-risks.md — never edit the digest by hand.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SRC="$ROOT/.cursor/gaps-and-risks.md"
 OUT="$ROOT/.cursor/gaps-and-risks-digest.md"
-MAX_BYTES="${GAPS_DIGEST_MAX_BYTES:-10000}"
+MAX_BYTES="${GAPS_DIGEST_MAX_BYTES:-14000}"
 
 if [[ ! -f "$SRC" ]]; then
   echo "MISSING: $SRC" >&2

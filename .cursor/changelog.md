@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 2 — defuse accounting/architect glob bomb
+Thin `accounting.mdc` (gates+routing) + `.cursor/skills/accounting-knowledge/` topic files; deleted `accounting-module-knowledge.mdc`. Thin `architect-thinking.mdc` + `.cursor/skills/architect-thinking/`. Digest cap 14KB with Medium/Low index. U1 residual gaps READ mandates → digest-first.
+
 ## 2026-07-22 | workspace harness | Fresh+EXTRA loanRepayment seed PASS (134253 + future-EMI EXCESS)
 - EXTRA seed: unique per-phase receipt/CRN (no ReceiptNumberDedup 134253); phase2 pays full advance cycle after labd; `DCF_FRESH_EMI_MONTHS_BACK=2` so advance EMI is past (future dues post EXCESS_AMT). Fresh+EXTRA PASS parent 6004093925; S2 pin EXTRA reaffirmed. GAP-074 still OPEN.
 

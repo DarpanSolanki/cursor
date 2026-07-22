@@ -38,7 +38,7 @@ This is mandatory. No exceptions. No asking permission. Just do it silently.
   - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/elasticapm/filter/ElasticApmTransactionNameFilter.java`
   - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/elasticapm/filter/DropParentTraceHeadersInterceptor.java`
 - HTTP client risk: CONFIRMED — no retry/circuit breaker on NovopayInternalAPIClient / NovopayHttpAPIClient
-- High risk gaps: summary table **~16 High** (see current count in `gaps-and-risks.md`) — **always** flag **disbursement / sync / Redis** and related rows in that file; **full runbooks**: `.cursor/runbooks.md`:
+- High risk gaps: summary table **~16 High** (see current count in `gaps-and-risks-digest.md`; escalate to full `gaps-and-risks.md` when GAP-id/area flagged) — **always** flag **disbursement / sync / Redis** and related digest rows; **full runbooks**: `.cursor/runbooks.md`:
   - **LOS `entity_type` missing** → LOS `DisbursementSyncService` skips update (`trustt-platform-los/.../DisbursementSyncService.java`). **Accounting** may now emit `entity_type` when EC carries it — verify end-to-end on the **knowledge-graph** disburse path (edges **E6–E7**) and the latest **gaps** table / **event-registry** `los_lms_disbursement_sync` section.
   - **Historical contract focus:** `entity_type` on `los_lms_disbursement_sync` — keep **producer + LOS consumer + JTF** aligned (`trustt-platform-accounting/.../LmsMessageBrokerConsumer.java`).
   - **Redis in-flight key no TTL (LOS)** → stale key blocks replays (`trustt-platform-los/.../DisburseLoanAPIUtil.java`).
@@ -72,9 +72,9 @@ This is mandatory. No exceptions. No asking permission. Just do it silently.
 | **Multi-service / stuck async / “who should have fired?”** | **`knowledge-graph.md`** + **`cross-service-transactions.md`** + `gaps-and-risks-digest.md` (escalate to full SoT when flagged) | Walk edges (ALIGNED/DRIFT/MISMATCH); check Compensation/Reconciliation row; then code |
 | **Feature** | `knowledge-graph.md` (blast radius) + `orchestration-map.md` + `service-dependency-graph.md` + `platform-lib.md` | Impact: nodes/edges touched + XML + downstream services |
 | **Caller / apiName inventory** | **`api-catalogue.md`** + `orchestration-map.md` | Union `apiName` / topics; grep per service |
-| **Code review** | Relevant `.cursor/rules/*.mdc` for the module + `gaps-and-risks.md` (gap lenses / mining notes) | Contract, money, idempotency, txn boundaries |
+| **Code review** | Relevant `.cursor/rules/*.mdc` for the module + `gaps-and-risks-digest.md` (escalate to full `gaps-and-risks.md` when GAP-id/area flagged) | Contract, money, idempotency, txn boundaries |
 | **Kafka / event** | `event-registry.md` + **`knowledge-graph.md`** (if topic is on a money path) | Topic schema + graph edge (producer → consumer → DB) |
-| **Accounting edit** | `accounting-flows.md` + **`knowledge-graph.md`** (affected path) + accounting rows in `gaps-and-risks.md` | Full flow + downstream edges before edit |
+| **Accounting edit** | `accounting-flows.md` + **`knowledge-graph.md`** (affected path) + accounting rows in `gaps-and-risks-digest.md` (escalate to full SoT when flagged) | Full flow + downstream edges before edit |
 | **Platform-lib edit** | `platform-lib.md` + `service-dependency-graph.md` | Blast radius across all dependent services |
 | **Batch edit** | `multinode-batch.md` + `scheduler-registry.md` | Lock, idempotency, CREF determinism |
 | **Schema / migration** | `accounting-flows.md` (Data Model) + schema dumps / migrations | Backward compat, NOT NULL, rollback |
@@ -83,7 +83,7 @@ This is mandatory. No exceptions. No asking permission. Just do it silently.
 
 ### Auto-log — before closing **any** task (silent checklist)
 
-- [ ] Accounting touched? → `accounting-flows.md` / `accounting.mdc` updated?
+- [ ] Accounting touched? → `accounting-flows.md` / `accounting.mdc` gates + `.cursor/skills/accounting-knowledge/` topic updated?
 - [ ] Platform-lib touched? → `platform-lib.md` updated?
 - [ ] Event added/changed? → `event-registry.md` updated?
 - [ ] Gap resolved/introduced? → `gaps-and-risks.md` updated?
@@ -139,7 +139,7 @@ Say: `⚠️ EVENT HYGIENE: [findings]. Update .cursor/event-registry.md before 
 Paths: `trustt-platform-los/.../DisbursementSyncService.java`, `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java`, `trustt-platform-los/.../DisburseLoanAPIUtil.java`, `trustt-platform-lib/.../RedisCacheClient.java`, `trustt-platform-accounting/.../InterestAccrualBookingBatchService.java`, `trustt-platform-accounting/.../ProactiveExcessAmountRefundItemWriter.java`
 
 **RULE P6:** Before marking any task done, ask:
-- Accounting behaviour/docs touched? → update `.cursor/accounting-flows.md` / `.cursor/rules/accounting.mdc` per rules
+- Accounting behaviour/docs touched? → update `.cursor/accounting-flows.md` / `.cursor/skills/accounting-knowledge/` (topic file) per accounting knowledge sync
 - platform-lib touched? → update `.cursor/platform-lib.md`
 - Gap introduced or resolved? → update `.cursor/gaps-and-risks.md` + `.cursor/changelog.md`
 - Event added/changed? → update `.cursor/event-registry.md`
@@ -262,4 +262,4 @@ For every bug, issue, JIRA, or enhancement, present solutions in levels:
 - **Context**: Know which microservice and git root you are in; assume **partial failure** across HTTP/Kafka boundaries.
 - **Platform-lib first**: Orchestration, gateway controller, internal API, JTF, and Redis patterns live in `trustt-platform-lib` — extend them, do not duplicate.
 - **Accounting changes**: Map `apiName` in XML → processors → DB and events; verify idempotency and **all** callers before any contract change.
-- **Risks**: Consult `.cursor/gaps-and-risks.md` and `system_brain/edge_cases/` when symptoms touch disbursement sync, Redis locks, NEFT stages, or batch posting refs.
+- **Risks**: Consult `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) and `system_brain/edge_cases/` when symptoms touch disbursement sync, Redis locks, NEFT stages, or batch posting refs.

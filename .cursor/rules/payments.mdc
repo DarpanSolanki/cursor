@@ -1,8 +1,8 @@
 ---
-description: "Auto-loads when editing novopay-platform-payments"
+description: "Auto-loads when editing trustt-platform-payments"
 globs:
-  - "**/novopay-platform-payments/**/*.java"
-  - "**/novopay-platform-payments/**/*.xml"
+  - "**/trustt-platform-payments/**/*.java"
+  - "**/trustt-platform-payments/**/*.xml"
 alwaysApply: false
 ---
 
@@ -12,7 +12,7 @@ alwaysApply: false
 
 - Collections, rails, and integrations that **allocate** and **sync** with LMS
 - `bulk_collection_data_` pipeline: accounting → payments → downstream allocation / task topics (see `event-registry.md`)
-- NEFT / disburse-related processors: align with `gaps-and-risks.md` and `system_brain/flows/` where applicable
+- NEFT / disburse-related processors: align with `gaps-and-risks-digest.md` (escalate to full `gaps-and-risks.md` when GAP-id/area flagged) and `system_brain/flows/` where applicable
 - Payments is a **hub** for collection state; accounting and task consumers may depend on it
 
 ## Before any edit touching collection or allocation flow

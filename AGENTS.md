@@ -13,7 +13,7 @@ For anything that **crosses services**, **Kafka**, **Redis**, or **batch → HTT
 1. **Find the money path** (disbursement, repayment, accrual, closure, bulk collection, reversal) and list every **hop** (service → topic → consumer → DB).
 2. **Walk each edge** in the Edge Registry: note **ALIGNED / DRIFT / MISMATCH** and any **GAP-*** reference.
 3. **Cross-check** **`.cursor/cross-service-transactions.md`** for the same flow: **Compensation**, **Reconciliation**, **Monitoring** — fixes must not assume a saga that does not exist.
-4. **Cross-check** **`.cursor/gaps-and-risks.md`** (summary table + narrative **GAP-*** ) so you do not “fix” one symptom while leaving a documented **High** (e.g. `entity_type`, Redis TTL, Kafka swallow) untouched.
+4. **Cross-check** **`.cursor/gaps-and-risks-digest.md`** (open High + Medium/Low index; escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged or narrative needed) so you do not “fix” one symptom while leaving a documented **High** (e.g. `entity_type`, Redis TTL, Kafka swallow) untouched.
 5. **HTTP/Kafka inventory scale**: **`.cursor/api-catalogue.md`** (union `apiName` + topics); use it to grep **all** callers before contract changes.
 
 The graph is the **system-level picture**; `system_brain/flows/` and processors are the **step-by-step** truth. Use both.
@@ -44,10 +44,10 @@ The graph is the **system-level picture**; `system_brain/flows/` and processors 
    Open `system_brain/system_overview.md`, then the matching file under `system_brain/flows/` or `system_brain/debugging/`. Check `system_brain/edge_cases/` if the symptom sounds familiar. **Then** align to **`.cursor/knowledge-graph.md`** money path + **`.cursor/gaps-and-risks-digest.md`** (escalate to full `gaps-and-risks.md` when GAP-id/area flagged) for known landmines.
 
 2. **Standards and non‑negotiables**  
-   Workspace root `.cursorrules` (Java/XML) and `.cursor/rules/*.mdc` (always-on rules plus domain rules). **Architecture map**: `.cursor/architecture.md`, `.cursor/platform-lib.md`, `.cursor/accounting-flows.md`, `.cursor/service-contracts.md`, `.cursor/gaps-and-risks.md`, `.cursor/conventions.md`. **ExecutionContext contracts**: `.cursor/execution-context-contracts.md`. **Short refs**: `.cursor/docs/glossary.md`, `patterns-and-examples.md`, `anti-patterns.md`, `faq.md`. **Money-path runbooks**: `system_brain/flows/*.md` (index in `.cursor/architecture.md` §12). Do not ship contract-breaking API changes; see `api-contract-safety.mdc`.
+   Workspace root `.cursorrules` (Java/XML) and `.cursor/rules/*.mdc` (always-on rules plus domain rules). **Architecture map**: `.cursor/architecture.md`, `.cursor/platform-lib.md`, `.cursor/accounting-flows.md`, `.cursor/service-contracts.md`, `.cursor/gaps-and-risks-digest.md` (SoT: `gaps-and-risks.md` — escalate when flagged), `.cursor/conventions.md`. **ExecutionContext contracts**: `.cursor/execution-context-contracts.md`. **Short refs**: `.cursor/docs/glossary.md`, `patterns-and-examples.md`, `anti-patterns.md`, `faq.md`. **Money-path runbooks**: `system_brain/flows/*.md` (index in `.cursor/architecture.md` §12). Do not ship contract-breaking API changes; see `api-contract-safety.mdc`.
 
 3. **Accounting module specifics**  
-   After brain orientation, use `.cursor/rules/accounting.mdc` when working in `trustt-platform-accounting/` (module reference + sync section). Update that file when accounting behaviour changes.
+   After brain orientation, use `.cursor/rules/accounting.mdc` (gates) + `.cursor/skills/accounting-knowledge/` topic files when working in `trustt-platform-accounting/`. Update the matching skill topic when accounting behaviour changes.
 
 4. **Framework and codegen documentation**  
    `.cursor/index.mdc` lists priority paths under `trustt-platform-ai-codegen-artifacts-java/` (orchestration, infra deep-dives, data dictionaries).
