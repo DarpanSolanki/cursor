@@ -1,3 +1,6 @@
+2026-07-22 | workspace harness | DCF e2e vs accounting `935c52743` — Pass SEED_EXTRA=0|1 obs123
+- group_parent_last_child_dfc_local_e2e: ACCEPTANCE_SCOPE obs123|full (GAP-074 Out-of-scope vs fail); last-child Obs2 amount==principal excess=0; force-bill asserts via CRN shape accountId||17…[||dfdId] (GL posts, not LAN/narration); legacy CRN collision gate; two-phase EXTRA loanRepayment. Local Pass pin 6000137433 DEATH_DATE=2025-08-02. Product CRN fix owned by accounting SHA (sibling).
+
 2026-07-22 | workspace | automation gates — impact matrix, KG watermark, registry companion
 - ship_discipline: extended impact_analysis (entry_paths/scenario_modes/downstream/out_of_scope); service tier on accounting/payments/LOS. New kg_watermark_gate + registry_companion_gate; autopilot end/close hardened; ntest validate on service/money close; enrichment-audit pre-push blocks stale KG/changelog.
 
@@ -467,3 +470,6 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 - 2026-07-20 | BUG_FIX | TDPQA-54 disbursement Redis in-flight locks: LOS producer and Accounting consumer now use atomic owner-token acquire with configurable 600000 ms TTL; platform-lib adds Lua compare-and-delete; ambiguous intermediate `DEFAULT` replay fails closed. Builds PASS; `disbursement.redis_inflight_lock_sim` PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME PASS; live INDL fixture blocked before loan creation by existing mandate validation. | lib `9c5c82d2d8`, LOS `0e4a0be2bd`, accounting `f9d803c4e`; `scripts/testing/registry.json`
 
 - 2026-07-21 | OPS | TDPQA-54 V000125 masterdata seed (disburse Redis in-flight TTL props) + prod pre-deploy pack for manual Flyway/DBA | initial-setup `53aadb49`, `scripts/sql/deploy/prod_pre_V000125_tdpqa54_disburse_redis_ttl_config.sql`
+
+## 2026-07-22 | acct `935c52743` | mfi_integration_v3.4.2.4 | DCF force-bill CRN uniqueness (134497)
+DeathForeclosureInsuranceWriter.buildForceBillClientReference now includes deathForeclosureDetailsId so non-last then last-child parent force-bill on same reporting date do not collide.

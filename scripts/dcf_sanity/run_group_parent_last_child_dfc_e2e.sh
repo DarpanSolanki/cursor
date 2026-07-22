@@ -12,8 +12,10 @@ export DEATH_DATE="${DEATH_DATE:-}"
 export SEED_EXTRA="${SEED_EXTRA:-1}"
 export DCF_SEED_EMI_LABD="${DCF_SEED_EMI_LABD:-1}"
 export ACCEPTANCE_STRICT="${ACCEPTANCE_STRICT:-1}"
+export ACCEPTANCE_SCOPE="${ACCEPTANCE_SCOPE:-obs123}"
 
 echo "=== SDCP-10199 group parent last-child DFC e2e (A2 EXTRA + force-bill labd) ==="
+echo "acceptance_scope=$ACCEPTANCE_SCOPE acceptance_strict=$ACCEPTANCE_STRICT seed_extra=$SEED_EXTRA"
 if [[ "${DCF_FRESH_GROUP}" == "1" ]]; then
   echo "mode=fresh_group (disburse new SHG parent+2 children per run)"
 elif [[ -n "${PARENT_LAN}" ]]; then

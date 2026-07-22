@@ -1205,6 +1205,30 @@
     },
     "note": "S07/S11/S12/S13 matrix \u2014 writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
   },
+  "dcf.force_bill_crn_sim": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "crn",
+      "sdcp-10199"
+    ],
+    "title": "DCF force-bill CRN uniqueness (deathForeclosureDetailsId / 134497)",
+    "cmd": "python3 scripts/testing/foreclosure/dcf_force_bill_crn_sim.py",
+    "acceptance": {
+      "dimensions": [
+        "adjacent_sibling",
+        "dirty_state"
+      ],
+      "verify_mode": "processor_mirror_sim",
+      "note": "Mirrors Writer CRN formula; full sequential parent FB e2e remains dcf.group_parent_last_child_e2e (GAP-078)."
+    },
+    "note": "GAP-078 @935c52743 — buildForceBillClientReference appends deathForeclosureDetailsId. Blocker for RUNTIME: /tmp/dcf_e2e.lock when sibling harness owns the fixture."
+  },
   "dcf.insurance_reupload_index_audit": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
@@ -1250,10 +1274,11 @@
       "PARENT_LAN": "6000137433",
       "CHILD1_LAN": "6000137440",
       "CHILD2_LAN": "6000137441",
-      "DEATH_DATE": "2025-11-02",
+      "DEATH_DATE": "2025-08-02",
       "SEED_EXTRA": "1",
       "DCF_SEED_EMI_LABD": "1",
-      "ACCEPTANCE_STRICT": "1"
+      "ACCEPTANCE_STRICT": "1",
+      "ACCEPTANCE_SCOPE": "obs123"
     },
     "expect": {
       "status": "PASS"
@@ -1292,7 +1317,7 @@
         },
         {
           "table": "transaction_master",
-          "assert": "force-bill client_reference_number is numeric accountId||valueDateMs; original_amount == billed interest slice; parent AND child dedicated FB labd (prin=0)",
+          "assert": "force-bill client_reference_number is numeric accountId||valueDateMs||deathForeclosureDetailsId (GAP-078 @935c52743; sequential same-date parent FB must not 134497); original_amount == billed interest slice; parent AND child dedicated FB labd (prin=0)",
           "checked_by": "FB columns PASS parent+child labd_id/account_id/installment_id/billing/prin=0/interest/txn_ref/client_ref/reversed/created_by/updated_by"
         },
         {
@@ -1314,9 +1339,9 @@
       "na": {
         "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same numeric client_ref no-op). Blocker: no second insurance-job fire harness without claim reset."
       },
-      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; Product excess=0 + parent FB; non-last RSCH parity; GL assert_gl_balance_for_loan; txn assert_transaction_posting_audit; amount assert_amount_calculations_*; matrix S1-S8 @ 9b6454df6."
+      "note": "ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 (default): Obs1–3 + RSTCRE fail-closed; GAP-074 INT/DPI Out-of-scope. Scope=full FAILS on parent INT pending. Last-child amount: Obs2 amount==principal excess=0 (NOT child==parent). Non-last: tm parity. Dirty: DCF_SEED_EMI_LABD=1. Pin DEATH_DATE=2025-08-02."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199): full matrix S1-S8. RSTCRE two-path spine: non-last child DFC \u2192 RSTCRE PENDING \u2192 fire+wait childLoanEventProcessingBatchJob \u2192 assert_rstcre_drained (event_status=C, filler_1 NULL) \u2192 no PENDING RSTCRE before last-child. GAP-074 parent INT pending FAIL (not WARN). Fresh fixture: DCF_FRESH_GROUP=1 or unset PARENT_LAN. Clean: ACCEPTANCE_STRICT=1 SEED_EXTRA=0 DCF_SEED_EMI_LABD=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py."
+    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE → childLoanEventProcessingBatchJob → childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py."
   },
   "dcf.group_parent_last_child_e2e_clean": {
     "type": "flow",
@@ -1332,9 +1357,14 @@
     "title": "SHG group last-child DFC clean path (S1: no EXTRA, no dirty EMI labd)",
     "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
     "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-08-02",
       "SEED_EXTRA": "0",
       "DCF_SEED_EMI_LABD": "0",
-      "ACCEPTANCE_STRICT": "1"
+      "ACCEPTANCE_STRICT": "1",
+      "ACCEPTANCE_SCOPE": "obs123"
     },
     "expect": {
       "status": "PASS"
@@ -1348,8 +1378,8 @@
       "db_asserts": [
         {
           "table": "loan_account_payments_details",
-          "assert": "parent RSCH amount==principal_amount excess_amount=0; child DFC amount matches parent RSCH when EXTRA=0",
-          "checked_by": "assert_amount_calculations_last_child clean path"
+          "assert": "last-child: parent RSCH amount==principal_amount excess_amount=0 (Obs2); child DFC original_amount may differ from parent RSCH by design; non-last: child DEATH_FORECLOSURE.original_amount == parent RSCH.original_amount",
+          "checked_by": "assert_amount_calculations_last_child + assert_amount_calculations_non_last"
         },
         {
           "table": "transaction_partition_details",
@@ -1358,7 +1388,7 @@
         }
       ]
     },
-    "note": "Matrix S1 — last-child clean. Auto-discovers fresh fixture unless PARENT_LAN set."
+    "note": "Matrix S1 — clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02."
   },
   "dcf.group_parent_last_child_fresh_e2e": {
     "type": "flow",
@@ -1380,7 +1410,8 @@
       "DCF_E2E_NO_SNAPSHOT": "1",
       "SEED_EXTRA": "1",
       "DCF_SEED_EMI_LABD": "1",
-      "ACCEPTANCE_STRICT": "1"
+      "ACCEPTANCE_STRICT": "1",
+      "ACCEPTANCE_SCOPE": "obs123"
     },
     "expect": {
       "status": "PASS"

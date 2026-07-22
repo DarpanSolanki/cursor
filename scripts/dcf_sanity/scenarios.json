@@ -133,7 +133,7 @@
         "f45dbe3bd",
         "5b1b928ed"
       ],
-      "note": "DO NOT waive parent PRIN on last child \u2014 pay full parent POS via appropriation + RSCH. Two-path reschedule spine: (1) non-last child DFC inserts RSTCRE PENDING on parent loan_account_events_queue; (2) childLoanEventProcessingBatchJob must fire+wait before last-child DFC \u2014 assert event_status=C and filler_1 IS NULL; assert no PENDING RSTCRE pre-last-child. A2 (5b1b928ed): EXTRA>0 \u2192 parent RSCH nets EXCESS/EXTRA on last child only. B: force-bill labd via BILLING + prin=0 + client_ref accountId||valueDateMs. e2e matrix S1-S8 @ 9b6454df6. GAP-074 INT-180 (parent INT pending e.g. \u20b9317) still open/parked on 3.7.1 \u2014 separate from RSTCRE; e2e FAILs not WARNs."
+      "note": "DO NOT waive parent PRIN on last child \u2014 pay full parent POS via appropriation + RSCH. Two-path spine: (1) parent path RSCH_DEATH_FORECLOSURE + sync parent reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE PENDING on loan_account_events_queue \u2192 childLoanEventProcessingBatchJob \u2192 childLoanRestructuring (assert event_status=C, filler_1 NULL; no PENDING RSTCRE pre-last-child). Amounts: non-last child DEATH_FORECLOSURE.original_amount == parent RSCH; last-child amounts DIFFER by design \u2014 assert Obs2 amount==principal excess=0 (NOT child==parent). A2 EXTRA nets parent RSCH principal; B force-bill labd. Matrix @ 9b6454df6 + CRN uniqueness 935c52743 (accountId||valueDateMs||dfdId — no 134497 on sequential parent FB). Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. ACCEPTANCE_SCOPE=obs123 documents GAP-074 INT/DPI as Out-of-scope; ACCEPTANCE_SCOPE=full FAILs on INT pending (not WARN)."
     },
     {
       "id": "S08_matrix",
@@ -144,17 +144,33 @@
           "id": "S1",
           "env": {
             "ACCEPTANCE_STRICT": "1",
+            "ACCEPTANCE_SCOPE": "obs123",
             "SEED_EXTRA": "0",
-            "DCF_SEED_EMI_LABD": "0"
+            "DCF_SEED_EMI_LABD": "0",
+            "PARENT_LAN": "6000137433",
+            "DEATH_DATE": "2025-08-02"
           }
         },
         {
           "id": "S2_S3",
           "env": {
             "ACCEPTANCE_STRICT": "1",
+            "ACCEPTANCE_SCOPE": "obs123",
             "SEED_EXTRA": "1",
-            "DCF_SEED_EMI_LABD": "1"
+            "DCF_SEED_EMI_LABD": "1",
+            "PARENT_LAN": "6000137433",
+            "DEATH_DATE": "2025-08-02"
           }
+        },
+        {
+          "id": "S_full_gap074",
+          "env": {
+            "ACCEPTANCE_STRICT": "1",
+            "ACCEPTANCE_SCOPE": "full",
+            "SEED_EXTRA": "0",
+            "DCF_SEED_EMI_LABD": "0"
+          },
+          "note": "Expect FAIL while GAP-074 open unless fixture has zero parent INT residual"
         }
       ],
       "local_e2e": "python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",
@@ -182,10 +198,11 @@
         "DCF_FRESH_GROUP": "1",
         "DCF_E2E_NO_SNAPSHOT": "1",
         "ACCEPTANCE_STRICT": "1",
+        "ACCEPTANCE_SCOPE": "obs123",
         "SEED_EXTRA": "1",
         "DCF_SEED_EMI_LABD": "1"
       },
-      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore."
+      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore. Same two-path spine + Obs2 last-child amount rules as S08."
     },
     {
       "id": "S09_reverse_feed_reupload",
