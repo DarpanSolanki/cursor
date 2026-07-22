@@ -28,7 +28,7 @@ Money ships: real-flow DB write validation — drive actual orch/API/job; assert
 
 When E2E blocked → code-backed sim ladder (below), still cite expected writes.
 
-After PASS: `ship-discipline.sh write …` then mark-verified / workspace-close. Prefer `push-origin.sh`. Escape: `SHIP_PUSH_NO_AUTO_CLOSE=1` rare.
+After PASS: `ship-discipline.sh write …` then mark-verified / workspace-close. Prefer `push-origin.sh` — **never bypass with raw `git push`**. Escape: `SHIP_PUSH_NO_AUTO_CLOSE=1` rare.
 
 ## Code-backed simulation ladder (strict order)
 
@@ -46,13 +46,13 @@ FULL (code/orch) / CASES (changelog precedents) / SKIP (KB only). Shipped money 
 
 `changelog-add` alone is **NOT** knowledge closure. Checklist: kg-flow with correct sha; `.cursor/changelog.md` no `(pending)`; gaps RESOLVED; flows/accounting docs; module skill topic; kg-switch/enrich; `kg fresh` → FRESH; registry case encodes QA acceptance shapes; runbook; scenarios.
 
-**Hard stop:** pending changelog; gaps still open after push ask; STALE kg; wrong sha; weak registry; acceptance assert allows QA fail mode.
+**Mandatory checklist — ALL before "task done"** (full table in archive). **Hard stop phrases** if any true → task NOT done: pending changelog; gaps still open after push ask; STALE kg; wrong sha; weak registry; acceptance assert allows QA fail mode.
 
 Do not say "pushed" or "done" with `Post-ship gate: FAIL`.
 
 ## Enhancement — all fronts
 
-Before proposing/shipping any fix/enhancement, walk Scale / Index-SQL / Poison / Cross-service / Idempotency / Ops(SQL impact) / Regression / Contract. Always present **L0 + L1**. Native SQL → query-index audit or label NOT VERIFIED. Do **not** close SQL/batch enhancement with only code trace.
+Before proposing/shipping any fix/enhancement, walk Scale / Index-SQL / Poison / Cross-service / Idempotency / Ops(SQL impact) / Regression / Contract. **Tiered delivery (always present L0 + L1).** Always present **L0 + L1**. Native SQL → query-index audit or label NOT VERIFIED. Do **not** close SQL/batch enhancement with only code trace.
 
 ## Internal API local harness (money-tier close)
 

@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 4 — KG MCP + gate tiering + arch digest
+trustt-kg MCP (stdio wrapper over kg.py); mcp-atlassian dead entry removed (use plugin; rotate exposed token). Self-expansion READ-ONLY proceed / MUTATION stop-wait. architecture-digest.md bootstrap. TASK0 archive-only mandates promoted or justified.
+
 ## 2026-07-22 | workspace | Upgrade 3 — collapse alwaysApply redundancy
 28 alwaysApply → 5 thematic (`00/10/20/30-*.mdc` + `darpan.mdc`), ≤45KB. Verbatim archives in `.cursor/skills/workspace-gates-reference/`. Mandate checklist 153/153 preserved. Thin `.cursorrules` + `AGENTS.md`. Mapping: `scripts/scratch/upgrade3-mapping.md`.
 

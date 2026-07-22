@@ -9,10 +9,12 @@ Thin map (Upgrade 3). Load-bearing gates live in thematic alwaysApply rules.
 | `.cursor/rules/00-workspace-core.mdc` | Bootstrap, autopilot, contract, ops, hygiene, open-final |
 | `.cursor/rules/10-quality-gates.mdc` | Discuss-before, minimal-fix, reuse-queries, hot-path, upstream, gates A–E |
 | `.cursor/rules/20-ship-gates.mdc` | Ship-loop, ship-test, enrichment, post-ship, sim, flyway, internal-api |
-| `.cursor/rules/30-kg-discipline.mdc` | KG safety, self-learning, flow-cross-learn, DPI branch |
+| `.cursor/rules/30-kg-discipline.mdc` | KG safety, self-learning, flow-cross-learn, DPI branch; **KG MCP (`trustt-kg`) first for LOOKUPs** |
 | `.cursor/rules/darpan.mdc` | Personal boundary / identity (standalone) |
 
 Verbatim pre-merge bodies: `.cursor/skills/workspace-gates-reference/`. Mapping: `scripts/scratch/upgrade3-mapping.md`.
+
+KG tools: project MCP `trustt-kg` → `cursor-bundle/kg/mcp/kg_mcp_server.py` (wraps `kg.py`).
 
 ## How to ask for a fix
 

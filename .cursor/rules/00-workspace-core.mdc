@@ -15,37 +15,32 @@ Verbatim archives: `.cursor/skills/workspace-gates-reference/` (former alwaysApp
 **Order (silent — do not ask permission):**
 1. `.cursor/onboarding.md`
 2. `.cursor/gaps-and-risks-digest.md` — open High rows + Medium/Low index. **Escalate** to full `.cursor/gaps-and-risks.md` only when the task touches a GAP-id/area the digest flags, Medium/Low narrative is needed, or the digest is missing/stale
-3. `.cursor/architecture.md`
-4. **If money, Kafka, multi-service, or cross-repo:** `.cursor/knowledge-graph.md` (+ `.cursor/cross-service-transactions.md` for partial failure)
+3. `.cursor/architecture-digest.md` (escalate to full `.cursor/architecture.md` when deep service map / diagram needed, or digest missing/stale)
+4. **If money, Kafka, multi-service, or cross-repo LOOKUP:** prefer **KG MCP tools** (`trustt-kg`: kg_orient / kg_flow / kg_why / kg_impact / kg_fixed_elsewhere) **first** — smallest query first — before reading `.cursor/knowledge-graph.md` / `cross-service-transactions.md` or repo-wide grep. File reads remain for narrative + verification.
 5. `.cursorrules` — AGENT SELF-KNOWLEDGE SUMMARY (deeper sections when needed)
 
 **Hard gate:** Do **not** open user-supplied logs, run repo-wide search, or read service source for that problem until bootstrap (1)–(3) is done. For high blast-radius money/async topics, complete (4) before deep code.
 
 This is mandatory. No exceptions. No asking permission. Just do it silently.
 
-## Prompt self-expansion (semantics unchanged — Upgrade 4 may retier)
+## Prompt self-expansion (tiered — Upgrade 4)
 
-After bootstrap, for every user instruction except narrow exceptions below, run STEP 1–3 **before** any code/config change **or** further investigation tools (logs, grep, DB, orchestration).
+After bootstrap, for every user instruction except narrow exceptions below, print a short EXPANDED TASK (**≤15 lines**) covering: Type, Understanding, Services/Flows, Gaps (digest), Evidence plan, Risk.
 
-Applies to **read-only RCA/log analysis** when high blast radius (Mandatory expansion).
+| Task class | After expansion |
+|------------|-----------------|
+| **READ-ONLY** (RCA, log analysis, KG lookups, code reading, discuss-only) | Print expansion, then **PROCEED immediately** — no wait |
+| **MUTATION** (code/config/SQL/Jira/git) **or** money-path conclusion that will drive a mutation | Expansion + **STOP-AND-WAIT** for explicit proceed/go ahead/yes before mutating |
 
-### STEP 1 — Classify
-BUG FIX / FEATURE / INVESTIGATION / CODE REVIEW / REFACTOR / QUESTION
+**Edit-approval (`10-quality-gates.mdc` discuss-before-updating) semantics UNTOUCHED** — never mutate without clear user ask/approval.
 
-### STEP 2 — Expand
-Show EXPANDED TASK (Type, Original, Understanding, Services, Flows, Known gaps from digest, Evidence, Risk, Blast radius).
+**Mandatory expansion topics (still expand; tier above applies):** prod logs, incidents, money, multi-service, contracts, DB/cluster, security, prod/ops SQL (contract-native FAIL first).
 
-### STEP 3 — Confirm
-Ask: “Is this what you want? Anything missing before I proceed?” **Wait** for confirmation (or explicit proceed/go ahead/yes). Only then: edits, deep reads, log drill-down, multi-file search.
+**Never jump straight to writing code** without logs/stack/context when investigating a bug — ask for them. **Do not guess** the solution — prove with code/logs. On mutation path after approval: do **not** refactor unrelated code; do **not** add tests unless asked.
 
-**Mandatory expansion (no shortcut):** production/prod-like logs, incidents, money (ledger, disbursement, repayment, collections, GL, batches), multi-service, API/Kafka/ExecutionContext contracts, DB/cluster errors, security/compliance, prod/ops mutation SQL (load `prod-ops-sql-impact` skill/gate; ask “is contract-native FAIL enough?” before soft-archive/invented status) — even if user asked analysis only / no code.
+**EXCEPTION — skip expansion (rare):** continuation proceed/yes to your prior expansion; pure glossary; pure social.
 
-**EXCEPTION — skip expansion + confirmation (rare):**
-- Continuation: user answers proceed/yes/go ahead to **your** expansion in the **same** thread
-- Pure glossary: one-line definition, zero repo work
-- Pure social / out of scope
-
-If unsure → **use expansion**. `discuss-before-updating` (in `10-quality-gates.mdc`) still governs edits.
+If unsure whether mutation will follow → treat as **MUTATION** (STOP-AND-WAIT).
 
 ## Workspace autopilot (mandatory)
 
@@ -92,7 +87,7 @@ Scratch → `scripts/scratch/<task>/` — delete when done. **Never** commit scr
 
 ## Knowledge sync push (mandatory)
 
-When updating tracked knowledge (`.cursor/**`, `system_brain/**`, `.cursorrules`, `AGENTS.md`, knowledge `docs/**`): commit + push `origin` + confirm. No deferred push.
+When updating tracked knowledge (`.cursor/**`, `system_brain/**`, `.cursorrules`, `AGENTS.md`, knowledge `docs/**`): commit + push `origin` + confirm. **No deferred push** — sync must remain current for machine migration/bootstrap.
 
 ## Principal architect (short)
 
@@ -106,10 +101,10 @@ Identify service git root; skim architecture + flows; check platform-lib before 
 
 1. Memory `cursor-bundle/memory/MEMORY.md`
 2. Brain / CANONICAL-MAP
-3. KG orient/why (after validate/fresh)
+3. **LOOKUP first:** KG MCP (`trustt-kg`) — `kg_orient` / `kg_flow` / `kg_why` / `kg_impact` / `kg_fixed_elsewhere` (smallest query first; after validate/fresh)
 4. Runbooks INDEX
 5. Gaps digest (escalate when flagged)
-6. Orchestration XML + processors (**authoritative**)
+6. Orchestration XML + processors (**authoritative verification**)
 7. `scripts/db-local.sh` (**authoritative local state**)
 
 ## Routing to archives

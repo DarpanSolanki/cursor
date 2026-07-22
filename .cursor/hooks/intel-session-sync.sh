@@ -24,6 +24,15 @@ if [[ -f "$GAPS_SRC" ]]; then
   fi
 fi
 
+# Rebuild architecture digest when SoT is newer
+ARCH_SRC="$ROOT/.cursor/architecture.md"
+ARCH_DIGEST="$ROOT/.cursor/architecture-digest.md"
+if [[ -f "$ARCH_SRC" ]]; then
+  if [[ ! -f "$ARCH_DIGEST" || "$ARCH_SRC" -nt "$ARCH_DIGEST" ]]; then
+    bash "$ROOT/scripts/bin/build-architecture-digest.sh" >>"$LOG" 2>&1 || true
+  fi
+fi
+
 export SKIP_KG_ENSURE="$SKIP_KG"
 RESULT=$(timeout 50 python3 "$ROOT/scripts/testing/sync_engine.py" fast-session --quiet \
   >>"$LOG" 2>&1 && cat "$LOG" | tail -1 || echo '{"ok":false}')

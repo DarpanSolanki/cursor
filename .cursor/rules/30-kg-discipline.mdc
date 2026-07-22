@@ -8,14 +8,25 @@ alwaysApply: true
 
 Archives: `.cursor/skills/workspace-gates-reference/kg-safety-and-consultation.md`, `self-learning-kg.md`, `flow-cross-learn.md`, `dpi-feature-branch-gate.md`
 
+## KG MCP tools are first resort for LOOKUPS
+
+MCP server **`trustt-kg`** (`cursor-bundle/kg/mcp/kg_mcp_server.py`) wraps `kg.py` read-only (no logic duplication).
+
+For LOOKUP questions (apiName flow, impact, cross-service path, fixed-elsewhere, why/symptom):
+1. **Smallest query first** via MCP: `kg_orient` → `kg_flow` / `kg_why` / `kg_impact` / `kg_fixed_elsewhere` / `kg_search` as needed
+2. **Do not** start with `.cursor/knowledge-graph.md`, `cross-service-transactions.md`, or repo-wide grep for those lookups
+3. File reads remain for **narrative + verification** (orch XML, processors, DB) after the KG points you
+
+Always `kg_validate` / `kg_fresh` (or watermark) when branch drift possible — KG must never drive implementation alone.
+
 ## Hard rule — KG must never drive implementation alone
 
 KG indexes structure + opt-in precedents. It does **not** know runtime DB/config/cache/WIP.
 
 Before money/Kafka/contract/multi-service fix/feature/RCA:
-1. `kg.py validate` — must pass
-2. `kg.py fresh` — if STALE → `kg-switch.sh` before trusting flow/crud/why
-3. `kg.py orient <request>` — with disclaimer
+1. `kg.py validate` / MCP `kg_validate` — must pass
+2. `kg.py fresh` / MCP `kg_fresh` — if STALE → `kg-switch.sh` before trusting flow/crud/why
+3. Prefer MCP `kg_orient` / `kg_why` (smallest query first) — with disclaimer
 4. **Verify in source of truth:** orch XML → processor `.java` → `scripts/db-local.sh`
 
 `KG_STRICT=1` when branch drift/dirty possible — stale answers exit 2.
