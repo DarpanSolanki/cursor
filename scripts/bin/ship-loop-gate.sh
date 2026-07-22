@@ -238,6 +238,8 @@ PY
     fi
     ;;
   service)
+    echo "→ ntest validate (service tier)"
+    python3 "$ROOT/scripts/testing/ntest.py" validate || exit 1
     _build_repos || exit 1
     if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
       _run_smart_cases || exit 1
@@ -268,6 +270,8 @@ for r in repos:
     fi
     ;;
   money)
+    echo "→ ntest validate (money tier)"
+    python3 "$ROOT/scripts/testing/ntest.py" validate || exit 1
     _build_repos || exit 1
     if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
       _run_smart_cases || exit 1

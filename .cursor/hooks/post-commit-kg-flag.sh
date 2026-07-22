@@ -23,4 +23,10 @@ fi
 
 mkdir -p "$ROOT/.cursor"
 date -u +%Y-%m-%dT%H:%M:%SZ >"$ROOT/.cursor/.pending-kg-rebuild"
-echo '{"additional_context":"Git commit completed — when changelog is prepended for a stable fix, run scripts/bin/kg-enrich.sh to fold cases into the KG."}'
+
+# Auto-sync when watermark drifted (extended sessions / checkout without kg-switch)
+if ! python3 "$ROOT/scripts/lib/kg_watermark_gate.py" check --soft >/dev/null 2>&1; then
+  timeout 120 bash "$ROOT/scripts/bin/enrichment-sync.sh" >/dev/null 2>&1 || true
+fi
+
+echo '{"additional_context":"Git commit completed — when changelog is prepended for a stable fix, run scripts/bin/kg-enrich.sh to fold cases into the KG. If KG was stale, enrichment-sync auto-ran."}'

@@ -30,14 +30,28 @@ REQUIRED_KEYS = (
     "assumptions",
 )
 
-# Money-tier: fail closed without a written impact matrix (collision class 2026-07-19).
+# Money/service money-repo: fail closed without a written impact matrix (2026-07-19 / 2026-07-22).
 IMPACT_REQUIRED_KEYS = (
+    "entry_paths",
+    "scenario_modes",
     "callers",
+    "downstream",
     "modes",
     "account_field",
     "error_codes",
     "happy_path",
     "blast_radius",
+    "out_of_scope",
+)
+
+MONEY_SERVICE_REPOS = frozenset(
+    {
+        "trustt-platform-accounting",
+        "trustt-platform-payments",
+        "trustt-platform-los",
+        "novopay-platform-accounting-v2",
+        "novopay-platform-payments",
+    }
 )
 
 VERIFY_MODES = frozenset(
@@ -79,13 +93,31 @@ def _pending_looks_money(pending: dict) -> bool:
     )
 
 
+def _pending_money_service_repo(pending: dict) -> bool:
+    repos = {r for r in (pending.get("repos") or []) if r}
+    if repos & MONEY_SERVICE_REPOS:
+        return True
+    files = " ".join(pending.get("files") or [])
+    return any(r in files for r in MONEY_SERVICE_REPOS)
+
+
+def _needs_impact_analysis(pending: dict, disc: dict) -> bool:
+    tier = (pending.get("tier") or disc.get("tier") or "").lower()
+    if tier == "money":
+        return True
+    if tier == "service" and _pending_money_service_repo(pending):
+        return True
+    return _pending_looks_money(pending)
+
+
 def _check_impact_analysis(disc: dict) -> list[str]:
     errors: list[str] = []
     impact = disc.get("impact_analysis")
     if not isinstance(impact, dict):
         errors.append(
-            "missing impact_analysis — money ships need callers/modes/account_field/"
-            "error_codes/happy_path/blast_radius (see feedback_full_impact_analysis_before_money_ship.md)"
+            "missing impact_analysis — money/service ships need entry_paths/scenario_modes/"
+            "callers/downstream/modes/account_field/error_codes/happy_path/blast_radius/"
+            "out_of_scope (see feedback_full_impact_analysis_before_money_ship.md)"
         )
         return errors
     for key in IMPACT_REQUIRED_KEYS:
@@ -168,9 +200,8 @@ def check(*, hard: bool = True) -> int:
         if disc.get("overengineering") is True:
             errors.append("overengineering=true is blocked — drop layers and re-write")
 
-        # Money tier (or money-path pending files): require impact_analysis matrix.
-        tier = (pending.get("tier") or disc.get("tier") or "").lower()
-        if tier == "money" or _pending_looks_money(pending):
+        # Money tier, service on accounting/payments/LOS, or money-path files: impact matrix.
+        if _needs_impact_analysis(pending, disc):
             errors.extend(_check_impact_analysis(disc))
 
     # Fail-closed acceptance matrix (any money/service flow — see acceptance_coverage.py).
@@ -254,12 +285,16 @@ def write(args: argparse.Namespace) -> int:
         }
 
     impact = {
+        "entry_paths": (args.impact_entry_paths or "").strip(),
+        "scenario_modes": (args.impact_scenario_modes or "").strip(),
         "callers": (args.impact_callers or "").strip(),
+        "downstream": (args.impact_downstream or "").strip(),
         "modes": (args.impact_modes or "").strip(),
         "account_field": (args.impact_account_field or "").strip(),
         "error_codes": (args.impact_error_codes or "").strip(),
         "happy_path": (args.impact_happy_path or "").strip(),
         "blast_radius": (args.impact_blast_radius or "").strip(),
+        "out_of_scope": (args.impact_out_of_scope or "").strip(),
     }
     if any(impact.values()):
         data["impact_analysis"] = impact
@@ -301,8 +336,24 @@ def main() -> int:
     w.add_argument("--reuse-caller", action="append", default=[], help="Caller verified (repeatable)")
     w.add_argument("--reuse-justification", default="", help="New @Query justification (step 3)")
     w.add_argument("--reuse-perf", default="", help="Performance impact note (index/scan/limit)")
-    w.add_argument("--impact-callers", default="", help="Impact matrix: callers (money)")
+    w.add_argument("--impact-entry-paths", default="", help="Impact matrix: orch APIs/jobs/consumers")
+    w.add_argument(
+        "--impact-scenario-modes",
+        default="",
+        help="Impact matrix: last-child / non-last / standalone / replay",
+    )
+    w.add_argument("--impact-callers", default="", help="Impact matrix: callers (grep changed methods)")
+    w.add_argument(
+        "--impact-downstream",
+        default="",
+        help="Impact matrix: webapp APIs, GL, events, registry cases",
+    )
     w.add_argument("--impact-modes", default="", help="Impact matrix: CASH vs DIRDR/ACH etc")
+    w.add_argument(
+        "--impact-out-of-scope",
+        default="",
+        help="Impact matrix: explicit Out-of-scope rows with evidence",
+    )
     w.add_argument("--impact-account-field", default="", help="Impact matrix: account field compared")
     w.add_argument("--impact-error-codes", default="", help="Impact matrix: error codes")
     w.add_argument("--impact-happy-path", default="", help="Impact matrix: happy path still passes")

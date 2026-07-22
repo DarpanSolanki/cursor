@@ -53,9 +53,23 @@ fi
 if [[ -f "$CHANGELOG" && -f "$KG_DB" ]]; then
   if [[ "$CHANGELOG" -nt "$KG_DB" ]]; then
     warn "CHANGELOG newer than kg.db — run scripts/bin/enrichment-sync.sh"
+    if [[ "$PRE_PUSH" -eq 1 ]]; then
+      echo "BLOCKED: brain CHANGELOG ahead of kg.db — run: scripts/bin/enrichment-sync.sh" >&2
+      exit 1
+    fi
   else
     ok "kg.db covers CHANGELOG mtime"
   fi
+fi
+
+if ! python3 "$ROOT/scripts/lib/kg_watermark_gate.py" check --soft >/dev/null 2>&1; then
+  warn "KG branch-set stale vs watermark — run: scripts/bin/kg-ensure-fresh.sh"
+  if [[ "$PRE_PUSH" -eq 1 ]]; then
+    echo "BLOCKED: KG watermark stale — run: scripts/bin/kg-switch.sh" >&2
+    exit 1
+  fi
+else
+  ok "KG branch-set fresh (watermark gate)"
 fi
 
 if [[ -f "$PENDING" && -f "$CHANGELOG" ]]; then
@@ -96,31 +110,7 @@ fi
 
 # Money companion WARN: DeathForeclosure / DCF writer in recent kg-flow without registry/runbook markers
 if [[ -f "$CHANGELOG" ]]; then
-  if python3 - <<'PY'
-import json, re, sys
-from pathlib import Path
-root = Path(".")
-cl = (root / "cursor-bundle/brain/changelog/CHANGELOG.md").read_text(encoding="utf-8", errors="replace")
-m = re.search(r"^## .+?\| kg-flow \|.*?(?=^## |\Z)", cl, re.M | re.S)
-block = m.group(0) if m else ""
-if not any(k in block for k in ("DeathForeclosure", "deathForeclosure", "loanDeathForeclosure", "EXTRA", "labd", "A2")):
-    sys.exit(0)
-reg = json.loads((root / "scripts/testing/registry.json").read_text(encoding="utf-8"))
-note = (reg.get("dcf.group_parent_last_child_e2e") or {}).get("note") or ""
-rb_p = root / "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md"
-rb = rb_p.read_text(encoding="utf-8", errors="replace") if rb_p.is_file() else ""
-miss = []
-if any(k in block for k in ("EXTRA", "labd", "A2", "force-bill")):
-    if not any(k in note for k in ("EXTRA", "labd", "A2")):
-        miss.append("registry note")
-    if "EXTRA" not in rb or "labd" not in rb:
-        miss.append("runbook A2/B")
-if miss:
-    print(",".join(miss))
-    sys.exit(1)
-sys.exit(0)
-PY
-  then
+  if python3 "$ROOT/scripts/lib/registry_companion_gate.py" check; then
     ok "DCF companion markers (registry/runbook) when kg-flow is DCF/EXTRA"
   else
     warn "money companion incomplete for top DCF kg-flow — registry note + runbook A2/B required (feedback_post_ship_registry_runbook_gap_mandatory.md)"

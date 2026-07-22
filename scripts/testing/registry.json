@@ -1292,26 +1292,31 @@
         },
         {
           "table": "transaction_master",
-          "assert": "force-bill client_reference_number == DFC_PRTL_BILL_<accountId>_<valueDateMs> (from FORCE_BILL_CLIENT_REF_PREFIX builder, not scattered literal); original_amount == billed interest slice",
-          "checked_by": "Issue B PASS client_ref DFC_PRTL_BILL_7899566_1770489000000 orig=71, DFC_PRTL_BILL_7899567_1770489000000 orig=38"
+          "assert": "force-bill client_reference_number is numeric accountId||valueDateMs; original_amount == billed interest slice; parent AND child dedicated FB labd (prin=0)",
+          "checked_by": "FB columns PASS parent+child labd_id/account_id/installment_id/billing/prin=0/interest/txn_ref/client_ref/reversed/created_by/updated_by"
         },
         {
           "table": "loan_account_payments_details",
-          "assert": "parent POS-clear payment amount==principal_amount, interest_amount=0, excess_amount==EXTRA surplus",
-          "checked_by": "Issue A PASS parent 6003769230 amount=13702 principal=13702 int=0 excess=1244 (EXTRA netting)"
+          "assert": "parent RSCH payment amount==principal_amount, interest_amount=0, excess_amount==0 (Product); txn_ref links to transaction_master",
+          "checked_by": "parent RSCH columns PASS amount==principal excess=0 interest=0"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "parent RSCH EXCESS_*=0 and BLD_INT*=0 (no double INT); child DEATH_FORECLOSURE EXCESS_INCOME_INT when EXTRA>0; debit==credit on parent FB, parent RSCH, child DFC",
+          "checked_by": "GL PASS debit=credit; parent RSCH partitions PASS EXCESS_*=0 BLD_INT*=0; child EXCESS PASS"
         },
         {
           "table": "interest_accrual_details",
           "assert": "SUM(total_accrued_amount) after reconcileAccruedInterestToBilledOriginal == billed original INT (Accrued<=Original) for parent AND every death child; IAD past last billed INT due zeroed, excess trimmed from newest",
-          "checked_by": "Obs3 PASS parent 919==919, child 974==974, child 1845==1845 (SQL + webapp getLoanAccountSummaryDetails interest_details)"
+          "checked_by": "Obs3 PASS Accrued<=Original (SQL + webapp getLoanAccountSummaryDetails interest_details)"
         }
       ],
       "na": {
-        "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same DFC_PRTL_BILL ref no-op). Blocker: no second insurance-job fire harness without claim reset."
+        "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same numeric client_ref no-op). Blocker: no second insurance-job fire harness without claim reset."
       },
-      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; fails on EMI-labd hijack and amount!=principal. Real-flow DB values asserted (see db_asserts checked_by)."
+      "note": "ACCEPTANCE_STRICT=1; DCF_SEED_EMI_LABD=1 dirty-state; Product excess=0 + parent FB; column-level fail-closed asserts."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199): ACCEPTANCE_STRICT=1 default. Obs1 dedicated force-bill labd (no EMI hijack); Obs1b parent FB Out-of-scope (child-only); Obs2 amount==principal/excess; Obs3 Accrued<=Original (reconcileAccruedInterestToBilledOriginal). Webapp-bound: getLoanAccountSummaryDetails interest_details, getLoanAccountOverviewDetails account_number_list, getLoanAccountStatement DFC_PRTL_BILL. Fixture: equivalent local product-70 SHG (QA LAN full clone blocked) + DCF_SEED_EMI_LABD=1 + EXTRA. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. GAP-075."
+    "note": "QA acceptance (TDPQA-72/SDCP-10199): ACCEPTANCE_STRICT=1. Obs1 dedicated force-bill labd (child+parent, no EMI hijack); Obs2 amount==principal and excess_amount=0 on parent RSCH; Obs3 Accrued<=Original. Non-last child DFC + parent RSCH in same e2e. Webapp-bound summary/overview/statement. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. GAP-075 Product excess=0+parent FB (any-child, not last-child-only)."
   },
   "disbursement.quick": {
     "type": "flow",

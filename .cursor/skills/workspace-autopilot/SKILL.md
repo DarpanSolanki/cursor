@@ -61,18 +61,21 @@ Test PASS → hook → `mark-verified` → cooldown → `ship-and-continue`. Use
 
 | Type | Auto-runs | You do next |
 |------|-----------|-------------|
-| TEST | preflight, before-test, trace | `ntest auto <api>` |
+| TEST | preflight, before-test, trace | `ntest auto <api>`; money/disburse: column-value asserts required (`column_audit` / `acceptance.db_asserts`) — never Pass on HTTP 200 alone |
 | BUG/RCA | preflight, trace --fast | logs, DB, orchestration XML, RCA |
 | FIX+SHIP | trace, preflight | fix → test → `autopilot end` |
 | FEATURE | trace, preflight | kg flow + XML + impact |
 | WORKSPACE | corroborate, max-pass | implement infra if asked |
 | RELEASE | (skills) | release-details skill |
+| OPS_SQL (prod/adhoc UPDATE, CRR, DTFC reset) | preflight | load `prod-ops-sql-impact` → answer “is contract-native FAIL enough?” → impact matrix → minimal UPDATEs (not local-archive by default) → print SQL path only (no IDE auto-open) |
 
 ## Task end
 
 ```bash
 bash scripts/bin/workspace-autopilot.sh end
 ```
+
+Runs: `kg-ensure-fresh` → `kg_watermark_gate --block-verified` → hygiene → (pending) `ntest validate` + `registry_companion_gate` + `ship-discipline` → `workspace-close`.
 
 Money-path: post-ship knowledge gate still required inside close.
 

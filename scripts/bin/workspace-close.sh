@@ -79,6 +79,17 @@ fi
 echo "OK: KG validate + FRESH"
 export WORKSPACE_CLOSE_KG_DONE=1
 
+python3 "$ROOT/scripts/lib/kg_watermark_gate.py" check --block-verified \
+  || die "KG watermark stale — run: scripts/bin/kg-switch.sh"
+
+# 1b — registry companion + ntest schema when pending ship work exists
+if [[ -f "$PENDING" ]]; then
+  echo "→ ntest validate (pending ship)"
+  python3 "$ROOT/scripts/testing/ntest.py" validate || die "registry.json validate failed"
+  python3 "$ROOT/scripts/lib/registry_companion_gate.py" check --hard \
+    || die "registry/runbook companion stale — update suite note/runbook to match code"
+fi
+
 # 2 — brain changelog if commit pending (merge/sync commits exempt)
 if [[ -f "$PENDING_KG" && -f "$CHANGELOG" ]]; then
   cl_mtime=$(stat -c %Y "$CHANGELOG" 2>/dev/null || echo 0)

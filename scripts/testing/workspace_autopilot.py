@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -115,7 +116,43 @@ def _enhance_kind(text: str, base: dict) -> dict:
         base["classification"] = "WORKSPACE"
     if re.search(r"\b(release details|release mail)\b", t):
         base["classification"] = "RELEASE"
+    # Prod/ops mutation SQL (CRR soft-archive, DTFC reset, adhoc UPDATE packs)
+    if re.search(
+        r"\b(prod\s+sql|ops\s+sql|adhoc\s+(sql|update)|soft-?archive\s+crr|"
+        r"client_request_response_log|prod_neft|dtfc\s+reinit|prod\s+patch\s+sql)\b",
+        t,
+    ) or (
+        "scripts/sql/adhoc" in t
+        and re.search(r"\b(update|reset|archive|patch)\b", t)
+    ):
+        base["classification"] = "OPS_SQL"
+        skills = list(base.get("skills") or [])
+        if "prod-ops-sql-impact" not in skills:
+            skills.insert(0, "prod-ops-sql-impact")
+        if "open-final-file" not in skills:
+            skills.append("open-final-file")
+        base["skills"] = skills
     return base
+
+
+def _fallback_api_hint(text: str) -> str | None:
+    """Pick explicit API-looking tokens when the router catalogue has no match."""
+    match = re.search(r"\b([a-z][A-Za-z0-9]*(?:Api|API))\b", text)
+    if match:
+        return match.group(1)
+    match = re.search(r"\bapi(?:Name)?\s*[:=]?\s*`?([a-z][A-Za-z0-9]+)`?", text, re.I)
+    return match.group(1) if match else None
+
+
+def _kg_stale() -> bool:
+    r = subprocess.run(
+        ["bash", "scripts/bin/kg-quick-check.sh"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return r.returncode != 0
 
 
 def build_plan(
@@ -127,13 +164,15 @@ def build_plan(
 ) -> Plan:
     base = _enhance_kind(text, classify(text))
     kind = base["classification"]
-    api = base.get("api_hint")
+    api = base.get("api_hint") or _fallback_api_hint(text)
     skills = list(base.get("skills") or ["workspace-router"])
 
     if kind == "WORKSPACE":
         skills = ["workspace-self-improve", "super-agent"]
     elif kind == "RELEASE":
         skills = ["release-details", "capture-proof", "workspace-close"]
+    elif kind == "OPS_SQL":
+        skills = ["prod-ops-sql-impact", "open-final-file", "workspace-router"]
     elif kind == "FEATURE":
         skills = ["super-agent", "workspace-router"]
     elif kind in ("BUG/RCA", "FIX+SHIP"):
@@ -167,7 +206,16 @@ def build_plan(
                 note=shift_reason,
             )
         )
-        if base.get("risk") == "High" or kind in ("FIX+SHIP", "TEST", "BUG/RCA"):
+        steps.append(
+            Step(
+                "kg_state",
+                "head -n 25 .cursor/workspace-kg-state.md",
+                auto=True,
+                tier="fast",
+                note="Re-read KG branch-set on task shift",
+            )
+        )
+        if base.get("risk") == "High" or kind in ("FIX+SHIP", "TEST", "BUG/RCA", "WORKSPACE"):
             steps.append(
                 Step(
                     "kg_fresh",
@@ -176,6 +224,20 @@ def build_plan(
                     tier="medium",
                 )
             )
+    elif not light_preflight and (
+        kind in ("FIX+SHIP", "WORKSPACE", "BUG/RCA")
+        or re.search(r"\b(kg|watermark|branch|train|accounting|disburse|foreclos|dpi)\b", text, re.I)
+        or (time.time() - float(state.get("kg_validate_at") or 0) > 600)
+        or _kg_stale()
+    ):
+        steps.append(
+            Step(
+                "kg_fresh",
+                "bash scripts/bin/kg-ensure-fresh.sh --quiet",
+                auto=True,
+                tier="medium",
+            )
+        )
 
     if api and not light_preflight:
         if kind in ("BUG/RCA", "FEATURE", "FIX+SHIP", "TEST"):
@@ -186,6 +248,27 @@ def build_plan(
                     auto=True,
                     tier="fast",
                     note=f"API `{api}` (cross-repo)",
+                )
+            )
+        if kind in ("BUG/RCA", "FIX+SHIP"):
+            branch_match = re.search(
+                r"\b(?:mfi_(?:integration|release)_v)?(\d+(?:\.\d+){1,4})\b",
+                text,
+                re.I,
+            )
+            base_arg = (
+                f" --base {shlex.quote('mfi_integration_v' + branch_match.group(1))}"
+                if branch_match
+                else ""
+            )
+            steps.append(
+                Step(
+                    "fixed_elsewhere",
+                    "python3 cursor-bundle/kg/bin/kg.py fixed-elsewhere "
+                    f"{shlex.quote(api)}{base_arg} --fetch-if-stale",
+                    auto=True,
+                    tier="fast",
+                    note="Fail-closed reuse gate: only VERIFIED_FIXED_CLEAN may be proposed",
                 )
             )
         elif kind not in ("WORKSPACE", "SYNC", "RELEASE"):
@@ -276,17 +359,24 @@ def build_plan(
     if kind in ("FIX+SHIP", "WORKSPACE", "RELEASE") or re.search(
         r"\b(ship|fix|implement|commit)\b", text, re.I
     ):
-        end_steps.append(
+        end_steps.extend([
+            Step(
+                "kg_watermark",
+                "python3 scripts/lib/kg_watermark_gate.py check --block-verified",
+                auto=True,
+                tier="fast",
+            ),
             Step(
                 "close",
                 "bash scripts/bin/workspace-close.sh --from-pending",
                 auto=True,
                 tier="medium",
-            )
-        )
+            ),
+        ])
 
     directives = [
         "Run autopilot on EVERY new user message in this tab — task type may have changed.",
+        "Extended session: re-read `.cursor/workspace-kg-state.md` + run `kg watermark` when resuming after branch checkout.",
         "Do not ask the user to run scripts — autopilot + hooks handle ops.",
         "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/hot-path-perf-gate.mdc.",
         "After verified test + commit: push runs via ship-and-continue (do not wait for session end).",
@@ -300,9 +390,21 @@ def build_plan(
         directives.append("Read gaps-and-risks.md for this area before proposing fixes.")
     if kind == "TEST" and api:
         directives.append(f"Run `ntest auto {api}`; on PASS hook queues push automatically.")
+    if kind == "OPS_SQL":
+        directives.append(
+            "OPS_SQL: run prod-ops-sql-impact skill; answer “is contract-native FAIL enough?” "
+            "before soft-archive or LOCAL_RESET_ARCHIVED; output Minimal permanent / Contract-native / "
+            "Anything lost / Code-proven checklist."
+        )
     if api and kind in ("BUG/RCA", "FEATURE", "FIX+SHIP", "TEST"):
         directives.append(
             "Trace already ran — do not re-run orient unless full crud/why needed."
+        )
+    if api and kind in ("BUG/RCA", "FIX+SHIP"):
+        directives.append(
+            "Cross-branch gate: REUSE_FORBIDDEN unless RESULT contains REUSE_ALLOWED / "
+            "VERIFIED_FIXED_CLEAN. Never implement from FILE_TOUCH_HINTS or VERIFIED_FIXED_DIVERGED. "
+            "Stale upstream refs / ✗ fixed_elsewhere = do not invent a port."
         )
 
     return Plan(
@@ -514,10 +616,39 @@ def cmd_session(_: argparse.Namespace) -> int:
 
 
 def cmd_end(args: argparse.Namespace) -> int:
-    steps = [Step("hygiene", "bash scripts/bin/workspace-hygiene.sh --clean", auto=True)]
+    steps = [
+        Step("kg_fresh", "bash scripts/bin/kg-ensure-fresh.sh --quiet", auto=True, tier="medium"),
+        Step(
+            "kg_watermark",
+            "python3 scripts/lib/kg_watermark_gate.py check --block-verified",
+            auto=True,
+            tier="fast",
+        ),
+        Step("disk_clean", "bash scripts/bin/workspace-disk-clean.sh --clean", auto=True),
+        Step("hygiene", "bash scripts/bin/workspace-hygiene.sh --clean", auto=True),
+    ]
     pending = ROOT / ".cursor/.pending-ship-work.json"
     gate = ROOT / "scripts/lib/ship_push_gate.py"
     if pending.is_file():
+        steps.append(
+            Step("ntest_validate", "python3 scripts/testing/ntest.py validate", auto=True, tier="fast")
+        )
+        steps.append(
+            Step(
+                "registry_companion",
+                "python3 scripts/lib/registry_companion_gate.py check --hard",
+                auto=True,
+                tier="fast",
+            )
+        )
+        steps.append(
+            Step(
+                "ship_discipline",
+                "python3 scripts/lib/ship_discipline_gate.py check",
+                auto=True,
+                tier="fast",
+            )
+        )
         r = subprocess.run(["python3", str(gate), "--satisfied"], cwd=str(ROOT), capture_output=True)
         if r.returncode != 0:
             steps.append(
@@ -612,6 +743,17 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # Dry-run plan steps exist
     plan = build_plan("fix dpi billing", task_shift=True)
     add("plan_has_steps", len(plan.steps) >= 2, f"{len(plan.steps)} steps")
+    cross_branch_plan = build_plan(
+        "fix loanRecurringPaymentBatchApi on branch 3.7.1", task_shift=True
+    )
+    fixed_steps = [s for s in cross_branch_plan.steps if s.id == "fixed_elsewhere"]
+    add(
+        "plan_fixed_elsewhere",
+        len(fixed_steps) == 1
+        and "--base mfi_integration_v3.7.1" in fixed_steps[0].cmd
+        and "|| echo" not in fixed_steps[0].cmd,
+        fixed_steps[0].cmd if fixed_steps else "missing",
+    )
 
     # Ship gate import
     r = subprocess.run(

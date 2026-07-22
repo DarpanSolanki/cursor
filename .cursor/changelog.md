@@ -1,3 +1,18 @@
+2026-07-22 | workspace | automation gates — impact matrix, KG watermark, registry companion
+- ship_discipline: extended impact_analysis (entry_paths/scenario_modes/downstream/out_of_scope); service tier on accounting/payments/LOS. New kg_watermark_gate + registry_companion_gate; autopilot end/close hardened; ntest validate on service/money close; enrichment-audit pre-push blocks stale KG/changelog.
+
+2026-07-22 | accounting `9b6454df6` | mfi_integration_v3.4.2.4 | TDPQA-72/SDCP-10199 parent force-bill + RSCH excess=0
+- DeathForeclosureInsuranceWriter: parent forceBillPartialCycleInterest before RSCH; zero parent EXCESS_* + lapd.excess; BLD_INT clear; receipt/local-map hygiene. Matrix PASS EXTRA=0|1 + EMI seed. GAP-075 Product update.
+
+2026-07-21 | workspace | Fail-closed cross-branch reuse (no false-positive ports)
+- `fixed-elsewhere` now requires unique SHA resolve + auto diverge → VERIFIED_FIXED_CLEAN only for REUSE_ALLOWED; FILE_TOUCH_HINTS/DIVERGED/stale = REUSE_FORBIDDEN. Autopilot no longer swallows lookup failures. Memory `feedback_cross_branch_no_false_positive.md`. Watermark honesty in BRANCH-SAFETY.
+
+2026-07-21 | workspace | Cross-branch fixed-elsewhere + forward-port train tooling
+- `kg fixed-elsewhere` verifies KG case SHA containment on higher upstream trains; `fwd-port.sh` restores train/path/missing/diverge/audit; autopilot runs lookup for explicit BUG/FIX apiNames with 12h upstream freshness.
+
+2026-07-21 | accounting `ac8f185bbc` | mfi_integration_v3.7.1 | TDPFR-547 DPI due/overdue from amountMap
+- LoanRecurringPaymentBatchProcessor: dpi_due/dpi_overdue use fresh per-LAN amountMap (not chunk-shared EC). Sim: collections.tdpfr547_dpi_amountmap_sim.
+
 2026-07-21 | initial-setup (uncommitted) | mfi_integration_v3.4.2.5 | TDPQA-54 masterdata V000125 seeds disburse Redis TTL configs
 - product `V000125__tdpqa54_disburse_redis_inflight_ttl_config.sql`: `mfi.disburse.loan.producer.marker.ttl.ms` (LOS) + `mfi.disburse.loan.consumer.lock.ttl.ms` (ACCOUNTING) = 600000. Prod pack: `scripts/sql/deploy/prod_pre_V000125_tdpqa54_disburse_redis_ttl_config.sql` (Pre; `schema_version`).
 
