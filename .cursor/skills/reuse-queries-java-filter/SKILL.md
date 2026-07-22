@@ -17,7 +17,7 @@ writes: []
 
 # Reuse queries — Java filter (MANDATORY)
 
-**Hard gate:** Follow the **3-step ladder** before any repository change. Read `.cursor/rules/reuse-queries-java-filter.mdc`.
+**Hard gate:** Follow the **3-step ladder** before any repository change. Read `.cursor/rules/10-quality-gates.mdc`.
 
 ## Ladder
 
@@ -55,5 +55,5 @@ writes: []
 
 ## Tie-in
 
-- `.cursor/rules/minimal-fix-impact-gate.mdc`
+- `.cursor/rules/10-quality-gates.mdc`
 - `cursor-bundle/memory/feedback_query_reuse_vs_performance.md`

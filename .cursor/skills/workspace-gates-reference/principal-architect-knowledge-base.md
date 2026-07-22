@@ -1,8 +1,4 @@
----
-description: "Principal architect agent — use .cursor knowledge base + system_brain; multi-service impact; platform-lib first"
-globs: 
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/principal-architect-knowledge-base.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Principal architect context (sliProd)
 

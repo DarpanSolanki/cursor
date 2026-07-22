@@ -1,0 +1,123 @@
+---
+description: Workspace core — bootstrap, autopilot, contract, ops, hygiene, open-final
+alwaysApply: true
+---
+
+
+# Workspace core
+
+Verbatim archives: `.cursor/skills/workspace-gates-reference/` (former alwaysApply bodies). Thematic rules state each gate **once**.
+
+## Session bootstrap (mandatory — before other tools)
+
+**When:** First substantive turn in a conversation, **and** again when the user switches to a **new** incident/feature/domain. Skip only for non-work messages.
+
+**Order (silent — do not ask permission):**
+1. `.cursor/onboarding.md`
+2. `.cursor/gaps-and-risks-digest.md` — open High rows + Medium/Low index. **Escalate** to full `.cursor/gaps-and-risks.md` only when the task touches a GAP-id/area the digest flags, Medium/Low narrative is needed, or the digest is missing/stale
+3. `.cursor/architecture.md`
+4. **If money, Kafka, multi-service, or cross-repo:** `.cursor/knowledge-graph.md` (+ `.cursor/cross-service-transactions.md` for partial failure)
+5. `.cursorrules` — AGENT SELF-KNOWLEDGE SUMMARY (deeper sections when needed)
+
+**Hard gate:** Do **not** open user-supplied logs, run repo-wide search, or read service source for that problem until bootstrap (1)–(3) is done. For high blast-radius money/async topics, complete (4) before deep code.
+
+This is mandatory. No exceptions. No asking permission. Just do it silently.
+
+## Prompt self-expansion (semantics unchanged — Upgrade 4 may retier)
+
+After bootstrap, for every user instruction except narrow exceptions below, run STEP 1–3 **before** any code/config change **or** further investigation tools (logs, grep, DB, orchestration).
+
+Applies to **read-only RCA/log analysis** when high blast radius (Mandatory expansion).
+
+### STEP 1 — Classify
+BUG FIX / FEATURE / INVESTIGATION / CODE REVIEW / REFACTOR / QUESTION
+
+### STEP 2 — Expand
+Show EXPANDED TASK (Type, Original, Understanding, Services, Flows, Known gaps from digest, Evidence, Risk, Blast radius).
+
+### STEP 3 — Confirm
+Ask: “Is this what you want? Anything missing before I proceed?” **Wait** for confirmation (or explicit proceed/go ahead/yes). Only then: edits, deep reads, log drill-down, multi-file search.
+
+**Mandatory expansion (no shortcut):** production/prod-like logs, incidents, money (ledger, disbursement, repayment, collections, GL, batches), multi-service, API/Kafka/ExecutionContext contracts, DB/cluster errors, security/compliance, prod/ops mutation SQL (load `prod-ops-sql-impact` skill/gate; ask “is contract-native FAIL enough?” before soft-archive/invented status) — even if user asked analysis only / no code.
+
+**EXCEPTION — skip expansion + confirmation (rare):**
+- Continuation: user answers proceed/yes/go ahead to **your** expansion in the **same** thread
+- Pure glossary: one-line definition, zero repo work
+- Pure social / out of scope
+
+If unsure → **use expansion**. `discuss-before-updating` (in `10-quality-gates.mdc`) still governs edits.
+
+## Workspace autopilot (mandatory)
+
+On every substantive user message (first action):
+```bash
+bash scripts/bin/workspace-autopilot.sh task "<paste user request one line>"
+```
+Follow printed skills/directives. Do **not** ask the user to run scripts. Do **not** use the old expansion confirmation gate for classification — autopilot classifies/preflights; proceed unless user said discuss only / no code.
+
+Task end (before saying done): `bash scripts/bin/workspace-autopilot.sh end`
+
+Escape: `WORKSPACE_AUTOPILOT_NO_AUTO_CLOSE=1`, `KG_STRICT=1`
+
+## Workspace contract (once — do not re-litigate daily)
+
+Agents **self-heal** via scripts. Do not ask Darpan to re-configure after each ticket.
+
+Machine-enforced (fail closed): autopilot, ship-loop-gate, ship-discipline, reuse_query_gate, acceptance_coverage, ship-knowledge-gate, hooks, hygiene, kg-switch.
+
+Agent laws: minimal permanent fix; no assumptions (cite evidence); no overengineering; hot-path scan; real-flow DB value asserts (or code-backed sim); KG honest; mixed-train matrix.
+
+Self-heal: `workspace-max-pass.sh`, `install-user-cursor-gates.sh`, `enrichment-sync.sh`, `ship-discipline.sh write …`
+
+## Autonomous workspace ops
+
+Agents **must not** skip tooling or declare "service down / blocked" without running ops scripts first.
+
+| Situation | Auto action |
+|-----------|-------------|
+| ntest batch/DPI/API, service down | `agent-ops.sh before-test <api>` |
+| HTTP 000 / refused | ensure + compile once, retry |
+| Test/batch failure | `agent-ops.sh on-failure` |
+| Stuck / where are logs? | never guess paths — `novopay-logs.sh guide` |
+
+Do not: skip sanity because port down; blind-sleep >10s without log snap; re-implement wait loops; ask user for log paths.
+
+## Open final file
+
+When sharing shipped/ops/forwardable files: **Default — path only.** Do **not** call MCP `open_resource`, do **not** run `open-final.sh --open` / `OPEN_FINAL=1`. Opt-in IDE open only if user says "open it" / "open in IDE" / "open final". Review `#changes` = diff chrome, not the final file.
+
+## Workspace hygiene
+
+Scratch → `scripts/scratch/<task>/` — delete when done. **Never** commit scratch to service repos. Do **not** add orphan analysis markdown; do **not** duplicate across `.cursor/` / `docs/` / `system_brain/` / brain; do **not** drop temps in `.cursor/`, repo roots, or service `src/`. Prefer edit existing over new sibling. Run `workspace-hygiene.sh` if unsure.
+
+## Knowledge sync push (mandatory)
+
+When updating tracked knowledge (`.cursor/**`, `system_brain/**`, `.cursorrules`, `AGENTS.md`, knowledge `docs/**`): commit + push `origin` + confirm. No deferred push.
+
+## Principal architect (short)
+
+Identify service git root; skim architecture + flows; check platform-lib before reimplementing infra; additive-only contracts; money → orch XML → processors; consult gaps digest (escalate when flagged). Full: `.cursor/skills/workspace-gates-reference/principal-architect-knowledge-base.md`
+
+## Developer + tester loop
+
+`orient → reproduce → assert → fix → re-smoke` via `ntest`. Money paths: value-level `acceptance.db_asserts` / `expect.db_eq` — presence-only / status-only fail closed. Full: `.cursor/skills/workspace-gates-reference/workspace-developer-tester.md`
+
+## Consultation order
+
+1. Memory `cursor-bundle/memory/MEMORY.md`
+2. Brain / CANONICAL-MAP
+3. KG orient/why (after validate/fresh)
+4. Runbooks INDEX
+5. Gaps digest (escalate when flagged)
+6. Orchestration XML + processors (**authoritative**)
+7. `scripts/db-local.sh` (**authoritative local state**)
+
+## Routing to archives
+
+| Topic | Archive |
+|-------|---------|
+| Full always-on brain map / system_brain maintenance | `.cursor/skills/workspace-gates-reference/always-on.md` |
+| Autopilot / contract / ops / hygiene / open-final / principal / developer-tester / session-bootstrap | matching `.cursor/skills/workspace-gates-reference/<name>.md` |
+
+**RCA "Principal Engineer" workflow:** lives in glob rule `debugging-production-issues.mdc` (not duplicated here). Archive copy: `.cursor/skills/workspace-gates-reference/always-on.md` (historical).
+

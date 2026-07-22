@@ -1,7 +1,4 @@
----
-description: Cross-flow self-learning — any test failure or gap must update learnings + related suites
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/flow-cross-learn.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Flow cross-learn (mandatory)
 

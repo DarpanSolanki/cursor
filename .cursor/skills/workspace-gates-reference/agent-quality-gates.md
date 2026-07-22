@@ -1,8 +1,4 @@
----
-description: Mandatory agent quality gates — branch alignment, flow disambiguation, KG discipline, honest testing (standing upgrade 2026-06-29)
-globs: ["**/*"]
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/agent-quality-gates.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Agent quality gates (every substantive task)
 

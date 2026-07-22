@@ -1,7 +1,4 @@
----
-description: Mandatory knowledge closure after shipped code — blocks "task done" on partial changelog-add only
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/post-ship-knowledge-gate.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Post-ship knowledge gate (money / flow fixes)
 

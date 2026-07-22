@@ -1,7 +1,4 @@
----
-description: Workspace file hygiene — minimal clutter, scratch-only temps, cleanup when done
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/workspace-hygiene.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Workspace hygiene (file + document management)
 

@@ -8,7 +8,7 @@ description: >-
 
 # Autonomous workspace ops
 
-Read `.cursor/rules/autonomous-workspace-ops.mdc` and `.cursor/workspace-ops-state.md`.
+Read `.cursor/rules/00-workspace-core.mdc` and `.cursor/workspace-ops-state.md`.
 
 **Single entry:** `bash scripts/bin/agent-ops.sh before-test <apiName>` before any batch/DPI test.
 

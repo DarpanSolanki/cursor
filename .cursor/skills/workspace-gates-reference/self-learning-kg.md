@@ -1,7 +1,4 @@
----
-description: Self-learning workspace — KG watermark, auto-rebuild, changelog→cases loop (cursor-bundle)
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/self-learning-kg.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Self-learning knowledge system (cursor-bundle)
 

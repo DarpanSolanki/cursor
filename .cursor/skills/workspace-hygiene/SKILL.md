@@ -11,7 +11,7 @@ triggers:
   - hygiene
 requires: []
 reads:
-  - .cursor/rules/workspace-hygiene.mdc
+  - .cursor/rules/00-workspace-core.mdc
 writes: []
 feeds:
   - super-agent
@@ -49,6 +49,15 @@ After hygiene clean on ship: learning bus already updated by `post-ntest-intel-s
 
 ```bash
 bash scripts/bin/workspace-hygiene.sh          # audit
-bash scripts/bin/workspace-hygiene.sh --clean  # fix safe clutter
+bash scripts/bin/workspace-hygiene.sh --clean  # fix safe clutter (+ local YB orphan pg_temp_*)
+bash scripts/bin/db-local-hygiene.sh           # audit orphan CREATE TEMP leftovers on :5433
+bash scripts/bin/db-local-hygiene.sh --clean   # DROP orphan pg_temp_* / pg_toast_temp_* (local only)
+bash scripts/bin/workspace-disk-clean.sh       # audit archived service logs (~300MB typical)
+bash scripts/bin/workspace-disk-clean.sh --clean
+bash scripts/bin/super-agent.sh clean --apply  # disk + fast-sync
 python3 cursor-bundle/kg/bin/kg.py validate    # KG intact after clean
 ```
+
+## Local Yugabyte temp schemas
+
+Local scripts (`CREATE TEMP TABLE` for disburse reset / DPI purge / DCF patches) leave `pg_temp_<uuid>_*` schemas on Yugabyte when the session exits without dropping them (crash, kill, or missing end-of-script `DROP`). These are not app data — `db-local-hygiene.sh --clean` drops them (also via `workspace-hygiene.sh --clean`). Keep `mfi_accounting.temp_unique_gl_code_office_id` (real empty staging table). Prefer end-of-script `DROP TABLE IF EXISTS` over `ON COMMIT DROP` unless the whole script is one explicit transaction.

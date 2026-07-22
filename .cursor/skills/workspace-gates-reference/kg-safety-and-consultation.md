@@ -1,7 +1,4 @@
----
-description: "KG is a map, not a spec — validate before use; orient before implement; code+DB are truth"
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/kg-safety-and-consultation.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # KG safety and consultation discipline
 

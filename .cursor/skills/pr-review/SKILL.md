@@ -142,8 +142,8 @@ Before claiming missing, unused, unwired, leaking, or behavior-changing:
 5. Prove absence across the relevant repository scope before saying something does
    not exist. Otherwise ask a `SUSPECTED` question.
 
-Use `.cursor/rules/agent-quality-gates.mdc`, `darpan.mdc`,
-`kg-safety-and-consultation.mdc`, `minimal-fix-impact-gate.mdc`, and
+Use `.cursor/rules/10-quality-gates.mdc`, `darpan.mdc`,
+`30-kg-discipline.mdc`, `10-quality-gates.mdc`, and
 `api-contract-safety.mdc`; these rules are authoritative and are not duplicated here.
 
 ### 6. Use automated reviewers as secondary lenses

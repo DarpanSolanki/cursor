@@ -1,7 +1,4 @@
----
-description: Autonomous workspace ops — when agents auto-run service ensure, logs, DPI sanity, KG; no manual guessing
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/autonomous-workspace-ops.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Autonomous workspace ops
 

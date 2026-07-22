@@ -29,7 +29,7 @@ Goal: **shorter wall-clock time** when work **decomposes cleanly**—without dup
 1. **Name the partition** (tie to **`.cursor/knowledge-graph.md`** edge or node when possible): “Agent 1: grep + read only in accounting-v2 for X”; “Agent 2: same in mfi-los”—no overlap on the same files for writes.
 2. **Prefer read-only subtasks for helpers**: Secondary tasks gather **evidence** (paths, call sites, XML names); **primary** applies edits.
 3. **Fix merge ownership**: **You** (or one designated lead chat) **integrates** results—reconcile conflicts, re-run impact checks (`no-flow-break-impact-check`, `api-contract-safety`).
-4. **Handoff**: Use **`always-on.mdc`** (session handoff under Workspace brain + rules) so parallel threads don’t lose **branch, correlators, and risks**.
+4. **Handoff**: Use **`00-workspace-core.mdc`** (session handoff under Workspace brain + rules) so parallel threads don’t lose **branch, correlators, and risks**.
 
 ## Safety rails (non-negotiable)
 

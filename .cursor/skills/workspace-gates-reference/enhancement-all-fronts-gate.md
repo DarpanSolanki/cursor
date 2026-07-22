@@ -1,8 +1,4 @@
----
-description: "Mandatory multi-angle gate for enhancements, fixes, and new features — tiered L0-L3, scale/index, ops, poison data, cross-service"
-alwaysApply: true
-globs: ["**/*.java", "**/*.sql", "**/orchestration/**/*.xml"]
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/enhancement-all-fronts-gate.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Enhancement — all fronts gate
 
@@ -17,7 +13,7 @@ Before proposing or shipping **any** fix, enhancement, or new capability, walk *
 | **Poison / partial state** | Existing prod/QA dirty rows — code guard vs one-time SQL vs both |
 | **Cross-service** | Deploy pairs, callback loops, partial commit |
 | **Idempotency / replay** | Safe retry? Staging status machine? |
-| **Ops / prod hotfix** | L0 without Flyway? Standalone SQL under `scripts/sql/setup/`? |
+| **Ops / prod hotfix** | L0 without Flyway? Standalone SQL under `scripts/sql/`? If mutation SQL (CRR / loan_account / money tables): run **prod-ops-sql-impact** (caller matrix; **contract-native FAIL first**; soft-archive `~` only if LAN detach needed; no invented `status`). Skill: `.cursor/skills/prod-ops-sql-impact/SKILL.md` |
 | **Regression** | Adjacent batch/API paths; registry case or audit script |
 | **Contract** | Additive-only; all callers |
 

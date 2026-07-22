@@ -1,7 +1,4 @@
----
-description: Durable workspace contract — enforce via scripts, not daily re-setup. Multi-branch / multi-QA safe.
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/workspace-contract.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Workspace contract (once — do not re-litigate daily)
 

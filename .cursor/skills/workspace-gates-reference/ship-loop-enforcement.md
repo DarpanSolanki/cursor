@@ -1,7 +1,4 @@
----
-description: "Tiered ship-path close — workspace / service / money — hooks + workspace-close enforce build, test, KG gate"
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/ship-loop-enforcement.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Ship-path enforcement (all work types)
 

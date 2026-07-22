@@ -1,8 +1,4 @@
----
-description: Reuse existing DAO queries + Java filter; extend existing only if no perf degrade; new SQL last
-globs: ["**/*.java"]
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/reuse-queries-java-filter.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Reuse queries — Java for filtering (standing rule)
 

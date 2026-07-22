@@ -19,8 +19,8 @@ reads:
   - cursor-bundle/reference/db/prod-indexes-manifest.json
   - cursor-bundle/memory/reference_prod_db_indexes_baseline.md
   - cursor-bundle/memory/feedback_enhancement_all_fronts.md
-  - .cursor/rules/enhancement-all-fronts-gate.mdc
-  - .cursor/rules/hot-path-perf-gate.mdc
+  - .cursor/rules/20-ship-gates.mdc
+  - .cursor/rules/10-quality-gates.mdc
   - scripts/lib/query_index_perf_audit.py
   - scripts/lib/prod_index_baseline.py
 writes: []
@@ -140,6 +140,6 @@ User provides newer `prod-indexes-*.csv` → overwrite baseline CSV → update m
 
 ## Pair with
 
-- `.cursor/rules/enhancement-all-fronts-gate.mdc`
-- `.cursor/rules/hot-path-perf-gate.mdc`
+- `.cursor/rules/20-ship-gates.mdc`
+- `.cursor/rules/10-quality-gates.mdc`
 - `.cursor/skills/reuse-queries-java-filter/SKILL.md`

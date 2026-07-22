@@ -1,265 +1,58 @@
 ---
-description: "Novopay Platform — fintech-grade, architect-level, fast & error-proof, framework-version-aware, learn as you build"
+description: "Novopay Platform — fintech-grade standards, self-knowledge summary, context routing (deduped Upgrade 3)"
 globs: ["**/*.java", "**/*.xml"]
 alwaysApply: true
 ---
 
-## SESSION BOOTSTRAP — EXECUTE ON EVERY NEW CONVERSATION
-Before anything else, silently read in this exact order:
-1. `.cursor/onboarding.md`
-2. `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged, Medium/Low narrative needed, or digest missing/stale)
-3. `.cursor/architecture.md`
-4. **If the task is money, Kafka, multi-service, or cross-repo RCA:** skim **`.cursor/knowledge-graph.md`** (correct **money path** + **Edge Registry**) and, when tracing partial failure, **`.cursor/cross-service-transactions.md`** for the matching transaction row.
-This is mandatory. No exceptions. No asking permission. Just do it silently.
-
 ## AGENT SELF-KNOWLEDGE SUMMARY
 - Total services mapped: 12
 - Total events in registry: 146 (44 consumers across 7 services)
-- Total gaps identified (summary table): **25** open (**High: 16**, **Medium: 9**, **Low: 0**) — see `.cursor/gaps-and-risks.md` (source of truth; counts change when rows marked RESOLVED); detailed narratives **GAP-018..069**; Flow Sync **Waves 0–6 COMPLETE** (2026-04-17); tracker: `.cursor/flow-sync-progress.md`; historical mining waves: `.cursor/mining-progress.md`
-- Orchestration XML indexed: **60** files under `**/deploy/application/orchestration/**/*.xml`, **~1892** `<Request name=` nodes — reference `.cursor/orchestration-map.md` (ExecutionContext per processor: grep `*Processor.java` / orchestration, not fully inlined in map)
-- Cross-service config drift index: `.cursor/config-drift-map.md` (`application.properties` scan; no root-level `application.yml` in scanned services)
-- Dependency / SPOF / Kafka HTTP synthesis: `.cursor/service-dependency-graph.md`
-- Test coverage vs mined flows: `.cursor/test-coverage-map.md` (accounting flows + Waves 1–4 matrix)
-- Accounting entry points: 3
-  - HTTP: `trustt-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java`
-  - Kafka: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
-  - Kafka: `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/recurring/entity/BulkCollectionFailedRecordConsumer.java`
-- Platform-lib global injections:
-  - `trustt-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java`
-  - `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/RequestProcessorImpl.java`
-  - `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java`
-  - `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ProcessorOrchestrator.java`
-  - `trustt-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayApiClientConfig.java`
-  - `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java`
-  - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/entity/JpaAuditConfiguration.java`
-  - `trustt-platform-lib/infra-batch/src/main/java/in/novopay/infra/batch/config/AsyncConfig.java`
-  - `trustt-platform-lib/infra-batch/src/main/java/in/novopay/infra/batch/config/TenantAwareTaskDecorator.java`
-  - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/elasticapm/config/ElasticApmConfig.java`
-  - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/elasticapm/filter/ElasticApmTransactionNameFilter.java`
-  - `trustt-platform-lib/infra-platform/src/main/java/in/novopay/infra/platform/elasticapm/filter/DropParentTraceHeadersInterceptor.java`
+- Total gaps: see `.cursor/gaps-and-risks-digest.md` (SoT: `gaps-and-risks.md`; escalate when GAP-id/area flagged)
+- Orchestration: `.cursor/orchestration-map.md` (~60 XML, ~1892 Request nodes)
+- Config drift: `.cursor/config-drift-map.md` · Dependency: `.cursor/service-dependency-graph.md` · Test coverage: `.cursor/test-coverage-map.md`
+- Accounting entry: HTTP `ServiceGatewayController`; Kafka `LmsMessageBrokerConsumer`, `BulkCollectionFailedRecordConsumer`
+- Platform-lib global injections: gateway, RequestProcessorImpl, ServiceOrchestrator, ProcessorOrchestrator, NovopayApiClientConfig, Redis/cache, JpaAudit, AsyncConfig, TenantAwareTaskDecorator, ElasticApm*
 - HTTP client risk: CONFIRMED — no retry/circuit breaker on NovopayInternalAPIClient / NovopayHttpAPIClient
-- High risk gaps: summary table **~16 High** (see current count in `gaps-and-risks-digest.md`; escalate to full `gaps-and-risks.md` when GAP-id/area flagged) — **always** flag **disbursement / sync / Redis** and related digest rows; **full runbooks**: `.cursor/runbooks.md`:
-  - **LOS `entity_type` missing** → LOS `DisbursementSyncService` skips update (`trustt-platform-los/.../DisbursementSyncService.java`). **Accounting** may now emit `entity_type` when EC carries it — verify end-to-end on the **knowledge-graph** disburse path (edges **E6–E7**) and the latest **gaps** table / **event-registry** `los_lms_disbursement_sync` section.
-  - **Historical contract focus:** `entity_type` on `los_lms_disbursement_sync` — keep **producer + LOS consumer + JTF** aligned (`trustt-platform-accounting/.../LmsMessageBrokerConsumer.java`).
-  - **Redis in-flight key no TTL (LOS)** → stale key blocks replays (`trustt-platform-los/.../DisburseLoanAPIUtil.java`).
-  - **Redis in-flight key no TTL (Accounting)** → same on consumer “dl” key (`trustt-platform-accounting/.../LmsMessageBrokerConsumer.java`).
-- **Flow / contract sync (last deep):** Friday Apr 17, 2026 — **Flow Sync Wave 6** (cross-service gaps **GAP-065..069**, knowledge graph, API catalogue **1797** HTTP + **146** Kafka topics, **10** cross-service txns in `cross-service-transactions.md`, EC spine `execution-context-contracts.md`). Prior gap mining deep scan: Apr 10, 2026 (**GAP-059..060** gateway tests).
-- **Knowledge graph:** **175** nodes (29 explicit + 146 topic refs), **16** representative edges; **6** money paths — `.cursor/knowledge-graph.md`
-- **Contract health (representative edges):** **2** aligned / **11** drift / **2** mismatch
-- **APIs catalogued:** **1797** unique orchestration `apiName` + **146** Kafka registry topics (+ batch/scheduler tallies in `api-catalogue.md`)
-- **EC keys:** Spine + risk taxonomy in `.cursor/execution-context-contracts.md` (full **362**-request matrix deferred to tooling)
-- **Cross-service transactions mapped:** **10** — automated **compensation: 0** | **reconciliation/monitoring partial: 10** (see `cross-service-transactions.md`)
-- Critical files to re-read if accounting changes:
-  - `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml`
-  - `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml`
-  - `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml`
-  - `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
-  - `trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/schema_structure_dump/mfi_accounting_structure.sql`
+- High-risk themes: disbursement sync `entity_type`, Redis in-flight TTL (LOS + Accounting) — flag from gaps digest; runbooks `.cursor/runbooks.md`
+- Knowledge graph: `.cursor/knowledge-graph.md` · Cross-service txns: `.cursor/cross-service-transactions.md` · API catalogue: `.cursor/api-catalogue.md`
+- Multinode batch: `multinode_v3.2.8.2` — NOT READY (no distributed leader/lock) — `.cursor/multinode-batch.md`
+- Critical accounting re-read paths: `loans_orc.xml`, `product_transaction_orc.xml`, `MessageBroker.xml`, `LmsMessageBrokerConsumer.java`, schema dump `mfi_accounting_structure.sql`
 
-- Multi-node batch branch: `multinode_v3.2.8.2` (analyzed, not yet in production)
-  - Batch jobs mapped (scheduler layer): 1 scheduler framework (`SchedulerCommonService` orchestration) + batch group/job/schedule APIs in `trustt-platform-batch`
-  - New gaps from batch: 2 (High: 1) — distributed leader/lock missing; dependency tracking in-memory only
-  - Production readiness: **NOT READY** — lacks distributed leader/lock for multi-instance safety
-  - File: `.cursor/multinode-batch.md`
+Session bootstrap + gates: `.cursor/rules/00-workspace-core.mdc` … `30-kg-discipline.mdc` + `darpan.mdc`.
 
 ## INTELLIGENT CONTEXT ROUTING
 
-### When to use which knowledge file
+| Situation | Load first |
+|-----------|------------|
+| Issue / bug | gaps-digest (+ full SoT on escalate) + runbooks + knowledge-graph + flow docs |
+| Multi-service / stuck async | knowledge-graph + cross-service-transactions + gaps-digest |
+| Feature | knowledge-graph + orchestration-map + service-dependency-graph + platform-lib |
+| Caller / apiName inventory | api-catalogue + orchestration-map |
+| Code review | module `.mdc` + gaps-digest |
+| Kafka / event | event-registry + knowledge-graph |
+| Accounting edit | accounting-flows + knowledge-graph + accounting.mdc gates + accounting-knowledge skill |
+| Platform-lib edit | platform-lib.md + service-dependency-graph |
+| Batch edit | multinode-batch + scheduler-registry |
+| Schema / migration | accounting-flows Data Model + dumps |
+| Redis | redis-key-registry |
+| Deploy / infra | service-dependency-graph + config-drift-map |
 
-| Situation | Load first | Process |
-|-----------|------------|---------|
-| **Issue / bug** | `gaps-and-risks-digest.md` (+ full `gaps-and-risks.md` on escalate) + `runbooks.md` + **`knowledge-graph.md`** (money path + edges) + relevant flow (`accounting-flows.md` / `system_brain/flows/`) | RCA: name path in graph → entry → hops → failure point → evidence → fix |
-| **Multi-service / stuck async / “who should have fired?”** | **`knowledge-graph.md`** + **`cross-service-transactions.md`** + `gaps-and-risks-digest.md` (escalate to full SoT when flagged) | Walk edges (ALIGNED/DRIFT/MISMATCH); check Compensation/Reconciliation row; then code |
-| **Feature** | `knowledge-graph.md` (blast radius) + `orchestration-map.md` + `service-dependency-graph.md` + `platform-lib.md` | Impact: nodes/edges touched + XML + downstream services |
-| **Caller / apiName inventory** | **`api-catalogue.md`** + `orchestration-map.md` | Union `apiName` / topics; grep per service |
-| **Code review** | Relevant `.cursor/rules/*.mdc` for the module + `gaps-and-risks-digest.md` (escalate to full `gaps-and-risks.md` when GAP-id/area flagged) | Contract, money, idempotency, txn boundaries |
-| **Kafka / event** | `event-registry.md` + **`knowledge-graph.md`** (if topic is on a money path) | Topic schema + graph edge (producer → consumer → DB) |
-| **Accounting edit** | `accounting-flows.md` + **`knowledge-graph.md`** (affected path) + accounting rows in `gaps-and-risks-digest.md` (escalate to full SoT when flagged) | Full flow + downstream edges before edit |
-| **Platform-lib edit** | `platform-lib.md` + `service-dependency-graph.md` | Blast radius across all dependent services |
-| **Batch edit** | `multinode-batch.md` + `scheduler-registry.md` | Lock, idempotency, CREF determinism |
-| **Schema / migration** | `accounting-flows.md` (Data Model) + schema dumps / migrations | Backward compat, NOT NULL, rollback |
-| **Redis** | `redis-key-registry.md` | TTL / dedupe / lock semantics on money paths |
-| **Deploy / infra** | `service-dependency-graph.md` + `config-drift-map.md` | Order, SPOF, config drift |
+## Novopay Platform — Architect Standards (Java/XML)
 
-### Auto-log — before closing **any** task (silent checklist)
+**Domain:** Fintech lending (MFI). Money, compliance, audit. Low latency APIs; high throughput batches. No N+1. Traceable financial flows; fail-fast; idempotent writes.
 
-- [ ] Accounting touched? → `accounting-flows.md` / `accounting.mdc` gates + `.cursor/skills/accounting-knowledge/` topic updated?
-- [ ] Platform-lib touched? → `platform-lib.md` updated?
-- [ ] Event added/changed? → `event-registry.md` updated?
-- [ ] Gap resolved/introduced? → `gaps-and-risks.md` updated?
-- [ ] Redis key/TTL changed? → `redis-key-registry.md` updated?
-- [ ] Scheduler changed? → `scheduler-registry.md` updated?
-- [ ] Orchestration XML changed? → `orchestration-map.md` updated (or note to regenerate)?
-- [ ] **Cross-service money path** or graph edge contract changed? → **`knowledge-graph.md`** / **`cross-service-transactions.md`** / **`api-catalogue.md`** updated (or Wave note in `flow-sync-progress.md`) + `changelog.md`
-- [ ] `changelog.md` appended? → **mandatory** for any knowledge or behaviour change
+**Modules:** accounting-v2, mfi-los, actor, payments, task, approval, authorization, audit, batch, dms, masterdata, notifications, api-gateway, reporting. Infra in `trustt-platform-lib/`. Orchestration XML owns transaction boundaries. Multi-tenant via `PlatformTenant` / `ThreadLocalContext`.
 
-If any box is **YES** and the file was not updated → **task is NOT done**.
+**Versions:** Spring Boot 3.5.6 (services) / 3.2.11 (infra); Java 17; Spring Cloud 2023.0.1; YugabyteDB; Gradle. Read `build.gradle` before implementing.
 
-At end of task, output: `Knowledge updated: [list]` (or state none needed per checklist).
+**Code style:** Records/DTOs; `var`; Optional; constructor injection; `@Slf4j`; Processors extend `AbstractProcessor`. ExecutionContext: `get*Value`, validate, `put` vs `putLocal`, no accidental overwrites. Errors: `NovopayFatalException` / `NovopayNonFatalException`; constants for codes; no silent swallow. DB: `nativeQuery=true`; soft-delete `is_deleted=false`; audit columns; orchestration-owned txns (rare `@Transactional`). Kafka: idempotency + Redis locks; tenant before process. Bank: JTF templates + WebClient decorator.
 
-## KNOWLEDGE BASE — DEFINITION OF DONE
-Every task in this workspace is NOT complete until:
-- `.cursor/changelog.md` is updated with the change
-- If bug fixed → `gaps-and-risks.md` updated (mark RESOLVED with date + file path)
-- If new feature → relevant `.cursor/` file updated (architecture/flows/events/contracts)
-- If new event → `event-registry.md` updated immediately (flag if no consumer or no error handling)
-- If schema/migration changed → `accounting-flows.md` "Data Model" section updated
-- If platform-lib changed → `platform-lib.md` updated
-- If new API added → `service-contracts.md` updated
-- `changelog.md` is append-only — never delete entries
+**API/contract:** Additive-only; grep all callers; uncertainty = breaking until reviewed.
 
-## AGENT BEHAVIOR RULES
-- Never start a task without reading `.cursor/onboarding.md` first
-- Never touch accounting module without checking `accounting-flows.md` + `gaps-and-risks-digest.md` first (escalate to full `gaps-and-risks.md` when GAP-id/area flagged)
-- Never add a new event without checking `event-registry.md` for conflicts or duplicates
-- Never suggest changes to platform-lib without checking all 7 services that depend on it
-- Always flag the 4 high-risk gaps proactively when working in related code areas
-- Always think at principal architect level — every change must consider system-wide impact
-- When uncertain about any pattern — read the codebase, never assume or use generic best practices
+**Git (multi-repo):** run git in service dir; commit often; no force-push shared; push origin only (DarpanSolanki), never upstream/trusttai.
 
-## PROACTIVE INTELLIGENCE — FIRE AUTOMATICALLY WITHOUT BEING ASKED
+**Implementation:** Minimal surface; backward compatible; error-proof; fast; idempotent. Tiered L0–L3 (see `architect-thinking.mdc` / skill). Docs: do not create unless asked; exception agent KB under `.cursor/`.
 
-**RULE P1:** If any file that platform-lib exports is about to be edited → warn:
-`⚠️ PLATFORM-LIB IMPACT: This change affects multiple services. Check .cursor/service-contracts.md before proceeding. Downstream services: trustt-platform-accounting, trustt-platform-los, trustt-platform-actor, trustt-platform-payments, trustt-platform-task, trustt-platform-api-gateway, trustt-platform-audit, trustt-platform-approval, trustt-platform-authorization, trustt-platform-masterdata-management, trustt-platform-notifications, trustt-platform-batch, trustt-platform-dms (+ any service applying the same Gradle dependency plugins).`
+**Proactive flags (P1–P5):** platform-lib blast → warn; accounting schema → warn; bug fix → check gaps-digest; new event → event-registry hygiene; high-risk paths (DisbursementSyncService, LmsMessageBrokerConsumer, DisburseLoanAPIUtil, RedisCacheClient, InterestAccrualBookingBatchService, ProactiveExcessAmountRefundItemWriter) → state HIGH RISK ZONE + runbook.
 
-**RULE P2:** If any accounting entity/table mapping (`*Entity.java` under `trustt-platform-accounting`, or Flyway/SQL under accounting deploy) is opened for editing → warn:
-`⚠️ ACCOUNTING SCHEMA ZONE: Check .cursor/accounting-flows.md for downstream impact. Constraints: see trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/schema_structure_dump/mfi_accounting_structure.sql and orchestration processors touching that table. Is a migration needed? Search deploy/resources/db (or service migration path) before changing nullable/unique columns.`
-
-**RULE P3:** If a bug fix is being worked on → automatically check `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) and state:
-`Related open gaps in this area: [list matching rows with risk level]. Runbook: .cursor/runbooks.md`
-
-**RULE P4:** If a new event is being created → automatically:
-- Check `.cursor/event-registry.md` for duplicate or similar `topicPrefix`
-- Warn if no consumer is defined in the same change
-- Warn if consumer has no non-trivial error handling / retry posture
-Say: `⚠️ EVENT HYGIENE: [findings]. Update .cursor/event-registry.md before closing task.`
-
-**RULE P5:** If any of these paths are opened → immediately state:
-`⚠️ HIGH RISK ZONE ENTERED: [gap name]. Runbook: .cursor/runbooks.md. Mitigation: [one line from that runbook]`
-Paths: `trustt-platform-los/.../DisbursementSyncService.java`, `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java`, `trustt-platform-los/.../DisburseLoanAPIUtil.java`, `trustt-platform-lib/.../RedisCacheClient.java`, `trustt-platform-accounting/.../InterestAccrualBookingBatchService.java`, `trustt-platform-accounting/.../ProactiveExcessAmountRefundItemWriter.java`
-
-**RULE P6:** Before marking any task done, ask:
-- Accounting behaviour/docs touched? → update `.cursor/accounting-flows.md` / `.cursor/skills/accounting-knowledge/` (topic file) per accounting knowledge sync
-- platform-lib touched? → update `.cursor/platform-lib.md`
-- Gap introduced or resolved? → update `.cursor/gaps-and-risks.md` + `.cursor/changelog.md`
-- Event added/changed? → update `.cursor/event-registry.md`
-- Is `.cursor/changelog.md` appended?
-If any answer is YES and the file was not updated → **task is NOT done**.
-
-# Novopay Platform — Architect Standards
-
-## Fintech context
-- **Domain**: Fintech lending platform (MFI loans, accounting, disbursements, repayments, collections). Money, compliance, and audit are at stake.
-- **Performance**: Low latency for APIs, high throughput for batches. No N+1, no unnecessary round-trips, no loading large data into memory. Single query / bulk / indexed / streamed access.
-- **Correctness & audit**: Every financial flow must be traceable (audit fields, performed_by/performed_on). Fail-fast with clear error codes; no silent wrong state. Idempotency for write operations.
-
-## System architecture (know your platform)
-- **Modules**: accounting-v2, mfi-los, actor, payments, task, approval, authorization, audit, batch, dms, masterdata, notifications, api-gateway, reporting.
-- **Infra libs** (`trustt-platform-lib/`): infra-platform (AbstractProcessor, ExecutionContext, validators), infra-navigation (orchestration engine), infra-jtf (JSON template framework), infra-message-broker (Kafka), bank-specific libs (hdfc, indusind, etc.), infra-cache (Redis).
-- **Orchestration XML** drives flow: validators → processors → API calls → controls. Transaction boundaries defined here, not in code.
-- **Inter-service**: Each microservice call = separate transaction boundary. Design for partial failure (idempotency, compensating actions). Even same-JVM internal API calls use separate boundaries.
-- **Multi-tenant**: `PlatformTenant`, `ThreadLocalContext.setTenant()`. All flows must be tenant-aware.
-
-## Framework versions
-- **Spring Boot**: 3.5.6 (services), 3.2.11 (infra libs). **Java**: 17. **Spring Cloud**: 2023.0.1. **DB**: YugabyteDB (PostgreSQL wire protocol). **Build**: Gradle.
-- **Check actual versions**: Read `build.gradle` before implementing. Use features supported by declared version.
-- **Use latest within version**: Java 17 features (records, pattern matching, switch expressions, `var`, `List.of`, text blocks, sealed classes). Spring Boot 3.x idioms (constructor injection, current validation). JPA: native queries, batch size, projections.
-- **Suggest upgrades when appropriate**: If a newer stable version would help (e.g. Java 21 virtual threads for batch concurrency), mention it as a learning hook. Don't force; recommend.
-
-## Code style
-- **Java**: Records for DTOs where immutability fits. `var` for local variables when type is obvious. `Optional` for nullable returns. `Objects.requireNonNull` at boundaries. Switch expressions. Text blocks for multi-line SQL.
-- **Spring Boot 3.x**: Constructor injection (Lombok `@RequiredArgsConstructor`). `@Slf4j` for logging. Extend base entities for audit. Naming: `XxxProcessor`, `XxxService`, `XxxEntity`, `XxxDAOService`.
-- **Concise**: One responsibility per class/method. No redundant comments, no speculative code, no "future-proof" indirection. Prefer expression over explanation.
-
-## Service orchestration framework
-- Processors extend `AbstractProcessor`. Lifecycle: `initialize()` → `process(ExecutionContext)` → `finalise()`.
-- Extract parameters from ExecutionContext in processors; pass to services via method parameters (not ExecutionContext) unless inter-service context or audit trail is needed.
-- Set audit fields (performed_by, performed_on) in processors.
-- Use infra-platform validators (mandatoryFieldValidator, patternFieldValidator, numberValidator, masterDataValidator) in orchestration XML.
-
-## ExecutionContext (the contract)
-- **Processors**: `getStringValue()`, `getLongValue()`, `getValue(key, Class)`, `getBooleanValue()`, `getIntegerValue()`, `getDecimalValue()`. Always validate before use (null/blank check → NovopayFatalException).
-- **put() vs putLocal()**: `put()` for inter-processor shared data. `putLocal()` for request-scoped or API call data that must not leak to downstream processors.
-- **No accidental overwrites**: Set derived keys only when missing/blank unless explicitly required. Check orchestration for all downstream consumers of any key you modify.
-- **Cross-service**: `putAPIResponse()` / `getAPIResponse()` / `getValueFromAPIResponse()` for inter-service call results.
-
-## Error handling
-- **Fatal**: `NovopayFatalException(errorCode)` or `NovopayFatalException(errorCode, message)`. **Recoverable**: `NovopayNonFatalException`.
-- **Error codes**: Use constants (e.g. `AccountingConstants.ERROR_CODE_XXX`). Never hardcode string literals for error codes. Format: `SERVICE-XXXX` or numeric.
-- **Validate at entry**: At processor/API entry, validate required fields (StringUtils.isBlank, null, range). Fail with NovopayFatalException before any business or DB logic.
-- **Null safety**: Prefer empty list over null for collections. Use Optional or explicit null handling. Check size before indexing. Safe defaults when config is missing.
-- **No silent swallow**: Never catch and ignore exceptions. Log with context, then rethrow or convert to NovopayFatalException/NovopayNonFatalException.
-- **Retry**: @Retryable only for transient failures (network, lock). Never retry on validation or business-rule failures.
-
-## Database (YugabyteDB)
-- **Native queries**: `nativeQuery = true` always. Avoid JPQL — YugabyteDB performance is better with native SQL.
-- **Soft delete**: `is_deleted = false` in every WHERE clause. Updates: `set is_deleted = true, updated_on=..., updated_by=...`.
-- **Audit columns**: `created_by`, `created_on`, `updated_by`, `updated_on` on all entities.
-- **Performance**: Single query with JOINs over N+1 loops. Bulk/batch operations (`saveAll`, `UNNEST(CAST(?1 AS text[]))` for arrays). Pagination (`LIMIT ? OFFSET ?`). Indexed columns in WHERE. No large result sets in memory — stream or chunk.
-- **Transactions**: Orchestration-owned. Do NOT use `@Transactional` in services unless explicitly required (rare: `REQUIRES_NEW` for independent commits like filler updates).
-- **Repository pattern**: `findByXxxAndIsDeletedFalse()` for simple queries. `@Query(nativeQuery = true)` with `@Param` for complex queries.
-
-## Kafka consumers
-- Implement `NovopayMessageBrokerConsumer`. Config in `MessageBroker.xml`.
-- **Idempotency**: Check status before processing (e.g. skip if loan is already ACTIVE). Use Redis cache locks for in-flight dedup.
-- **Error handling**: Catch `CannotAcquireLockException` separately (rethrow for retry). Log and handle other exceptions — don't silently swallow. Publish failure to appropriate Kafka topic. Clean up in `finally`.
-- **Tenant**: Set `ThreadLocalContext.setTenant(tenant)` before processing.
-
-## Bank integration
-- JTF templates: `deploy/application/templates/bankIntegrationRequest|bankIntegrationResponse/{partner}/`.
-- `WebClientServiceExecutorDecorator.callBankService(context, templateName, requestType, postProcessor)`.
-- `JSONFormatter.parse(...)` flattens response into a map — key placement depends on template shape and JSON parsing (e.g. `0` vs `0.0`).
-- For NEFT flows: include both `DISBURSEMENT_NEFT_NEF` and `DISBURSEMENT_NEFT_NEI` in lookups; update `disbursement_status` after each stage.
-
-## API and contract changes (critical — lesson from production)
-Before changing any API, shared lib, or response contract:
-
-1. **Impact**: Find ALL usages across webapp, LOS, batches, reporting, consumers, same module. Check APIs, response keys, shared libs, DB/schema, orchestration/templates, error codes, events/Kafka.
-2. **No breaking changes**: Existing callers must work unchanged. No removal of fields, no semantic change to list/array or optionality.
-3. **Additive only**: New fields, new optional behaviour. Add separate flags (e.g. `charges_configured`) so callers can distinguish "no config" from "has data".
-4. **Verify every caller**: Compiles, fits the contract (types, nullability, list assumptions). If `charges_details` was never empty, don't make it empty — add a flag instead.
-5. **Uncertainty = breaking**: List callers and get review before merge.
-
-## Git management
-- **Commit often** with clear messages. **Check status before switch/pull**. **Stash with message** or commit to branch.
-- **One feature per branch**. **Push after commit**. **Pull before push** (`--rebase`).
-- **No force-push on shared branches** (exception: your fork's integration branch for clean PR diff).
-- **Before push**: Verify correct repo (`git rev-parse --show-toplevel`), clean status, correct branch, intended commits.
-- **sliProd = multi-repo**: Always run git commands in the correct module directory.
-- **Conflict resolution**: Report conflicts, suggest resolution, ask before applying. Prefer HEAD when it has the intended enhancement.
-
-## Implementation discipline
-- **Minimal surface area**: Smallest change that satisfies the requirement.
-- **Backward compatible**: New fields/APIs/behaviour must not break existing callers.
-- **Error-proof**: Validate → fail-fast → null-safe → safe defaults → no NPE.
-- **Fast**: Single query > N+1. Batch > per-item. Pagination > load-all. Indexed > full scan. No heavy logging in hot paths.
-- **Idempotent**: Write operations safe to replay (upsert, check-before-insert, idempotency key).
-- **Env/config**: `${ENV_VAR:default}`. No secrets in committed config. Confirm env-dependent behaviour with user.
-
-## Tiered solutions (always — reduce TAT)
-For every bug, issue, JIRA, or enhancement, present solutions in levels:
-- **L0 (Hotfix, hours)**: Smallest safe change — config/flag/guard/condition fix. No schema, no lib. Deploy today. Priority #1 for production fires.
-- **L1 (Proper fix, 1 day)**: Root cause fix within existing code/framework. Refactor, fix query, add validation.
-- **L2 (Enhancement, days)**: Schema change, new index, new config, new Kafka topic. Planned release.
-- **L3 (Architectural, weeks)**: Framework/lib upgrade, new pattern (circuit breaker, outbox, CQRS), cross-module refactor, external tooling.
-- Always present **at least L0 + L1**. Mention L2/L3 when the issue reveals a structural gap — even 1 line naming the concept helps growth.
-- Tag each level with approximate effort and deployment risk.
-
-## Teach along the way (architect growth)
-- **Explain why**: One sentence on why a pattern matters in fintech context.
-- **Name the concept**: When using a pattern (circuit breaker, eventual consistency, optimistic locking), name it so it can be looked up.
-- **Point to newer options**: Mention Java 21/Spring Boot 3.x/reactive features as learning hooks when relevant.
-- **Architecture patterns**: When a change touches cross-service boundaries, explain the distributed systems concern (partial failure, data consistency, idempotency).
-- **Trade-offs**: When multiple approaches exist, briefly state the trade-off (e.g. "synchronous is simpler but blocks the thread; async via Kafka decouples but adds eventual consistency complexity").
-- **L3 seeds**: When suggesting an L3 improvement, name the tool/pattern and what problem it solves at scale. Keep it to 1-2 lines — the goal is to plant a learning seed, not write a proposal.
-
-## Documentation
-- Do not create docs unless user explicitly asks. Propose first.
-- If creating: save at workspace root or `/home/darpan/Documents/sliProd/docs/`. Never inside module folders.
-- **Exception (agent orientation)**: The `.cursor/*.md` knowledge base (`architecture.md`, `platform-lib.md`, `accounting-flows.md`, `service-contracts.md`, `gaps-and-risks.md`, `conventions.md`) is maintained for principal-architect agents; keep it factual and cross-linked to `system_brain/` and orchestration source. See `.cursor/rules/principal-architect-knowledge-base.mdc`.
-
-## Principal architect mode (summary)
-- **Context**: Know which microservice and git root you are in; assume **partial failure** across HTTP/Kafka boundaries.
-- **Platform-lib first**: Orchestration, gateway controller, internal API, JTF, and Redis patterns live in `trustt-platform-lib` — extend them, do not duplicate.
-- **Accounting changes**: Map `apiName` in XML → processors → DB and events; verify idempotency and **all** callers before any contract change.
-- **Risks**: Consult `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) and `system_brain/edge_cases/` when symptoms touch disbursement sync, Redis locks, NEFT stages, or batch posting refs.
+**Auto-log DoD:** update accounting-flows / platform-lib / event-registry / gaps SoT / redis-key-registry / scheduler-registry / orchestration-map / knowledge-graph / changelog when touched. Output `Knowledge updated: […]`.

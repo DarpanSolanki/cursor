@@ -1,7 +1,4 @@
----
-description: Full workspace automation — agents run autopilot; user never runs scripts manually
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/workspace-autopilot.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Workspace autopilot (mandatory)
 

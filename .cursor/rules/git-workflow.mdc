@@ -26,6 +26,8 @@ This keeps the git history showing only the human developer.
 
 **Remotes**: origin = your fork (push here). upstream = canonical repo (no direct push; changes go via PR).
 
+**Sync-first before analyse/push on train branches:** base on `upstream/mfi_integration_vX.Y.Z` tip (not stale origin); see `.cursor/rules/10-quality-gates.mdc` § Sync-first gate and `feedback_train_branch_sync_origin_upstream.md`.
+
 **Tone**: Minimal git commentary. Run required commands; confirm outcome briefly (e.g. "Pushed. PR shows only your change.").
 
 ## Single-feature integration branch
@@ -39,7 +41,8 @@ When only one feature (e.g. fetchLoanAccountChargeDetails) must go upstream from
 
 ## PR into upstream
 
-- **Base**: upstream branch (e.g. khoslalabs:mfi_integration_v3.2.8.3). **Head**: origin branch (e.g. DarpanSolanki:mfi_integration_v3.2.8.3).
+- **Base**: upstream branch (e.g. `trusttai:mfi_integration_v3.2.8.3`). **Head**: origin branch (e.g. `DarpanSolanki:mfi_integration_v3.2.8.3`).
+- Repo / local folder names are `trustt-*` (legacy local `novopay-*` was renamed 2026-07-15). Map: `docs/setup/github-org-repo-rename-developer-guide.md` / `scripts/lib/github_repo_map.py`.
 - Before merge: verify the PR "Files changed" shows only the intended diff. If not, redo the branch as above.
 
 ## Contract

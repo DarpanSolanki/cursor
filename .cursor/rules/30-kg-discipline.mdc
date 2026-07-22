@@ -1,0 +1,49 @@
+---
+description: KG discipline — safety, self-learning, flow-cross-learn, DPI branch gate
+alwaysApply: true
+---
+
+
+# KG discipline
+
+Archives: `.cursor/skills/workspace-gates-reference/kg-safety-and-consultation.md`, `self-learning-kg.md`, `flow-cross-learn.md`, `dpi-feature-branch-gate.md`
+
+## Hard rule — KG must never drive implementation alone
+
+KG indexes structure + opt-in precedents. It does **not** know runtime DB/config/cache/WIP.
+
+Before money/Kafka/contract/multi-service fix/feature/RCA:
+1. `kg.py validate` — must pass
+2. `kg.py fresh` — if STALE → `kg-switch.sh` before trusting flow/crud/why
+3. `kg.py orient <request>` — with disclaimer
+4. **Verify in source of truth:** orch XML → processor `.java` → `scripts/db-local.sh`
+
+`KG_STRICT=1` when branch drift/dirty possible — stale answers exit 2.
+
+WIP/provisional watermark: treat flow/crud as branch-local; do **not** change shared lib/Flyway/contracts from KG alone.
+
+Consultation order — do not skip: Memory → CANONICAL-MAP → kg orient/why → runbooks → gaps digest → orch+processors → db-local.
+
+Implementation gate before edit: validate; fresh/switch; orch read; callers grepped; money L0/L1 + adversarial; additive contracts. If any fail → **stop**.
+
+## Self-learning KG
+
+After stable fixes: ship → prepend brain CHANGELOG → build/enrich → `kg cases`. Do **NOT** fold provisional/WIP/dirty/flagged code into stable brain docs. Watermark + auto-rebuild on code drift; doc-only → warn, manual build.
+
+Brain-first before grepping. If `.pending-kg-rebuild` after commit: enrich when stable + changelog prepended.
+
+## Flow cross-learn (mandatory)
+
+When any flow test fails or gap found while making another pass: `test-learn` / learning_bus; fix upstream scripts not only downstream; reuse existing scripts — do not add parallel wrappers; scratch under `scripts/scratch/<task>/`. Fresh LAN: disburse new loan per scenario; do not SQL-patch one LAN to pass unrelated smokes (except intentional replay/idempotency).
+
+## DPI feature branch gate (mandatory before DPI code analysis)
+
+When task mentions DPI/DPIC/dpiAccrual/dpiBilling/DPI go-live/loan restructuring+DPI:
+
+1. Read `cursor-bundle/memory/reference_dpi_feature_branch.md`
+2. Verify checkout matches **task branch** (do not assume feature WIP). Default harness/QA train: accounting → `mfi_integration_v3.7.1` (HEAD must include booking fix `77921d275f`). Unmerged WIP only when task says so.
+3. `bash scripts/bin/kg-switch.sh` — watermark must match branch under test
+4. Optional: `git merge-base --is-ancestor 77921d275f HEAD`
+
+**Never** conclude "field/API missing" from the wrong train. Mixed workspace (webapp feature / accounting integration) → wrong analysis — align first.
+

@@ -1,7 +1,4 @@
----
-description: Prefer real flow tests; when a stage is blocked use code-backed orchestration/processor simulation (never guesses)
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/code-backed-simulation-testing.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Code-backed simulation testing (platform suite enrichment)
 

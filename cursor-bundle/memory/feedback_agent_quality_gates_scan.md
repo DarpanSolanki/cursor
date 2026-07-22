@@ -1,6 +1,6 @@
 ---
 name: feedback_agent_quality_gates_scan
-description: "Standing scan (2026-06-29): root cause classes for wrong RCA, stale code, weak testing, flow confusion — mandatory gates in agent-quality-gates.mdc"
+description: "Standing scan (2026-06-29): root cause classes for wrong RCA, stale code, weak testing, flow confusion — mandatory gates in 10-quality-gates.mdc"
 metadata:
   node_type: memory
   type: feedback
@@ -35,7 +35,7 @@ metadata:
 - `kg orient` without `kg validate` / `kg fresh` → stale spine on branch switch.
 - Skipping orchestration XML after `kg flow` → wrong processor order (e.g. DCF billing sync).
 
-**Gate:** `kg-safety-and-consultation.mdc` order: MEMORY → CANONICAL-MAP → validate → orient → **XML + processors** → db-local.
+**Gate:** `30-kg-discipline.mdc` order: MEMORY → CANONICAL-MAP → validate → orient → **XML + processors** → db-local.
 
 ### 4. Testing gaps (honest matrix)
 
@@ -58,4 +58,4 @@ git-workspace-status.sh → kg watermark → workspace-intelligence-state.md
 → before-test → ntest (honest result labels)
 ```
 
-Related rules: `agent-quality-gates.mdc`, `dpi-feature-branch-gate.mdc`, `kg-safety-and-consultation.mdc`, `minimal-fix-impact-gate.mdc`.
+Related rules: `10-quality-gates.mdc`, `30-kg-discipline.mdc`, `30-kg-discipline.mdc`, `10-quality-gates.mdc`.

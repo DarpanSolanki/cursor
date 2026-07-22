@@ -1,0 +1,153 @@
+[agent-quality-gates.mdc:15] `FILE_TOUCH_HINTS`, `VERIFIED_FIXED_DIVERGED`, stale refs, or unresolved SHA → **REUSE_FORBIDDEN** (never invent a port). Memory: `feedback_cross_branch_no_false_positive.md`.
+[agent-quality-gates.mdc:17] **Hard stop (state aloud before continuing):**
+[agent-quality-gates.mdc:21] - **Mixed trains** on disk (integration + feature/DPI across repos) → do not conclude cross-service contracts until aligned or scoped.
+[agent-quality-gates.mdc:29] 3. Check domain: `scripts/lib/accounting_flow_domains.json` — do not conflate:
+[agent-quality-gates.mdc:54] | `ORCH_SIBLING_SIM` / `PROCESSOR_MIRROR_SIM` Pass | Registry case with `verify_mode` ran this session; **never** label as full E2E / LAN Pass; cite stage blocker (see `20-ship-gates.mdc`) |
+[agent-quality-gates.mdc:56] Ship: `workspace-close.sh --from-pending` — not compile-only. Do not pull unrelated registry cases (e.g. `dpic.foreclosure_sim` on death-FC-only edits). When full money E2E is blocked, use a **code-backed** sim case — not an unrelated disburse smoke fallback.
+[agent-quality-gates.mdc:58] ### Gate D-acceptance — QA acceptance is the bar, not a passing subset (fail-closed)
+[agent-quality-gates.mdc:62] **Never claim Pass / RESOLVED / QA-ready when the assert allows the exact QA fail mode.** A test that prints `OK …` / `WARN …` for a state QA rejects is a **FAIL**, not a Pass.
+[agent-quality-gates.mdc:64] | Anti-pattern (forbidden as Pass) | Required instead |
+[agent-quality-gates.mdc:67] | "a labd linked to force-bill exists" | **Dedicated** force-bill labd visibility; EMI-labd hijack (EMI txn_ref overwritten, amounts still EMI) must FAIL |
+[agent-quality-gates.mdc:69] | Parent/product-scope item silently dropped | Must be **Pass** or explicit **Out-of-scope-documented** |
+[agent-quality-gates.mdc:74] Subset e2e (loan CLOSED, txn exists) is **not Done** while the acceptance shape QA cites is unproven. Debug-only relax flags (`ACCEPTANCE_STRICT=0`, `ALLOW_A2_NETTING_DISPLAY_DIFF=1`) **never** produce a handoff Pass.
+[agent-quality-gates.mdc:76] **Machine gate:** `scripts/lib/acceptance_coverage.py` (+ manifest) — enforced domains must declare `acceptance.dimensions` / webapp-marker `ui_fields` **and value-level `acceptance.db_asserts` (or `expect.db_eq`) covering every `domain_money_tables` entry** on registry cases; wired into `ship_discipline_gate` / `ship-loop-gate`. Subset notes, SQL-only “webapp”, and presence-only DB asserts fail closed.
+[always-on.mdc:3] # Always-On Platform Intelligence
+[always-on.mdc:5] ## Session bootstrap (mandatory — before other tools)
+[always-on.mdc:9] **Order (silent — do not ask permission):**
+[always-on.mdc:28] This applies to **read-only RCA and log analysis** when the topic is **high blast radius** (see **Mandatory expansion**).
+[always-on.mdc:56] **Mandatory expansion (no shortcut):** production or prod-like **logs**, **incidents**, **money** (ledger, disbursement, repayment, collections, GL, batches), **multi-service** flows, **API/Kafka/ExecutionContext contracts**, **DB/cluster** errors, **security/compliance**, **prod/ops mutation SQL** (adhoc UPDATE / CRR / loan_account money patches — load `prod-ops-sql-impact` / `.cursor/rules/prod-ops-sql-impact-gate.mdc` **and** answer “is contract-native FAIL enough?” before soft-archive/invented status) — even if the user asked for **analysis only** and **no code**.
+[always-on.mdc:125] - **Service-adjacent docs** that must not live inside a service git repo → `docs/<service>/` (see `docs-outside-service-repos.mdc`). When **editing** those files, follow **`docs-outside-service-repos.mdc (Workspace docs maintenance section)`**.
+[always-on.mdc:141] - **Branch** (if git work); **never assume workspace root is a git repo**—run git inside the correct **service** directory (`sliProd = multi-repo`).
+[always-on.mdc:158] ## Knowledge sync push discipline (mandatory)
+[always-on.mdc:174] No deferred push for these artifacts; sync must remain current for machine migration/bootstrap.
+[always-on.mdc:182] You are operating as a Principal Engineer in a strict, high-stakes fintech environment. Accuracy and safety are paramount. When investigating a bug, explaining a system flow, or proposing a fix, you MUST adhere strictly to this evidence-based workflow:
+[always-on.mdc:185] * **Never jump straight to writing code.** If the request lacks logs, stack traces, or clear context, explicitly ask for them.
+[always-on.mdc:190] * Do not guess the solution. Formulate a hypothesis and **prove it** using the provided code or logs.
+[always-on.mdc:198] Before proposing a final code change, you must provide:
+[always-on.mdc:206] * **STOP AND WAIT.** End your response with a prompt for the user to approve the approach. Do not generate the final code until explicit approval is given.
+[always-on.mdc:210] * Do not refactor unrelated code.
+[always-on.mdc:211] * Do not write or generate automated tests unless explicitly instructed to do so.
+[always-on.mdc:221] - **Factual only**: Tie claims to **service paths** (e.g. `trustt-platform-accounting/.../FooProcessor.java`), orchestration XML filenames, or verified DB observations. Mark guesses as **UNVERIFIED** if you must keep them.
+[always-on.mdc:224] - **Flows**: State **entry API / consumer / batch**, **major status fields**, and **where partial failure** can occur; point to rules (`events.mdc`, `execution-context-discipline`) when relevant—do not duplicate full rule text.
+[always-on.mdc:234] - Do not move **service source** or **large copied code** into `system_brain/`; use `docs/<service>/` for lengthy QA/release artifacts per `docs-outside-service-repos.mdc`.
+[autonomous-workspace-ops.mdc:5] Agents **must not** skip tooling or declare "service down / blocked" without running ops scripts first.
+[autonomous-workspace-ops.mdc:24] | Stuck / "where are logs?" | never guess paths | `novopay-logs.sh guide accounting` |
+[autonomous-workspace-ops.mdc:26] ## Do not
+[code-backed-simulation-testing.mdc:7] Ship-loop / workspace-close require a **verified** registry case. Full money-path E2E (maker-checker, child events batch, bank) is not always runnable in the same turn. Agents must **not** skip verification — they escalate down a ladder and **enrich** `scripts/testing/registry.json` so the platform suite grows.
+[code-backed-simulation-testing.mdc:15] | 3 | Orchestration sibling parity from **disk XML** | `ORCH_SIBLING_SIM` | Parent/sibling Request already correct; child/async path must mirror beans |
+[code-backed-simulation-testing.mdc:18] **Forbidden:** invented expected amounts, hand-wavy “should work”, chat-only reasoning without an artifact that cites orch `Request name=` or `file:line`.
+[code-backed-simulation-testing.mdc:29] 4. **Honest claims** — JIRA / ship notes say `ORCH_SIBLING_SIM` (or similar). Never claim “QA Pass” / “Result: Pass (scenario)” for sim-only.
+[code-backed-simulation-testing.mdc:34] (priority 1–2) is genuinely blocked, and say why. Even a code-backed sim must **cite the exact
+[code-backed-simulation-testing.mdc:35] expected DB writes** (table + column + value) it stands in for — never presence-only or a guessed
+[code-backed-simulation-testing.mdc:36] amount (`feedback_real_flow_db_write_validate.md`). When the real flow *can* run, it must read the
+[code-backed-simulation-testing.mdc:46] - external bank / NEFT required for later stage
+[code-backed-simulation-testing.mdc:54] 3. If blocked → add or extend a **code-backed sim** case (do not invent a one-off outside `registry.json`).
+[code-backed-simulation-testing.mdc:61] - Fix: `childLoanReopening` must include parent reopen’s `loanAccountPaymentsDetailsReversalProcessor` (+ tax reversal).
+[code-backed-simulation-testing.mdc:66] - `.cursor/rules/20-ship-gates.mdc`
+[darpan.mdc:7] live evidence, never guessed.** These rules complement `.cursorrules` and `00-workspace-core.mdc`; on conflict
+[darpan.mdc:10] ## Hard rules (never broken)
+[darpan.mdc:12] 1. **Boundary** — never write outside `/home/darpan/Documents/sliProd/`. External writes are restricted:
+[darpan.mdc:14] - Allowed: **local Yugabyte writes** on `127.0.0.1` / `localhost` port `5433` only — via `scripts/bin/db-local-write.sh`, `scripts/bin/purge-local-dpi.sh`, or existing `scripts/dpic/**` helpers (`dpi_pg`, `purge_local_dpi_all.sql`). User permission or explicit local test/purge request is enough; do not ask again.
+[darpan.mdc:26] `DarpanSolanki/...`, never upstream.
+[darpan.mdc:30] NEVER call setters on that entity. See `cursor-bundle/brain/rules/multi-path-state-persistence-safety.md`
+[darpan.mdc:35] Run a workspace snapshot (branches drift — never assume all repos on the same branch):
+[darpan.mdc:66] or `--canned <name>`. Never raw psql. Wrapper refuses writes and prod. Canned SQL:
+[darpan.mdc:78] 4. VERIFY each dependency on LIVE data before concluding (`is_deleted`, status, type/sub_type). Never
+[darpan.mdc:89] - After user correction ("no"/"stop"/"wrong"), update `cursor-bundle/memory/` feedback + `MEMORY.md`
+[discuss-before-updating.mdc:7] - **Do not** update, add, or remove code or configuration unless the user has explicitly asked you to make that change.
+[discuss-before-updating.mdc:8] - **Always discuss first**: Propose options, explain trade-offs, and recommend approaches. Wait for the user to say they want a change applied (e.g. "go ahead", "implement that", "add it").
+[discuss-before-updating.mdc:9] - **Do not** assume "they're describing a bug so they want a fix" — they may only want analysis, inputs, or a plan. If they asked for "inputs", "thoughts", or "what do you think?", respond with analysis and recommendations only; do not edit files unless they then ask you to implement.
+[dpi-feature-branch-gate.mdc:3] # DPI branch gate (mandatory before code analysis)
+[dpi-feature-branch-gate.mdc:10] 2. Verify checkout matches the **task branch** (do not assume feature WIP):
+[dpi-feature-branch-gate.mdc:11] - **Default release train (harness / QA):** `trustt-platform-accounting` → **`mfi_integration_v3.7.1`** (HEAD must include booking fix `77921d275f`)
+[dpi-feature-branch-gate.mdc:13] 3. `bash scripts/bin/kg-switch.sh` — KG watermark must match the branch under test
+[dpi-feature-branch-gate.mdc:16] **Never** conclude "field/API missing" from the wrong train (e.g. older `mfi_integration_*` without DPI fixes, or feature tip when task is 3.7.1).
+[enhancement-all-fronts-gate.mdc:7] ## Fronts (all required — skip only if N/A with one-line reason)
+[enhancement-all-fronts-gate.mdc:20] ## Tiered delivery (always present L0 + L1)
+[enhancement-all-fronts-gate.mdc:33] - Ship note must include: `Query index audit: …` and tier chosen
+[enrichment-ship-gate.mdc:29] 3. **Gaps / runbook / registry** — when symptom class or assert path changes: update `.cursor/gaps-and-risks.md`, matching runbook, and **`scripts/testing/registry.json` case note** (strong path). Memory: `feedback_post_ship_registry_runbook_gap_mandatory.md`. SKIP KG for doc-only; still required for DoD.
+[enrichment-ship-gate.mdc:43] ## End-of-task output (mandatory)
+[enrichment-ship-gate.mdc:55] Does **not** apply to enrichment when user asked to **ship/fix** code — brain CHANGELOG **and** companion registry/runbook/gaps are part of shipping. KB-only doc edits never require KG unless they name new orchestration facts.
+[flow-cross-learn.mdc:3] # Flow cross-learn (mandatory)
+[flow-cross-learn.mdc:10] 4. **Reuse** — extend existing scripts (`run_disburse_demo.sh`, `eod_milestones_from_loan.py`, `dpi-sanity.sh`); do not add parallel wrappers
+[flow-cross-learn.mdc:17] Fresh LAN policy: disburse new loan per scenario; do not SQL-patch one LAN to pass unrelated smokes (exception: intentional replay/idempotency tests).
+[hot-path-perf-gate.mdc:7] ## Mandatory scan (same PR as the fix)
+[internal-api-local-test-harness.mdc:3] # Internal API — local HTTP test harness (mandatory on money-tier close)
+[internal-api-local-test-harness.mdc:5] Many accounting APIs (e.g. `individualChildLoanForeclosure`, `childLoanForeclosure`) run in **production only via internal orchestration** (`CallInternalOrchestrationWithoutJsonProcessor`, event queue). They never hit the service gateway in prod.
+[internal-api-local-test-harness.mdc:27] ## Do not
+[kg-safety-and-consultation.mdc:5] ## Hard rule — KG must never drive implementation alone
+[kg-safety-and-consultation.mdc:11] 1. `python3 cursor-bundle/kg/bin/kg.py validate` — must pass (integrity + min nodes/edges).
+[kg-safety-and-consultation.mdc:26] ## Consultation order (single path — do not skip)
+[kg-safety-and-consultation.mdc:42] - **Never** index full audit log, demo scripts, or `.cursor/changelog.md` into KG.
+[kg-safety-and-consultation.mdc:46] ## Implementation gate (mandatory sign-off before edit)
+[kg-safety-and-consultation.mdc:55] If any box fails → **stop**; KG cannot substitute for missing evidence.
+[minimal-fix-impact-gate.mdc:11] 1. **Prefer write-path / create-path guard** when the root cause is duplicate or invalid **new** rows. Do not add read-path “pick latest / resolve” unless write guard alone is insufficient. For ops SQL: prefer the **smallest UPDATE set** that satisfies code filters — challenge soft-archive/new status when existing enum already works.
+[minimal-fix-impact-gate.mdc:15] 3. **Existing production data** — create guard does not fix rows already in DB. Impact analysis **must** say: manual patch / replay needed for named LANs, or justify a **narrow** read fallback.
+[minimal-fix-impact-gate.mdc:21] 6. **Reuse queries (mandatory)** — Read `.cursor/skills/reuse-queries-java-filter/SKILL.md` before any `*Repository.java` / `*DAOService.java` edit. Ladder: reuse + Java → extend existing (no perf degrade) → new `@Query` last.
+[minimal-fix-impact-gate.mdc:27] ## Output (required in proposal or release impact)
+[post-ship-knowledge-gate.mdc:17] ## Mandatory checklist — ALL before "task done"
+[post-ship-knowledge-gate.mdc:28] | 8 | Freshness | `python3 cursor-bundle/kg/bin/kg.py fresh` → must print **FRESH** before closing |
+[post-ship-knowledge-gate.mdc:29] | 9 | **Testing suite** | `scripts/testing/registry.json` case for the fix path updated (note/defaults/expects encode **QA ACCEPTANCE SHAPES**, not only "linked somehow"). Asserts must FAIL on the exact QA fail mode (amount==principal OR documented components; dedicated force-bill labd / no EMI hijack; product-scope items Pass\|Out-of-scope). Surgical edit if unrelated WIP dirties the file — **never exclude the money case**. |
+[post-ship-knowledge-gate.mdc:35] ## Hard stop phrases (task is NOT done if any true)
+[post-ship-knowledge-gate.mdc:43] - **The e2e / assert allows the exact QA fail mode** (prints "OK …"/"WARN …" and passes for a state QA rejects — amount≠principal, EMI-labd hijack, dropped parent scope). See `feedback_qa_acceptance_not_subset_verify.md`. A green subset is **not** RESOLVED while acceptance is broken — keep the gap open (do not mark RESOLVED).
+[post-ship-knowledge-gate.mdc:45] ## End-of-task output (required format)
+[post-ship-knowledge-gate.mdc:58] **Do not say "pushed" or "done" with `Post-ship gate: FAIL`.**
+[principal-architect-knowledge-base.mdc:15] - **Risks**: read `.cursor/gaps-and-risks-digest.md` for open High rows (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged or digest missing/stale); do not dismiss Redis, bank replay, or sync field requirements.
+[principal-architect-knowledge-base.mdc:29] These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+[prod-flyway-manual-ddl.mdc:5] **Darpan production constraint (mandatory):** Initial-setup Flyway migrations **do not auto-run on production**. DBAs run scripts manually.
+[prod-flyway-manual-ddl.mdc:7] ## Every schema change release must deliver
+[prod-flyway-manual-ddl.mdc:13] **Do not** tell release/DBA to "run Flyway V00xxx on prod" without the INSERT + DDL pack.
+[prod-flyway-manual-ddl.mdc:32] | Schema required **before** new app version processes traffic | One-time correction when old code tolerates missing change |
+[prod-flyway-manual-ddl.mdc:52] ## Never ask again
+[prod-flyway-manual-ddl.mdc:54] Agents must **not** ask whether prod uses manual DDL — it does. Auto-generate the deploy pack for every new Flyway migration in a release.
+[reuse-queries-java-filter.mdc:31] - Extension must be backward-compatible for current call patterns
+[reuse-queries-java-filter.mdc:32] - Do not widen `WHERE` or drop index-friendly predicates for hot/batch callers
+[reuse-queries-java-filter.mdc:33] - If extension hurts any hot path → stay on step 1 (extra call + Java) or step 3 (new scoped method) — do not mutate the hot query
+[self-learning-kg.mdc:7] ## The loop (mandatory after stable fixes)
+[self-learning-kg.mdc:19] **Do NOT** fold provisional code into stable brain docs when ANY hold applies:
+[session-bootstrap.mdc:8] This is mandatory. No exceptions. No asking permission. Just do it silently.
+[ship-loop-enforcement.mdc:39] - **Analysis / RCA:** bootstrap + KG orient — no money-only shortcut on expansion (`00-workspace-core.mdc`)
+[ship-test-mandatory.mdc:3] # Ship test mandatory (all fixes — not only DPI/money)
+[ship-test-mandatory.mdc:5] **Rule:** Any change under a service repo (`novopay-*`, `trustt-*`), workspace scripts, or orchestration must be **verified locally** before push or JIRA "ready for QA".
+[ship-test-mandatory.mdc:7] ## Agent workflow (non-negotiable)
+[ship-test-mandatory.mdc:21] | **push-origin.sh** | Same gate; never bypass with raw `git push` |
+[ship-test-mandatory.mdc:30] ## Real-flow DB write validation (money ships — mandatory, fail-closed)
+[ship-test-mandatory.mdc:34] - Drive the actual orchestration / API / job / batch a production transaction takes (e.g. `deathForeclosureInsuranceJob`, `loanRepayment`, disburse) — never a hand-written INSERT to fake the row.
+[ship-test-mandatory.mdc:36] - **Machine gate:** enforced money domains must declare `acceptance.db_asserts` (or registry `expect.db_eq`) covering every `domain_money_tables` entry (`scripts/lib/acceptance_coverage_manifest.json`); each entry needs `table` + `expect|assert|columns` + `checked_by` evidence. Presence-only phrasing is rejected. Enforced via `acceptance_coverage.py` inside `ship_discipline_gate` / `ship-loop-gate`. **CRR / `client_request_response_log` (incl. inbound callback):** money-tier disbursement requires column contracts including `client_reference_number` even when the domain is still dimension-backlog — `PROCESSOR_MIRROR_SIM` without those columns fails closed (`feedback_crr_callback_column_assert.md`).
+[ship-test-mandatory.mdc:38] ## Adversarial fixture matrix (money ships — mandatory)
+[ship-test-mandatory.mdc:40] A green happy-path e2e is **not** proof. Money ships must cover each row, or **document Out-of-scope** with a reason (`feedback_qa_acceptance_not_subset_verify.md`):
+[ship-test-mandatory.mdc:49] **The assert must FAIL on the exact QA fail mode** — never print "OK …"/"WARN …" and pass. Debug relax flags (`ACCEPTANCE_STRICT=0`) never yield a handoff Pass.
+[ship-test-mandatory.mdc:56] 2. If a stage is blocked → add/run a **code-backed** registry sim (`verify_mode: orch_sibling_sim` / `processor_mirror_sim`) that parses real orch XML / Java — never guessed expects.
+[upstream-sync-no-unrelated-diff.mdc:5] When the user asks to move/port changes to another base branch (for example `mfi_integration_vX.Y.Z`), follow this mandatory gate before commit/push.
+[upstream-sync-no-unrelated-diff.mdc:7] ## Mandatory flow
+[upstream-sync-no-unrelated-diff.mdc:16] ## Hard stop conditions (no exceptions)
+[upstream-sync-no-unrelated-diff.mdc:18] - If any unrelated file appears in the diff, STOP.
+[upstream-sync-no-unrelated-diff.mdc:19] - Do not push until unrelated changes are reverted/removed.
+[upstream-sync-no-unrelated-diff.mdc:20] - Do not justify “small” unrelated changes (formatting, moved processors, removed request blocks, etc.).
+[upstream-sync-no-unrelated-diff.mdc:30] ## Push checklist (must pass all)
+[upstream-sync-no-unrelated-diff.mdc:38] ## Sync-first gate (train branches — mandatory)
+[upstream-sync-no-unrelated-diff.mdc:42] 1. `git fetch origin` and `git fetch upstream` separately (do not pass both remotes as one `git fetch` arg list).
+[upstream-sync-no-unrelated-diff.mdc:44] 3. If `origin/mfi_integration_vX.Y.Z` has unique commits not in upstream: **rebase/replay** those onto the upstream tip (prefer upstream as base; cherry-pick Darpan-only commits). Do not analyse or push from an origin tip that is **behind** upstream.
+[upstream-sync-no-unrelated-diff.mdc:46] 5. Push result to **origin only** (never upstream/`trusttai`). Use `bash scripts/bin/push-origin.sh` from the service repo when possible.
+[workspace-autopilot.mdc:3] # Workspace autopilot (mandatory)
+[workspace-autopilot.mdc:26] | **agent stop** | `workspace-autopilot.sh end` — hygiene + auto-close pending ship work |
+[workspace-autopilot.mdc:43] - `WORKSPACE_AUTOPILOT_NO_AUTO_CLOSE=1` — stop hook nudges instead of auto-close
+[workspace-contract.mdc:3] # Workspace contract (once — do not re-litigate daily)
+[workspace-contract.mdc:5] **User stance:** Setup is done. Agents **self-heal** via scripts. Do not ask Darpan to re-configure the workspace after each ticket.
+[workspace-contract.mdc:19] | Multi-branch KG | `kg-switch.sh` / watermark LRU — never invent branch state |
+[workspace-contract.mdc:27] 5. **Test** — **real-flow only**: drive the actual orch/API/job and assert **exact column values** on every touched money table (not presence, not SQL-only, not status-200/COMPLETED) — `feedback_real_flow_db_write_validate.md`, machine gate `acceptance_coverage.py` db_asserts. If a stage is blocked → code-backed sim in registry (`verify_mode`), not invent expects, still citing expected writes. **QA acceptance is the bar, not a passing subset** — asserts must FAIL on the exact QA fail mode (amount==principal OR documented components; dedicated force-bill labd / no EMI hijack; parent scope Pass|Out-of-scope). Never mark RESOLVED/Pass when the assert allows the QA fail mode (`feedback_qa_acceptance_not_subset_verify.md`, agent-quality-gates Gate D-acceptance).
+[workspace-contract.mdc:29] 7. **Parallel** — multi-repo/branch: sync train gate + mixed-train matrix; never cross-conclude from mismatched trains.
+[workspace-contract.mdc:31] ## Self-heal (agent runs — user never)
+[workspace-contract.mdc:42] Rules without **hard exit codes** were skipped. Discipline gate + path-absolute smoke/enrichment close that hole. If something still drifts: **fix the gate**, do not add another alwaysApply essay.
+[workspace-contract.mdc:44] Pairs: `20-ship-gates.mdc`, `10-quality-gates.mdc`, `10-quality-gates.mdc`, `20-ship-gates.mdc`, `20-ship-gates.mdc`.
+[workspace-developer-tester.mdc:19] 3. **Assert** — registry case with `expect` block (not ad-hoc curl unless exploring); money paths must read written rows back and assert **exact column values** for every touched table (`acceptance.db_asserts` / `expect.db_eq`) — presence-only / status-only fails closed (`feedback_real_flow_db_write_validate.md`). **Disburse:** `disbursement_suite.column_audit` + registry `disbursement.{indl,jlg,shg,any}` — FAIL on wrong values, never WARN-and-pass (`feedback_disburse_column_audit_mandatory.md`).
+[workspace-developer-tester.mdc:35] **Do not** add per-API payload JSON, duplicate spec files, or new shell wrappers. **Add one row** to `registry.json`.
+[workspace-developer-tester.mdc:37] ## Money / API column audit (mandatory)
+[workspace-developer-tester.mdc:43] - Asserts must name columns and expected values; presence-only phrasing is rejected by
+[workspace-developer-tester.mdc:45] - Runtime suite must **FAIL** when a column value is wrong — printing WARN and exiting 0 is a failed test.
+[workspace-hygiene.mdc:5] **Goal:** Keep sliProd lean. Do not leave thousands of orphan files from agent sessions.
+[workspace-hygiene.mdc:16] | KG build output | `cursor-bundle/kg/data/` (cache LRU-managed) | Generated — do not hand-edit |
+[workspace-hygiene.mdc:21] - **Do not** add markdown, analysis dumps, or “notes” files unless the user explicitly asks, or a **stable** brain/changelog/gap update is required by other rules.
+[workspace-hygiene.mdc:22] - **Do not** duplicate content across `.cursor/`, `docs/`, `system_brain/`, and `cursor-bundle/brain/` — one canonical home.
+[workspace-hygiene.mdc:23] - **Do not** drop temp files in `.cursor/`, repo roots, or service `src/` trees.
+[workspace-hygiene.mdc:32] 4. **Never** commit scratch contents to service repos.

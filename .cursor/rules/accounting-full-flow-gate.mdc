@@ -1,12 +1,12 @@
 ---
 description: "Accounting module — ALL flow domains (read, write, batch, money); not money-only"
-globs: ["novopay-platform-accounting-v2/**", "scripts/accounting/**", "scripts/dpic/**", "scripts/disbursement/**", "scripts/testing/registry.json"]
+globs: ["trustt-platform-accounting/**", "scripts/accounting/**", "scripts/dpic/**", "scripts/disbursement/**", "scripts/testing/registry.json"]
 alwaysApply: false
 ---
 
 # Accounting full-flow test gate
 
-Applies to **any** change under `novopay-platform-accounting-v2` — disbursement, repayment, read APIs, batches, EOD, foreclosure, DPI, write ops.
+Applies to **any** change under `trustt-platform-accounting` — disbursement, repayment, read APIs, batches, EOD, foreclosure, DPI, write ops.
 
 ## Domain map
 

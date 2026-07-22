@@ -1,7 +1,4 @@
----
-description: Unified dev+test loop — KG orient, ntest registry, minimal files
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/workspace-developer-tester.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Developer + tester in one workspace
 

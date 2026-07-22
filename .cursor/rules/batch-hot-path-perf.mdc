@@ -1,12 +1,12 @@
 ---
-description: "Batch inner-loop perf — precedents; workspace gate: hot-path-perf-gate.mdc (always-on)"
+description: "Batch inner-loop perf — precedents; workspace gate: 10-quality-gates.mdc (always-on)"
 globs: ["**/batchnew/**/*.java", "**/*BatchService.java", "**/*ItemProcessor.java", "**/*ItemReader.java", "**/*ItemWriter.java"]
 alwaysApply: false
 ---
 
 # Batch hot-path performance gate
 
-**Workspace-wide rule (always on):** `.cursor/rules/hot-path-perf-gate.mdc` — applies to processors, services, consumers, APIs, not only this file.
+**Workspace-wide rule (always on):** `.cursor/rules/10-quality-gates.mdc` — applies to processors, services, consumers, APIs, not only this file.
 
 When editing a **batch service**, **item processor**, or **daily/segment loop** on a money path:
 
@@ -41,4 +41,4 @@ When editing a **batch service**, **item processor**, or **daily/segment loop** 
 - [ ] Preload scope stated (per-loan vs chunk)
 - [ ] `verify-dpi` or relevant batch sanity re-run after perf change
 
-Pairs with: `feedback_significant_perf_with_fix.md`, `reuse-queries-java-filter.mdc`, `minimal-fix-impact-gate.mdc`.
+Pairs with: `feedback_significant_perf_with_fix.md`, `10-quality-gates.mdc`, `10-quality-gates.mdc`.

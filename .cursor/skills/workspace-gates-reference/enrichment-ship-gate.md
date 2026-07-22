@@ -1,7 +1,4 @@
----
-description: Tiered self-learning — when to full-rebuild KG vs cases-only vs KB-only
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/enrichment-ship-gate.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Enrichment tiers (smart — not every edit needs a full KG rebuild)
 

@@ -13,7 +13,7 @@ requires:
   - super-agent
 reads:
   - cursor-bundle/memory/feedback_minimal_fix_impact_gate.md
-  - .cursor/rules/minimal-fix-impact-gate.mdc
+  - .cursor/rules/10-quality-gates.mdc
 writes: []
 ---
 
@@ -21,7 +21,9 @@ writes: []
 
 **Default:** smallest change that stops **new** bad state. **Do not** stack write guard + read dedupe + refactor in one PR without proving each layer.
 
-Rule: `.cursor/rules/minimal-fix-impact-gate.mdc` · Memory: `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`
+**Also applies to prod/ops SQL** — not Java-only. For CRR/money adhoc UPDATEs: first proposal = smallest contract-native UPDATEs (`FAIL` + `eligible_for_retry=false` + optional `~`); load `.cursor/skills/prod-ops-sql-impact/SKILL.md`. Do not default to local soft-archive ceremony.
+
+Rule: `.cursor/rules/10-quality-gates.mdc` · Memory: `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md` · Ops CRR: `feedback_prod_ops_sql_crr_impact_gate.md`
 
 ## Decision ladder (strict order)
 

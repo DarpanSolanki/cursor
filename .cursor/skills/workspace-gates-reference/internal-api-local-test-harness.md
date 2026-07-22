@@ -1,7 +1,4 @@
----
-description: Ship JTF templates + ntest harness when money-path APIs are internal-only in prod
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/internal-api-local-test-harness.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Internal API — local HTTP test harness (mandatory on money-tier close)
 
@@ -21,7 +18,7 @@ Any money-tier ship / workspace-close for an `apiName` that:
 
 | Layer | Repo / path | Action |
 |-------|-------------|--------|
-| **JTF request** | `novopay-platform-accounting-v2/deploy/application/templates/request/product/{apiName}_requestTemplate.json` | Clone sibling API template (e.g. `loanPrepayment`); rename root key to `apiName`. **Commit in service repo** — not workspace-only. |
+| **JTF request** | `trustt-platform-accounting/deploy/application/templates/request/product/{apiName}_requestTemplate.json` | Clone sibling API template (e.g. `loanPrepayment`); rename root key to `apiName`. **Commit in service repo** — not workspace-only. |
 | **JTF response** | `.../response/product/{apiName}_responseTemplate.json` | Clone sibling; rename root key; match success `code` from orchestration XML. |
 | **Registry** | `scripts/testing/registry.json` | Add `type: flow` case with `"api": "{apiName}"` → e2e shell script. |
 | **E2E script** | `scripts/testing/<domain>/{api}-e2e.sh` + payload builder `.py` if needed | Setup SQL, replay reset, call API. |
@@ -36,7 +33,7 @@ Any money-tier ship / workspace-close for an `apiName` that:
 ## Verify before workspace-close
 
 ```bash
-test -f novopay-platform-accounting-v2/deploy/application/templates/request/product/{apiName}_requestTemplate.json
+test -f trustt-platform-accounting/deploy/application/templates/request/product/{apiName}_requestTemplate.json
 ntest run <registry.flow.case>
 ```
 

@@ -63,7 +63,7 @@ Money and audit trails live in the DB; code paths without verified state are a c
 
 ## Related
 
-See `always-on.mdc` for example SQL patterns and flow tracing.
+See `00-workspace-core.mdc` for example SQL patterns and flow tracing.
 
 ---
 

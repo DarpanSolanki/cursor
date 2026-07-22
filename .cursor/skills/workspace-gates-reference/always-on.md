@@ -1,7 +1,4 @@
----
-description: Session bootstrap, workspace brain map, debugging/RCA discipline, system_brain maintenance cues
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/always-on.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Always-On Platform Intelligence
 

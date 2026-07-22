@@ -1,0 +1,64 @@
+---
+description: Ship gates — ship-loop, ship-test, enrichment, post-ship, enhancement fronts, code-backed sim, internal-api, flyway
+alwaysApply: true
+---
+
+
+# Ship gates
+
+Archives: `.cursor/skills/workspace-gates-reference/ship-loop-enforcement.md`, `ship-test-mandatory.md`, `enrichment-ship-gate.md`, `post-ship-knowledge-gate.md`, `enhancement-all-fronts-gate.md`, `code-backed-simulation-testing.md`, `internal-api-local-test-harness.md`, `prod-flyway-manual-ddl.md`
+
+## Ship-loop tiers (highest wins)
+
+| Tier | Triggers | Runs |
+|------|----------|------|
+| workspace | `.cursor/`, `scripts/`, brain, docs | kg validate + ntest validate |
+| service | novopay-*/trustt-* | gradlew build + health/API |
+| money | money processors/orch/batches | full build + ntest + money guards |
+
+Close: `bash scripts/bin/workspace-close.sh --from-pending` (after changelog-add for service/money).
+
+Push blocked when pending ship files exist but `.ship-loop-passed.json` stale/tier too low, or `.pending-kg-rebuild` without brain CHANGELOG.
+
+## Ship test mandatory (all fixes)
+
+`edit → compile (if Java) → workspace-close.sh --from-pending → then push`. Do **not** push after `compileJava` alone. HTTP 200 on batch trigger is **not** enough — wait `COMPLETED`.
+
+Money ships: real-flow DB write validation — drive actual orch/API/job; assert **exact column values** on every touched money table (`acceptance.db_asserts` / `expect.db_eq`). Presence-only / status-only fail closed. Adversarial matrix: happy / dirty / UI equality / webapp-bound APIs — or Out-of-scope-documented. Assert must **FAIL** on exact QA fail mode.
+
+When E2E blocked → code-backed sim ladder (below), still cite expected writes.
+
+After PASS: `ship-discipline.sh write …` then mark-verified / workspace-close. Prefer `push-origin.sh`. Escape: `SHIP_PUSH_NO_AUTO_CLOSE=1` rare.
+
+## Code-backed simulation ladder (strict order)
+
+1. RUNTIME_VERIFIED 2. STAGE_PARTIAL 3. ORCH_SIBLING_SIM 4. PROCESSOR_MIRROR_SIM
+
+**Forbidden:** invented expected amounts, hand-wavy “should work”, chat-only reasoning without orch `Request name=` or `file:line`.
+
+Agents must **not** skip verification — escalate and enrich `registry.json`. Never claim “QA Pass” / “Result: Pass (scenario)” for sim-only. Sim only after real-flow blocked; cite exact expected DB writes.
+
+## Enrichment tiers
+
+FULL (code/orch) / CASES (changelog precedents) / SKIP (KB only). Shipped money fix: brain CHANGELOG with sha+apiName+tables + companion registry/runbook/gaps. End-of-task: Knowledge updated / KG enrichment / KG cases / Registry / Changelog.
+
+## Post-ship knowledge gate (money/flow)
+
+`changelog-add` alone is **NOT** knowledge closure. Checklist: kg-flow with correct sha; `.cursor/changelog.md` no `(pending)`; gaps RESOLVED; flows/accounting docs; module skill topic; kg-switch/enrich; `kg fresh` → FRESH; registry case encodes QA acceptance shapes; runbook; scenarios.
+
+**Hard stop:** pending changelog; gaps still open after push ask; STALE kg; wrong sha; weak registry; acceptance assert allows QA fail mode.
+
+Do not say "pushed" or "done" with `Post-ship gate: FAIL`.
+
+## Enhancement — all fronts
+
+Before proposing/shipping any fix/enhancement, walk Scale / Index-SQL / Poison / Cross-service / Idempotency / Ops(SQL impact) / Regression / Contract. Always present **L0 + L1**. Native SQL → query-index audit or label NOT VERIFIED. Do **not** close SQL/batch enhancement with only code trace.
+
+## Internal API local harness (money-tier close)
+
+If orch exists but no JTF request template and prod uses internal call: add JTF request+response in service repo + registry flow + e2e. Do **not** leave templates untracked workspace-only. Missing templates only block direct HTTP tests.
+
+## Production Flyway — manual DDL (STANDING)
+
+Initial-setup Flyway does **not** auto-run on production. Every schema release must deliver: DDL + `flyway_schema_history` INSERT + Pre/Post timing. Do **not** tell DBA to "run Flyway V00xxx" without INSERT+DDL pack. Generate via `flyway-prod-deploy-pack.sh`. Agents must **not** ask whether prod uses manual DDL — it does.
+

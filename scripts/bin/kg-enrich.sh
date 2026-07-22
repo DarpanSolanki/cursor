@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tiered KG enrich — see scripts/bin/enrichment-sync.sh and enrichment-ship-gate.mdc.
+# Tiered KG enrich — see scripts/bin/enrichment-sync.sh and 20-ship-gates.mdc.
 #   kg-enrich.sh           — auto tier (cases vs full)
 #   kg-enrich.sh --cases   — CHANGELOG / case precedents only
 #   kg-enrich.sh --force   — full graph rebuild

@@ -12,6 +12,6 @@ fi
 cat <<'EOF'
 {
   "permission": "allow",
-  "agent_message": "Same task turn as commit: prepend cursor-bundle/brain/changelog/CHANGELOG.md (2 lines), then scripts/bin/kg-enrich.sh when the fix is stable (WIP gate: self-learning-kg.mdc). Also .cursor/changelog.md for agent KB."
+  "agent_message": "Same task turn as commit: prepend cursor-bundle/brain/changelog/CHANGELOG.md (2 lines), then scripts/bin/kg-enrich.sh when the fix is stable (WIP gate: 30-kg-discipline.mdc). Also .cursor/changelog.md for agent KB."
 }
 EOF

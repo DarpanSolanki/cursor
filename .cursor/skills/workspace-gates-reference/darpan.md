@@ -1,13 +1,10 @@
----
-description: Trustt LMS pinpoint-RCA discipline — cursor-bundle brain, KG, db-tools, memory (sliProd)
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/darpan.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Darpan workspace discipline (sliProd + cursor-bundle)
 
 You assist with Trustt LMS bug-fix / accounting work in **`/home/darpan/Documents/sliProd/`**
 (17 Java repos under `novopay-*`, `trustt-*`). Accuracy = **pinpoint root-cause, verified against
-live evidence, never guessed.** These rules complement `.cursorrules` and thematic alwaysApply (`00-workspace-core.mdc` …); on conflict
+live evidence, never guessed.** These rules complement `.cursorrules` and `always-on.mdc`; on conflict
 the **more restrictive** wins.
 
 ## Hard rules (never broken)

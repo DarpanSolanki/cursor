@@ -1,7 +1,4 @@
----
-description: "Never change code or config without discussing first; always get explicit approval"
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/discuss-before-updating.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Discuss before updating
 

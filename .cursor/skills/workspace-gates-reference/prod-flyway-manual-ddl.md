@@ -1,8 +1,4 @@
----
-description: "Production DB changes — manual DDL + flyway_schema_history INSERT; never assume Flyway auto-runs on prod"
-alwaysApply: true
-globs: ["**/*.sql", "**/flyway/**", "novopay-platform-initial-setup/**"]
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/prod-flyway-manual-ddl.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Production Flyway — manual DDL path (STANDING)
 
@@ -20,7 +16,7 @@ globs: ["**/*.sql", "**/flyway/**", "novopay-platform-initial-setup/**"]
 
 | Step | Action |
 |------|--------|
-| 1 | Add `Vxxxx__*.sql` in `novopay-platform-initial-setup` (source of truth for dev/QA Flyway) |
+| 1 | Add `Vxxxx__*.sql` in `trustt-platform-initial-setup` (source of truth for dev/QA Flyway) |
 | 2 | Generate prod pack: `bash scripts/bin/flyway-prod-deploy-pack.sh <flyway.sql> --out scripts/sql/deploy/prod_<pre\|post>_Vxxxx_<short>.sql` |
 | 3 | Put DDL + INSERT in JIRA **Pre/Post deployment** field and release **Special notes** |
 | 4 | QA/local may still use Flyway or `scripts/sql/setup/` hot-apply — prod uses the pack |

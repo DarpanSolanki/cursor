@@ -1,7 +1,4 @@
----
-description: Every ship-path fix must pass workspace-close (build + ntest) before push
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/ship-test-mandatory.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Ship test mandatory (all fixes — not only DPI/money)
 

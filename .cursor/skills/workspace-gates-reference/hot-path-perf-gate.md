@@ -1,8 +1,4 @@
----
-description: "Workspace-wide hot-path perf — mandatory on any fix touching loops, processors, services, batch, consumers (not batch-only)"
-alwaysApply: true
-globs: ["**/*.java", "**/orchestration/**/*.xml"]
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/hot-path-perf-gate.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Hot-path performance gate (workspace-wide)
 

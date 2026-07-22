@@ -1,7 +1,4 @@
----
-description: Mandatory session read order before substantive work
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/session-bootstrap.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 ## SESSION BOOTSTRAP — EXECUTE ON EVERY NEW CONVERSATION
 Before anything else, silently read in this exact order:

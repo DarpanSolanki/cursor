@@ -1,15 +1,14 @@
----
-description: "Mandatory before any fix: minimal write-path first; justify read-path; existing prod rows; no stacked over-fixes"
-alwaysApply: true
----
+<!-- VERBATIM archive of former alwaysApply `.cursor/rules/minimal-fix-impact-gate.mdc`. Do not soften. Edit thematic rules; keep this as mandate proof. -->
 
 # Minimal fix + impact gate
 
 Before **proposing or implementing** any bug fix (especially money/foreclosure/repayment/state), run the gate in `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`.
 
+**Scope:** Applies to **Java/service fixes and prod/ops mutation SQL** (`scripts/sql/adhoc|deploy|setup`). For CRR/ops SQL, also run `prod-ops-sql-impact` and prefer **contract-native** values (`FAIL`/`SUCCESS`/`UNKNOWN`) over invented archive status — see `feedback_prod_ops_sql_crr_impact_gate.md`.
+
 ## Hard rules
 
-1. **Prefer write-path / create-path guard** when the root cause is duplicate or invalid **new** rows. Do not add read-path “pick latest / resolve” unless write guard alone is insufficient.
+1. **Prefer write-path / create-path guard** when the root cause is duplicate or invalid **new** rows. Do not add read-path “pick latest / resolve” unless write guard alone is insufficient. For ops SQL: prefer the **smallest UPDATE set** that satisfies code filters — challenge soft-archive/new status when existing enum already works.
 
 2. **If user prefers minimal** — state clearly whether read-path change is **redundant** (forward traffic) vs **only for existing dirty DB** (ops patch instead).
 
