@@ -209,9 +209,11 @@ Cross-reference: `.cursor/gaps-and-risks.md`. **Related diagrams:** `.cursor/arc
   - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_4495972134234554346565.json` (JLG flat)
   - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_370164.json` (INDL flat)
   - `scripts/disbursement/payloads/canonical/disburse_loan_sanity_request_shg_41333333.json` (SHG `member_details[]`)
+- Quick wrappers: `scripts/bin/disburse-quick.sh` (JLG), `disburse-indl-quick.sh` (INDL), `disburse-shg-quick.sh` (SHG); `make -C scripts jlg|indl|shg|lock-clean`
 - Status expectations validated by suite:
-  - JLG/INDL (NEFT v2): initial `NEFT_STAGE_1_PENDING`, replay/resume to `DTFC_SUCCESS`, plus stage replay checks (`LAN_CREATED`, `LOAN_BOOKED`, `DTFC_SUCCESS`) through function_sub_code routing.
-  - SHG (`ACCTWB`, child flow): default lane stabilizes at `PARENT_SUCCESS`; replay paths validate parent/child retries and inquiry-led transitions (`MFT_TRANSACTION_INQUIRY`, `NEFT_TRANSACTION_INQUIRY`, `...NEFT_NEI` CRR evidence).
+  - JLG (MFT/ACCTWB): terminal COMPLETED / DTFC_SUCCESS
+  - INDL (NEFT v1): local minimal often `NEFT_STAGE_1_PENDING` after NEF SUCCESS (WARN PASS until NEI); Kafka/full matrix may drive further
+  - SHG (`member_details[]`): parent + child; S6 child CRR WARNs may appear without failing minimal smoke
 - CRR pass criteria:
   - JLG/INDL default run: `DISB_GL_CBS_INTEGRATION:SUCCESS` and `DISBURSEMENT_NEFT_NEF:SUCCESS`.
   - SHG default run: `DISB_GL_CBS_INTEGRATION:SUCCESS`, `DISBURSEMENT_MFT:SUCCESS`, and subsequent replay inquiry/NEI rows as scenario requires.

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOS ↔ LMS Interfaces — ICD · mfi_integration_v3.4.2.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #1a1f2e;
+    --muted: #5b6472;
+    --line: #e6e8ec;
+    --zebra: #f7f8fa;
+    --accent: #0b57d0;
+    --callout: #f4f6f8;
+    --callout-border: #c5ccd6;
+    --max: 760px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.25rem;
+  }
+  .eyebrow {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.5rem;
+  }
+  h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.75rem;
+    color: #111827;
+  }
+  .meta {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  .meta code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82em;
+    background: var(--zebra);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+  .actions { margin-top: 1rem; }
+  .actions button {
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.4rem 0.85rem;
+    cursor: pointer;
+  }
+  .actions button:hover { border-color: #9aa3af; }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 2.5rem 0 0.85rem;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 1.75rem 0 0.6rem;
+  }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.35rem; }
+  li { margin-bottom: 0.35rem; }
+  strong { font-weight: 600; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--zebra);
+    padding: 0.08em 0.3em;
+    border-radius: 3px;
+  }
+
+  .flow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    background: var(--zebra);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0 0 1.25rem;
+    color: #243044;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    margin: 0 0 1.25rem;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.65rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    background: #fff;
+  }
+  tbody tr:nth-child(even) { background: var(--zebra); }
+  td.iface code { white-space: nowrap; }
+
+  .callout {
+    background: var(--callout);
+    border-left: 3px solid var(--callout-border);
+    padding: 0.9rem 1rem;
+    margin: 1.25rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .story {
+    counter-reset: step;
+    list-style: none;
+    padding-left: 0;
+  }
+  .story li {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 0.85rem;
+  }
+  .story li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: #eef1f5;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  dl.glossary { margin: 0 0 1rem; }
+  dl.glossary dt {
+    font-weight: 600;
+    margin-top: 0.85rem;
+  }
+  dl.glossary dd {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  details.evidence {
+    margin-top: 2rem;
+    font-size: 0.9rem;
+  }
+  details.evidence summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #334155;
+  }
+  details.evidence ul { margin-top: 0.75rem; color: var(--muted); }
+
+  @media print {
+    body { font-size: 11pt; }
+    .wrap { max-width: none; padding: 0; }
+    .actions { display: none; }
+    a { color: inherit; text-decoration: none; }
+    .flow, table, .callout { break-inside: avoid; }
+    h2 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Interface control document</p>
+    <h1>How LOS and LMS talk to each other</h1>
+    <p class="meta">
+      Release train <code>mfi_integration_v3.4.2.4</code> ·
+      LOS <code>5572a16655</code> ·
+      Accounting (LMS) <code>112b246770</code> ·
+      Payments <code>0dae3fc3ed</code> ·
+      20 Jul 2026
+    </p>
+    <div class="actions">
+      <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </header>
+
+  <h2>1. Purpose</h2>
+  <p>
+    This note lists the interfaces between <strong>LOS</strong> (loan origination)
+    and <strong>LMS</strong> (Accounting — the loan books and bank payout).
+    It is meant for managers who need a clear picture of who calls whom, when,
+    and what is different for payment reinitiation, LAR, and manual disbursement.
+  </p>
+  <p>
+    Evidence is taken only from the pinned train above. Technical file references
+    sit in the Evidence section at the end.
+  </p>
+  <div class="callout">
+    <p><strong>How to read channels</strong></p>
+    <ul style="margin-bottom:0">
+      <li><strong>Kafka</strong> — async money request (<code>disburse_loan_api_</code>) and result
+        (<code>los_lms_disbursement_sync</code>). Message body routes LMS into its
+        <code>disburseLoan</code> orchestration (not a separate money HTTP call).</li>
+      <li><strong>HTTP</strong> — sync call/response: enquiry, predisburse bank/mode patch,
+        and (unused on this train) child disbursement-status update.</li>
+      <li><strong>Queue mark <code>C</code></strong> — LMS DB side-effect on
+        <code>loan_account_events_queue</code> (<code>event_type=CLMT</code>,
+        <code>event_status</code> <code>P</code>→<code>C</code>). Triggered by predisburse
+        cash override (live LAR submit), not by the Kafka disburse pair.</li>
+    </ul>
+  </div>
+
+  <h2>2. Picture in words</h2>
+  <p>
+    When a loan is ready to pay out, LOS may patch account details on LMS over HTTP,
+    then publishes a disbursement request on Kafka. Accounting consumes it, runs
+    <code>disburseLoan</code> (book loan / bank payout), and publishes a result on a
+    second Kafka topic. LOS enquires LMS over HTTP for a live LAN view — before/after
+    disburse, during reinitiation, and when creating or regenerating LAR.
+    Separately, <strong>LAR submit</strong> uses predisburse HTTP only (cash override)
+    to mark matching child CLMT queue rows <code>C</code> — no Kafka money republish.
+  </p>
+  <div class="flow" aria-label="LOS LMS flow diagram">LOS                              LMS (Accounting)
+ │                                  │
+ │── HTTP predisburse ─────────────►│  bank/mode patch
+ │   (+ LAR cash → CLMT P→C)        │  (see §4.4)
+ │── Kafka disburse_loan_api_ ─────►│  run disburseLoan orch
+ │── HTTP getLoanAccountDetails ───►│  status enquiry
+ │                                  │
+ │◄─ Kafka los_lms_disbursement_sync│  result (SUCCESS/FAILED)
+ │◄─ Kafka los_lms_data_sync_ ──────│  loan closure only</div>
+
+  <h2>3. Catalogue — all interfaces</h2>
+
+  <h3>3.1 What LOS uses from LMS</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Interface</th>
+        <th>Channel</th>
+        <th>Why / when</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="iface"><code>disburse_loan_api_</code></td>
+        <td>Kafka → LMS <code>disburseLoan</code></td>
+        <td>Primary money path. LOS asks LMS to create/pay the loan account. Used for auto disburse, manual disburse, and payment reinitiation.</td>
+      </tr>
+      <tr>
+        <td class="iface"><code>getLoanAccountDetails</code></td>
+        <td>HTTP</td>
+        <td>Status enquiry — before/after disburse, during reinitiation, and when creating/regenerating LAR.</td>
+      </tr>
+      <tr>
+        <td class="iface"><code>updateLoanAccountPreDisbursementDetails</code></td>
+        <td>HTTP</td>
+        <td>
+          Patch bank / disbursement mode on LMS, outside the Kafka money publish.<br>
+          <strong>LAR submit (cash):</strong> live path that can mark matching
+          <code>loan_account_events_queue</code> CLMT rows <code>event_status=C</code>
+          (needs mode <code>CASH</code> + pending CLMT for that child +
+          <code>disbursement_status=COMPLETED</code> — see §4.4).<br>
+          <strong>Reinit bank-detail fix:</strong>
+          <code>payment_reinitiation_update=true</code> → mode/account only; cash-override
+          (mark <code>C</code>) is skipped.<br>
+          <strong>Manual disbursement checker:</strong>
+          <code>payment_reinitiation_update=false</code> → bank/mode update; mark
+          <code>C</code> only if cash-override conditions also match (unusual on this path).
+        </td>
+      </tr>
+      <tr>
+        <td class="iface"><code>updateChildLoanDisbursementStatus</code></td>
+        <td>HTTP</td>
+        <td>
+          Sibling LMS API: when child <code>disbursement_status=COMPLETED</code>, marks
+          matching CLMT queue rows <code>event_status=C</code> and updates parent
+          <code>loan_account.disbursement_status</code>. LOS has a client helper, but
+          <strong>no live caller on this train</strong> — listed for contract completeness;
+          LAR submit uses predisburse above.
+        </td>
+      </tr>
+      <tr>
+        <td class="iface">Product / overview reads</td>
+        <td>HTTP</td>
+        <td>Support reads (<code>getLoanProductDetails</code>, <code>getLoanAccountOverviewDetails</code>, etc.). Origination and screens — not the money-transfer pipe.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Reverse updates — LMS back to LOS</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Interface</th>
+        <th>Channel</th>
+        <th>Status on this train</th>
+        <th>What LOS does with it</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="iface"><code>los_lms_disbursement_sync</code></td>
+        <td>Kafka</td>
+        <td>Live</td>
+        <td>
+          <strong>FAILED:</strong> LOS writes the failure reason onto the open disburse process
+          (skipped if process already completed / child-success / LAR-task-initiated).<br>
+          <strong>SUCCESS:</strong> ignored here by design — LOS finishes via enquiry / its own process completion, not this message.
+        </td>
+      </tr>
+      <tr>
+        <td class="iface"><code>los_lms_data_sync_</code></td>
+        <td>Kafka</td>
+        <td>Live (closure only)</td>
+        <td>Closes / syncs loan-app state when LMS sends <code>event_type=CLOSURE</code>. Not part of the disburse money pair.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 Disbursement Kafka pair (money path at a glance)</h3>
+  <p>
+    Same two topics as above, restated so the request/result pair is obvious.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Topic prefix</th>
+        <th>Direction</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="iface"><code>disburse_loan_api_</code></td>
+        <td>LOS → LMS</td>
+        <td>Request: message shape <code>disburseLoan|&lt;json&gt;|&lt;cacheKey&gt;</code>
+          (cache key carries <code>productId_entityType_externalRef</code>)</td>
+      </tr>
+      <tr>
+        <td class="iface"><code>los_lms_disbursement_sync</code></td>
+        <td>LMS → LOS</td>
+        <td>Result: external reference, <code>entity_type</code> (echoed from cache key), status, optional error fields</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Full Kafka topic name = configured prefix + tenant code, plus optional
+    <code>_{environment}</code> (e.g. <code>disburse_loan_api_&lt;tenant&gt;_uat</code>).
+  </p>
+  <p>
+    Payments service on this train is not on the LOS↔LMS reinitiation conversation path.
+    Reinitiation is LOS process state plus the same Kafka request into Accounting.
+  </p>
+
+  <h2>4. How processes use these interfaces</h2>
+
+  <h3>4.1 Auto disburse (happy path)</h3>
+  <ol class="story">
+    <li>LOS decides the application can be disbursed and builds a normal <code>disburseLoan</code> payload
+      (<code>function_sub_code=DEFAULT</code>).</li>
+    <li>LOS publishes to Kafka <code>disburse_loan_api_</code>
+      (message routes LMS into <code>disburseLoan</code> orchestration).</li>
+    <li>LMS books the loan / runs bank payout as configured.</li>
+    <li>LMS publishes <code>los_lms_disbursement_sync</code>.
+      <strong>SUCCESS</strong> is ignored by LOS here; LOS finishes via enquiry / its own process completion.
+      <strong>FAILED</strong> can patch a failure reason if the process is still open.</li>
+  </ol>
+
+  <h3>4.2 Payment reinitiation</h3>
+  <p>
+    Retry bank payout when the LMS loan account already exists.
+    Same Kafka pipe as auto disburse; flags tell Accounting “re-run bank lane, do not treat as first create.”
+    <strong>Does not use the LAR CLMT mark-<code>C</code> path.</strong>
+  </p>
+  <ol class="story">
+    <li><strong>Trigger:</strong> Bank payout failed / ops opens a payment-reinitiation journey. LOS process flow = <code>PAYMENT_REINITIATION</code>.</li>
+    <li><strong>LOS (optional bank fix):</strong> Maker/checker may change beneficiary account on LOS.
+      If Accounting tables are updated, LOS calls HTTP
+      <code>updateLoanAccountPreDisbursementDetails</code> with
+      <code>payment_reinitiation_update=true</code> → LMS updates mode/account only
+      (<strong>no</strong> CLMT <code>event_status=C</code>; cash-override handler is skipped).</li>
+    <li><strong>LOS → LMS money call:</strong> Kafka <code>disburse_loan_api_</code>
+      → LMS <code>disburseLoan</code> with
+      <code>function_sub_code=REINITIATE_BANK</code> and
+      <code>payment_reinitiation_update=true</code>
+      (both must be present for the consumer skip override).</li>
+    <li><strong>CLMT queue mark <code>C</code>:</strong> <em>not on this path</em>
+      (neither predisburse cash override nor <code>updateChildLoanDisbursementStatus</code>).</li>
+    <li><strong>What LMS does:</strong> Consumer normally <strong>skips</strong> when loan is
+      <code>ACTIVE</code> and disbursement is already <code>COMPLETED</code>;
+      reinit flags override that skip so the <code>REINITIATE_BANK</code> orchestration branch can re-attempt payout.</li>
+    <li><strong>What returns to LOS:</strong> Kafka <code>los_lms_disbursement_sync</code> —
+      <strong>FAILED</strong> patches failure reason on the open disburse process;
+      <strong>SUCCESS</strong> is not how LOS completes the journey.</li>
+    <li><strong>How LOS finishes:</strong> Enquiry via HTTP <code>getLoanAccountDetails</code> and process/retry logic
+      (complete, mark disbursed, or terminal reject / ops task on max retries).</li>
+  </ol>
+  <div class="flow" aria-label="Payment reinitiation sequence">LOS                                      LMS
+ │                                        │
+ │── HTTP predisburse (optional) ────────►│  bank/mode only
+ │   payment_reinitiation_update=true     │  (no CLMT → C)
+ │── Kafka disburse_loan_api_ ───────────►│  disburseLoan /
+ │   REINITIATE_BANK + flag               │  skip override
+ │◄─ Kafka los_lms_disbursement_sync ─────│  FAILED→reason
+ │── HTTP getLoanAccountDetails ─────────►│  finish locally</div>
+
+  <h3>4.3 Manual disbursement</h3>
+  <p>
+    Ops-driven first (or retry) attempt when auto disburse cannot finish quietly.
+    Money pipe and LMS request flags match auto (<code>DEFAULT</code>) — difference is LOS maker/checker + fail-open task.
+    <strong>Not</strong> the LAR “one API + mark CLMT <code>C</code>” pattern.
+  </p>
+  <ol class="story">
+    <li><strong>Trigger:</strong> Hard fail on auto path, or ops starts Manual Disbursement.
+      LOS opens <code>MANUAL_DISBURSEMENT_MAKER</code> (then checker).</li>
+    <li><strong>LOS steps:</strong> Maker/checker collect or confirm payout details; process flow labelled
+      <code>MANUAL_DISBURSEMENT</code>. Checker may patch LMS bank details via
+      <code>updateLoanAccountPreDisbursementDetails</code> with
+      <code>payment_reinitiation_update=false</code>
+      (bank/mode update; CLMT mark <code>C</code> only if cash-override conditions also match — unusual here).</li>
+    <li><strong>LOS → LMS money call:</strong> Same Kafka <code>disburse_loan_api_</code> → Accounting
+      <code>disburseLoan</code> with normal <code>function_sub_code=DEFAULT</code>
+      (no <code>REINITIATE_BANK</code>).</li>
+    <li><strong>CLMT queue mark <code>C</code>:</strong> <em>not the intentional manual-disburse mechanism</em>
+      (that LAR cash / sibling-status path is §4.4).</li>
+    <li><strong>What LMS does:</strong> Runs the standard <code>disburseLoan</code> booking / bank path as for auto.</li>
+    <li><strong>What returns to LOS:</strong> Same <code>los_lms_disbursement_sync</code> contract
+      (FAILED→reason; SUCCESS not process-complete).</li>
+    <li><strong>How LOS finishes:</strong> Enquiry / process completion on success;
+      on hard fail, create/reopen <code>MANUAL_DISBURSEMENT_MAKER</code> rather than a silent batch-only retry.</li>
+  </ol>
+  <div class="flow" aria-label="Manual disbursement sequence">LOS                                      LMS
+ │                                        │
+ │  MANUAL_DISBURSEMENT_MAKER → checker   │
+ │── Kafka disburse_loan_api_ ───────────►│  disburseLoan
+ │   DEFAULT flags                        │  (same as auto)
+ │◄─ Kafka los_lms_disbursement_sync ─────│
+ │  success → enquiry/process done        │
+ │  hard fail → MANUAL_DISBURSEMENT_MAKER │</div>
+
+  <h3>4.4 LAR (Loan Advice Report)</h3>
+  <div class="callout">
+    <p>
+      <strong>LAR is a LOS document + ops-task journey</strong> for group (SHGDL) children that still need payout attention.
+      There is no dedicated “LAR Kafka money” topic. LMS is involved via shared HTTP APIs.
+    </p>
+    <p style="margin-top:0.75rem;margin-bottom:0">
+      <strong>One Accounting API + mark CLMT queue <code>C</code> (live on this train):</strong>
+      on LAR <em>submit</em>, LOS calls HTTP <code>updateLoanAccountPreDisbursementDetails</code>
+      per selected child (mode from payload or default <code>CASH</code>;
+      <code>disbursement_status=COMPLETED</code>).
+      LMS runs <code>updateLoanDisbursementModeDetailsProcessor</code> →
+      <code>DisbursementClmtCashOverrideHandler</code> when mode is <code>CASH</code> and pending
+      <code>loan_account_events_queue</code> rows with <code>event_type=CLMT</code> match the child
+      (<code>filler2</code> = child external ref). Matching rows get
+      <code>event_status=C</code> and message <em>“Manually Completed through LAR”</em>.
+      Parent disbursement status may advance to <code>COMPLETED</code> when no CLMT rows remain <code>P</code>.
+    </p>
+  </div>
+
+  <p><strong>A — Create / regenerate LAR (document + task)</strong></p>
+  <ol class="story">
+    <li><strong>Trigger:</strong> Group ops creates or regenerates LAR (<code>generateLarDocument</code> / create LAR ops task).</li>
+    <li><strong>LOS → LMS:</strong> HTTP <code>getLoanAccountDetails</code> (enquiry) for the group; children already
+      <code>COMPLETED</code> are skipped for the document/task payload.</li>
+    <li><strong>CLMT mark <code>C</code>:</strong> none on this step.</li>
+    <li><strong>What LMS does:</strong> Returns current parent/child LAN disbursement picture.</li>
+    <li><strong>What returns to LOS:</strong> Enquiry response only (no disbursement sync for this step).</li>
+    <li><strong>How LOS finishes:</strong> Builds LAR (Jasper/DMS), creates post-disbursement document-upload task,
+      sets disburse process to <code>LAR_TASK_INITIATED</code> (LOS DB).</li>
+  </ol>
+
+  <p><strong>B — Submit LAR (cash override → CLMT completed)</strong></p>
+  <ol class="story">
+    <li><strong>Trigger:</strong> Ops submits the LAR task (<code>SUBMIT_LAR</code>) with
+      <code>customer_lar_details</code> (children to treat as manually completed / cash).</li>
+    <li><strong>LOS → LMS (the one write API):</strong> For each listed child,
+      HTTP <code>updateLoanAccountPreDisbursementDetails</code>
+      (<code>disbursement_mode</code> from payload or default <code>CASH</code>,
+      <code>disbursement_status=COMPLETED</code>; no <code>payment_reinitiation_update</code>).</li>
+    <li><strong>CLMT queue mark <code>C</code> — yes, when conditions match:</strong>
+      table <code>loan_account_events_queue</code>,
+      <code>event_type=CLMT</code>, column <code>event_status</code> → <code>C</code>
+      (was <code>P</code>); embedded JSON cleared of external error fields and stamped for LAR manual completion.
+      Sibling API <code>updateChildLoanDisbursementStatus</code> can do the same mark in LMS but has
+      <strong>no LOS caller on this train</strong>.</li>
+    <li><strong>What LMS does:</strong> Persist new disbursement mode details; mark matching pending CLMT events completed;
+      optionally set parent <code>loan_account.disbursement_status=COMPLETED</code> when no CLMT remain pending.</li>
+    <li><strong>What returns to LOS:</strong> Synchronous HTTP success/fail on predisburse (not the disburse Kafka sync pair).</li>
+    <li><strong>How LOS finishes:</strong> Completes the LAR task / group task, updates LAR document metadata,
+      moves disburse process to <code>LAN_FETCH_IN_PROGRESS</code> (then subsequent LOS fetch/enquiry steps as configured).</li>
+  </ol>
+  <div class="flow" aria-label="LAR submit CLMT sequence">LOS                                      LMS
+ │                                        │
+ │── SUBMIT_LAR                           │
+ │── HTTP updateLoanAccount               │
+ │   PreDisbursementDetails ─────────────►│  mode=CASH (+ COMPLETED)
+ │   (per child in LAR details)           │
+ │                                        │── loan_account_events_queue
+ │                                        │   event_type=CLMT
+ │                                        │   event_status P → C
+ │◄─ HTTP success ────────────────────────│
+ │  complete LAR task / advance process   │</div>
+
+  <h2>5. What changes in the request (money slide)</h2>
+  <p>
+    All three variants use the same Kafka topic. The message body is shaped for LMS
+    orchestration API name <code>disburseLoan</code> (Kafka carrier — not a money HTTP call).
+    Differences are in a handful of fields.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Normal / auto</th>
+        <th>Payment reinitiation</th>
+        <th>Manual disbursement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>function_code</code></td>
+        <td><code>DEFAULT</code></td>
+        <td><code>DEFAULT</code></td>
+        <td><code>DEFAULT</code></td>
+      </tr>
+      <tr>
+        <td><code>function_sub_code</code></td>
+        <td><code>DEFAULT</code> (or a stage code on internal retry)</td>
+        <td><code>REINITIATE_BANK</code></td>
+        <td><code>DEFAULT</code></td>
+      </tr>
+      <tr>
+        <td><code>payment_reinitiation_update</code></td>
+        <td>Absent / false</td>
+        <td><code>true</code></td>
+        <td>Absent / false</td>
+      </tr>
+      <tr>
+        <td>LOS flow label (not an LMS topic)</td>
+        <td><code>DEFAULT</code></td>
+        <td><code>PAYMENT_REINITIATION</code></td>
+        <td><code>MANUAL_DISBURSEMENT</code></td>
+      </tr>
+      <tr>
+        <td>Kafka topic</td>
+        <td colspan="3" style="text-align:center"><code>disburse_loan_api_</code> (same pipe)</td>
+      </tr>
+      <tr>
+        <td>Typical ops task on hard fail</td>
+        <td>Manual maker (also for DEFAULT flow fail-open)</td>
+        <td>Payment-reinitiation reject / terminal handling</td>
+        <td><code>MANUAL_DISBURSEMENT_MAKER</code></td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Short rule: <strong>reinitiation = same pipe + <code>REINITIATE_BANK</code> +
+    <code>payment_reinitiation_update=true</code>.</strong>
+    Manual = same pipe + LOS ops wrapper; request flags look like normal DEFAULT.
+  </p>
+
+  <h2>6. Important notes</h2>
+  <div class="callout">
+    <p><strong>Success sync does not complete the LOS process.</strong>
+      By design, <code>los_lms_disbursement_sync</code> only patches failure reasons.
+      Success completion happens through enquiry / process logic.</p>
+  </div>
+  <div class="callout">
+    <p><strong>Blank <code>entity_type</code> on result sync → LOS ignores the message.</strong>
+      LMS puts <code>entity_type</code> on the result from the disburse <strong>cache key</strong>
+      (LOS builds <code>disburseLoan{productId}_{entityType}_{externalRef}</code>).
+      If that segment is blank, LOS no-ops and the failure reason is not updated.</p>
+  </div>
+  <div class="callout">
+    <p><strong>LAR CLMT mark-<code>C</code> is predisburse cash override, not Kafka disburse.</strong>
+      Live path: <code>updateLoanAccountPreDisbursementDetails</code> →
+      <code>loan_account_events_queue.event_status = C</code> for matching <code>CLMT</code> rows
+      when mode is <code>CASH</code>, status is <code>COMPLETED</code>, and a pending row matches the child.
+      Payment reinitiation and manual disbursement use the Kafka money pipe and do not rely on that mark for their money step.</p>
+  </div>
+
+  <h2>7. Glossary</h2>
+  <dl class="glossary">
+    <dt>LOS</dt>
+    <dd>Loan Origination System — where applications are captured and disbursement is triggered.</dd>
+    <dt>LMS</dt>
+    <dd>Loan Management System — in this platform, the Accounting service that owns loan accounts, GL, and bank payout.</dd>
+    <dt>LAN</dt>
+    <dd>Loan Account Number — the LMS account identifier after booking.</dd>
+    <dt>LAR</dt>
+    <dd>Loan Advice Report — LOS group document/task journey. Enquiry via <code>getLoanAccountDetails</code>; submit cash override via <code>updateLoanAccountPreDisbursementDetails</code> marks CLMT queue <code>C</code>.</dd>
+    <dt>CLMT</dt>
+    <dd>Child Loan Money Transfer — <code>loan_account_events_queue.event_type</code>. <code>event_status</code> <code>P</code>=pending, <code>C</code>=completed.</dd>
+    <dt>Kafka</dt>
+    <dd>Async message bus. Producer writes; consumer processes later. Used for disbursement request and result.</dd>
+    <dt>API / HTTP</dt>
+    <dd>Synchronous request/response call between services (enquiry, predisburse patch, unused sibling status API).</dd>
+    <dt><code>disburseLoan</code></dt>
+    <dd>LMS orchestration API name. On the money path it is invoked by the Kafka consumer from the
+      <code>disburse_loan_api_</code> message — not by a separate LOS→LMS money HTTP call.</dd>
+    <dt>function_sub_code</dt>
+    <dd>A routing flag on the request that tells LMS which branch of the disbursement flow to run (DEFAULT vs REINITIATE_BANK, etc.).</dd>
+    <dt>Payment reinitiation</dt>
+    <dd>Retry of bank payout after the LMS account already exists — overrides the ACTIVE+COMPLETED skip. Same Kafka pipe; no LAR CLMT mark-<code>C</code>.</dd>
+    <dt>Manual disbursement</dt>
+    <dd>Ops-driven disbursement path with maker/checker on LOS; still uses the same LMS Kafka pipe and DEFAULT request flags.</dd>
+  </dl>
+
+  <details class="evidence">
+    <summary>Evidence (for engineers)</summary>
+    <ul>
+      <li>LOS produce: <code>trustt-platform-los/.../util/DisburseLoanAPIUtil.java</code> (Kafka <code>disburse_loan_api_</code>; shape <code>disburseLoan|json|cacheKey</code>)</li>
+      <li>LOS reinit flags: <code>.../processor/disbursement/DisburseLoanProcessor.java</code> (~566–568 <code>REINITIATE_BANK</code>, <code>payment_reinitiation_update</code>); group twin <code>DisburseGroupLoanProcessor.java</code> (~306–308)</li>
+      <li>LOS flow enum: <code>.../enums/DisbursementFlowEnum.java</code></li>
+      <li>LOS sync: <code>.../service/disbursement/DisbursementSyncService.java</code> (blank <code>entity_type</code> / SUCCESS early-return; FAILED → <code>updateFailureReason</code> unless status COMPLETED / CHILD_SUCCESS / LAR_TASK_INITIATED); consumer in <code>deploy/.../MessageBroker.xml</code></li>
+      <li>LAR create/enquiry: orch Request <code>generateLarDocument</code>; <code>GenerateLARPreProcessor.java</code> / <code>CreateUpdateOpsTaskProcessor.processLARTask</code> → <code>getLoanAccountDetails</code>; <code>LAR_TASK_INITIATED</code></li>
+      <li>LAR submit → predisburse: <code>CreateUpdateOpsTaskProcessor.submitLARTask</code> → <code>updateChildLoansDisbursementModeToCash</code> → <code>AccountingUtil.callUpdateLoanAccountPreDisbursementDetails</code> (sets mode + <code>COMPLETED</code>); then LOS status <code>LAN_FETCH_IN_PROGRESS</code></li>
+      <li>LMS CLMT mark C (live LAR): <code>DisbursementClmtCashOverrideHandler.java</code> (match <code>filler2</code>; mark ~76–80, message ~92); wired from <code>UpdateLoanDisbursementModeDetailsProcessor</code> (skipped when <code>payment_reinitiation_update=true</code>)</li>
+      <li>LMS sibling mark C (API present, LOS util unused on this train): <code>UpdateChildLoanDisbursementStatusProcessor.java</code> (~70–87); orch <code>group_mfi_orc.xml</code> Request <code>updateChildLoanDisbursementStatus</code>; LOS helper <code>AccountingUtil.callUpdateChildLoanDisbursementStatus</code> (no callers)</li>
+      <li>Queue entity: <code>LoanAccountEventsQueueEntity</code> — <code>event_type</code> CLMT, <code>event_status</code> P/C</li>
+      <li>Reinit vs manual predisburse flag: <code>AccountDetailsDaoService</code> — <code>MANUAL_DISBURSEMENT_CHECKER</code> → false, else true when sending bank updates to Accounting</li>
+      <li>HTTP helpers: <code>.../util/AccountingUtil.java</code>, <code>LoanAccountStatusEnquiryAPIUtil.java</code></li>
+      <li>LMS consume / sync emit: <code>.../consumers/LmsMessageBrokerConsumer.java</code> (<code>entity_type</code> from cache key; <code>isPaymentReinitiationPayload</code> needs both <code>REINITIATE_BANK</code> and <code>payment_reinitiation_update=true</code>; <code>sendResultMessageToKafka</code>)</li>
+      <li>Topic name shape: AccountingKafkaProducer / LoanClosureKafkaProducer → <code>prefix + tenantCode [+ _{env}]</code></li>
+      <li>Closure sync: LMS <code>PushLoanAccountClosureDetailsProcessor</code>; LOS <code>LmsDataSyncService</code> / topic <code>los_lms_data_sync_</code></li>
+      <li><em>Footnote:</em> LMS <code>mfi_orc.xml</code> ~545–547 leaves <code>customDisburseLoanLosCallBackProcessor</code> commented — not part of the live path on this train.</li>
+    </ul>
+  </details>
+
+  <footer>
+    Management ICD · pin <code>mfi_integration_v3.4.2.4</code> ·
+    LOS <code>5572a16655</code> · accounting <code>112b246770</code> · payments <code>0dae3fc3ed</code> ·
+    scan upgrade 2026-07-20 · no Java changes.
+  </footer>
+</div>
+</body>
+</html>

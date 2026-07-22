@@ -1,5 +1,7 @@
 # Child Loan Foreclosure with Principal Waiver — Flow Map and Failure Modes
 
+> **Domain:** `foreclosure` (NOT `death_foreclosure`). Canonical train for related DPI/FC work: `mfi_integration_v3.7.1`. JIRA: SDCP-10080 → [`../jira/JIRA-INDEX.md`](../jira/JIRA-INDEX.md).
+>
 > SHG/JLG child loan foreclosure (group loan, product `LOAN_SHG`) when the customer pays only part of the outstanding in cash and the remainder is waived. The flow runs an **inline** posting on the child PLUS a follow-up **inline** call to the parent's part-prepayment reschedule. Both legs go through the same `loanPrepayment` Request with `function_code=APPROVE` / `do_prepayment=true`. The two postings share the same `ExecutionContext`, which is the root of several of the bugs documented below.
 >
 > First written from the SDCP-10080 RCA (LAN 7000035818 / 7000042524 on QA2 `mfi_integration_v3.3.3`).

@@ -1,5 +1,8 @@
 # DPIC — local demo & dev testing (product 6367)
 
+> **Canonical accounting train:** `mfi_integration_v3.7.1` (not `feature/delayed_payment_interest` unless the task is explicit WIP).  
+> Branch gate: `cursor-bundle/memory/reference_dpi_feature_branch.md` · Domains: `scripts/lib/accounting_flow_domains.json` → `dpi`.
+>
 > **Product** 6367 · **loan_product** 2886 · **scheme** 300 (id **2655**) · **customer** 10002233  
 > Scripts: `scripts/dpic/` · Live demo: `scripts/dpic/demo/run_demo.sh phase1`…`phase4`
 

@@ -140,7 +140,7 @@ For each child, repeat step 2 of the patch with the child's pre-incident status.
 
 ## Pre-commit checklist (DBA / on-call)
 
-- [ ] Code fix [`154b500c0`](https://github.com/khoslalabs/novopay-platform-accounting-v2/commit/154b500c0) is merged and deployed to prod **before** running this patch (otherwise new orphans can land while the patch is in progress).
+- [ ] Code fix [`154b500c0`](https://github.com/trusttai/trustt-platform-accounting/commit/154b500c0) is merged and deployed to prod **before** running this patch (otherwise new orphans can land while the patch is in progress).
 - [ ] Per-loan affected-rows query (above) has been run, exported, and reviewed.
 - [ ] Pre-incident status for each loan has been retrieved from `audit_log` (or confirmed with LMS team).
 - [ ] Patch script is run **per loan** in a transaction, with `SELECT` verification before `COMMIT`.

@@ -1,0 +1,637 @@
+{
+  "generated": "2026-07-10T12:50:00Z",
+  "implementer": "c02bf016-8762-4c10-97d1-a7186f785da7",
+  "harmony": "GREEN_WARN_ONLY",
+  "counts": {
+    "DONE": 63,
+    "OPEN": 2,
+    "IN_PROGRESS": 2,
+    "BLOCKED": 0,
+    "DEFERRED": 2
+  },
+  "int180_commit": "61278d5f8",
+  "int180_ship": "DEFERRED_PARKED",
+  "int180_branch": "fix/sdcp-10199-parent-int-dpi-last-child-dfc",
+  "gap_074": "OPEN",
+  "items": [
+    {
+      "id": "ASK-001",
+      "intent": "Analyse SDCP-10199 on QA6; Vikram latest comment; find gap after fixed claims",
+      "acceptance": "RCA with evidence; gap named",
+      "evidence": "Parent transcript RCA; JIRA SDCP-10199",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-002",
+      "intent": "Branch deployed is 3.4.2.1",
+      "acceptance": "Analysis scoped to 3.4.2.1 train",
+      "evidence": "User statement; fixes on mfi_integration_v3.4.2.1",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-003",
+      "intent": "Use Accounting.txt job ran 03:19 PM",
+      "acceptance": "Correlate job time to Vikram observations",
+      "evidence": "Log path used in session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-004",
+      "intent": "Explain RCA simply; why iterations failed; why Vikram observations remain",
+      "acceptance": "Plain-language root cause",
+      "evidence": "Transcript explanations",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-005",
+      "intent": "Compare to 3.3.1.1 fixed comment/code",
+      "acceptance": "Diff 3.3.1.1 vs deployed 3.4.2.1 behaviour",
+      "evidence": "Session branch compare",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-006",
+      "intent": "Do not zero overdue; only future INT waived; explain unpaid vs settled",
+      "acceptance": "Correct waive/settle semantics documented + coded",
+      "evidence": "DeathForeclosureInsuranceWriter; runbook sdcp-10199-group-parent-last-child-dfc.md",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-007",
+      "intent": "Why PRIN paid=0; insurance should settle PRIN; explain every Vikram observation",
+      "acceptance": "Per-observation mapping; PRIN paid not waived",
+      "evidence": "Changelog; e2e asserts PRIN waived=0",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-008",
+      "intent": "PRIN settle / INT waive only; check QA3/QA4 DFC cases",
+      "acceptance": "Cross-env confirmation (QA4 down \u2192 QA3)",
+      "evidence": "QA3 checks in session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-009",
+      "intent": "Implement L1 + local simulate; fix once-and-for-all; no reopen",
+      "acceptance": "L1 in code + local e2e",
+      "evidence": "DeathForeclosureInsuranceWriter.java; dcf.group_parent_last_child_e2e",
+      "status": "DONE",
+      "notes": "3.4.2.1 era; 3.7.1 reopen tracked in ASK-040/ASK-057",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-010",
+      "intent": "Fix on 3.4.2.1 not 3.4.2.3; test; push",
+      "acceptance": "Branch correct; push to origin 3.4.2.1",
+      "evidence": "Changelog Jul 7-8 ship notes",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-011",
+      "intent": "Testing: correct posting, amounts, DB updates; no assumptions/guesses",
+      "acceptance": "DB-backed asserts",
+      "evidence": "group_dfc_dev_proof.sql; e2e PASS logs",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-012",
+      "intent": "Wire local stack; bypass non-mandatory; last batch job success; do not stop",
+      "acceptance": "Local DCF stack + batch success",
+      "evidence": "ensure_dcf_local_stack.sh; stubs; dcf-local-stack.md",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-013",
+      "intent": "Payments port wrong; bypass payments without production code hacks",
+      "acceptance": "Config/stub method, not writer edits for test",
+      "evidence": "local_payments_stub.py",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-014",
+      "intent": "SHG has children; mature testing suite + platform integration docs",
+      "acceptance": "Naming/group semantics + suite maturation A+B+D",
+      "evidence": "group_parent_last_child_*; dcf-local-stack.md",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-015",
+      "intent": "Full e2e again; 100% code-wise sure all observations fixed",
+      "acceptance": "Green e2e + asserts for Vikram obs",
+      "evidence": "scripts/scratch/dcf_e2e_verify2.log PASS",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-016",
+      "intent": "LAN backup/restore for retest",
+      "acceptance": "Fixture backup/restore works",
+      "evidence": "dcf_fixture_backup.py",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-017",
+      "intent": "Proceed; fix testing suite",
+      "acceptance": "Suite updates landed",
+      "evidence": "registry dcf.group_parent_last_child_e2e",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-018",
+      "intent": "Final report: GL, amounts, business flow",
+      "acceptance": "Final verification report in session",
+      "evidence": "Transcript final report turns",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-019",
+      "intent": "Product clarification parent\u2194child sync; create LANs, 1-1 repayment, then DFC",
+      "acceptance": "Controlled fixture proving sync vs data issue",
+      "evidence": "Local group e2e fixture path",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-020",
+      "intent": "Review payRemainingOverduePenalThroughDeathDate \u2014 genuine vs hack",
+      "acceptance": "Verdict + keep/remove",
+      "evidence": "Session analysis",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-021",
+      "intent": "Backup LAN then proceed",
+      "acceptance": "Backup exists",
+      "evidence": "dcf_fixture_backup.py; LAN 6000137433",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-022",
+      "intent": "Fix only genuine issues; else create data and confirm stitch",
+      "acceptance": "Genuine fixes only",
+      "evidence": "Core INT/PRIN path fixes",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-023",
+      "intent": "If 10199 fixed without breaking other DFC \u2192 push; else more scenarios; upgrade workspace/knowledge",
+      "acceptance": "Push + knowledge",
+      "evidence": "3.4.2.1 push; later 3.7.1 work continues ASK-041+",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-024",
+      "intent": "Sync origin\u2194upstream on 3.4.2.1 and push",
+      "acceptance": "Origin/upstream aligned for release train",
+      "evidence": "Session git ops Jul 8",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-025",
+      "intent": "Minimal lines / trim fix; then push",
+      "acceptance": "Minimal L1",
+      "evidence": "Trimmed writer changes",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-026",
+      "intent": "Release confidence; enrich JIRA concise with proofs",
+      "acceptance": "JIRA comment + fields updated",
+      "evidence": "JIRA enrichment session Jul 8",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-027",
+      "intent": "Maturation plan go A+B+D",
+      "acceptance": "A rename; B registry; D local-stack doc",
+      "evidence": "group_parent_last_child_dfc_local_e2e.py; registry; dcf-local-stack.md",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-027C",
+      "intent": "Extract reusable test helpers (payments stub, actor seed, staging cleanup, batch wait)",
+      "acceptance": "Helpers under scripts/testing/lib/ reused",
+      "evidence": "Deferred backlog WS-023 \u2014 extract helpers (not blocking harmony/INT-180)",
+      "status": "OPEN",
+      "section": "historical_10199",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-027E",
+      "intent": "Group-flow smoke: child repayment fan-out, CLB stuck (read-only first)",
+      "acceptance": "Registry cases exist",
+      "evidence": "Deferred backlog WS-024 \u2014 group smoke after WS-023",
+      "status": "OPEN",
+      "section": "historical_10199",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-028",
+      "intent": "JIRA skill: no internal/branch info; human developer language",
+      "acceptance": "Skill upgraded + JIRA rewritten",
+      "evidence": "jira-fix-update skill updates",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-029",
+      "intent": "Fix mistaken direct push to mfi_release_v3.4.2.1; process integration\u2192release",
+      "acceptance": "Process corrected / PR path fixed",
+      "evidence": "Session Jul 8 git process fix",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-030",
+      "intent": "PR integration\u2192release still shows already-merged changes",
+      "acceptance": "Understood duplicate-diff; process clarified",
+      "evidence": "Session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-031",
+      "intent": "JIRA aitdp % / remarks wrong",
+      "acceptance": "Fields corrected",
+      "evidence": "Session JIRA update",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-032",
+      "intent": "Special notes: many QA LANs corrupted / unsynced parent-child",
+      "acceptance": "Special notes on JIRA/release",
+      "evidence": "Session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-033",
+      "intent": "Short email: fix released to QA; local e2e; QA LAN caveat",
+      "acceptance": "Email drafted",
+      "evidence": "Session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-034",
+      "intent": "100% code-wise working? Dev test proof in JIRA with DB details",
+      "acceptance": "Proof with DB details",
+      "evidence": "group_dfc_dev_proof.sql + JIRA",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-035",
+      "intent": "Start actor/notification/masterdata/api-gateway for webapp proof",
+      "acceptance": "Services started",
+      "evidence": "Session ops",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-036",
+      "intent": "Webapp login double-call",
+      "acceptance": "Diagnosed/fixed or explained",
+      "evidence": "Session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-037",
+      "intent": "Parent LAN negative PRIN paid \u2014 genuine fix at source not generic clamp",
+      "acceptance": "Core fix; retest; push",
+      "evidence": "L1 at source; clamp rejected",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-038",
+      "intent": "Webapp 7993 schedule row; asset classification not updating \u2014 fix + test + push",
+      "acceptance": "Asset classification fixed + retest",
+      "evidence": "Session Jul 8 push",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-039",
+      "intent": "QA asked DFC transaction details in JIRA comment (table)",
+      "acceptance": "Tabular txn comment on JIRA",
+      "evidence": "Session",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-040",
+      "intent": "Vikram still open observations on 3.4.2.1; QA6 DB; why local missed; fix; retest; push",
+      "acceptance": "Gap in local coverage closed; fix pushed",
+      "evidence": "Jul 9-10 fixes; remaining QA obs \u2192 ASK-041",
+      "status": "DONE",
+      "section": "historical_10199"
+    },
+    {
+      "id": "ASK-041",
+      "intent": "Asking QA to test remaining two SDCP-10199 observations \u2014 are we sure?",
+      "acceptance": "Honest confidence with local proof + known gaps; money committed",
+      "evidence": "Tied to GAP-074 / ASK-057 park \u2014 residual INT/DPI open until QA/prod discuss",
+      "status": "DEFERRED",
+      "section": "active_371",
+      "updated_by": "park-int180-docs",
+      "updated_at": "2026-07-10T12:50:00Z"
+    },
+    {
+      "id": "ASK-042",
+      "intent": "Resolve PR #7774 conflicts upstream; steps to complete merging",
+      "acceptance": "Conflicts resolved; merge steps documented/executed",
+      "evidence": "3.7.1 at origin f45dbe3bd after INT-180 park; PR #7774 upstream not re-verified",
+      "status": "IN_PROGRESS",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-043",
+      "intent": "Merge mfi_release_v3.6.1 + work locally; PR origin\u2192upstream mfi_integration_v3.7.1",
+      "acceptance": "Clean PR path to 3.7.1",
+      "evidence": "Local 3.7.1 == origin f45dbe3bd; INT-180 on park branch only; origin push not requested",
+      "status": "IN_PROGRESS",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-044",
+      "intent": "Confirm forward-merge: 3.4.2.1/2/3 fixes present on 3.7.1",
+      "acceptance": "merge-base --is-ancestor for key SHAs",
+      "evidence": "e919e3b33, 66e830670, 425472cab ANCESTOR of HEAD",
+      "status": "DONE",
+      "section": "active_371"
+    },
+    {
+      "id": "ASK-045",
+      "intent": "Full re-analysis of DFC/group parent flow on 3.7.1",
+      "acceptance": "Orch+writer+e2e re-verified on 3.7.1",
+      "evidence": "3.7.1 orch+writer+e2e re-verified; INT-180 committed",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-046",
+      "intent": "Update/enrich scripts, KG, hooks, full workspace; close gaps/stale/wrong understanding; do not stop until done",
+      "acceptance": "No stale banners; KG FRESH; scripts match 3.7.1; gaps closed; hooks fixed",
+      "evidence": "hooks/scripts/gaps/changelog/JIRA/KG FRESH; remaining thin-domain dedicated e2e \u2192 WS-022",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-047",
+      "intent": "Maintain JIRA worked-on memory for reopen",
+      "acceptance": "Canonical index + reopen playbook",
+      "evidence": "cursor-bundle/brain/jira/JIRA-INDEX.md + jira-flow-graph.json (9 nodes)",
+      "status": "DONE",
+      "notes": "Count honesty vs 19 tickets \u2192 ASK-H03",
+      "section": "active_371"
+    },
+    {
+      "id": "ASK-048",
+      "intent": "Enhance testing suite; analyse each flow/API suite; update per new code",
+      "acceptance": "Registry/domain coverage updated for 3.7.1; e2e green",
+      "evidence": "domains release_cases filled; suite expansion backlog WS-022/023/024",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:51Z"
+    },
+    {
+      "id": "ASK-049",
+      "intent": "Smart JIRA\u2194flow graph (not flat list); reopen playbook",
+      "acceptance": "Graph with domains/apis/edges + playbook",
+      "evidence": "jira-flow-graph.json nodes+edges; playbook in INDEX",
+      "status": "DONE",
+      "section": "active_371"
+    },
+    {
+      "id": "ASK-050",
+      "intent": "Workspace upgrade for ALL accounting flows; self-improve/self-upgrade",
+      "acceptance": "All domains scanned; files/processes updated",
+      "evidence": "All domains scanned; release_cases non-empty; thin dedicated e2e backlog WS-022",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-051",
+      "intent": "Do not assume/guess when creating KG/scripts/tests/hooks; validate KG",
+      "acceptance": "kg validate + fresh PASS; no guessed edges",
+      "evidence": "kg validate OK; kg fresh FRESH",
+      "status": "DONE",
+      "section": "active_371"
+    },
+    {
+      "id": "ASK-052",
+      "intent": "Verify maximally (code+DB); little scope for lazy NOT VERIFIED",
+      "acceptance": "Claims backed by orch/code/DB/ntest",
+      "evidence": "H01-H07 verified this session; INT-180 code+DB+e2e+commit",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-053",
+      "intent": "Monitor subagent: no fuckups; code/JIRA/git/testing synced in harmony",
+      "acceptance": "Harmony report GREEN",
+      "evidence": "Harmony H01-H07 all evidence PASS this session; WARN-only remaining = mixed trains (documented H08)",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-054",
+      "intent": "Check super-agent + all autonomous/self scripts; maximize workspace setup",
+      "acceptance": "Inventory + fix broken wiring; CLIs work",
+      "evidence": "super-agent sync/learn/session; install-user-cursor-gates; workspace-bootstrap; nps_app_log; autopilot close",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-055",
+      "intent": "Do not scope to one JIRA \u2014 all workspace / all repos if required \u2014 perfect",
+      "acceptance": "Workspace-wide, multi-repo",
+      "evidence": "Multi-repo snapshot documented; accounting 3.7.1 scope; cross-repo claims gated by H08",
+      "status": "DONE",
+      "section": "active_371",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-056",
+      "intent": "Tracker agent so multiple asks not omitted",
+      "acceptance": "This tracker MD+JSON maintained",
+      "evidence": "ASK-TRACKER-2026-07-10.md + ask-tracker-2026-07-10.json",
+      "status": "DONE",
+      "section": "active_371"
+    },
+    {
+      "id": "ASK-057",
+      "intent": "INT-180 on 3.7.1: last-child parent overdue INT pending \u2014 fix + e2e green + commit",
+      "acceptance": "Writer fix committed; ntest PASS; ship gate satisfied (production ship deferred)",
+      "evidence": "Parked on fix/sdcp-10199-parent-int-dpi-last-child-dfc @ 61278d5f8; GAP-074 OPEN; 3.7.1 tip f45dbe3bd without fix; do not merge until discuss",
+      "status": "DEFERRED",
+      "section": "active_371",
+      "updated_by": "park-int180-docs",
+      "updated_at": "2026-07-10T12:50:00Z"
+    },
+    {
+      "id": "ASK-H01",
+      "intent": "Harmony FAIL: hooks wiring \u2014 afterFileEdit still after-money-path-edit.sh",
+      "acceptance": "hooks.json afterFileEdit \u2192 after-ship-path-edit.sh; pending registers on ship-path edit",
+      "evidence": ".cursor/hooks.json afterFileEdit\u2192after-ship-path-edit.sh; afterShellExecution includes post-commit-ship-test.sh; install-user-cursor-gates.sh OK",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H02",
+      "intent": "Harmony FAIL: ship pending honesty \u2014 dirty money without pending; stale ship-loop-passed",
+      "acceptance": "Commit writer + workspace-close until ship_push_gate satisfied OR pending fingerprint matches dirty file; no passed while dirty uncommitted money",
+      "evidence": "Committed 61278d5f8; workspace-close PASS; pending cleared; .ship-loop-passed.json money tier deathForeclosureInsuranceJob",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H03",
+      "intent": "Harmony FAIL: changelog claims JIRA graph 19 tickets vs graph 9 nodes",
+      "acceptance": "Changelog count matches graph node count (9) OR graph expanded to 19 verified nodes",
+      "evidence": ".cursor/changelog.md says 9 verified nodes; graph nodes=9",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H04",
+      "intent": "Harmony FAIL: brain CHANGELOG SHA labels as 3.7.1 but SHAs not ancestors of HEAD",
+      "acceptance": "Every 3.7.1-labeled SHA is ancestor of HEAD or label corrected",
+      "evidence": "brain CHANGELOG: all mfi_integration_v3.7.1-labeled SHAs are ancestors of HEAD (or HEAD-eq substituted)",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H05",
+      "intent": "Harmony FAIL: gaps dual-home drift (.cursor vs cursor-bundle/brain)",
+      "acceptance": "Single SoT; both synced OR brain marked mirror/deprecated with same High-gap truth",
+      "evidence": "GAP-074 INT-180 OPEN/parked synced both homes; SoT=.cursor/gaps-and-risks.md; park branch fix/sdcp-10199-parent-int-dpi-last-child-dfc @ 61278d5f8",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "park-int180-docs",
+      "updated_at": "2026-07-10T12:55:00Z"
+    },
+    {
+      "id": "ASK-H06",
+      "intent": "Harmony FAIL: missing bootstrap scripts referenced by rules",
+      "acceptance": "workspace-bootstrap.sh and install-user-cursor-gates.sh exist OR all refs updated to real entrypoints",
+      "evidence": "scripts/bin/workspace-bootstrap.sh + install-user-cursor-gates.sh restored (wrappers to verify/doctor + hooks check)",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H07",
+      "intent": "Harmony FAIL: nps_app_log broken \u2014 empty app log in workspace-ops-state",
+      "acceptance": "nps_app_log defined/working; ops state non-empty accounting app log path",
+      "evidence": "nps_app_log defined in scripts/lib/novopay-service-lib.sh \u2192 accounting-mfi.log",
+      "status": "DONE",
+      "section": "harmony_fail",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H08",
+      "intent": "Harmony WARN: mixed git trains across repos",
+      "acceptance": "Documented scope OR trains aligned for cross-repo claims",
+      "evidence": "cursor-bundle/brain/workspace-state.md ASK-H08 mixed-train scope note; git-workspace-status.json snapshot",
+      "status": "DONE",
+      "section": "harmony_warn",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H09",
+      "intent": "Harmony WARN: thin accounting domains (12 without release_cases)",
+      "acceptance": "Each domain \u22651 release_case OR explicit backlog ID",
+      "evidence": "accounting_flow_domains.json every domain has release_cases (fallback_case where needed); WS-022 for dedicated e2e",
+      "status": "DONE",
+      "section": "harmony_warn",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:29Z"
+    },
+    {
+      "id": "ASK-H10",
+      "intent": "Harmony WARN: capture-flow / money_no_verified_footprint for deathForeclosureInsuranceJob",
+      "acceptance": "Footprint captured or explicitly deferred",
+      "evidence": "sources.jsonl capture rows for ftf:dcf.group_parent_last_child + deathForeclosureInsuranceJob; ntest PASS; footprint_builder still money_no_verified_footprint (FTG catalog gap \u2014 WARN not FAIL)",
+      "status": "DONE",
+      "section": "harmony_warn",
+      "updated_by": "gap-closure",
+      "updated_at": "2026-07-10T12:39:51Z"
+    }
+  ],
+  "gate": {
+    "ASK-057": "DEFERRED",
+    "ASK-H01_H07": true,
+    "ASK-041": "DEFERRED",
+    "ASK-053": "DONE",
+    "GAP-074": "OPEN"
+  },
+  "updated_at": "2026-07-10T18:25:00Z",
+  "remaining_open": [
+    "ASK-027C",
+    "ASK-027E"
+  ],
+  "remaining_deferred": [
+    "ASK-057",
+    "ASK-041"
+  ],
+  "remaining_in_progress": [
+    "ASK-042",
+    "ASK-043"
+  ],
+  "warns": [
+    "mixed trains H08 documented",
+    "footprint_builder money_no_verified_footprint until FTG catalog entry",
+    "origin ahead 1 not pushed"
+  ],
+  "int180_status": "DEFERRED",
+  "int180_park_branch": "fix/sdcp-10199-parent-int-dpi-last-child-dfc",
+  "int180_note": "GAP-074 OPEN; parked off mfi_integration_v3.7.1@f45dbe3bd; do not merge until QA/prod discuss"
+}

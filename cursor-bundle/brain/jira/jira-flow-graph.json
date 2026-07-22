@@ -1,0 +1,459 @@
+{
+  "version": 3,
+  "generated": "2026-07-10",
+  "policy": "Maximally verified: orch Request + Java on mfi_integration_v3.7.1 HEAD + git ancestor (or HEAD-equivalent SHA) + registry case existence. No speculative related edges.",
+  "accounting_branch": "mfi_integration_v3.7.1@f45dbe3bd",
+  "dirty_working_tree": "DeathForeclosureInsuranceWriter.java INT-180 uncommitted",
+  "code_checks": {
+    "INT180_sumPending": true,
+    "11048_billedDpi": true,
+    "11016_bpd": true,
+    "11012_parity": true,
+    "10295_interest": true,
+    "11030_slice": true,
+    "10227_filler": true,
+    "11058_bpi_parity": true
+  },
+  "session_e2e": {
+    "dcf.group_parent_last_child_e2e": "PASS (twice this session)"
+  },
+  "kg": {
+    "validate_cmd": "python3 cursor-bundle/kg/bin/kg_validate.py",
+    "note": "use kg_validate.py not kg.py validate"
+  },
+  "blocked_or_omitted": [
+    "Remote QA/prod DB \u2014 not used (local only)",
+    "SDCP-11030: no registry case tagged sdcp-11030 \u2014 test link omitted (code+SHA verified)",
+    "SDCP-10295: no registry e2e case \u2014 code+SHA verified only",
+    "Cross-service LOS/payments contracts on mixed trains \u2014 not claimed"
+  ],
+  "nodes": [
+    {
+      "id": "SDCP-11058",
+      "domain": "foreclosure",
+      "apis": [
+        "loanPrepayment",
+        "childLoanForeclosure",
+        "individualChildLoanForeclosure"
+      ],
+      "key_commits": [
+        "4acc7036d4"
+      ],
+      "test_cases": [
+        "foreclosure.shg_bpi_parity"
+      ],
+      "status": "verified_this_session",
+      "code_proof": "ChildLoanForeclosureProcessor BPI distribute via getDistributedAmountEqually(parent) any N; unit N=1..20 PASS",
+      "train": "mfi_integration_v3.4.2.1"
+    },
+    {
+      "id": "SDCP-10199",
+      "domain": "death_foreclosure",
+      "apis": [
+        "deathForeclosureInsuranceJob",
+        "loanDeathForeclosure"
+      ],
+      "key_commits": [
+        "f45dbe3bd",
+        "e919e3b33",
+        "66e830670",
+        "425472cab"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "f45dbe3bd",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "f45dbe3bd"
+        },
+        {
+          "sha": "e919e3b33",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "e919e3b33"
+        },
+        {
+          "sha": "66e830670",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "66e830670"
+        },
+        {
+          "sha": "425472cab",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "425472cab"
+        }
+      ],
+      "test_cases": [
+        "dcf.group_parent_last_child_e2e"
+      ],
+      "code_proof": "DeathForeclosureInsuranceWriter.sumPendingComponentOnOrBefore + lastActiveChild INT/DPI from parent pending (L1253,L1340-1374); e2e PASS\u00d72; DB parent INT/PRIN/DPI pending=0",
+      "reopen_symptoms": [
+        "parent CLOSED with INT pending>0 after last-child DFC (pre-fix: due 2025-09-01 pending 180)"
+      ],
+      "session_e2e": "PASS ntest run dcf.group_parent_last_child_e2e (2026-07-10 twice)",
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-10227",
+      "domain": "disbursement",
+      "apis": [
+        "disburseLoan"
+      ],
+      "key_commits": [
+        "068247cc9",
+        "b78517980"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "068247cc9",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "068247cc9"
+        },
+        {
+          "sha": "b78517980",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "b78517980"
+        }
+      ],
+      "test_cases": [
+        "disbursement.quick"
+      ],
+      "code_proof": "CallBankAPIForDisbursementProcessor + ChildDisbursementLoanEventsQueueSync on HEAD; SHAs ancestors",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-11016",
+      "domain": "foreclosure",
+      "apis": [
+        "fetchLoanForeclosureSimulationDetails"
+      ],
+      "key_commits": [
+        "f5c4e0a25"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "f5c4e0a25",
+          "how": "head_equivalent_by_message",
+          "changelog_ref": "1baf3f4d8f/e175b78cb"
+        }
+      ],
+      "test_cases": [
+        "dpic.foreclosure_bpd_growth",
+        "dpic.foreclosure_sim"
+      ],
+      "code_proof": "FetchLoanForeclosureSimulationDetailsProcessor + DpiForeclosureBrokenPeriodService on HEAD; orch Request verified; HEAD sha f5c4e0a25 (changelog SHAs 1baf3f4d8f/e175b78cb not ancestors \u2014 same fix message)",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-11048",
+      "domain": "prepayment",
+      "apis": [
+        "loanPrepayment"
+      ],
+      "key_commits": [
+        "1b34dee4b"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "1b34dee4b",
+          "how": "head_equivalent_by_message",
+          "changelog_ref": "167d0942db"
+        }
+      ],
+      "test_cases": [
+        "dpic.loan_prepayment_billed_dpi_e2e"
+      ],
+      "code_proof": "ValidateFinalPrepaymentProcessor.fetchForeclosureAmount adds getBilledDpiAmountToBePaid+getBpdAmountToBePaid; HEAD sha 1b34dee4b (ancestor); changelog 167d0942db same patch not ancestor",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-11012",
+      "domain": "dpi",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "key_commits": [
+        "f42f5b117"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "f42f5b117",
+          "how": "head_equivalent_by_message",
+          "changelog_ref": "74da61acf"
+        },
+        {
+          "sha": "f42f5b117",
+          "how": "head_equivalent_by_message",
+          "changelog_ref": "daf6a331c"
+        }
+      ],
+      "test_cases": [
+        "dpic.shg_parent_child_parity"
+      ],
+      "code_proof": "DpiGroupLoanAccrualAdjustService parent vs sum(children) adjust on HEAD; registry case api=dpiAccrualCalculation; HEAD sha f42f5b117",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-11030",
+      "domain": "dpi",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "key_commits": [
+        "412f4d03e"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "412f4d03e",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "412f4d03e"
+        }
+      ],
+      "test_cases": [],
+      "code_proof": "DpiAccrualCalculationBatchService.resolveSliceInstallment + resolveAdmissionOverdueDate on HEAD; 412f4d03e ancestor. .cursor/changelog claims e2e PASS \u2014 registry has no sdcp-11030 tag (test link omitted)",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-10295",
+      "domain": "read_inquiry",
+      "apis": [
+        "getLoanAccountSummaryDetails"
+      ],
+      "key_commits": [
+        "82cb142e7"
+      ],
+      "commit_resolution": [
+        {
+          "sha": "82cb142e7",
+          "how": "changelog_sha_ancestor_of_HEAD",
+          "changelog_ref": "82cb142e7"
+        }
+      ],
+      "test_cases": [],
+      "code_proof": "GetLoanAccountSummaryDetailsProcessor interest_original=getBilledInterestAmount; outstanding=billed-(paid+waived+writtenOff); 82cb142e7 ancestor. orch: verify Request",
+      "reopen_symptoms": [],
+      "session_e2e": null,
+      "status": "verified_this_session"
+    },
+    {
+      "id": "SDCP-9301",
+      "domain": "death_foreclosure",
+      "apis": [
+        "loanDeathForeclosure",
+        "deathForeclosureInsuranceJob"
+      ],
+      "key_commits": [],
+      "commit_resolution": [],
+      "test_cases": [
+        "dcf.group_parent_last_child_e2e"
+      ],
+      "code_proof": "DFC core series \u2014 behaviour in DeathForeclosureInsuranceWriter on HEAD; historical SHAs may not be ancestors; orch+writer verified this session",
+      "reopen_symptoms": [],
+      "status": "behaviour_on_HEAD_historical_ticket"
+    },
+    {
+      "id": "SDCP-9844",
+      "domain": "death_foreclosure",
+      "apis": [
+        "loanDeathForeclosure",
+        "deathForeclosureInsuranceJob"
+      ],
+      "key_commits": [],
+      "commit_resolution": [],
+      "test_cases": [],
+      "code_proof": "DFC settle/waive series \u2014 same writer on HEAD; orch+writer verified this session",
+      "reopen_symptoms": [],
+      "status": "behaviour_on_HEAD_historical_ticket"
+    }
+  ],
+  "edges": [
+    {
+      "from": "SDCP-10199",
+      "to": "api:deathForeclosureInsuranceJob",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "api:loanDeathForeclosure",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "test:dcf.group_parent_last_child_e2e",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "commit:f45dbe3bd",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "commit:e919e3b33",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "commit:66e830670",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "commit:425472cab",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10199",
+      "to": "domain:death_foreclosure",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-10227",
+      "to": "api:disburseLoan",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-10227",
+      "to": "test:disbursement.quick",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-10227",
+      "to": "commit:068247cc9",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10227",
+      "to": "commit:b78517980",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10227",
+      "to": "domain:disbursement",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-11016",
+      "to": "api:fetchLoanForeclosureSimulationDetails",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-11016",
+      "to": "test:dpic.foreclosure_bpd_growth",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-11016",
+      "to": "test:dpic.foreclosure_sim",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-11016",
+      "to": "domain:foreclosure",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-11048",
+      "to": "api:loanPrepayment",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-11048",
+      "to": "test:dpic.loan_prepayment_billed_dpi_e2e",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-11048",
+      "to": "commit:1b34dee4b",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-11048",
+      "to": "domain:prepayment",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-11012",
+      "to": "api:dpiAccrualCalculation",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-11012",
+      "to": "test:dpic.shg_parent_child_parity",
+      "type": "registry_case_exists"
+    },
+    {
+      "from": "SDCP-11012",
+      "to": "commit:f42f5b117",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-11012",
+      "to": "domain:dpi",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-11030",
+      "to": "api:dpiAccrualCalculation",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-11030",
+      "to": "commit:412f4d03e",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-11030",
+      "to": "domain:dpi",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-10295",
+      "to": "api:getLoanAccountSummaryDetails",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-10295",
+      "to": "commit:82cb142e7",
+      "type": "git_ancestor_or_head_equivalent"
+    },
+    {
+      "from": "SDCP-10295",
+      "to": "domain:read_inquiry",
+      "type": "from_api_hints"
+    },
+    {
+      "from": "SDCP-9301",
+      "to": "api:loanDeathForeclosure",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-9301",
+      "to": "api:deathForeclosureInsuranceJob",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-9844",
+      "to": "api:loanDeathForeclosure",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-9844",
+      "to": "api:deathForeclosureInsuranceJob",
+      "type": "orch_Request_verified"
+    },
+    {
+      "from": "SDCP-11016",
+      "to": "commit:f5c4e0a25",
+      "type": "git_ancestor_or_head_equivalent"
+    }
+  ]
+}

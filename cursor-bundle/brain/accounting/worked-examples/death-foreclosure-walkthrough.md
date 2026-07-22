@@ -1,12 +1,17 @@
 # Death Foreclosure — Complete Feature Walkthrough
 
+> **Canonical train (2026-07-10):** `mfi_integration_v3.7.1` — see runbook
+> [`../../runbooks/sdcp-10199-group-parent-last-child-dfc.md`](../../runbooks/sdcp-10199-group-parent-last-child-dfc.md)
+> and JIRA graph [`../../jira/JIRA-INDEX.md`](../../jira/JIRA-INDEX.md).
+> This walkthrough’s file refs still cite historical `sdcp-9301-hotfix-3.3.1.0`
+> (SDCP-9301 era); verify behaviour on **3.7.1** before shipping fixes.
+>
 > A narrated, end-to-end explanation of the death-foreclosure (DFC) flow — every
 > transaction, every accounting rule, every non-money step — using **one real
 > loan, LAN 6007220926 (QA4)**.
 >
 > Read it like a video voiceover. Every amount is traced to a code line and to a
-> GL ledger entry. File refs point at `novopay-platform-accounting-v2`, branch
-> `sdcp-9301-hotfix-3.3.1.0`.
+> GL ledger entry. Historical file refs: `sdcp-9301-hotfix-3.3.1.0` (verify on 3.7.1).
 >
 > Structure:
 > - **PART A** — the loan's life *before* death (disbursement → billings →
