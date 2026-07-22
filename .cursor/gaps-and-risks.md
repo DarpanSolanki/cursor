@@ -39,6 +39,7 @@ Every item below has **description + file path + line evidence + risk level**. S
 | **RESOLVED (2026-07-10) — SDCP-10199 workspace/train drift (3.4.2.x vs 3.7.1)** | **Resolved** | Forward merge `f45dbe3bd` on `mfi_integration_v3.7.1`; runbook `sdcp-10199-group-parent-last-child-dfc.md`; removed dead `waiveFutureParentPendingDuesOnLastChildDfc` | Agents analyzing DFC on stale branch / waiving parent PRIN caused wrong fixes. 3.4.2.1/2/3 tips are ancestors of 3.7.1. |
 | **GAP-074 — SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)** | **High** (open; parked) | `DeathForeclosureInsuranceWriter.doParentPartPrePayment` (released trains / `mfi_integration_v3.7.1@f45dbe3bd` still use child `INT_AMT`); fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to `mfi_integration_v3.7.1` until QA/prod discuss**; runbook `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ASK-057 **DEFERRED** | SHG/JLG parent can CLOSE after last-child DFC with residual pending INT (latent 3.4.2.1+); DPI residual risk on 3.7.1. Missed via lucky INT=0 e2e / UI-focused QA. |
 | **REOPENED then RESOLVED (2026-07-17) — GAP-075 TDPQA-72 QA acceptance (Obs1 EMI-labd hijack + Obs2 amount≠principal + Obs3 Accrued>Original + webapp)** | **Resolved (was High)** | Writer @ `feature/tdpqa72-dfc-acceptance-labd-lapd`: dedicated force-bill labd; lapd EXTRA-net; `reconcileAccruedInterestToBilledOriginal`; e2e `assert_webapp_bound_apis` + `ACCEPTANCE_STRICT=1` + `DCF_SEED_EMI_LABD=1`. Gate: `acceptance_coverage.py` WEBAPP_UI_FIELD_MARKERS. | QA4: force-bill not visible; amount 11550 vs principal 11605; parent Accrued>Original; webapp summary/statement. |
+| **RESOLVED (2026-07-22) — GAP-078 DCF parent force-bill CRN collision (134497)** | **Resolved (was High)** | Was `DeathForeclosureInsuranceWriter.buildForceBillClientReference(accountId, valueDate)` only; fixed `935c52743` on `mfi_integration_v3.4.2.4` — append `deathForeclosureDetailsId`. Distinct from GAP-074 INT-180. Harness mid-run: non-last parent FB posted then last-child job failed 134497. | Sequential child DFCs sharing `dateOfReporting` reused parent CRN → `ClientReferenceNumberDedupProcessor` fatal **134497**, blocking last-child parent force-bill. |
 | **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
 | **Multi-node batch dependency tracking is in-memory only** | **Medium** | `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
@@ -1608,7 +1609,7 @@ Date found: 2026-07-15 (Vikram/Srikant); **reopened** 2026-07-17 after TDPQA-72 
 2. Last-child before `saveLoanAccountPaymentsDetails` — `principal_amount` = A2-netted `POS`, `excess_amount` = claimOverpayment, `net_amount=0`.  
 3. `findByLoanInstallmentDetailsId` → `ORDER BY id DESC LIMIT 1` (multi-row safe).
 
-**Parent force-bill (Obs1b):** Out of scope — only death child gets `DFC_PRTL_BILL`; parent gets `RSCH_DEATH_FORECLOSURE` only (writer never force-bills parent).
+**Parent force-bill (Obs1b) + Product excess=0 (2026-07-22 `9b6454df6`):** Parent now force-bills via existing `forceBillPartialCycleInterest` (`computeParentForceBillSlice` = max Accrued−Original gap, reportingAccrual). Parent RSCH `lapd.excess_amount=0` and EXCESS_* upserts ZERO; A2 still nets principal. Double-INT: clear BLD_INT before RSCH. Child DFC EXCESS_* unchanged. Verify: EXTRA=0|1 + `DCF_SEED_EMI_LABD=1` e2e.
 
 **Symptom Obs3 (TDPQA-72 — 2026-07-17):** Parent summary **Accrued > Original** after sibling RSCH + last-child DFC — IAD rows past last billed INT due remain while Original = billed INT only.
 
@@ -1619,3 +1620,20 @@ Date found: 2026-07-15 (Vikram/Srikant); **reopened** 2026-07-17 after TDPQA-72 
 **Verify:** `DCF_SEED_EMI_LABD=1 ACCEPTANCE_STRICT=1 ntest run dcf.group_parent_last_child_e2e`. Asserts must **FAIL** on EMI hijack and `principal > txn amount`. Gate: `scripts/lib/acceptance_coverage.py`. Runbook: `sdcp-10199-group-parent-last-child-dfc.md`.
 
 **Distinct from GAP-074:** INT-180 residual pending INT on CLOSED parent remains open/parked.
+
+## GAP-078: DCF parent force-bill CRN collision on sequential same-date claims (134497)
+
+Service: novopay-platform-accounting-v2  
+Risk: **High** (was)  
+Status: **RESOLVED** 2026-07-22 — `mfi_integration_v3.4.2.4` @ `935c52743`  
+Date found: 2026-07-22 (harness mid-run during Obs1–3 hardening)
+
+**Symptom:** Non-last child DFC posts parent force-bill CRN = `accountId + valueDate.getTime()`. Last-child DFC on the same `dateOfReporting` recomputes the **same** CRN for parent `forceBillPartialCycleInterest` → `ClientReferenceNumberDedupProcessor` throws **134497**, job fails, last-child parent force-bill never posts.
+
+**Evidence:** Sibling harness agent — non-last parent FB succeeded; last-child `deathForeclosureInsuranceJob` failed on CRN collision (legacy numeric CRN without claim id). Dedup: `ClientReferenceNumberDedupProcessor` → fatal `134497`.
+
+**Fix:** `buildForceBillClientReference(accountId, valueDate, deathForeclosureDetailsId)` appends claim id when non-null; child + parent call sites pass `deathForeclosureDetailsId`.
+
+**Distinct from GAP-074 / INT-180:** This is CRN uniqueness on BILLING post, not parent INT appropriation / residual pending INT.
+
+**Verify:** PROCESSOR_MIRROR_SIM on Writer formula; full multi-child same-`value_date` e2e owned by harness sibling. Registry/runbook note updated.

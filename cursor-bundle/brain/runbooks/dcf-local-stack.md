@@ -2,9 +2,14 @@
 
 Local harness for `deathForeclosureInsuranceJob` and group parent last-child closure (SDCP-10199). Source of truth for bootstrap: `scripts/dcf_sanity/ensure_dcf_local_stack.sh`.
 
+**Canonical accounting branch:** `mfi_integration_v3.7.1` (contains all SDCP-10199 fixes from `3.4.2.1` / `.2` / `.3` via forward merge `f45dbe3bd`, plus DPI DFC legs). Behaviour contract: [`sdcp-10199-group-parent-last-child-dfc.md`](sdcp-10199-group-parent-last-child-dfc.md).
+
 ## Quick start
 
 ```bash
+# Confirm branch before e2e
+git -C novopay-platform-accounting-v2 branch --show-current   # expect mfi_integration_v3.7.1
+
 # Full registry flow (stack + e2e)
 ntest run dcf.group_parent_last_child_e2e
 

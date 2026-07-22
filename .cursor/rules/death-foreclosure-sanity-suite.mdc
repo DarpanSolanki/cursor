@@ -4,7 +4,7 @@ globs:
   - "scripts/dcf_sanity.py"
   - "scripts/dcf_sanity/**"
   - "docs/dcf-sanity/**"
-  - "novopay-platform-accounting-v2/**/deathforeclosure/**"
+  - "trustt-platform-accounting/**/deathforeclosure/**"
 alwaysApply: false
 ---
 

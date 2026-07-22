@@ -5,6 +5,18 @@
 ---
 ## 2026-07-21 | workspace | sliProd | main | kb-only | Fail-closed cross-branch reuse gate
 
+## 2026-07-22 | acct `935c52743` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | DCF parent force-bill CRN unique per claim
+deathForeclosureInsuranceJob buildForceBillClientReference appends deathForeclosureDetailsId — sequential child DFC same value_date no longer 134497 on parent BILLING; sibling harness evidence non-last CRN blocked last-child
+
+---
+
+
+## deathForeclosureInsuranceJob
+## 2026-07-22 | acct `9b6454df6` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 parent FB + excess=0
+
+---
+
+
 ## createOrUpdateLoanAccount
 ## 2026-07-22 | acct `ae8e98a70f` | accounting-v2 | fix/clb-child-parent-mandate-fallback | CLB child mandate via parent_account_id
 
