@@ -84,7 +84,19 @@ Parent can CLOSE after last-child DFC with residual pending INT (DPI on 3.7.1) w
 7. **`finalizeParentClosureOnLastChildDfc`** — asset classification **while still open**, then `loan_status=CLOSED` **and** `account.status=CLOSED` + closing dates.
 8. **Overview next EMI** — `GetLoanAccountInstallmentDetailsProcessor` treats CLOSED if `loan_status` **or** `account_status` is CLOSED.
 9. **A2 EXTRA-net** — when child claim has EXTRA / EXCESS_INCOME_INT (overpayment), parent last-child RSCH amounts must **net** that down (not book full POS as TRANSACTION_AMOUNT).
-10. **B / Obs1 force-bill labd** — dedicated labd for force-bill (principal=0, interest=force-bill slice); `client_reference_number` = `accountId\|\|valueDateMs` (platform-numeric, sha `b256efd054`). **Never** overwrite an existing EMI labd `txn_ref`. Multi-row per installment is schema-valid; finder uses `ORDER BY id DESC LIMIT 1`; update prior FB via `isForceBillLabdShape` (prin=0).
+10. **B / Obs1 force-bill labd** — dedicated labd for force-bill (principal=0, interest=force-bill slice); `client_reference_number` = `accountId\|\|valueDateMs\|\|deathForeclosureDetailsId` (GAP-078 @ `935c52743`). **Never** overwrite an existing EMI labd `txn_ref`. Multi-row per installment is schema-valid; finder uses `ORDER BY id DESC LIMIT 1`; update prior FB via `isForceBillLabdShape` (prin=0).
+
+## Local acceptance matrix (2026-07-22 @ accounting `935c527430`)
+
+| Row | Env | Result | Notes |
+|-----|-----|--------|-------|
+| S1 | `ACCEPTANCE_SCOPE=obs123 SEED_EXTRA=0` pin `6000137433` / `2025-08-02` | **PASS** | Obs1–3 + RSTCRE + CRN uniqueness |
+| S2 | `obs123 SEED_EXTRA=1 DCF_SEED_EMI_LABD=1` same pin | **PASS** | EXTRA + dirty EMI labd |
+| S_full | `ACCEPTANCE_SCOPE=full DEATH_DATE=2025-09-15` | **PASS** (gate) | `int_pending=0` on this fixture — **does not close GAP-074**; INT-180 still parked `@61278d5f8` |
+| Fresh | `DCF_FRESH_GROUP=1 SEED_EXTRA=0` | **PASS** | Real disburse→billing→DFC (e.g. parent `6004092625`). EXTRA seed on fresh can `134253` — use pin S2 for EXTRA |
+| Fresh+EXTRA | `DCF_FRESH_GROUP=1 SEED_EXTRA=1` | **FAIL** (seed) | loanRepayment EXTRA seed `134253` — harness/next action; not a Writer regression |
+
+**GAP-074:** still **OPEN**. Full-scope fail-closed assert is live; do **not** claim QA Pass for INT residual until INT-180 merges or a residual-exposing fixture FAILS `dcf.group_parent_last_child_e2e_full`.
 
 ## Anti-patterns (stale / wrong)
 

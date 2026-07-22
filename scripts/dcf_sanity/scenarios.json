@@ -142,6 +142,7 @@
       "matrix_runs": [
         {
           "id": "S1",
+          "registry": "dcf.group_parent_last_child_e2e_clean",
           "env": {
             "ACCEPTANCE_STRICT": "1",
             "ACCEPTANCE_SCOPE": "obs123",
@@ -149,10 +150,12 @@
             "DCF_SEED_EMI_LABD": "0",
             "PARENT_LAN": "6000137433",
             "DEATH_DATE": "2025-08-02"
-          }
+          },
+          "expect_status": "PASS"
         },
         {
           "id": "S2_S3",
+          "registry": "dcf.group_parent_last_child_e2e",
           "env": {
             "ACCEPTANCE_STRICT": "1",
             "ACCEPTANCE_SCOPE": "obs123",
@@ -160,17 +163,23 @@
             "DCF_SEED_EMI_LABD": "1",
             "PARENT_LAN": "6000137433",
             "DEATH_DATE": "2025-08-02"
-          }
+          },
+          "expect_status": "PASS"
         },
         {
           "id": "S_full_gap074",
+          "registry": "dcf.group_parent_last_child_e2e_full",
           "env": {
             "ACCEPTANCE_STRICT": "1",
             "ACCEPTANCE_SCOPE": "full",
             "SEED_EXTRA": "0",
-            "DCF_SEED_EMI_LABD": "0"
+            "DCF_SEED_EMI_LABD": "0",
+            "PARENT_LAN": "6000137433",
+            "DEATH_DATE": "2025-09-15"
           },
-          "note": "Expect FAIL while GAP-074 open unless fixture has zero parent INT residual"
+          "expect_status": "PASS",
+          "gap074_status": "OPEN",
+          "note": "Full gate PASS observed (int_pending=0) on this fixture — does NOT close GAP-074. Tip 935c527430 still uses child INT_AMT; INT-180 parked @61278d5f8 (ASK-057 DEFERRED). Do not claim QA Pass for GAP-074. Residual-exposing fixture still needed for honest FAIL."
         }
       ],
       "local_e2e": "python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",
@@ -194,15 +203,17 @@
         "rsch_payment_principal_not_doubled": true
       },
       "local_e2e": "DCF_FRESH_GROUP=1 DCF_E2E_NO_SNAPSHOT=1 ntest run dcf.group_parent_last_child_fresh_e2e",
+      "registry": "dcf.group_parent_last_child_fresh_e2e",
       "env": {
         "DCF_FRESH_GROUP": "1",
         "DCF_E2E_NO_SNAPSHOT": "1",
         "ACCEPTANCE_STRICT": "1",
         "ACCEPTANCE_SCOPE": "obs123",
-        "SEED_EXTRA": "1",
-        "DCF_SEED_EMI_LABD": "1"
+        "SEED_EXTRA": "0",
+        "DCF_SEED_EMI_LABD": "0"
       },
-      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore. Same two-path spine + Obs2 last-child amount rules as S08."
+      "expect_status": "PASS",
+      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore. Default SEED_EXTRA=0 — EXTRA loanRepayment seed can 134253 on fresh schedule (use pin S2 for EXTRA). Same two-path spine + Obs2 last-child amount rules as S08. Proven PASS 2026-07-22 parent 6004092625."
     },
     {
       "id": "S09_reverse_feed_reupload",

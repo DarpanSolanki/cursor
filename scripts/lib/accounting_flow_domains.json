@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo": "novopay-platform-accounting-v2",
-  "description": "Accounting orchestration domain map — ship-loop + coverage (ALL flows, not money-only)",
+  "description": "Accounting orchestration domain map \u2014 ship-loop + coverage (ALL flows, not money-only)",
   "domains": {
     "disbursement": {
       "label": "Disbursement & bank rails",
@@ -15,26 +15,57 @@
         "callbankapi",
         "disbursement"
       ],
-      "api_hints": ["disburseLoan", "childLoanDisbursement"],
-      "impact_cases": ["disbursement.quick"],
+      "api_hints": [
+        "disburseLoan",
+        "childLoanDisbursement"
+      ],
+      "impact_cases": [
+        "disbursement.quick"
+      ],
       "deep_cases": [],
-      "release_cases": ["disbursement.quick"],
+      "release_cases": [
+        "disbursement.quick"
+      ],
       "proof": "bash scripts/bin/disburse-quick.sh"
     },
     "repayment": {
       "label": "Repayment & collections posting",
-      "path_hints": ["/repayment/", "/repay/", "loanrepayment", "childloanrepayment", "collection"],
-      "api_hints": ["loanRepayment", "childLoanRepayment", "loanAdvanceRepayment"],
-      "impact_cases": ["dpic.repayment_e2e"],
+      "path_hints": [
+        "/repayment/",
+        "/repay/",
+        "loanrepayment",
+        "childloanrepayment",
+        "collection"
+      ],
+      "api_hints": [
+        "loanRepayment",
+        "childLoanRepayment",
+        "loanAdvanceRepayment"
+      ],
+      "impact_cases": [
+        "dpic.repayment_e2e"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
     "prepayment": {
       "label": "Part / full prepayment",
-      "path_hints": ["partprepayment", "loanprepayment", "prepayment"],
-      "api_hints": ["loanAccountPartPrepayment", "loanPrepayment", "getPartPrepaymentBPIAmount"],
-      "impact_cases": ["dpic.part_prepayment_write_e2e"],
-      "deep_cases": ["foreclosure.loan_prepayment_real"],
+      "path_hints": [
+        "partprepayment",
+        "loanprepayment",
+        "prepayment"
+      ],
+      "api_hints": [
+        "loanAccountPartPrepayment",
+        "loanPrepayment",
+        "getPartPrepaymentBPIAmount"
+      ],
+      "impact_cases": [
+        "dpic.part_prepayment_write_e2e"
+      ],
+      "deep_cases": [
+        "foreclosure.loan_prepayment_real"
+      ],
       "release_cases": []
     },
     "foreclosure": {
@@ -51,44 +82,113 @@
         "fetchLoanForeclosureSimulationDetails",
         "getLoanForeclosureDetails"
       ],
-      "impact_cases": ["foreclosure.individual_child"],
-      "deep_cases": ["dpic.foreclosure_sim", "dpic.foreclosure_details_flow"],
-      "release_cases": ["foreclosure.individual_child"]
+      "impact_cases": [
+        "foreclosure.individual_child"
+      ],
+      "deep_cases": [
+        "dpic.foreclosure_sim",
+        "dpic.foreclosure_details_flow"
+      ],
+      "release_cases": [
+        "foreclosure.individual_child"
+      ]
     },
     "death_foreclosure": {
       "label": "Death foreclosure & insurance",
-      "path_hints": ["deathforeclosure", "death_foreclosure", "dcf_", "/death/"],
-      "api_hints": ["loanDeathForeclosure"],
-      "impact_cases": ["dcf.principal_split_sim", "dcf.group_parent_last_child_e2e"],
-      "deep_cases": [],
-      "release_cases": []
+      "path_hints": [
+        "deathforeclosure",
+        "death_foreclosure",
+        "dcf_",
+        "/death/",
+        "shg",
+        "jlg",
+        "group"
+      ],
+      "api_hints": [
+        "loanDeathForeclosure",
+        "deathForeclosureInsuranceJob"
+      ],
+      "impact_cases": [
+        "dcf.force_bill_crn_sim",
+        "dcf.principal_split_sim",
+        "dcf.group_parent_last_child_e2e",
+        "dcf.group_parent_last_child_e2e_clean",
+        "dcf.group_parent_last_child_e2e_full",
+        "dcf.group_parent_last_child_fresh_e2e"
+      ],
+      "deep_cases": [
+        "dcf.insurance_reupload_index_audit",
+        "dcf.group_parent_last_child_e2e_full"
+      ],
+      "release_cases": [
+        "dcf.group_parent_last_child_e2e",
+        "dcf.group_parent_last_child_e2e_clean"
+      ],
+      "proof": "ntest run dcf.force_bill_crn_sim; ntest run dcf.group_parent_last_child_e2e; ACCEPTANCE_SCOPE=full \u2192 dcf.group_parent_last_child_e2e_full (honest FAIL while GAP-074 open)",
+      "runbooks": [
+        "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md",
+        "cursor-bundle/brain/runbooks/dcf-local-stack.md"
+      ]
     },
     "reversal": {
       "label": "Transaction reversal",
-      "path_hints": ["reversal", "transactionreversal"],
-      "api_hints": ["loanAccountTransactionReversal", "childLoanTransactionReversal"],
-      "impact_cases": ["dpic.repayment_reversal_e2e"],
+      "path_hints": [
+        "reversal",
+        "transactionreversal"
+      ],
+      "api_hints": [
+        "loanAccountTransactionReversal",
+        "childLoanTransactionReversal"
+      ],
+      "impact_cases": [
+        "dpic.repayment_reversal_e2e"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
     "restructuring": {
       "label": "Restructuring / reschedule / rebook",
-      "path_hints": ["restruct", "resched", "rebook", "reopen"],
-      "api_hints": ["childLoanRestructuring", "loanAccountReschedule"],
-      "impact_cases": ["dpic.overview_api", "dpic.summary_api"],
+      "path_hints": [
+        "restruct",
+        "resched",
+        "rebook",
+        "reopen"
+      ],
+      "api_hints": [
+        "childLoanRestructuring",
+        "loanAccountReschedule"
+      ],
+      "impact_cases": [
+        "dpic.overview_api",
+        "dpic.summary_api"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
     "dpi": {
       "label": "Delayed payment interest (DPI)",
-      "path_hints": ["/dpi/", "dpiaccrual", "dpibilling", "dpicalculation", "scripts/dpic/"],
-      "api_hints": ["dpiAccrualCalculation", "dpiAccrualBooking", "dpiBilling"],
+      "path_hints": [
+        "/dpi/",
+        "dpiaccrual",
+        "dpibilling",
+        "dpicalculation",
+        "scripts/dpic/"
+      ],
+      "api_hints": [
+        "dpiAccrualCalculation",
+        "dpiAccrualBooking",
+        "dpiBilling"
+      ],
       "impact_cases": [
         "dpic.posting_calendar_regression",
         "dpic.cross_eod_replay_134497"
       ],
-      "billing_cases": ["dpic.billing_ud_next_emi"],
-      "deep_cases": ["dpic.ud_compliance"],
+      "billing_cases": [
+        "dpic.billing_ud_next_emi"
+      ],
+      "deep_cases": [
+        "dpic.ud_compliance"
+      ],
       "release_cases": [
         "dpic.posting_calendar_regression",
         "dpic.cross_eod_replay_134497",
@@ -105,16 +205,30 @@
         "interestaccrualbooking",
         "interestaccrualposting"
       ],
-      "api_hints": ["interestAccrualCalculation", "interestAccrualPosting"],
-      "impact_cases": ["batch.interest_accrual_calc", "batch.interest_accrual_posting"],
+      "api_hints": [
+        "interestAccrualCalculation",
+        "interestAccrualPosting"
+      ],
+      "impact_cases": [
+        "batch.interest_accrual_calc",
+        "batch.interest_accrual_posting"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
     "loan_billing": {
       "label": "Loan account billing (EMI due generation)",
-      "path_hints": ["loanaccountbilling", "billingjob", "loanaccountbillingjob"],
-      "api_hints": ["loanAccountBillingJob"],
-      "impact_cases": ["batch.loan_account_billing"],
+      "path_hints": [
+        "loanaccountbilling",
+        "billingjob",
+        "loanaccountbillingjob"
+      ],
+      "api_hints": [
+        "loanAccountBillingJob"
+      ],
+      "impact_cases": [
+        "batch.loan_account_billing"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
@@ -132,15 +246,30 @@
         "loanAccountAssetCriteriaJob",
         "loanAccountAssetClassificationJob"
       ],
-      "impact_cases": ["batch.dpd_calc"],
-      "deep_cases": ["dpic.npa_dpi_movement_e2e"],
+      "impact_cases": [
+        "batch.dpd_calc"
+      ],
+      "deep_cases": [
+        "dpic.npa_dpi_movement_e2e"
+      ],
       "release_cases": []
     },
     "eod_bod": {
       "label": "EOD / BOD orchestration",
-      "path_hints": ["runeodjobs", "runbodjobs", "trialbalance", "eod", "bod"],
-      "api_hints": ["runEODJobs", "runBODJobs"],
-      "impact_cases": ["accounting.eod_core_batches"],
+      "path_hints": [
+        "runeodjobs",
+        "runbodjobs",
+        "trialbalance",
+        "eod",
+        "bod"
+      ],
+      "api_hints": [
+        "runEODJobs",
+        "runBODJobs"
+      ],
+      "impact_cases": [
+        "accounting.eod_core_batches"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
@@ -162,14 +291,23 @@
         "getLoanAccountBasicDetails",
         "getLoanAccountAccruedBPIAmount"
       ],
-      "impact_cases": ["accounting.read_smoke"],
+      "impact_cases": [
+        "accounting.read_smoke"
+      ],
       "deep_cases": [],
       "release_cases": [],
       "fallback_case": "health.accounting"
     },
     "write_ops": {
       "label": "Write / approve / update (non-batch)",
-      "path_hints": ["create", "update", "approve", "submit", "assign", "processor.java"],
+      "path_hints": [
+        "create",
+        "update",
+        "approve",
+        "submit",
+        "assign",
+        "processor.java"
+      ],
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],
@@ -178,15 +316,28 @@
     },
     "mandates_si": {
       "label": "Mandates & standing instructions",
-      "path_hints": ["mandate", "enach", "sipresentation", "standing"],
-      "api_hints": ["fetchFailedSIPresentationList", "expirePendingMandatesBatchJob"],
-      "impact_cases": ["si.fetch_failed_presentation_list"],
+      "path_hints": [
+        "mandate",
+        "enach",
+        "sipresentation",
+        "standing"
+      ],
+      "api_hints": [
+        "fetchFailedSIPresentationList",
+        "expirePendingMandatesBatchJob"
+      ],
+      "impact_cases": [
+        "si.fetch_failed_presentation_list"
+      ],
       "deep_cases": [],
       "release_cases": []
     },
     "insurance": {
       "label": "Insurance legs",
-      "path_hints": ["insurance", "outbounddisbursement"],
+      "path_hints": [
+        "insurance",
+        "outbounddisbursement"
+      ],
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],
@@ -194,7 +345,10 @@
     },
     "portfolio": {
       "label": "Portfolio transfer",
-      "path_hints": ["portfoliotransfer", "portfolio_transfer"],
+      "path_hints": [
+        "portfoliotransfer",
+        "portfolio_transfer"
+      ],
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],
@@ -203,7 +357,14 @@
     },
     "batch_other": {
       "label": "Other batch / bulk jobs",
-      "path_hints": ["batchnew/", "itemwriter", "itemreader", "batchjob", "bulkfile", "bulksg"],
+      "path_hints": [
+        "batchnew/",
+        "itemwriter",
+        "itemreader",
+        "batchjob",
+        "bulkfile",
+        "bulksg"
+      ],
       "api_hints": [],
       "impact_cases": [],
       "deep_cases": [],

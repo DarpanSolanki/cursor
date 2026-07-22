@@ -1,3 +1,6 @@
+2026-07-22 | workspace harness | DCF matrix true-results — full scope + fresh disburse PASS
+- Registry `dcf.group_parent_last_child_e2e_full` (ACCEPTANCE_SCOPE=full); RSTCRE drain retry; non-last txn-audit phase. Matrix @935c527430: S1/S2/full/fresh(SEED_EXTRA=0) PASS. GAP-074 still OPEN (INT-180 parked). Fresh+EXTRA seed 134253 documented.
+
 2026-07-22 | workspace harness | DCF e2e vs accounting `935c52743` — Pass SEED_EXTRA=0|1 obs123
 - group_parent_last_child_dfc_local_e2e: ACCEPTANCE_SCOPE obs123|full (GAP-074 Out-of-scope vs fail); last-child Obs2 amount==principal excess=0; force-bill asserts via CRN shape accountId||17…[||dfdId] (GL posts, not LAN/narration); legacy CRN collision gate; two-phase EXTRA loanRepayment. Local Pass pin 6000137433 DEATH_DATE=2025-08-02. Product CRN fix owned by accounting SHA (sibling).
 

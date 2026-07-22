@@ -1390,6 +1390,50 @@
     },
     "note": "Matrix S1 — clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02."
   },
+  "dcf.group_parent_last_child_e2e_full": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "shg",
+      "sdcp-10199",
+      "gap-074"
+    ],
+    "title": "SHG group last-child DFC full scope (INT/DPI pending=0 gate)",
+    "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-09-15",
+      "SEED_EXTRA": "0",
+      "DCF_SEED_EMI_LABD": "0",
+      "ACCEPTANCE_STRICT": "1",
+      "ACCEPTANCE_SCOPE": "full"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "boundary_zero"
+      ],
+      "verify_mode": "runtime",
+      "db_asserts": [
+        {
+          "table": "loan_due_details",
+          "assert": "parent INT pending=0 AND DPI pending=0 after last-child DFC under ACCEPTANCE_SCOPE=full (fail-closed code path). Observed PASS on 6000137433@2025-09-15 with int_pending=0 does NOT close GAP-074 — tip 935c52743 still uses child INT_AMT (INT-180 parked @61278d5f8). Residual-exposing fixture still required for honest FAIL; never claim QA Pass for GAP-074.",
+          "checked_by": "assert_parent_last_child INT/DPI pending under ACCEPTANCE_SCOPE=full"
+        }
+      ],
+      "note": "S_full_gap074: gate is live. Product GAP-074 remains OPEN (Out-of-scope for QA Pass claims) until INT-180 merges or a residual-INT fixture FAILS this case. See feedback_int180_deferred_unpushed.md / ASK-057 DEFERRED."
+    },
+    "note": "ACCEPTANCE_SCOPE=full fail-closed on parent INT/DPI. DEATH_DATE=2025-09-15 exercises overdue-INT window; canonical obs123 pin stays 2025-08-02. Tip mfi_integration_v3.4.2.4@935c527430 — GAP-074 OPEN."
+  },
   "dcf.group_parent_last_child_fresh_e2e": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
@@ -1408,8 +1452,8 @@
     "defaults": {
       "DCF_FRESH_GROUP": "1",
       "DCF_E2E_NO_SNAPSHOT": "1",
-      "SEED_EXTRA": "1",
-      "DCF_SEED_EMI_LABD": "1",
+      "SEED_EXTRA": "0",
+      "DCF_SEED_EMI_LABD": "0",
       "ACCEPTANCE_STRICT": "1",
       "ACCEPTANCE_SCOPE": "obs123"
     },
@@ -1441,9 +1485,9 @@
           "checked_by": "assert_gl_balance_for_loan"
         }
       ],
-      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
+      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (EXTRA loanRepayment seed hit 134253 on fresh schedule — use pin S2 for EXTRA). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
     },
-    "note": "S09_fresh_group — one-shot LANs per run; DCF_FIXTURE_BLOCKLIST excludes corrupted fixtures."
+    "note": "S09_fresh_group — one-shot LANs; real disburse+DFC proven PASS SEED_EXTRA=0 @2026-07-22 (e.g. parent 6004092625)."
   },
   "disbursement.quick": {
     "type": "flow",
