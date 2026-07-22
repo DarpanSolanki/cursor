@@ -93,8 +93,8 @@ Parent can CLOSE after last-child DFC with residual pending INT (DPI on 3.7.1) w
 | S1 | `ACCEPTANCE_SCOPE=obs123 SEED_EXTRA=0` pin `6000137433` / `2025-08-02` | **PASS** | Obs1–3 + RSTCRE + CRN uniqueness |
 | S2 | `obs123 SEED_EXTRA=1 DCF_SEED_EMI_LABD=1` same pin | **PASS** | EXTRA + dirty EMI labd |
 | S_full | `ACCEPTANCE_SCOPE=full DEATH_DATE=2025-09-15` | **PASS** (gate) | `int_pending=0` on this fixture — **does not close GAP-074**; INT-180 still parked `@61278d5f8` |
-| Fresh | `DCF_FRESH_GROUP=1 SEED_EXTRA=0` | **PASS** | Real disburse→billing→DFC (e.g. parent `6004092625`). EXTRA seed on fresh can `134253` — use pin S2 for EXTRA |
-| Fresh+EXTRA | `DCF_FRESH_GROUP=1 SEED_EXTRA=1` | **FAIL** (seed) | loanRepayment EXTRA seed `134253` — harness/next action; not a Writer regression |
+| Fresh | `DCF_FRESH_GROUP=1 SEED_EXTRA=0` | **PASS** | Real disburse→billing→DFC (e.g. parent `6004092625`) |
+| Fresh+EXTRA | `DCF_FRESH_GROUP=1 SEED_EXTRA=1` | **PASS** | Unique per-phase CRN (no `134253`); `DCF_FRESH_EMI_MONTHS_BACK=2` so advance EMI is past (future dues→EXCESS). e.g. parent `6004093925` EXTRA≈509 |
 
 **GAP-074:** still **OPEN**. Full-scope fail-closed assert is live; do **not** claim QA Pass for INT residual until INT-180 merges or a residual-exposing fixture FAILS `dcf.group_parent_last_child_e2e_full`.
 

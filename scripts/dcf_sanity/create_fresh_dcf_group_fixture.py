@@ -74,21 +74,37 @@ def _midnight_ms(d: date) -> str:
 
 
 def plan_disburse_dates(anchor: date | None = None) -> dict[str, str]:
-    """Align disburse + EMI dates so death can land mid-schedule with billable history."""
+    """Align disburse + EMI dates so death can land mid-schedule with billable history.
+
+    Default first EMI is two calendar months before the latest past EMI-day so the schedule
+    has ≥2 past installments. That lets SEED_EXTRA settle a *past* advance INT via
+    loanRepayment (future dues post as EXCESS_AMT and never raise advance_int_paid).
+    Override with DCF_FRESH_EMI_MONTHS_BACK=1 for single-past-EMI spines (SEED_EXTRA=0).
+    """
     anchor = anchor or date.today()
     emi_day = int(os.environ.get("DCF_FRESH_EMI_DAY", "14"))
+    months_back = int(os.environ.get("DCF_FRESH_EMI_MONTHS_BACK", "2"))
+    if months_back < 1:
+        months_back = 1
+
+    def _shift_month(d: date, delta: int) -> date:
+        y, m = d.year, d.month + delta
+        while m < 1:
+            m += 12
+            y -= 1
+        while m > 12:
+            m -= 12
+            y += 1
+        return date(y, m, emi_day)
+
+    # Latest EMI-day on/before anchor, then walk back (months_back - 1) more months.
     first_emi = date(anchor.year, anchor.month, emi_day)
     if first_emi >= anchor:
-        if anchor.month == 1:
-            first_emi = date(anchor.year - 1, 12, emi_day)
-        else:
-            first_emi = date(anchor.year, anchor.month - 1, emi_day)
+        first_emi = _shift_month(first_emi, -1)
+    first_emi = _shift_month(first_emi, -(months_back - 1))
     disburse = first_emi - timedelta(days=60)
-    second_emi = first_emi
-    if anchor.month == 12:
-        third_emi = date(anchor.year + 1, 1, emi_day)
-    else:
-        third_emi = date(anchor.year, anchor.month + 1, emi_day)
+    second_emi = _shift_month(first_emi, 1)
+    third_emi = _shift_month(first_emi, 2)
     return {
         "disburse_date": disburse.isoformat(),
         "disburse_ms": _midnight_ms(disburse),
@@ -501,6 +517,25 @@ SELECT to_char(GREATEST(DATE '{death_date}', (
   ) AND lid.is_deleted = false
 ))::date, 'YYYY-MM-DD');
 """)
+    # EXTRA seed needs a *past* advance EMI billed; extend through today (and second EMI+1).
+    if os.environ.get("SEED_EXTRA", "0") != "0":
+        billing_through = psql(f"""
+SELECT to_char(GREATEST(
+  DATE '{billing_through}',
+  CURRENT_DATE,
+  (
+    SELECT (lid.installment_date::date + INTERVAL '1 day')
+    FROM mfi_accounting.loan_installment_details lid
+    JOIN mfi_accounting.loan_account c ON c.account_id = lid.loan_account_id
+    WHERE c.parent_loan_account_id = (
+      SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number = '{parent_lan}'
+    ) AND lid.is_deleted = false
+    ORDER BY lid.installment_date
+    OFFSET 1 LIMIT 1
+  )
+)::date, 'YYYY-MM-DD');
+""")
+        print(f"  SEED_EXTRA billing_through extended → {billing_through}")
     sync_billing_for_group(parent_lan, children, billing_through)
 
     child1, child2 = children[0], children[1]

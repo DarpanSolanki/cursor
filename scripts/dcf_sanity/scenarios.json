@@ -213,7 +213,7 @@
         "DCF_SEED_EMI_LABD": "0"
       },
       "expect_status": "PASS",
-      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore. Default SEED_EXTRA=0 — EXTRA loanRepayment seed can 134253 on fresh schedule (use pin S2 for EXTRA). Same two-path spine + Obs2 last-child amount rules as S08. Proven PASS 2026-07-22 parent 6004092625."
+      "note": "Never reuses blocklisted fixtures (6003896527/6933/6934). One-shot LANs; skip dcf_fixture_backup restore. Default SEED_EXTRA=0 (fast). SEED_EXTRA=1 PASS with unique CRNs + DCF_FRESH_EMI_MONTHS_BACK=2. Proven PASS SEED_EXTRA=0 parent 6004092625; SEED_EXTRA=1 parent 6004093925 @2026-07-22."
     },
     {
       "id": "S09_reverse_feed_reupload",

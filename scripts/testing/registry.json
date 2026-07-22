@@ -1485,9 +1485,9 @@
           "checked_by": "assert_gl_balance_for_loan"
         }
       ],
-      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (EXTRA loanRepayment seed hit 134253 on fresh schedule — use pin S2 for EXTRA). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
+      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (fast spine). SEED_EXTRA=1 PASS with unique receipt CRNs + DCF_FRESH_EMI_MONTHS_BACK=2 (past advance EMI; future dues→EXCESS). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
     },
-    "note": "S09_fresh_group — one-shot LANs; real disburse+DFC proven PASS SEED_EXTRA=0 @2026-07-22 (e.g. parent 6004092625)."
+    "note": "S09_fresh_group — one-shot LANs; PASS SEED_EXTRA=0 (e.g. 6004092625) and SEED_EXTRA=1 (e.g. 6004093925 EXTRA≈509) @2026-07-22."
   },
   "disbursement.quick": {
     "type": "flow",

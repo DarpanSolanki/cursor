@@ -845,12 +845,148 @@ WHERE ldd.loan_account_id=la.account_id AND ldd.component_type='INT' AND ldd.is_
     }
 
 
+def _eod_ms_ist(iso_date: str) -> str:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    d = datetime.strptime(iso_date, "%Y-%m-%d").date()
+    return str(
+        int(datetime(d.year, d.month, d.day, 18, 0, 0, tzinfo=ZoneInfo("Asia/Kolkata")).timestamp() * 1000)
+    )
+
+
+def _advance_emi_labd_count(child_lan: str, advance_due: str) -> int:
+    row = psql(f"""
+SELECT COUNT(*)::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_installment_details lid ON lid.id = labd.loan_installment_details_id
+JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+WHERE la.la_account_number = '{child_lan}' AND lid.is_deleted = false
+  AND lid.installment_date::date = DATE '{advance_due}';
+""")
+    return int(row or "0")
+
+
+def _ensure_advance_emi_labd_harness(child_lan: str, advance_due: str) -> None:
+    """When local billing postTransaction fails (operation_mode null), insert EMI-shaped labd
+    from real schedule amounts for advance_due — same pattern as create_fresh_dcf_group_fixture.
+    Without labd, loanRepayment treats the cycle as EXCESS (not due settlement).
+    """
+    if _advance_emi_labd_count(child_lan, advance_due) > 0:
+        return
+    account_id = psql(
+        f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';"
+    )
+    row = psql(f"""
+SELECT lid.id::text,
+       COALESCE(SUM(CASE WHEN ldd.component_type='PRIN' THEN ldd.due_amount ELSE 0 END),0)::text,
+       COALESCE(SUM(CASE WHEN ldd.component_type='INT' THEN ldd.due_amount ELSE 0 END),0)::text
+FROM mfi_accounting.loan_installment_details lid
+JOIN mfi_accounting.loan_account la ON la.account_id = lid.loan_account_id
+LEFT JOIN mfi_accounting.loan_due_details ldd
+  ON ldd.loan_installment_details_id = lid.id AND ldd.is_deleted = false
+WHERE la.la_account_number = '{child_lan}' AND lid.is_deleted = false
+  AND lid.installment_date::date = DATE '{advance_due}'
+GROUP BY lid.id
+LIMIT 1;
+""")
+    if not row:
+        raise RuntimeError(f"EXTRA seed: no installment on {advance_due} for {child_lan}")
+    lid_id, prin, interest = row.split("|", 2)
+    billing_amt = Decimal(prin) + Decimal(interest)
+    emi_ref = f"EMI_HARNESS_{child_lan}_{advance_due.replace('-', '')}"
+    psql_multi(f"""
+INSERT INTO mfi_accounting.loan_account_billing_details (
+  account_id, loan_installment_details_id, billing_amount, principal_amount,
+  interest_amount, transaction_value_date, transaction_reference_number, reversed,
+  created_on, created_by, updated_on, updated_by
+)
+SELECT {account_id}, {lid_id}, {billing_amt}, {prin}, {interest},
+       lid.installment_date, '{emi_ref}', false,
+       NOW(), 'DCF_EXTRA_EMI_LABD', NOW(), 'DCF_EXTRA_EMI_LABD'
+FROM mfi_accounting.loan_installment_details lid WHERE lid.id = {lid_id};
+""")
+    print(f"  EXTRA seed: EMI labd harness advance={advance_due} lid={lid_id} amt={billing_amt} ref={emi_ref}")
+
+
+def _ensure_advance_installment_billed(child_lan: str, advance_due: str) -> None:
+    """Ensure advance EMI has a labd so loanRepayment settles dues (not EXCESS_AMT).
+
+    Prefer real accrual+billing for *past* advance dues; on local postTransaction failure fall
+    back to EMI labd harness (same as fresh fixture). Future advance dues cannot be settled by
+    cash loanRepayment — fail closed (use DCF_FRESH_EMI_MONTHS_BACK>=2 or pin S2).
+    """
+    from datetime import date, datetime, timedelta
+
+    if _advance_emi_labd_count(child_lan, advance_due) > 0:
+        print(f"  EXTRA seed: advance EMI {advance_due} already billed (labd present)")
+        return
+
+    if date.fromisoformat(advance_due) > date.today():
+        raise RuntimeError(
+            f"EXTRA seed Out-of-scope: advance EMI {advance_due} is still future vs today — "
+            f"loanRepayment posts EXCESS_AMT only (advance_int_paid stays 0). "
+            f"Fresh fixture needs ≥2 past EMIs (DCF_FRESH_EMI_MONTHS_BACK>=2) or use pin S2."
+        )
+
+    sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
+    from clb_queue_harness import (  # type: ignore
+        quarantine_billing_portfolio,
+        restore_billing_portfolio_quarantine,
+    )
+
+    account_id = int(psql(
+        f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';"
+    ))
+    parent_id = psql(f"""
+SELECT COALESCE(parent_loan_account_id, account_id)::text
+FROM mfi_accounting.loan_account WHERE account_id={account_id};
+""")
+    sibling_ids = [
+        int(x)
+        for x in subprocess.check_output(
+            [*PG, "-c", f"""
+SELECT account_id::text FROM mfi_accounting.loan_account
+WHERE (account_id={parent_id} OR parent_loan_account_id={parent_id}) AND is_deleted=false;
+"""],
+            env=PG_ENV,
+            text=True,
+        ).strip().split("\n")
+        if x.strip()
+    ]
+    bill_d = (datetime.strptime(advance_due, "%Y-%m-%d").date() + timedelta(days=1)).isoformat()
+    jt = _eod_ms_ist(bill_d)
+    print(f"  EXTRA seed: try billing advance EMI due={advance_due} job_date={bill_d} ({jt})")
+    quarantine_billing_portfolio(int(parent_id), [i for i in sibling_ids if i != int(parent_id)])
+    try:
+        for api in ("interestAccrualCalculation", "interestAccrualPosting", "loanAccountBillingJob"):
+            started = int(time.time())
+            try:
+                fire_batch(api, jt)
+                wait_batch_by_start(api, started, timeout_s=180)
+            except RuntimeError as e:
+                print(f"  WARN: {api} skipped ({e}) — EMI labd harness may apply")
+    finally:
+        restore_billing_portfolio_quarantine()
+
+    if _advance_emi_labd_count(child_lan, advance_due) > 0:
+        print(f"  EXTRA seed: advance EMI billed via batch for {advance_due}")
+        return
+
+    _ensure_advance_emi_labd_harness(child_lan, advance_due)
+    if _advance_emi_labd_count(child_lan, advance_due) <= 0:
+        raise RuntimeError(
+            f"EXTRA seed Out-of-scope: no labd for advance EMI {advance_due} on {child_lan} "
+            f"(loanRepayment would post EXCESS only; use pin S2 or fix local billing)"
+        )
+
+
 def seed_extra_via_loan_repayment(child_lan: str, death_date: str) -> Decimal:
     """Real loanRepayment path so DFC claim sees EXTRA (advance INT paid past death-1).
 
     Two-phase (mirrors appropriation order — do not lump PRIN+future INT in one repay):
       1) Catch-up open dues with due_date <= death-1 only
-      2) Pay (and lightly overpay) the first INT EMI with due_date > death-1
+      2) Bill advance EMI if needed, then pay full open dues on that due_date (+ light overpay)
     Resets child to regular (non-NPA) slab so LOAN_REPAYMENT/CASH posts.
     """
     import sys
@@ -899,9 +1035,14 @@ WHERE la.la_account_number='{child_lan}' AND ldd.component_type='INT' AND ldd.is
         raise RuntimeError(f"no unpaid advance INT due after death-1 for {child_lan}")
 
     today_ms = str(int(time.time() * 1000))
+    _repay_seq = 0
 
     def _fire_repay(repay_amt: str, value_date_ms: str, tag: str) -> None:
-        crn = f"A2X{child_lan[-4:]}{int(time.time())}"[:32]
+        nonlocal _repay_seq
+        _repay_seq += 1
+        # Unique per phase: second-resolution CRN collides when phase1+phase2 fire in the
+        # same second → ReceiptNumberDedupProcessor 134253 (Fresh+EXTRA fail mode).
+        crn = f"A2X{child_lan[-4:]}{_repay_seq}{time.time_ns()}"[:32]
         body = {
             "loan_repayment_details": {
                 "account_number": child_lan,
@@ -919,7 +1060,8 @@ WHERE la.la_account_number='{child_lan}' AND ldd.component_type='INT' AND ldd.is
         env["headers"]["actor_type"] = "CUSTOMER"
         print(
             f"  EXTRA seed: loanRepayment child={child_lan} amt={repay_amt} "
-            f"death_m1={death_m1} advance_due={advance_due} value_date={value_date_ms} ({tag})"
+            f"death_m1={death_m1} advance_due={advance_due} value_date={value_date_ms} "
+            f"crn={crn} ({tag})"
         )
         result = fire_api("loanRepayment", env, timeout_s=180)
         code, status = result.response_status()
@@ -938,10 +1080,13 @@ WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
     vd_catchup = today_ms
     if catchup and Decimal(catchup) > 0:
         _fire_repay(catchup, vd_catchup, "phase1 catch-up through death-1")
+        time.sleep(0.05)
     else:
         print(f"  EXTRA seed: phase1 skip — no open dues through {death_m1}")
 
-    # Phase 2 — advance INT EMI (+ small overpay) so paid_amount lands on due_date > death-1.
+    # Bill advance EMI before phase2 — unbilled future dues → EXCESS_AMT, not INT paid.
+    _ensure_advance_installment_billed(child_lan, advance_due)
+
     advance_int = psql(f"""
 SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::numeric(20,0)
 FROM mfi_accounting.loan_due_details ldd
@@ -952,13 +1097,20 @@ WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
 """)
     if not advance_int or Decimal(advance_int) <= 0:
         raise RuntimeError(f"EXTRA seed: advance INT still 0 open on {advance_due} after phase1")
+    advance_cycle = psql(f"""
+SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::numeric(20,0)
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false
+  AND ldd.due_date::date = '{advance_due}'::date
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0;
+""")
     advance_ms = str(
         int(time.mktime(time.strptime(f"{advance_due} 12:00:00", "%Y-%m-%d %H:%M:%S")) * 1000)
     )
     vd_advance = str(max(int(today_ms), int(advance_ms)))
-    # Overpay so appropriation still leaves surplus on INT after any same-cycle PRIN.
-    phase2_amt = str(int(Decimal(advance_int) + Decimal("250")))
-    _fire_repay(phase2_amt, vd_advance, "phase2 advance INT + overpay")
+    phase2_amt = str(int(Decimal(advance_cycle or "0") + Decimal("250")))
+    _fire_repay(phase2_amt, vd_advance, "phase2 advance cycle (PRIN+INT) + overpay")
 
     proxy = _extra_proxy(child_lan, death_date)
     print(

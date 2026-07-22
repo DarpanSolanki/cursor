@@ -1,4 +1,7 @@
-## 2026-07-22 | workspace | gaps digest token-tax cut
+## 2026-07-22 | workspace harness | Fresh+EXTRA loanRepayment seed PASS (134253 + future-EMI EXCESS)
+- EXTRA seed: unique per-phase receipt/CRN (no ReceiptNumberDedup 134253); phase2 pays full advance cycle after labd; `DCF_FRESH_EMI_MONTHS_BACK=2` so advance EMI is past (future dues post EXCESS_AMT). Fresh+EXTRA PASS parent 6004093925; S2 pin EXTRA reaffirmed. GAP-074 still OPEN.
+
+2026-07-22 | workspace | gaps digest token-tax cut
 Session bootstrap reads `.cursor/gaps-and-risks-digest.md` (≤10KB, High verbatim) instead of full gaps-and-risks.md; escalate to SoT when GAP-id/area flagged. Builder `scripts/bin/build-gaps-digest.sh`; regen in intel-session-sync.sh. Added `.cursorindexingignore` (excludes cursor-bundle/kg/ etc from indexer).
 
 2026-07-22 | workspace harness | DCF matrix true-results — full scope + fresh disburse PASS
