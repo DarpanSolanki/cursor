@@ -27,19 +27,19 @@ BEAN_RE = re.compile(r'<bean>([^<]+)</bean>')
 PRODUCER_ID_RE = re.compile(r'<producerId>([^<]+)</producerId>')
 
 ID_PREFIX_TO_SERVICE: dict[str, str] = {
-    "accounting": "novopay-platform-accounting-v2",
-    "payments": "novopay-platform-payments",
-    "los": "novopay-mfi-los",
-    "actor": "novopay-platform-actor",
-    "task": "novopay-platform-task",
-    "approval": "novopay-platform-approval",
-    "notification": "novopay-platform-notifications",
-    "notifications": "novopay-platform-notifications",
-    "dms": "novopay-platform-dms",
-    "masterdata": "novopay-platform-masterdata-management",
-    "batch": "novopay-platform-batch",
-    "authorization": "novopay-platform-authorization",
-    "audit": "novopay-platform-audit",
+    "accounting": "trustt-platform-accounting",
+    "payments": "trustt-platform-payments",
+    "los": "trustt-platform-los",
+    "actor": "trustt-platform-actor",
+    "task": "trustt-platform-task",
+    "approval": "trustt-platform-approval",
+    "notification": "trustt-platform-notifications",
+    "notifications": "trustt-platform-notifications",
+    "dms": "trustt-platform-dms",
+    "masterdata": "trustt-platform-masterdata-management",
+    "batch": "trustt-platform-batch",
+    "authorization": "trustt-platform-authorization",
+    "audit": "trustt-platform-audit",
 }
 
 MONEY_KEYWORDS = (
@@ -50,24 +50,24 @@ MONEY_KEYWORDS = (
 
 # Curated Kafka consumer → orchestration request (code-verified entry points)
 KAFKA_CONSUMER_REQUEST: dict[str, tuple[str, str]] = {
-    "lmsMessageBrokerConsumer": ("novopay-platform-accounting-v2", "disburseLoan"),
-    "bulkCollectionFailedRecordConsumer": ("novopay-platform-accounting-v2", "bulkCollectionFailedRecord"),
+    "lmsMessageBrokerConsumer": ("trustt-platform-accounting", "disburseLoan"),
+    "bulkCollectionFailedRecordConsumer": ("trustt-platform-accounting", "bulkCollectionFailedRecord"),
 }
 
 KAFKA_TOPIC_REQUEST: dict[str, tuple[str, str]] = {
-    "disburse_loan_api_": ("novopay-mfi-los", "disburseLoan"),
-    "los_lms_disbursement_sync": ("novopay-platform-accounting-v2", "disburseLoan"),
-    "bulk_collection_data_": ("novopay-platform-accounting-v2", "bulkCollectionData"),
-    "bulk_collection_data_failed_": ("novopay-platform-accounting-v2", "bulkCollectionFailedRecord"),
+    "disburse_loan_api_": ("trustt-platform-los", "disburseLoan"),
+    "los_lms_disbursement_sync": ("trustt-platform-accounting", "disburseLoan"),
+    "bulk_collection_data_": ("trustt-platform-accounting", "bulkCollectionData"),
+    "bulk_collection_data_failed_": ("trustt-platform-accounting", "bulkCollectionFailedRecord"),
 }
 
 # HTTP calls known from Java (not always in orchestration XML)
 CURATED_HTTP_CONTRACTS: list[dict] = [
     {
         "id": "contract:http:payments:batchExpiry->accounting:updateCollectionBatchDetails",
-        "producer_service": "novopay-platform-payments",
+        "producer_service": "trustt-platform-payments",
         "producer_request": "updateExpiredScheduledBatchStatus",
-        "consumer_service": "novopay-platform-accounting-v2",
+        "consumer_service": "trustt-platform-accounting",
         "consumer_request": "updateCollectionBatchDetails",
         "function_sub_code": "EXPIRED",
         "money": True,
@@ -320,8 +320,8 @@ def build_kafka_contracts(result: ScanResult) -> list[dict]:
         contracts.append({
             "id": sync_id,
             "protocol": "KAFKA",
-            "producer": {"service": "novopay-platform-accounting-v2", "topic_prefix": "los_lms_disbursement_sync"},
-            "consumer": {"service": "novopay-mfi-los", "bean": "DisbursementSyncService", "request": "disburseLoan"},
+            "producer": {"service": "trustt-platform-accounting", "topic_prefix": "los_lms_disbursement_sync"},
+            "consumer": {"service": "trustt-platform-los", "bean": "DisbursementSyncService", "request": "disburseLoan"},
             "money": True,
             "tests": {"ftg_id": "ftf:disburse.kafka", "coverage": "gap"},
             "precedents": ["GAP-entity_type"],

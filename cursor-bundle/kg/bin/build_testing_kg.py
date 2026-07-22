@@ -100,7 +100,7 @@ def main() -> None:
                 "id": f"test_unit:{ut}",
                 "kind": "test_unit",
                 "label": ut,
-                "repo": "novopay-platform-accounting-v2",
+                "repo": "trustt-platform-accounting",
                 "role": "junit",
                 "src": "flows.jsonl",
             })

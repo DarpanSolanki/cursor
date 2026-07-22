@@ -10,7 +10,7 @@ Orchestration parsing sees Request→Processor chains but NOT:
 Emits activation:* nodes + edges:
   - activates: activation:api_master:<api> -> request:<api> (when Request exists)
   - ui_calls: doc:webapp:routes -> request:<api>
-  - wires: activation:framework:<class> -> service:novopay-platform-lib
+  - wires: activation:framework:<class> -> service:trustt-platform-lib
 
 Usage: build_activation.py <accumulated_raw.jsonl>
 """
@@ -39,18 +39,18 @@ WEBAPP_API = re.compile(
 )
 
 FRAMEWORK_ANCHORS = [
-    ("ServiceGatewayController", "novopay-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java"),
-    ("ServiceOrchestrator", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java"),
-    ("ProcessorOrchestrator", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ProcessorOrchestrator.java"),
-    ("RequestProcessorImpl", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/RequestProcessorImpl.java"),
-    ("NovopayCacheConfiguration", "novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java"),
-    ("NovopayApiClientConfig", "novopay-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayApiClientConfig.java"),
-    ("Loader", "novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/common/Loader.java"),
-    ("AutoScheduler", "novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java"),
+    ("ServiceGatewayController", "trustt-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java"),
+    ("ServiceOrchestrator", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java"),
+    ("ProcessorOrchestrator", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ProcessorOrchestrator.java"),
+    ("RequestProcessorImpl", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/RequestProcessorImpl.java"),
+    ("NovopayCacheConfiguration", "trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java"),
+    ("NovopayApiClientConfig", "trustt-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayApiClientConfig.java"),
+    ("Loader", "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/common/Loader.java"),
+    ("AutoScheduler", "trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java"),
 ]
 
 # --- initial-setup: api_master seeds ---
-setup_root = os.path.join(ROOT, "novopay-platform-initial-setup", "flyway")
+setup_root = os.path.join(ROOT, "trustt-platform-initial-setup", "flyway")
 api_count = 0
 api_linked = 0
 if os.path.isdir(setup_root):
@@ -68,7 +68,7 @@ if os.path.isdir(setup_root):
             emit({
                 "t": "node", "id": aid, "kind": "activation",
                 "label": f"api_master: {name}",
-                "repo": "novopay-platform-initial-setup",
+                "repo": "trustt-platform-initial-setup",
                 "role": "gateway routing seed — HTTP/cross-service call target",
                 "src": rel,
             })
@@ -89,18 +89,18 @@ for cls, path in FRAMEWORK_ANCHORS:
     fid = f"activation:framework:{cls}"
     emit({
         "t": "node", "id": fid, "kind": "activation",
-        "label": cls, "repo": "novopay-platform-lib",
+        "label": cls, "repo": "trustt-platform-lib",
         "role": "global framework injection / batch bootstrap anchor",
         "src": path,
     })
     emit({
-        "t": "edge", "from": fid, "to": "service:novopay-platform-lib",
+        "t": "edge", "from": fid, "to": "service:trustt-platform-lib",
         "rel": "wires", "note": "platform-lib global entry",
         "src": path,
     })
 
 # --- webapp: UI API routes ---
-webapp_root = os.path.join(ROOT, "novopay-platform-webapp", "src")
+webapp_root = os.path.join(ROOT, "trustt-platform-webapp", "src")
 ui_apis = set()
 if os.path.isdir(webapp_root):
     for ts in glob.glob(os.path.join(webapp_root, "**", "*.ts"), recursive=True):
@@ -117,9 +117,9 @@ if os.path.isdir(webapp_root):
 emit({
     "t": "node", "id": "activation:webapp:ui_routes",
     "kind": "activation", "label": "Webapp UI API routes",
-    "repo": "novopay-platform-webapp",
+    "repo": "trustt-platform-webapp",
     "role": f"{len(ui_apis)} distinct getApiUrl targets",
-    "src": "novopay-platform-webapp/src/app/services/resource-factory.constants.ts",
+    "src": "trustt-platform-webapp/src/app/services/resource-factory.constants.ts",
 })
 ui_linked = 0
 for api in sorted(ui_apis):
@@ -128,7 +128,7 @@ for api in sorted(ui_apis):
             "t": "edge", "from": "activation:webapp:ui_routes",
             "to": f"request:{api}", "rel": "ui_calls",
             "note": "webapp calls via api-gateway",
-            "src": "novopay-platform-webapp/src",
+            "src": "trustt-platform-webapp/src",
         })
         ui_linked += 1
 

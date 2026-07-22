@@ -33,12 +33,12 @@ def infer_service(api_name: str) -> str:
     low = api_name.lower()
     if low.startswith(("loan", "post", "reverse", "gl", "fetch", "getloan", "collectionloan",
                        "disburse", "dpi", "interest", "cancel")):
-        return "novopay-platform-accounting-v2"
+        return "trustt-platform-accounting"
     if low.startswith(("updatecollection", "createorupdatecollection", "validatefinnone")):
-        return "novopay-platform-payments"
+        return "trustt-platform-payments"
     if low.startswith(("update", "create", "getborrower", "getbasic", "geo")):
-        return "novopay-mfi-los"
-    return "novopay-platform-task"
+        return "trustt-platform-los"
+    return "trustt-platform-task"
 
 
 def parse_copy_block(text: str, src: str) -> list[dict]:
@@ -69,7 +69,7 @@ def parse_copy_block(text: str, src: str) -> list[dict]:
 
 def scan_task_sql() -> list[dict]:
     found: list[dict] = []
-    root = os.path.join(WORKSPACE, "novopay-platform-initial-setup", "flyway")
+    root = os.path.join(WORKSPACE, "trustt-platform-initial-setup", "flyway")
     for path in glob.glob(os.path.join(root, "**", "*.sql"), recursive=True):
         if "task" not in path.replace("\\", "/"):
             continue
@@ -103,7 +103,7 @@ def main() -> None:
             "money": api.lower().startswith(
                 ("loan", "post", "collection", "disburse", "reverse", "dpi", "interest", "cancel")
             ),
-            "repo": "novopay-platform-initial-setup",
+            "repo": "trustt-platform-initial-setup",
             "src": row["src"],
         })
         emit({
@@ -121,10 +121,10 @@ def main() -> None:
             "rel": "consumes_via",
             "src": row["src"],
         })
-        if svc != "novopay-platform-task":
+        if svc != "trustt-platform-task":
             emit({
                 "t": "edge",
-                "from": "service:novopay-platform-task",
+                "from": "service:trustt-platform-task",
                 "to": f"service:{svc}",
                 "rel": "contract",
                 "note": f"DB_CALLBACK {action} → {api}",

@@ -50,6 +50,11 @@ fi
 mv "$TMP" "$CHANGELOG"
 echo "[changelog-add] prepended to $CHANGELOG"
 
+# Keep BRANCH-INDEX.md aligned with CHANGELOG (audit + kg-flow rows).
+if [[ -f "$SCRIPT_DIR/refresh_branch_index.py" ]]; then
+  python3 "$SCRIPT_DIR/refresh_branch_index.py" || echo "[changelog-add] WARN: refresh_branch_index failed" >&2
+fi
+
 if echo "$HEADER" | grep -qiE 'kg-flow|KG-FLOW:' || echo "$DETAIL" | grep -q '^KG-FLOW:'; then
   cd "$ROOT"
   KG_DB="$BUNDLE/kg/data/kg.db"

@@ -20,11 +20,29 @@ from _paths import CHANGELOG
 
 HEADER = re.compile(r"^##\s+(.+)$", re.M)
 ERRCODE = re.compile(r"\b(1[0-9]{5})\b")
-TICKET = re.compile(r"\b(SDCP-\d+|SP-\d+|HSQA-\d+)\b")
+TICKET = re.compile(r"\b(SDCP-\d+|SP-\d+|HSQA-\d+|TDPFR-\d+|TDPQA-\d+)\b")
 SHA = re.compile(r"`?([0-9a-f]{7,40})`?")
 KG_FLOW = re.compile(r"\bkg-flow\b", re.I)
 KB_ONLY = re.compile(r"\b(kb-only|skip-kg)\b", re.I)
 KG_FLOW_DETAIL = re.compile(r"^KG-FLOW:\s*", re.I | re.M)
+BRANCH = re.compile(r"\b(mfi_(?:integration|release)_v\d+(?:\.\d+)*)\b")
+
+# Changelog "service" field → workspace repo folder (best-effort).
+SERVICE_TO_REPO = {
+    "accounting-v2": "trustt-platform-accounting",
+    "accounting": "trustt-platform-accounting",
+    "acct": "trustt-platform-accounting",
+    "payments": "trustt-platform-payments",
+    "los": "trustt-platform-los",
+    "platform-lib": "trustt-platform-lib",
+    "lib": "novopay-platform-lib",
+    "actor": "trustt-platform-actor",
+    "batch": "trustt-platform-batch",
+    "initial-setup": "trustt-platform-initial-setup",
+    "notifications": "trustt-platform-notifications",
+    "task": "trustt-platform-task",
+    "webapp": "trustt-platform-webapp",
+}
 
 
 def emit(o: dict) -> None:
@@ -45,6 +63,29 @@ def case_id_for(header: str, body: str) -> str:
         return f"case:{sha_m.group(1)[:12]}"
     digest = hashlib.sha1(f"{header}\n{body[:200]}".encode()).hexdigest()[:10]
     return f"case:anon:{digest}"
+
+
+def parse_header_fields(header: str) -> dict[str, str | None]:
+    """Parse `DATE | scope | service | branch | tag | title` when present."""
+    parts = [p.strip() for p in header.split("|")]
+    service = parts[2] if len(parts) >= 3 else None
+    branch = None
+    if len(parts) >= 4:
+        branch_m = BRANCH.search(parts[3]) or BRANCH.search(header)
+        branch = branch_m.group(1) if branch_m else parts[3] or None
+    else:
+        branch_m = BRANCH.search(header)
+        branch = branch_m.group(1) if branch_m else None
+    repo = None
+    if service:
+        key = service.lower().strip()
+        repo = SERVICE_TO_REPO.get(key)
+        if not repo:
+            for alias, mapped in SERVICE_TO_REPO.items():
+                if alias in key:
+                    repo = mapped
+                    break
+    return {"service": service, "branch": branch, "repo": repo}
 
 
 def main() -> int:
@@ -80,8 +121,9 @@ def main() -> int:
         cid = case_id_for(header, body)
         date = header.split("|", 1)[0].strip()
         sha_m = SHA.search(header)
-        tickets = sorted(set(TICKET.findall(body)))
+        tickets = sorted(set(TICKET.findall(header) + TICKET.findall(body)))
         errs = sorted(set(ERRCODE.findall(body)))
+        meta = parse_header_fields(header)
 
         emit(
             {
@@ -93,6 +135,9 @@ def main() -> int:
                 "sha": sha_m.group(1) if sha_m else None,
                 "tickets": tickets,
                 "error_codes": errs,
+                "service": meta["service"],
+                "branch": meta["branch"],
+                "repo": meta["repo"],
                 "src": "brain/changelog/CHANGELOG.md",
                 "kg_tier": "flow-precedent",
             }
