@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "updated": "2026-07-22",
+  "description": "Process selection matrix — speed by selection, never by weakening money gates. Cell: required | conditional(<trigger>) | skip.",
+  "classes": [
+    "question",
+    "read-only-rca",
+    "non-money-fix",
+    "money-fix",
+    "batch-dpi",
+    "release",
+    "docs-kb"
+  ],
+  "ttls_seconds": {
+    "kg_fresh": 900,
+    "env_smoke": 3600,
+    "services": 300,
+    "compile": 600,
+    "train_banner": 120
+  },
+  "money_floor": {
+    "comment": "These processes stay required on money-fix — ratchet forbids weaken to conditional/skip",
+    "processes": [
+      "train_banner",
+      "kg_watermark_gate",
+      "acceptance_coverage",
+      "ship_discipline",
+      "verify_mode_ratchet",
+      "enrichment_tier"
+    ]
+  },
+  "processes": {
+    "bootstrap_digest": {
+      "ttl_key": null,
+      "cells": {
+        "question": "required",
+        "read-only-rca": "required",
+        "non-money-fix": "required",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "required"
+      }
+    },
+    "expansion_gate": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "required",
+        "non-money-fix": "required",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "kg_validate": {
+      "ttl_key": "kg_fresh",
+      "cells": {
+        "question": "conditional(api_or_flow_named)",
+        "read-only-rca": "required",
+        "non-money-fix": "required",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "kg_fresh_sync": {
+      "ttl_key": "kg_fresh",
+      "cells": {
+        "question": "conditional(api_or_flow_named)",
+        "read-only-rca": "required",
+        "non-money-fix": "conditional(code_touch)",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "kg_watermark_gate": {
+      "ttl_key": "kg_fresh",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "conditional(cross_service_or_money_words)",
+        "non-money-fix": "skip",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "train_banner": {
+      "ttl_key": "train_banner",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "conditional(cross_service_or_money_words)",
+        "non-money-fix": "conditional(multi_repo)",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "env_smoke": {
+      "ttl_key": "env_smoke",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "conditional(qa_env_named)",
+        "non-money-fix": "skip",
+        "money-fix": "conditional(qa_env_named)",
+        "batch-dpi": "skip",
+        "release": "conditional(qa_env_named)",
+        "docs-kb": "skip"
+      }
+    },
+    "services_probe": {
+      "ttl_key": "services",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(needs_runtime)",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "skip",
+        "docs-kb": "skip"
+      }
+    },
+    "compile_java": {
+      "ttl_key": "compile",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(java_changed)",
+        "money-fix": "conditional(java_changed)",
+        "batch-dpi": "conditional(java_changed)",
+        "release": "skip",
+        "docs-kb": "skip"
+      }
+    },
+    "acceptance_coverage": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "skip",
+        "money-fix": "required",
+        "batch-dpi": "conditional(money_domain)",
+        "release": "conditional(money_in_release)",
+        "docs-kb": "skip"
+      }
+    },
+    "ship_discipline": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(pending_ship)",
+        "money-fix": "required",
+        "batch-dpi": "conditional(pending_ship)",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "verify_mode_ratchet": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "skip",
+        "money-fix": "required",
+        "batch-dpi": "conditional(money_domain)",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "dpi_sanity": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "skip",
+        "money-fix": "conditional(dpi_words)",
+        "batch-dpi": "required",
+        "release": "conditional(dpi_in_release)",
+        "docs-kb": "skip"
+      }
+    },
+    "flyway_pack": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(flyway_touched)",
+        "money-fix": "conditional(flyway_touched)",
+        "batch-dpi": "skip",
+        "release": "conditional(flyway_touched)",
+        "docs-kb": "skip"
+      }
+    },
+    "dev_test_bridge": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(jira_handoff)",
+        "money-fix": "conditional(jira_handoff)",
+        "batch-dpi": "skip",
+        "release": "required",
+        "docs-kb": "skip"
+      }
+    },
+    "enrichment_tier": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(shipped_code)",
+        "money-fix": "required",
+        "batch-dpi": "conditional(shipped_code)",
+        "release": "required",
+        "docs-kb": "conditional(brain_changelog)"
+      }
+    },
+    "hot_path_scan": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(code_touch)",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "skip",
+        "docs-kb": "skip"
+      }
+    },
+    "learn_phase": {
+      "ttl_key": null,
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "conditional(new_gotcha)",
+        "non-money-fix": "required",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "required",
+        "docs-kb": "conditional(kb_change)"
+      }
+    }
+  }
+}

@@ -233,6 +233,12 @@ def check(*, hard: bool = True) -> int:
         # Ratchet on every money/service check
         if (pending.get("tier") or "").lower() in ("money", "service", "workspace"):
             errors.extend(registry_proposals.check_ratchet())
+        try:
+            from process_router import check_money_ratchet
+
+            errors.extend(check_money_ratchet())
+        except Exception as exc2:  # pragma: no cover
+            errors.append(f"money-cell ratchet error: {exc2}")
     except Exception as exc:  # pragma: no cover
         errors.append(f"verify_mode/ratchet gate error: {exc}")
 

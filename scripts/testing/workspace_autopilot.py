@@ -436,6 +436,35 @@ def build_plan(
     except Exception as exc:  # noqa: BLE001
         directives.insert(0, f"KG STATE: (banner failed: {exc})")
 
+    # Process router PLAN (Upgrade 8) — speed by selection
+    try:
+        from process_router import compute_plan as proc_plan  # type: ignore
+
+        pp = proc_plan(kind, text, api_hint=api)
+        directives.insert(0, pp["line"])
+        # Honor SKIP/CACHED: drop matching auto steps (never weaken money required — those stay RUN)
+        skip_names = {n for n, _ in pp.get("skip") or []}
+        cached_names = {n for n, _ in pp.get("cached") or []}
+        step_map = {
+            "kg_validate": "kg_validate",
+            "kg_fresh": "kg_fresh_sync",
+            "hot_path_scan": "hot_path_scan",
+            "ship_test_plan": "ship_discipline",
+            "before_test": "services_probe",
+            "dpi_sanity": "dpi_sanity",
+        }
+        filtered: list[Step] = []
+        for s in steps:
+            pname = step_map.get(s.id)
+            if pname and pname in skip_names:
+                continue
+            if pname and pname in cached_names:
+                continue
+            filtered.append(s)
+        steps = filtered
+    except Exception as exc:  # noqa: BLE001
+        directives.insert(0, f"PLAN: (router failed: {exc})")
+
     return Plan(
         classification=kind,
         risk=base.get("risk", "Medium"),
@@ -601,6 +630,21 @@ def cmd_task(args: argparse.Namespace) -> int:
         state["last_api_hint"] = plan.api_hint
         state["last_risk"] = plan.risk
         state["last_input"] = text[:240]
+        state["last_task_text"] = text[:240]
+    save_state(state)
+    # stamp TTLs for steps that ran successfully (CACHED short-circuit next task)
+    try:
+        from process_router import stamp_ttl
+
+        for r in results:
+            if r.get("ok") and r.get("id") in ("kg_validate", "kg_fresh", "preflight"):
+                stamp_ttl("kg_fresh")
+            if r.get("ok") and r.get("id") in ("services", "services_probe"):
+                stamp_ttl("services")
+    except Exception:
+        pass
+
+    state = load_state()
     state["task_count"] = int(state.get("task_count") or 0) + 1
     save_state(state)
 
@@ -609,8 +653,8 @@ def cmd_task(args: argparse.Namespace) -> int:
         return 0
 
     print("## Workspace autopilot — task plan")
-    # Always surface train + KG banners first when present
-    top_prefixes = ("TRAINS:", "KG STATE:", "HARD STOP")
+    # Always surface PLAN + train + KG banners first when present
+    top_prefixes = ("PLAN [", "TRAINS:", "KG STATE:", "HARD STOP")
     top_lines = [d for d in plan.agent_directives if d.startswith(top_prefixes)]
     for line in top_lines:
         print(f"**{line}**")
@@ -692,6 +736,30 @@ def cmd_end(args: argparse.Namespace) -> int:
             )
     steps.append(Step("hub", "bash scripts/bin/write-intelligence-hub.sh", auto=True))
     results = execute_steps(steps, quiet=args.quiet)
+
+    # LEARN close (Upgrade 8) — capture → propose → enrichment decision
+    try:
+        from autonomy_loop import learn_close, wall_clock_log
+        from process_router import map_class, stamp_ttl
+
+        stamp_ttl("kg_fresh")
+        last = load_state()
+        text = str(last.get("last_task_text") or last.get("last_input") or "task end")
+        kind = str(last.get("last_classification") or "GENERAL")
+        t0 = time.time()
+        learn = learn_close(text=text, classification=kind)
+        elapsed = round(time.time() - t0, 2)
+        wall_clock_log(map_class(kind, text), elapsed)
+        results.append({"id": "learn_close", "ok": True, "elapsed_s": elapsed, **learn})
+        if not args.quiet:
+            print(
+                f"  ✓ learn_close {learn.get('learning_id')} "
+                f"tier={learn.get('enrichment_tier')} ({elapsed}s)"
+            )
+    except Exception as exc:  # noqa: BLE001
+        results.append({"id": "learn_close", "ok": False, "error": str(exc)})
+        if not args.quiet:
+            print(f"  · learn_close skipped: {exc}")
 
     ship = ship_and_continue(force=False, quiet=args.quiet)
     results.append({"id": "ship_and_continue", **ship})

@@ -48,11 +48,13 @@ One orchestrator. All intelligence layers **cross-learn** through `learning_bus.
 ## Session start (mandatory)
 
 ```bash
-bash scripts/bin/super-agent.sh session
-python3 cursor-bundle/kg/bin/kg.py validate   # abort if fail
+bash scripts/bin/super-agent.sh session   # stamps kg_fresh TTL
+# Loop: classify → PLAN (scripts/lib/process_matrix.json) → execute → LEARN close
+bash scripts/bin/super-agent.sh close --text "…" --classification BUG/RCA
+python3 cursor-bundle/kg/bin/kg.py validate   # abort if fail (when PLAN says RUN)
 ```
 
-Read `.cursor/workspace-intelligence-state.md`.
+Read `.cursor/workspace-intelligence-state.md`. Weekly: `intel-automation.sh weekly` → bus age + `SELF-REPORT.md`.
 
 ## Unified orient (one command, all layers)
 
@@ -70,6 +72,18 @@ Returns: KG flow/crud/why/cases + FTG + test_coverage + learnings + bus events.
 bash scripts/bin/super-agent.sh sync        # test map + platform + hints + hub
 bash scripts/bin/super-agent.sh sync --kg   # + full KG rebuild
 ```
+
+## Disk cleanup (local dev — archived service logs, scratch)
+
+Local services use `gradle bootRun`; rotated logs under `logs/*/archived` and `logs/*/archive` are safe to purge (~300MB+ typical).
+
+```bash
+bash scripts/bin/super-agent.sh clean           # audit reclaimable space
+bash scripts/bin/super-agent.sh clean --apply   # clean + fast-sync
+bash scripts/bin/workspace-disk-clean.sh --clean  # same disk pass (also in max-pass + autopilot end)
+```
+
+Active logs for **running** services are left intact; inactive services get large logs truncated.
 
 ## Testing with intelligence
 

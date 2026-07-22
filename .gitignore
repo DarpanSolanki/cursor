@@ -73,3 +73,7 @@ scripts/**/__pycache__/
 *.log
 *.pyc
 .idea/
+
+# Upgrade 8 process router state
+.cursor/.process-ttl-state.json
+.cursor/.process-money-floor.json

@@ -5,6 +5,12 @@
 ---
 ## 2026-07-21 | workspace | sliProd | main | kb-only | Fail-closed cross-branch reuse gate
 
+## 2026-07-22 | workspace | sliProd | main | kb-only | Upgrade 8 process router + LEARN + SELF-REPORT
+process_matrix 18x7 PLAN/TTL/money-cell ratchet; super-agent close LEARN lifecycle; weekly SELF-REPORT.md; autopilot honors SKIP/CACHED
+
+---
+
+
 ## 2026-07-22 | acct `935c52743` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | DCF parent force-bill CRN unique per claim
 deathForeclosureInsuranceJob buildForceBillClientReference appends deathForeclosureDetailsId — sequential child DFC same value_date no longer 134497 on parent BILLING; sibling harness evidence non-last CRN blocked last-child
 

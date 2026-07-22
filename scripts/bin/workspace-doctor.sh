@@ -111,6 +111,36 @@ else
   ok "ntest telemetry (flaky flagged — money never auto-skipped)"
 fi
 
+echo ""
+echo "--- fixed tax (alwaysApply soft ceiling 35000B) ---"
+_tax="$(python3 - <<'PY'
+from pathlib import Path
+root = Path(".cursor/rules")
+aa = 0
+off = []
+for p in root.glob("*.mdc"):
+    t = p.read_text(encoding="utf-8", errors="ignore")
+    if "alwaysApply: true" not in t[:400]:
+        continue
+    b = len(t.encode("utf-8"))
+    aa += b
+    off.append((b, p.name))
+off.sort(reverse=True)
+print(f"BYTES {aa}")
+print("TOP " + ", ".join(f"{n}={b}" for b, n in off[:5]))
+print("WARN" if aa > 35000 else "OK")
+PY
+)"
+_tax_bytes="$(echo "$_tax" | awk '/^BYTES/{print $2}')"
+_tax_top="$(echo "$_tax" | awk '/^TOP/{sub(/^TOP /,""); print}')"
+_tax_st="$(echo "$_tax" | awk '/^(WARN|OK)$/{print}')"
+if [[ "$_tax_st" == "WARN" ]]; then
+  echo "  WARN fixed tax ${_tax_bytes}B > 35000 soft ceiling — offenders: ${_tax_top}"
+  ok "fixed tax (WARN — system watching weight)"
+else
+  ok "fixed tax ${_tax_bytes}B ≤ 35000 (top: ${_tax_top})"
+fi
+
 if [[ "$ENV_SMOKE" == 1 || "$MODE" == "full" ]]; then
   echo ""
   echo "--- env-smoke ---"

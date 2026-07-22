@@ -17,6 +17,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,15 @@ def cmd_session(args: argparse.Namespace) -> int:
     if not r.get("ok"):
         print("SESSION FAIL — kg validate", file=sys.stderr)
         return 1
+    try:
+        sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+        from process_router import stamp_ttl
+
+        stamp_ttl("kg_fresh")
+        stamp_ttl("services")
+        print("**TTL stamped:** kg_fresh, services\n")
+    except Exception:
+        pass
     hub = ROOT / ".cursor/workspace-intelligence-state.md"
     if hub.is_file():
         for line in hub.read_text(encoding="utf-8").splitlines()[:28]:
@@ -48,10 +58,28 @@ def cmd_session(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_close(args: argparse.Namespace) -> int:
+    """LEARN close: capture → propose → enrichment decision → backlog note."""
+    sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+    from autonomy_loop import learn_close, wall_clock_log
+    from process_router import map_class
+
+    text = " ".join(getattr(args, "words", []) or []) or (args.text or "")
+    cls = args.classification or "GENERAL"
+    t0 = time.time()
+    result = learn_close(text=text, classification=cls)
+    elapsed = time.time() - t0
+    wall_clock_log(map_class(cls, text), elapsed)
+    print("## Super agent — LEARN close\n")
+    print(json.dumps(result, indent=2))
+    print(f"\n**wall:** {elapsed:.2f}s · enrichment={result.get('enrichment_tier')}")
+    return 0
+
+
 def cmd_orient(args: argparse.Namespace) -> int:
     if args.fast:
         sys.path.insert(0, str(ROOT / "scripts/testing"))
-        from cross_learn import coverage_for_api, ftg_for_api, learnings_for_api, bus_for_api, kg_query
+        from cross_learn import coverage_for_api, learnings_for_api, kg_query
         api = args.api
         parts = [f"# Unified orient (fast): `{api}`\n"]
         parts.append("```\n" + kg_query("flow", api, limit=1200) + "\n```\n")
@@ -61,8 +89,34 @@ def cmd_orient(args: argparse.Namespace) -> int:
         for r in learnings_for_api(api, 5):
             parts.append(f"- [{r.get('kind')}] {r.get('text')}\n")
         print("".join(parts))
+        if getattr(args, "base", None):
+            print("\n--- fixed-elsewhere (fail-closed) ---")
+            cmd = [
+                sys.executable,
+                str(ROOT / "cursor-bundle/kg/bin/kg.py"),
+                "fixed-elsewhere",
+                api,
+                "--base",
+                args.base,
+                "--fetch-if-stale",
+            ]
+            return subprocess.call(cmd, cwd=str(ROOT))
         return 0
     print(unified_orient(args.api))
+    if getattr(args, "base", None):
+        print("\n--- fixed-elsewhere (fail-closed) ---")
+        return subprocess.call(
+            [
+                sys.executable,
+                str(ROOT / "cursor-bundle/kg/bin/kg.py"),
+                "fixed-elsewhere",
+                args.api,
+                "--base",
+                args.base,
+                "--fetch-if-stale",
+            ],
+            cwd=str(ROOT),
+        )
     return 0
 
 
@@ -151,6 +205,24 @@ def cmd_handle(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_clean(args: argparse.Namespace) -> int:
+    """Disk + hygiene cleanup — safe for local dev (archived logs, scratch, pycache)."""
+    cmd = ["bash", "scripts/bin/workspace-disk-clean.sh"]
+    if args.apply:
+        cmd.append("--clean")
+    if args.verbose:
+        cmd.append("--verbose")
+    rc = subprocess.call(cmd, cwd=str(ROOT))
+    if rc != 0:
+        return rc
+    if args.apply:
+        subprocess.call(
+            [sys.executable, str(ROOT / "scripts/testing/sync_engine.py"), "fast-sync", "--quiet"],
+            cwd=str(ROOT),
+        )
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Super agent — unified intelligence")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -160,13 +232,26 @@ def main() -> int:
     ps.add_argument("--full", action="store_true", help="Alias verbose session")
     ps.add_argument("--quiet", action="store_true")
 
+    pclose = sub.add_parser("close", help="LEARN close phase (capture→propose→enrichment)")
+    pclose.add_argument("--text", default="")
+    pclose.add_argument("--classification", default="GENERAL")
+    pclose.add_argument("words", nargs="*", help="optional task text")
+
     po = sub.add_parser("orient")
     po.add_argument("api")
     po.add_argument("--fast", action="store_true", help="Shorter KG output, skip crud/why")
+    po.add_argument(
+        "--base",
+        help="Reported train branch for fail-closed kg fixed-elsewhere (e.g. mfi_integration_v3.6.1)",
+    )
 
     pt = sub.add_parser("trace", help="Alias for orient --fast")
     pt.add_argument("api")
     pt.add_argument("--fast", action="store_true", default=True)
+    pt.add_argument(
+        "--base",
+        help="Reported train branch for fail-closed kg fixed-elsewhere",
+    )
 
     psy = sub.add_parser("sync", help="Fast incremental sync (default)")
     psy.add_argument("--full", action="store_true", help="Heavy full sync — use after branch/orch change")
@@ -188,13 +273,22 @@ def main() -> int:
     pc.add_argument("words", nargs="+")
 
     sub.add_parser("loop", help="Session + quick corroborate + status")
+    pcor = sub.add_parser("corroborate", help="Cross-layer corroboration score")
+    pcor.add_argument("--full", action="store_true")
+    pcor.add_argument("--quick", action="store_true", default=True)
 
     ph = sub.add_parser("handle", help="Delegate to workspace autopilot task")
     ph.add_argument("words", nargs="+")
 
+    pcl = sub.add_parser("clean", help="Audit/reclaim disk — archived service logs, scratch, pycache")
+    pcl.add_argument("--apply", action="store_true", help="Run --clean (default is audit only)")
+    pcl.add_argument("--verbose", "-v", action="store_true")
+
     args = p.parse_args()
     if args.cmd == "session":
         return cmd_session(args)
+    if args.cmd == "close":
+        return cmd_close(args)
     if args.cmd == "orient":
         return cmd_orient(args)
     if args.cmd == "trace":
@@ -212,8 +306,20 @@ def main() -> int:
         return cmd_classify(args)
     if args.cmd == "loop":
         return cmd_loop(args)
+    if args.cmd == "corroborate":
+        from corroborate import run as corroborate_run
+
+        mode = "full" if getattr(args, "full", False) else "quick"
+        report = corroborate_run(mode=mode, emit_bus=True)
+        print(f"corroborate {report.score} ({report.mode}, {report.elapsed_s}s)")
+        for c in report.checks:
+            mark = "✓" if c.ok else "✗"
+            print(f"  {mark} {c.id}: {c.detail}")
+        return 0 if report.passed == report.total else 1
     if args.cmd == "handle":
         return cmd_handle(args)
+    if args.cmd == "clean":
+        return cmd_clean(args)
     return 1
 
 

@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 8 — process router + LEARN + SELF-REPORT
+process_matrix.json (18×7) + process_router PLAN/TTL/money-cell ratchet; autopilot prints PLAN and honors SKIP/CACHED on steps. super-agent close = LEARN lifecycle (captured→proposed→…); weekly intel: bus age + SELF-REPORT.md. Doctor WARN alwaysApply >35KB soft ceiling. Fast = selection, never weaken money required cells.
+
 ## 2026-07-22 | workspace | Upgrade 7 — QA bar self-improving
 Enforced acceptance: death_foreclosure+disbursement+repayment+foreclosure (ratchet). All 56 money cases declare verify_mode. registry-proposals auto-draft + gap miner; ntest telemetry + flaky quarantine proposals; capture-flow Dev-Test ADF + jira-handoff --dry-run (post gated).
 

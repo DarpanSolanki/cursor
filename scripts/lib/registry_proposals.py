@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))
 PROPOSALS = ROOT / "scripts" / "testing" / "registry-proposals.json"
 REGISTRY = ROOT / "scripts" / "testing" / "registry.json"
 MANIFEST = ROOT / "scripts" / "lib" / "acceptance_coverage_manifest.json"
@@ -267,13 +268,15 @@ def main() -> int:
         print("verify_mode OK: all money cases declare verify_mode")
         return 0
     if args.cmd == "check":
-        errs = check_ratchet() + check_money_verify_modes()
+        from process_router import check_money_ratchet
+
+        errs = check_ratchet() + check_money_verify_modes() + check_money_ratchet()
         if errs:
             print("registry-proposals check FAIL:")
             for e in errs:
                 print(f"  - {e}")
             return 1
-        print("registry-proposals check OK")
+        print("registry-proposals check OK (acceptance + verify_mode + money-cell)")
         return 0
     if args.cmd == "list":
         data = load_proposals()
