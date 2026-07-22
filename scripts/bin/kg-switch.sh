@@ -59,10 +59,16 @@ write_manifest() {
 }
 
 START=$(date +%s)
+_TRIGGER="${KG_TELEMETRY_TRIGGER:-manual}"
+# Heuristic: checkout hook sets KG_TELEMETRY_TRIGGER=checkout
 if [[ "$FORCE" == 0 ]] && restore_cache "$KEY"; then
   ELAPSED=$(( $(date +%s) - START ))
   log "✓ KG cache hit (key $KEY) in ${ELAPSED}s — branch-set matches live checkout"
   bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true
+  PYTHONPATH="$ROOT/scripts/lib" python3 -c "
+from kg_state_banner import append_telemetry
+append_telemetry('hit', float('$ELAPSED'), '$_TRIGGER', key_short='${KEY:0:8}')
+" 2>/dev/null || true
   exit 0
 fi
 
@@ -90,3 +96,7 @@ write_manifest "$KEY" 2>/dev/null || true
 ELAPSED=$(( $(date +%s) - START ))
 log "✓ KG ready (key $KEY) in ${ELAPSED}s"
 bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true
+PYTHONPATH="$ROOT/scripts/lib" python3 -c "
+from kg_state_banner import append_telemetry
+append_telemetry('miss', float('$ELAPSED'), '$_TRIGGER', key_short='${KEY:0:8}')
+" 2>/dev/null || true

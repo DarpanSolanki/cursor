@@ -19,6 +19,8 @@ Commands:
   impact <id> [--depth N]        reverse blast radius (who reaches <id>) via recursive CTE
   path <a> <b> [--depth N]       shortest directed path a->b via recursive CTE
   cases [<flow/table>]           PRECEDENT — shipped fixes (CHANGELOG); per-node = "fixed this before?"
+  fixed-elsewhere <query> [--repo R] [--base B]
+                                  verified higher-branch fixes + file-touch candidates (read-only)
   table <name>                   a table: owning repo + entity + cases that touched it + docs
   error <code>                   cases that hit an error code (who hit it, fix SHA)
   why [<request/processor/table/symptom>]   FAILURE-MODE catalog — the silent decision-points where bugs hide (wrong/zero/null/empty/missing/reverted). `kg why <request>` = the whole flow's silent surface. The 'pinpoint any issue' entrypoint.
@@ -511,16 +513,49 @@ def cmd_fresh(c,a):
     if docs_stale:
         print("NOTE: a claude/ brain doc or CHANGELOG was edited since the build — `kg search`/`docs`/`cases` text may lag; run claude/kg/bin/build.sh to refold (does NOT auto-rebuild on doc edits).")
 
+def cmd_validate(c,a):
+    """Integrity + min size guard — delegates to kg_validate.py (exit 1 on fail)."""
+    import subprocess, sys as _s
+    p=subprocess.run([_s.executable,os.path.join(HERE,"kg_validate.py")]+list(a),
+                     cwd=os.path.dirname(HERE))
+    if p.returncode!=0:
+        raise SystemExit(p.returncode)
+
+def cmd_orient(c,a):
+    """Evidence-only map for a request: flow spine + why surface + cases. Does not invent edges."""
+    if not a:
+        print("Usage: kg orient <request>  — flow + why + cases (evidence only)"); return
+    print("=== ORIENT (evidence only — verify orch XML + DB before claiming) ===")
+    print("--- flow ---")
+    cmd_flow(c,a)
+    print("--- why (silent failure surface) ---")
+    cmd_why(c,a)
+    print("--- cases (CHANGELOG precedents only) ---")
+    cmd_cases(c,a)
+
+def cmd_fixed_elsewhere(c,a):
+    """Delegate cross-branch lookup; KG remains the evidence source for flow files/case SHAs."""
+    if not a:
+        print("Usage: kg fixed-elsewhere <apiName|processor|path|sha> [--repo R] [--base B]"); return
+    import subprocess
+    root=os.path.abspath(os.path.join(HERE,"../../.."))
+    tool=os.path.join(root,"scripts","lib","branch_train.py")
+    p=subprocess.run([sys.executable,tool,"fixed-elsewhere",*a])
+    if p.returncode:
+        raise SystemExit(p.returncode)
+
 CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"deps":cmd_deps,
       "docs":cmd_docs,"neighbors":cmd_neighbors,"impact":cmd_impact,"path":cmd_path,"sql":cmd_sql,
       "cases":cmd_cases,"table":cmd_table,"error":cmd_error,"why":cmd_why,"config":cmd_why,"doctor":cmd_doctor,"stale":cmd_stale,
       "watermark":cmd_watermark,"crud":cmd_crud,"writes":cmd_writes,"reads":cmd_reads,"deletes":cmd_deletes,
-      "fresh":cmd_fresh}
+      "fresh":cmd_fresh,"validate":cmd_validate,"orient":cmd_orient,
+      "fixed-elsewhere":cmd_fixed_elsewhere}
 
 # Commands that READ knowledge (must be branch-correct). doctor/watermark/stats report drift
 # themselves, so they're excluded to avoid a double banner.
 _KNOWLEDGE_CMDS={"search","node","flow","deps","docs","neighbors","impact","path","sql",
-                 "cases","table","error","why","config","crud","writes","reads","deletes"}
+                 "cases","table","error","why","config","crud","writes","reads","deletes",
+                 "orient","fixed-elsewhere"}
 
 def _auto_rebuild(built_at,drift):
     """On drift, rebuild the KG for the CURRENT checkout before serving the query, so analysis is
@@ -553,6 +588,16 @@ def main():
     nocheck=len(argv)!=len(sys.argv[1:])
     if not argv or argv[0] not in CMDS:
         print(__doc__); sys.exit(0)
+    # Provenance header on knowledge answers (Upgrade 6 — one line, cheap)
+    if argv[0] in _KNOWLEDGE_CMDS or argv[0] in {"fresh","watermark","validate","doctor","stats"}:
+        try:
+            import sys as _sys
+            _lib=os.path.abspath(os.path.join(HERE,"../../../scripts/lib"))
+            if _lib not in _sys.path: _sys.path.insert(0,_lib)
+            from kg_state_banner import provenance_header
+            print(provenance_header())
+        except Exception:
+            pass
     if argv[0] in _KNOWLEDGE_CMDS and not nocheck:
         import sys as _s
         built_at,drift,docs_stale=_drift_check()

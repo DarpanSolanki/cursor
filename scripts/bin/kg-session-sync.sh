@@ -47,6 +47,11 @@ case "$_action" in
   none)
     logq "[$(date -u +%H:%M:%S)] FAST skip key=${_key:0:8} tier=$_tier"
     bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true
+    ELAPSED=$(( $(date +%s) - START ))
+    PYTHONPATH="$ROOT/scripts/lib" python3 -c "
+from kg_state_banner import append_telemetry
+append_telemetry('hit', float('$ELAPSED'), 'session', key_short='${_key:0:8}')
+" 2>/dev/null || true
     log "KG session: fast skip (branch-set unchanged, ${_key:0:8}…)"
     exit 0
     ;;
@@ -56,12 +61,19 @@ case "$_action" in
     rm -f "$ROOT/.cursor/.pending-kg-rebuild"
     python3 "$BIN/kg_session.py" stamp >/dev/null
     bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true
+    ELAPSED=$(( $(date +%s) - START ))
+    PYTHONPATH="$ROOT/scripts/lib" python3 -c "
+from kg_state_banner import append_telemetry
+append_telemetry('hit', float('$ELAPSED'), 'session', key_short='${_key:0:8}', note='cases')
+" 2>/dev/null || true
     log "KG session: cases refresh ($_reason)"
     ;;
   kg-switch)
     logq "[$(date -u +%H:%M:%S)] $_tier key=${_key:0:8} cache=$_cache $_reason"
     _sw_args=(--quiet)
     [[ "$FORCE" == 1 ]] && _sw_args+=(--force)
+    # Tell kg-switch the trigger so telemetry is not double-tagged as checkout
+    export KG_TELEMETRY_TRIGGER="${KG_TELEMETRY_TRIGGER:-session}"
     bash "$ROOT/scripts/bin/kg-switch.sh" "${_sw_args[@]}"
     python3 "$BIN/kg_session.py" stamp >/dev/null
     rm -f "$ROOT/.cursor/.pending-kg-rebuild"
@@ -74,6 +86,7 @@ case "$_action" in
     ;;
   *)
     logq "[$(date -u +%H:%M:%S)] fallback kg-switch"
+    export KG_TELEMETRY_TRIGGER="${KG_TELEMETRY_TRIGGER:-session}"
     bash "$ROOT/scripts/bin/kg-switch.sh" --quiet
     python3 "$BIN/kg_session.py" stamp >/dev/null
     bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true

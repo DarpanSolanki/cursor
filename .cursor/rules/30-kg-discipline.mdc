@@ -8,6 +8,19 @@ alwaysApply: true
 
 Archives: `.cursor/skills/workspace-gates-reference/kg-safety-and-consultation.md`, `self-learning-kg.md`, `flow-cross-learn.md`, `dpi-feature-branch-gate.md`
 
+## Money-task KG watermark gate (mandatory — Upgrade 6)
+
+Every `workspace-autopilot.sh task` prints a computed line from watermark + composite key, e.g.:
+`KG STATE: built@<utc> set=<key-short> repos=<n> WIP: <list> [PROVISIONAL]`
+Never invent KG freshness by hand.
+
+When the line ends with **`[PROVISIONAL]`** (WIP/feature repos in the watermark **or** live branch-set key ≠ stamped key / HEAD drift) **and** the task is **money or cross-service**:
+**HARD STOP** — before any KG-derived money conclusion, the agent must (a) align via `kg-switch.sh` / `kg-ensure-fresh.sh`, (b) run under `KG_STRICT=1`, or (c) get **explicit user acknowledgment** of provisional/mismatched KG risk.
+
+Every gate trigger appends one telemetry line (`trigger=gate`) to `.cursor/workspace-kg-state.md` — feeds the multi-profile revisit decision (`cursor-bundle/brain/decisions/kg-profiles.md`).
+
+MCP/CLI answers carry a one-line provenance header: `[KG @<built-at> set=<key> WIP:<n>]`.
+
 ## KG MCP tools are first resort for LOOKUPS
 
 MCP server **`trustt-kg`** (`cursor-bundle/kg/mcp/kg_mcp_server.py`) wraps `kg.py` read-only (no logic duplication).

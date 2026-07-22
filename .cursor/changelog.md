@@ -1,3 +1,6 @@
+## 2026-07-22 | workspace | Upgrade 6 — KG train-safety (light)
+Money-task KG STATE banner + HARD STOP on PROVISIONAL/mismatch; MCP/CLI provenance header; kg-session-sync/kg-switch telemetry (last 20); doctor consecutive-miss/slow-build flags; decision doc defers multi-profile overlays (`brain/decisions/kg-profiles.md`).
+
 ## 2026-07-22 | workspace | Upgrade 5 — mixed-train banner + scoped sync + env-matrix
 Computed TRAINS banner in autopilot + HARD STOP on [MIXED] money/cross-service (00/10 gates). sync-branches --domain/--train/--yes foot-gun guard; sync_branches_v2 thin deprecated wrapper. scripts/env/env-matrix.json + TODO + env-smoke → ops-state. OPS-INDEX + ops-bin-hygiene (grandfather pre-U5 orphans). Cross-env: NOT VERIFIED ON &lt;env&gt;; forbid “verified” for local evidence vs named QA.
 

@@ -418,6 +418,24 @@ def build_plan(
     except Exception as exc:  # noqa: BLE001
         directives.insert(0, f"TRAINS: (banner failed: {exc})")
 
+    # KG watermark / provisional gate (Upgrade 6)
+    try:
+        from kg_state_banner import banner_and_stop as kg_banner_and_stop  # type: ignore
+
+        kg_line, kg_stop = kg_banner_and_stop(text, kind)
+        # Insert after train banner block
+        insert_at = 0
+        while insert_at < len(directives) and (
+            directives[insert_at].startswith("TRAINS:")
+            or directives[insert_at].startswith("HARD STOP [MIXED]")
+        ):
+            insert_at += 1
+        directives.insert(insert_at, kg_line)
+        if kg_stop:
+            directives.insert(insert_at + 1, kg_stop)
+    except Exception as exc:  # noqa: BLE001
+        directives.insert(0, f"KG STATE: (banner failed: {exc})")
+
     return Plan(
         classification=kind,
         risk=base.get("risk", "Medium"),
@@ -591,9 +609,10 @@ def cmd_task(args: argparse.Namespace) -> int:
         return 0
 
     print("## Workspace autopilot — task plan")
-    # Always surface train banner first when present
-    train_lines = [d for d in plan.agent_directives if d.startswith("TRAINS:") or d.startswith("HARD STOP")]
-    for line in train_lines:
+    # Always surface train + KG banners first when present
+    top_prefixes = ("TRAINS:", "KG STATE:", "HARD STOP")
+    top_lines = [d for d in plan.agent_directives if d.startswith(top_prefixes)]
+    for line in top_lines:
         print(f"**{line}**")
     if plan.task_shift:
         print(f"**TASK SHIFT:** {plan.shift_reason}")
@@ -614,7 +633,7 @@ def cmd_task(args: argparse.Namespace) -> int:
         print("\n**After fix verified (auto):** close → cooldown → `ship-and-continue` → next task")
     print("\n**Directives:**")
     for d in plan.agent_directives:
-        if d.startswith("TRAINS:") or d.startswith("HARD STOP"):
+        if d.startswith(top_prefixes):
             continue  # already printed at top
         print(f"- {d}")
     failed = [r for r in results if r.get("rc", 0) != 0 and not r.get("dry_run")]

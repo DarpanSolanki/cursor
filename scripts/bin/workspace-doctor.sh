@@ -85,6 +85,22 @@ if bash scripts/bin/workspace-hygiene.sh --verbose 2>/dev/null | tail -5; then
   ok "workspace hygiene"
 fi
 
+echo ""
+echo "--- KG telemetry ---"
+_kg_doc="$(PYTHONPATH=scripts/lib python3 scripts/lib/kg_state_banner.py --doctor 2>&1 || true)"
+if echo "$_kg_doc" | grep -q '^FAIL '; then
+  while IFS= read -r _fl; do
+    [[ "$_fl" == FAIL* ]] && die "${_fl#FAIL }"
+  done <<<"$_kg_doc"
+elif echo "$_kg_doc" | grep -q '^WARN '; then
+  while IFS= read -r _fl; do
+    [[ "$_fl" == WARN* ]] && echo "  WARN ${_fl#WARN }"
+  done <<<"$_kg_doc"
+  ok "KG telemetry (warns only)"
+else
+  ok "KG telemetry (no consecutive-miss / slow-build flags)"
+fi
+
 if [[ "$ENV_SMOKE" == 1 || "$MODE" == "full" ]]; then
   echo ""
   echo "--- env-smoke ---"

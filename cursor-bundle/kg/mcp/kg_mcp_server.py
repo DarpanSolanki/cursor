@@ -137,7 +137,18 @@ def run_kg(argv: list[str]) -> str:
     out = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
     if proc.returncode != 0 and not out.strip():
         out = f"ERROR: kg.py exit {proc.returncode}"
-    return truncate(out.strip() or "(empty)")
+    body = truncate(out.strip() or "(empty)")
+    # Provenance travels with every answer (Upgrade 6) — skip if kg.py already prepended
+    if body.startswith("[KG @"):
+        return body
+    try:
+        sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+        from kg_state_banner import provenance_header  # type: ignore
+
+        header = provenance_header()
+    except Exception as exc:  # noqa: BLE001
+        header = f"[KG @? set=? WIP:?] (header failed: {exc})"
+    return header + "\n" + body
 
 
 def tool_argv(name: str, arguments: dict) -> list[str]:
