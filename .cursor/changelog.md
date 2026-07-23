@@ -1,3 +1,8 @@
+## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Vikram reopen + ₹1 RSTCRE @ `c0d8c52f76`
+- Extracted `DeathForeclosureSettlementSupport`: force-bill = reportingAccrual (no max BPI → Accrued 14 vs FB 15); after booking bill Accrued IAD; EXTRA applied to PRIN dues then netted appropriation + child lapd; parent last-child same.
+- `ChildLoanRestructuringProcessor`: single-child absorb residual (no peer ₹1 loop); multi-child fail-fast when no surplus/shortfall peer.
+- Committed `c0d8c52f76` on `mfi_integration_v3.4.2.4` only (no 3.4.2.5 merge). Local e2e `dcf.group_parent_last_child_e2e` pending this session. No push.
+
 ## 2026-07-23 | accounting | SP-308 cache mobile_number only (due+bounce)
 Step-scope Map<String,String> for msisdn — keeps HTTP dedupe, drops full getCustomerDetails map retention (JVM-safe). Job SMS behavior unchanged.
 
