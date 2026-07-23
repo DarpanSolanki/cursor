@@ -1,0 +1,19 @@
+=== CMD ===
+NTEST_NO_INTEL_SYNC=1 bash scripts/bin/ntest.sh run ntest.dcf_e2e_fail_exit
+=== START 2026-07-23T07:10:55Z ===
+=== ntest.dcf_e2e_fail_exit [flow] ===
+$ python3 scripts/testing/ntest_flow_fail_exit_sim.py
+=== ntest.dcf_e2e_fail_exit.sim [flow] ===
+$ bash /tmp/tmpbawl1p59.sh
+defaults_pin PASS PARENT_LAN=6000137433
+=== ntest.dcf_e2e_fail_exit.sim [flow] ===
+$ bash /tmp/tmplszmn05d.sh
+fail_exit PASS: printed FAIL forced rc=1
+=== ntest.dcf_e2e_fail_exit.sim [flow] ===
+$ bash /tmp/tmptvzz39dy.sh
+=== PASS: clean ===
+clean_pass PASS: rc=0
+=== PASS: ntest.dcf_e2e_fail_exit sim ===
+FAIL: synthetic harness lie (exit 0)
+=== ntest.dcf_e2e_fail_exit.sim FAIL — child printed unrecovered FAIL: with exit 0; forcing rc=1 (ntest.dcf_e2e_fail_exit)
+=== END 2026-07-23T07:10:56Z exit=0 ===
