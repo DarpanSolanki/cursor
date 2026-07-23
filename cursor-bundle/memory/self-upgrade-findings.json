@@ -32,6 +32,16 @@
       "draft_plan": "Mine impact.stub.* weekly; add registry api+smoke_tier=money for top missing by ship frequency",
       "created_at": "2026-07-23T11:34:34Z",
       "oldest_at": "2026-07-23T11:34:34Z"
+    },
+    {
+      "id": "SU-IMPACT-002",
+      "title": "Impact banner can show flows>0 with cases=0 missing=0 (stubs not emitted)",
+      "sot": "scripts/lib/impact_tests.py cases_for_flows / format_banner; proof4 sessionStart banner",
+      "status": "open",
+      "auto_safe": false,
+      "draft_plan": "Root: topic-consumer:* and/or non-registry flow apis skipped in cases_for_flows without appending to missing. Fix: (1) treat every flow without a registry case as missing (including topic-consumer\u2192service health mapping or stub); (2) when --banner/--no-stubs still count missing in banner stats; (3) default banner path should draft stubs unless --no-stubs; (4) unit test: dirty tree producing flows must have cases+missing == len(flows) for non-skipped kinds. Verify sessionStart banner after fix.",
+      "created_at": "2026-07-23T11:39:13Z",
+      "oldest_at": "2026-07-23T11:39:13Z"
     }
   ]
 }
