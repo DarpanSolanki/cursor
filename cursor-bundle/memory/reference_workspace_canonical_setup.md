@@ -16,7 +16,7 @@ Setup is **self-contained: no dependency on any other folder or user.** Verified
 - **DB works**: `claude/db-tools/bin/db-query.sh mfi_qa3` → YugabyteDB responds; creds + `.venv` are in-tree.
 - **Jira works** (read-only): `mcp__aitdp-jira__jira_*`. Writes refused per boundary.
 - **KG** (`mcp__kms-kb__*`, namespace is `kms-kb` not `kms-aitdp`): supplement-only; service was down (connection refused) on 2026-06-10 — not a dependency, brain docs are the substrate.
-- **Build**: `./gbuild.sh <repo> build -x test` (in-boundary `GRADLE_USER_HOME=.gradle-local`). See [[reference_dedicated_gradle_build_env]].
+- **Build**: `cd <repo> && ./gradlew build -x test` (Java 17). Historical `./gbuild.sh` removed.
 
 Cleanup done same day: deleted 19 `.aitdp/logs` dirs, `.gradle-verify`, and unreferenced `downloads/oracleJdk-26` (~383 MB reclaimed); archived loose `dfc-*`/`DFC-*`/`sdcp-10080-*` task docs to `claude/archive/`.
 

@@ -277,7 +277,7 @@ contextSets:
       - aicodegen/plans/**/**/*.yaml
     
     mcpServers:
-      # mcp-atlassian is configured via .cursor/mcp.json
+      # Jira: use Cursor plugin-atlassian (local mcp-atlassian removed). Project MCP: trustt-kg in .cursor/mcp.json
       - name: mcp-orch-parse
         type: http
         url: http://localhost:7301

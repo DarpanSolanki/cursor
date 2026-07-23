@@ -85,4 +85,4 @@ Layers dropped (overkill avoided): <list>
 ## Related
 
 - JIRA handoff: `.cursor/skills/jira-fix-update/SKILL.md` (Impact must include “not changed” + post-deploy SQL)
-- Tiered options: `.cursor/rules/tiered-solution-approach.mdc` (L0 = minimal ship; L1 = index/idempotency)
+- Tiered options: `.cursor/rules/architect-thinking.mdc` + `.cursor/skills/architect-thinking/` (L0 = minimal ship; L1 = index/idempotency)

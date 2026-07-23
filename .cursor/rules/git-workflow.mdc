@@ -1,6 +1,7 @@
 ---
 description: Git commit hygiene, fork/upstream PR workflow, multi-repo sync script phrase
 globs:
+  - "scripts/bin/sync-branches.sh"
   - "sync_branches_v2.sh"
   - "**/build.gradle"
   - "**/build.gradle.kts"
@@ -77,9 +78,10 @@ When the user says any of the following (or equivalent), run the sync script wit
 
 ## What to do
 
-1. From workspace root run: `bash sync_branches_v2.sh <branch_name> DarpanSolanki <workspace_root_path>`.
-2. **Defaults**: username = `DarpanSolanki`, base path = workspace root (e.g. `/home/darpan/Documents/sliProd`). Use these unless the user specifies otherwise.
-3. Do not change the script's default branch in the file unless the user asks to change the default.
+1. Prefer non-interactive: `bash scripts/bin/sync-branches.sh --train <branch_name> --yes` (or `--domain <dfc|disburse|dpi|…> --train <branch>` for scoped sync). From workspace root.
+2. Deprecated wrapper still works: `bash sync_branches_v2.sh <branch_name>` (forwards to `sync-branches.sh` with defaults; no username/path prompts).
+3. **Defaults**: username = `DarpanSolanki`, base path = workspace root (e.g. `/home/darpan/Documents/sliProd`). Use these unless the user specifies otherwise.
+4. Do not change the script's default branch in the file unless the user asks to change the default.
 
 ## Branch name
 

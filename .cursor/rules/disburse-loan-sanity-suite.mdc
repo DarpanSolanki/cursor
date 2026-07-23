@@ -8,7 +8,7 @@ globs:
   - "docs/disbursement-sanity/**"
   - "docs/disbursement-reset-recipes/**"
   - "scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
-  - "scripts/reset_disburse_loan_replay_mfi_from_json.py"
+  - "scripts/sql/reset/reset_disburse_loan_replay_mfi_from_json.py"
 alwaysApply: false
 ---
 

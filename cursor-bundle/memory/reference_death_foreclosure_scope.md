@@ -32,7 +32,7 @@ mfi_release_v3.4.2        (prod in ~days)   QA testing only — NOT in 3.4.2 pro
 
 ## Session entry (death foreclosure / mainline)
 
-1. `bash sync_branches_v2.sh mfi_integration_v3.3.1.2` — **all repos** (manifest has **no** DPI overrides).
+1. `bash scripts/bin/sync-branches.sh --train mfi_integration_v3.3.1.2 --yes` — **all repos** (manifest has **no** DPI overrides).
 2. `bash scripts/bin/kg-switch.sh` — watermark: accounting `@ mfi_integration_*`, not `feature/delayed_payment_interest`.
 3. For **prod RCA** on QA3 build `mfi_release_v3.4.2_*`: `git fetch upstream` → read `upstream/mfi_release_v3.4.2` (or named tag), not local DPI checkout.
 4. Orient: `system_brain/flows/death_foreclosure.md` → `kg flow loanDeathForeclosure` → orchestration XML.

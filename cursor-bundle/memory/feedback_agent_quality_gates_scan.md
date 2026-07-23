@@ -15,7 +15,7 @@ metadata:
 - **RCA without fetch:** `git fetch origin && git fetch upstream` before mapping stack traces to deployed branch (`feedback_fetch_latest_before_checking_code.md`).
 - **Provisional KG:** 8+ WIP repos → `kg watermark` is provisional; do not treat as release contract without verifying release base.
 
-**Gate:** Read `.cursor/git-workspace-state.json` + `python3 cursor-bundle/kg/bin/kg.py watermark` before any money/RCA work. If task is NOT DPI → `sync_branches_v2.sh <integration_train>` OR state explicitly which repos are out of scope.
+**Gate:** Read `.cursor/git-workspace-state.json` + `python3 cursor-bundle/kg/bin/kg.py watermark` before any money/RCA work. If task is NOT DPI → `bash scripts/bin/sync-branches.sh --train <integration_train> --yes` (or `--domain …`) OR state explicitly which repos are out of scope.
 
 ### 2. Flow confusion (accounting)
 

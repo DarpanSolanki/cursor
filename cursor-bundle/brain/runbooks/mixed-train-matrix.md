@@ -1,6 +1,6 @@
 # Mixed release trains — scoped sync (do not blind-switch all repos)
 
-**Problem:** Workspace repos often sit on different trains (accounting `3.7.1`, LOS `3.4.2.2`, DPI feature, platform-lib `3.4.2.3`). Blind `sync_branches_v2.sh <one-branch>` across **all** repos breaks the other domain.
+**Problem:** Workspace repos often sit on different trains (accounting `3.7.1`, LOS `3.4.2.2`, DPI feature, platform-lib `3.4.2.3`). Blind full-workspace `sync-branches.sh --train <one-branch> --yes` across **all** repos breaks the other domain.
 
 **Rule:** Sync **only the repos required for the task domain**. Then `bash scripts/bin/kg-switch.sh` so KG watermark matches that scoped checkout.
 
@@ -16,13 +16,17 @@
 
 ```bash
 # Example: DFC work on 3.7.1 only (accounting)
-git -C novopay-platform-accounting-v2 fetch origin upstream
-git -C novopay-platform-accounting-v2 checkout mfi_integration_v3.7.1
-git -C novopay-platform-accounting-v2 pull --ff-only origin mfi_integration_v3.7.1
+git -C trustt-platform-accounting fetch origin upstream
+git -C trustt-platform-accounting checkout mfi_integration_v3.7.1
+git -C trustt-platform-accounting pull --ff-only origin mfi_integration_v3.7.1
+bash scripts/bin/kg-switch.sh
+
+# Prefer scoped sync helper:
+# bash scripts/bin/sync-branches.sh --domain dfc --train mfi_integration_v3.7.1
 bash scripts/bin/kg-switch.sh
 
 # Full-workspace sync ONLY when user explicitly asks for one branch everywhere:
-bash sync_branches_v2.sh mfi_integration_v3.7.1 DarpanSolanki /home/darpan/Documents/sliProd
+bash scripts/bin/sync-branches.sh --train mfi_integration_v3.7.1 --yes
 bash scripts/bin/kg-switch.sh
 ```
 

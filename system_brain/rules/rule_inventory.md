@@ -23,7 +23,7 @@ Classification meaning:
 
 | Rule file | alwaysApply | Globs (summary) | Classification | Summary |
 |---|---|---|---|---|
-| `.cursor/rules/00-workspace-core.mdc` | true | — | Strong | **Session bootstrap first** (onboarding → gaps-and-risks High → architecture) before logs/search/code reads; **prompt self-expansion** + user confirm before investigation tools **or** edits on money/incidents/contracts/multi-service; narrow exceptions; `system_brain` map; RCA; `system_brain` maintenance. |
+| `.cursor/rules/00-workspace-core.mdc` | true | — | Strong | **Session bootstrap first** (onboarding → gaps-and-risks-**digest** → architecture-**digest**; escalate to full SoT) before logs/search/code reads; **prompt self-expansion** + user confirm before investigation tools **or** edits on money/incidents/contracts/multi-service; narrow exceptions; `system_brain` map; RCA; `system_brain` maintenance. |
 | `.cursor/rules/00-workspace-core.mdc` | true | — | Strong | Forwardable files → print path only; IDE open only if user asks (`--open` / `open_resource`); Review `#changes` = diff only. |
 | `.cursor/rules/prod-ops-sql-impact-gate.mdc` | false | `scripts/sql/{adhoc,deploy,setup}/**` | Strong | Prod/ops money SQL: caller matrix for status/LAN; proven soft-archive only; no invented CRR status. |
 | `.cursor/rules/10-quality-gates.mdc` | true | `**/*.java`, orchestration XML | Strong | Workspace-wide hot-path perf — N+1, precompute-before-loop; `hot-path-scan.sh` on autopilot + money ship-loop. |
@@ -32,7 +32,7 @@ Classification meaning:
 | `.cursor/rules/accounting.mdc` | false | `trustt-platform-accounting/**` | Strong | Thin gates + routing (≤6KB). Deep knowledge: `.cursor/skills/accounting-knowledge/`. Former `accounting-module-knowledge.mdc` deleted (relocated). |
 | `.cursor/rules/architect-thinking.mdc` | false | `**/*.{java,xml,gradle}` | Strong | Thin tiered-solutions + repository policy + routing (≤4KB). Deep: `.cursor/skills/architect-thinking/`. |
 | `.cursor/rules/local-dev-workflows.mdc` | false | `scripts/**`, `docs/disbursement-sanity/**` | Strong | Local DB investigation, MFI reset scripts, disburseLoan replay reset. |
-| `.cursor/rules/git-workflow.mdc` | false | `sync_branches_v2.sh`, Gradle roots | Strong | Commit hygiene, fork/upstream PRs, sync-branch phrase. |
+| `.cursor/rules/git-workflow.mdc` | false | `scripts/bin/sync-branches.sh`, `sync_branches_v2.sh` (deprecated wrapper), Gradle roots | Strong | Commit hygiene, fork/upstream PRs, sync-branch phrase. |
 | `.cursor/rules/events.mdc` | false | MessageBroker, Kafka consumer/producer | Strong | Event registry hygiene + merged Kafka consumer patterns (incl. disbursement sync contract). |
 | `.cursor/rules/docs-outside-service-repos.mdc` | false | `docs/**/*` | Strong | Docs live under workspace `docs/`; merged workspace `docs/` maintenance section. |
 | `.cursor/rules/multi-path-state-persistence-safety.mdc` | false | `**/*.{java,xml}` | Strong | General multi-path persistence + disbursement queue vs embedded JSON checklist. |

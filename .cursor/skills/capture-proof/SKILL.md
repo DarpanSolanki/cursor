@@ -44,7 +44,7 @@ bash scripts/bin/write-intelligence-hub.sh
 
 ```bash
 python3 scripts/testing/footprint_builder.py show ftf:<flow_id>
-python3 cursor-bundle/kg/bin/kg.py test-gaps --money | head
+bash scripts/bin/super-agent.sh gaps --money | head
 ```
 
 ## Do not

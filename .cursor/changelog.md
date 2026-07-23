@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Final full-system sweep — mechanical pre-U3 drift
+Digest-first onboarding; skill dead refs (`kg.py test-gaps`, tiered-solution-approach.mdc, gbuild.sh); sync-branches primary (git-workflow, mixed-train, memory, OPS-INDEX); glob path fixes (dcf docs, disburse reset script); config.yml mcp-atlassian comment→plugin. Structural: pr-review merged-PR freshness hard-exit, rule_inventory lag, skills-manifest missing, batch-write-skip/dpi globs, KG telemetry misses — proposed only. Details: `scripts/scratch/final-sweep-details.md`.
+
 ## 2026-07-23 | workspace | TDPQA-72 close-out — harness fail-exit + D8 + registry pins
 ntest `_run_flow_case` applies registry `defaults` + coerces unrecovered printed `FAIL:` to exit ≠0 (`ntest.dcf_e2e_fail_exit`). D8 asserts `interest_details.accrued_amount`/`original_amount` with SQL parity / INT-0 guard. Promoted: `ntest.dcf_e2e_fail_exit`, `dcf.non_last_rsch_amount_eq_principal`, `dcf.parent_statement_dfc_prtl`, `dcf.parent_member_future_int_parity`. D-matrix local Pass; QA4 NOT-VERIFIED; product Qs open for non-last amount≠prin + ₹1 schedule.
 

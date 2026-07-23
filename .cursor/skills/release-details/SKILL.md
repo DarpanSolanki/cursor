@@ -55,7 +55,7 @@ Then write the **paste body** — translate findings into short Impact bullets a
 
 When release details are produced **and** there are **unpushed fix commits** in the affected service repo:
 
-1. **Before push:** `./gradlew compileJava` or `./gbuild.sh` green in that repo; correct branch; only intended files in commit.
+1. **Before push:** `./gradlew compileJava` (or `./gradlew build -x test`) green in that repo; correct branch; only intended files in commit.
 2. **Train sync-first:** If branch is `mfi_integration_vX.Y.Z`, fetch origin+upstream, base on `upstream/<train>` tip, reconcile unique origin commits (`feedback_train_branch_sync_origin_upstream.md`) — never push from stale origin-behind-upstream.
 3. **Push** from the **service repo root** (not workspace root): `git push origin <branch>` / `bash scripts/bin/push-origin.sh` (DarpanSolanki fork per `feedback_darpan_git_via_darpansolanki.md`).
 4. **Do not** push to `trusttai` upstream unless user explicitly asks.

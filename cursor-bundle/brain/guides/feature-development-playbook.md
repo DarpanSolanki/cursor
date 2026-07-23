@@ -91,7 +91,7 @@ Output of this stage: a **design doc** (the new `dpic/`-equivalent folder) listi
 
 Only now drop to the checkouts (ladder rung 6). For each layer in the placement matrix, write the code matching surrounding style (`feedback_keep_code_simple`; `rules/repository-layer-no-comments.md`). Then:
 
-- Build green: `./gbuild.sh <repo> build -x test` (CLAUDE.md §4, Java-17 in-boundary Gradle home). After first build / `build.gradle` change: `./gradlew eclipse` for IDE classpath.
+- Build green: `cd <repo> && ./gradlew build -x test` (Java 17). After first build / `build.gradle` change: `./gradlew eclipse` for IDE classpath.
 - **Diff-before-claim** for any state/posting change: paste expected-vs-actual DB-state delta, not just "built green."
 - Authorship + changelog + push per CLAUDE.md Rule 4 (DarpanSolanki, `github-darpan` alias, prepend CHANGELOG in same turn).
 
