@@ -1432,6 +1432,108 @@
     },
     "note": "GAP-078 @935c52743 — buildForceBillClientReference appends deathForeclosureDetailsId. Blocker for RUNTIME: /tmp/dcf_e2e.lock when sibling harness owns the fixture."
   },
+  "ntest.dcf_e2e_fail_exit": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "service",
+    "verify_mode": "processor_mirror_sim",
+    "tags": [
+      "ntest",
+      "harness",
+      "dcf",
+      "tdpqa-72"
+    ],
+    "title": "ntest flow FAIL-exit + defaults pin (TDPQA-72 harness)",
+    "cmd": "python3 scripts/testing/ntest_flow_fail_exit_sim.py",
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "dirty_state"
+      ],
+      "verify_mode": "processor_mirror_sim",
+      "note": "Promoted from draft.ntest.dcf_e2e_fail_exit — printed FAIL must exit ≠0; registry defaults must reach e2e env."
+    },
+    "note": "Harness pin for TDPQA-72 close-out. Does not exercise product money path."
+  },
+  "dcf.non_last_rsch_amount_eq_principal": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "tdpqa-72",
+      "product_decision"
+    ],
+    "title": "Non-last RSCH amount==principal — Out-of-scope pending product",
+    "cmd": "DCF_PRODUCT_PIN=non_last_rsch_amount_eq_principal python3 scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+    "acceptance": {
+      "dimensions": [
+        "happy_path"
+      ],
+      "verify_mode": "runtime",
+      "na": {
+        "amount_eq_principal_non_last": "PENDING product decision — last-child Obs2 remains fail-closed in dcf.group_parent_last_child_e2e; non-last currently allows lapd.amount≠principal (tm parity only)."
+      },
+      "note": "Promoted from draft.dcf.non_last_rsch_amount_eq_principal as Out-of-scope-documented. Not a QA Pass for enforcing non-last amount==principal."
+    },
+    "note": "Do not invent product fix. Options: enforce on non-last OR sign-off as intended."
+  },
+  "dcf.parent_statement_dfc_prtl": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "tdpqa-72",
+      "webapp"
+    ],
+    "title": "Parent statement force-bill visibility (DFC_PRTL vs fb_ref)",
+    "cmd": "DCF_PRODUCT_PIN=parent_statement_dfc_prtl python3 scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+    "acceptance": {
+      "dimensions": [
+        "downstream_ui"
+      ],
+      "verify_mode": "runtime",
+      "ui_fields": [
+        "getLoanAccountStatement",
+        "DFC_PRTL_BILL",
+        "fb_ref"
+      ],
+      "ui_asserted": true,
+      "webapp_required": true,
+      "note": "Promoted from draft.dcf.parent_statement_dfc_prtl. Value assert lives in dcf.group_parent_last_child_e2e assert_webapp_bound_apis (last-child DFC_PRTL / parent fb_ref)."
+    },
+    "note": "D10: child last DFC_PRTL=True; parent fb_ref=True DFC_PRTL=False (PARTIAL marker documented)."
+  },
+  "dcf.parent_member_future_int_parity": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "tdpqa-72",
+      "product_decision"
+    ],
+    "title": "Parent vs member future INT ₹1 — Out-of-scope pending product",
+    "cmd": "DCF_PRODUCT_PIN=parent_member_future_int_parity python3 scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+    "acceptance": {
+      "dimensions": [
+        "happy_path"
+      ],
+      "verify_mode": "runtime",
+      "na": {
+        "future_int_parity_rupee": "PENDING product decision (Vikram 07-22 ₹1 schedule INT). No value assert until fix vs tolerance chosen."
+      },
+      "note": "Promoted from draft.dcf.parent_member_future_int_parity as Out-of-scope-documented. Not a QA Pass for ₹1 drift."
+    },
+    "note": "Do not invent product fix. Options: fix drift OR tolerance-document with sign-off."
+  },
   "dcf.insurance_reupload_index_audit": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
@@ -1499,6 +1601,8 @@
         "getLoanAccountSummaryDetails",
         "interest_details.accrued_amount",
         "interest_details.original_amount",
+        "interest_accrued_amount",
+        "interest_original_amount",
         "getLoanAccountOverviewDetails",
         "account_overview_list",
         "getLoanAccountStatement",

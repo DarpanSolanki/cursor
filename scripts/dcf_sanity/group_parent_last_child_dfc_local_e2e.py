@@ -1238,14 +1238,52 @@ def assert_webapp_bound_apis(parent_lan: str, children: list[str], last_child: s
         code, status = r.response_status()
         if status != "SUCCESS" and code not in ("000", "0", "30225"):
             raise AssertionError(f"webapp FAIL summary {role} {lan}: code={code} status={status}")
+        # QA (TDPQA-72): "summary INT mismatch" / "summary INT 0" = Interest section
+        # Accrued vs Original on getLoanAccountSummaryDetails. Response template maps
+        # interest_details.accrued_amount ← interest_accrued_amount (EC) and
+        # interest_details.original_amount ← interest_original_amount (EC).
         interest = body.get("interest_details") or {}
         accrued = Decimal(str(interest.get("accrued_amount") or "0"))
         original = Decimal(str(interest.get("original_amount") or "0"))
         if ACCEPTANCE_STRICT and accrued > original + Decimal("1"):
             raise AssertionError(
-                f"webapp FAIL Obs3 summary {role} {lan}: Accrued={accrued} > Original={original}"
+                f"webapp FAIL Obs3 summary {role} {lan}: "
+                f"interest_details.accrued_amount={accrued} > "
+                f"interest_details.original_amount={original}"
             )
-        print(f"  webapp summary PASS: {role} {lan} Accrued={accrued} Original={original}")
+        # Value-level vs SQL Obs3 formula — catch UI "INT 0" when DB accrued > 0.
+        sql_row = psql(f"""
+WITH la AS (SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{lan}')
+SELECT
+  (SELECT COALESCE(SUM(ldd.due_amount),0)::text FROM mfi_accounting.loan_due_details ldd, la
+   WHERE ldd.loan_account_id=la.account_id AND ldd.component_type='INT' AND ldd.is_deleted=false
+     AND EXISTS (SELECT 1 FROM mfi_accounting.loan_account_billing_details bd
+                 WHERE bd.loan_installment_details_id=ldd.loan_installment_details_id
+                   AND COALESCE(bd.reversed,false)=false)),
+  (SELECT COALESCE(SUM(iad.total_accrued_amount),0)::text FROM mfi_accounting.interest_accrual_details iad, la
+   WHERE iad.account_id=la.account_id);
+""")
+        if sql_row and ACCEPTANCE_STRICT:
+            sql_orig_s, sql_acc_s = sql_row.split("|", 1)
+            sql_original = Decimal(sql_orig_s or "0")
+            sql_accrued = Decimal(sql_acc_s or "0")
+            if sql_accrued > 0 and accrued == 0:
+                raise AssertionError(
+                    f"webapp FAIL summary INT 0: {role} {lan} "
+                    f"interest_details.accrued_amount=0 but SQL Accrued={sql_accrued} "
+                    f"(QA field = interest_details.accrued_amount)"
+                )
+            if abs(accrued - sql_accrued) > Decimal("1") or abs(original - sql_original) > Decimal("1"):
+                raise AssertionError(
+                    f"webapp FAIL summary INT mismatch: {role} {lan} "
+                    f"API accrued/original={accrued}/{original} "
+                    f"SQL Accrued/Original={sql_accrued}/{sql_original}"
+                )
+        print(
+            f"  webapp summary PASS: {role} {lan} "
+            f"interest_details.accrued_amount={accrued} "
+            f"interest_details.original_amount={original}"
+        )
 
         # Overview — account_number_list + Product excess_amount=0 on parent
         r = fire_api(

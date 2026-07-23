@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-22T15:25:40Z",
+  "updated": "2026-07-23T06:56:17Z",
   "proposals": [
     {
       "id": "proposal.unknown.unknownApi.20260722",
@@ -14,7 +14,7 @@
         "api": "unknownApi",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -28,7 +28,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -68,7 +68,7 @@
         "api": "batch_other",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain batch_other gap=30 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain batch_other gap=30 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -95,7 +95,7 @@
         "api": "loanDeathForeclosure",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain death_foreclosure gap=9 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain death_foreclosure gap=9 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -129,7 +129,7 @@
         "api": "disburseLoan",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain disbursement gap=31 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain disbursement gap=31 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -165,7 +165,7 @@
         "api": "runEODJobs",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain eod_bod gap=5 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain eod_bod gap=5 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -194,7 +194,7 @@
         "api": "individualChildLoanForeclosure",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain foreclosure gap=11 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain foreclosure gap=11 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -223,7 +223,7 @@
         "api": "insurance",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain insurance gap=7 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain insurance gap=7 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -252,7 +252,7 @@
         "api": "fetchFailedSIPresentationList",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain mandates_si gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain mandates_si gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -281,7 +281,7 @@
         "api": "loanAccountDpdCalcJob",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain npa_dpd gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain npa_dpd gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -310,7 +310,7 @@
         "api": "other",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain other gap=44 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain other gap=44 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -337,7 +337,7 @@
         "api": "executeLMSPortfolioTransfer",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain portfolio gap=1 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain portfolio gap=1 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -364,7 +364,7 @@
         "api": "loanAccountPartPrepayment",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain prepayment gap=3 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain prepayment gap=3 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -393,7 +393,7 @@
         "api": "getLoanAccountOverviewDetails",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain read_inquiry gap=90 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain read_inquiry gap=90 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -422,7 +422,7 @@
         "api": "loanAccountReopening",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain reopening gap=2 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain reopening gap=2 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -451,7 +451,7 @@
         "api": "loanRepayment",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain repayment gap=2 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain repayment gap=2 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -480,7 +480,7 @@
         "api": "childLoanRestructuring",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain restructuring gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain restructuring gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -510,7 +510,7 @@
         "api": "loanAccountTransactionReversal",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain reversal gap=5 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain reversal gap=5 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -539,7 +539,7 @@
         "api": "write_ops",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain write_ops gap=44 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain write_ops gap=44 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -566,7 +566,7 @@
         "api": "loanWriteoff",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain writeoff gap=1 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain writeoff gap=1 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -593,7 +593,7 @@
         "api": "individualChildLoanForeclosure",
         "smoke_tier": "money",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -607,7 +607,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_due_details",
@@ -615,7 +615,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_account_payments_details",
@@ -623,7 +623,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "transaction_master",
@@ -631,7 +631,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -648,6 +648,58 @@
           "trustt-platform-accounting/src/ForeclosureProcessor.java"
         ],
         "tier": "money"
+      }
+    },
+    {
+      "id": "draft.ntest.dcf_e2e_fail_exit",
+      "status": "promoted",
+      "promoted_to": "ntest.dcf_e2e_fail_exit",
+      "source": "tdpqa72_closeout",
+      "created_at": "2026-07-23T07:00:00Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "service",
+      "case": {
+        "api": "deathForeclosureInsuranceJob",
+        "note": "promoted to registry ntest.dcf_e2e_fail_exit"
+      }
+    },
+    {
+      "id": "draft.dcf.non_last_rsch_amount_eq_principal",
+      "status": "promoted",
+      "promoted_to": "dcf.non_last_rsch_amount_eq_principal",
+      "source": "tdpqa72_closeout",
+      "created_at": "2026-07-23T07:00:00Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "api": "deathForeclosureInsuranceJob",
+        "note": "Out-of-scope-documented product decision pin"
+      }
+    },
+    {
+      "id": "draft.dcf.parent_statement_dfc_prtl",
+      "status": "promoted",
+      "promoted_to": "dcf.parent_statement_dfc_prtl",
+      "source": "tdpqa72_closeout",
+      "created_at": "2026-07-23T07:00:00Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "api": "deathForeclosureInsuranceJob",
+        "note": "D10 PARTIAL marker documented"
+      }
+    },
+    {
+      "id": "draft.dcf.parent_member_future_int_parity",
+      "status": "promoted",
+      "promoted_to": "dcf.parent_member_future_int_parity",
+      "source": "tdpqa72_closeout",
+      "created_at": "2026-07-23T07:00:00Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "api": "deathForeclosureInsuranceJob",
+        "note": "Out-of-scope-documented \u20b91 product decision"
       }
     }
   ]

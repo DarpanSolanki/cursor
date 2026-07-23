@@ -1,0 +1,37 @@
+{
+  "lead_in": "@Srikant Sulpule Fix is ready for QA retest on the latest Accounting deploy for this ticket (Obs1\u20133 + multi-child force-bill uniqueness).",
+  "rca": {
+    "situation": "After last-child death foreclosure on a group parent, QA saw missing parent force-bill on the statement, Summary interest showing zero or mismatched Accrued vs Original, and excess still visible after principal netting. A later multi-child same-day case also collided on the parent force-bill reference.",
+    "cause": "Parent last-child path did not always post a dedicated parent partial-cycle force-bill; parent accrued was not reconciled to billed original; parent reschedule payment kept a separate excess component after overpayment was already netted into principal; parent force-bill reference reused only account id + reporting time, so two child claims on the same day collided.",
+    "resolution": "Parent force-bill is posted on the death-foreclosure path; Accrued is reconciled to Original for Summary; reschedule excess is zero after principal netting; force-bill reference is unique per child claim. Local Dev Verification re-ran the full acceptance checklist under a fail-closed harness (printed FAIL exits non-zero)."
+  },
+  "impact": [
+    "In scope: group parent last-child death foreclosure \u2014 parent close, force-bill visibility for parent and child, Summary Accrued vs Original, Overview excess=0, last-child amount equals principal with excess=0, dirty pre-existing EMI billing row, same-day multi-child force-bill uniqueness.",
+    "Unchanged: non-last child path still allows payment-row amount to differ from principal while transaction amounts match (product decision pending \u2014 see Notes).",
+    "Edge: \u20b91 future-schedule interest parent vs remaining member remains open for product decision (fix vs tolerance). Parent residual interest stays Out-of-scope for this ticket.",
+    "QA4 deploy of the latest Obs1\u20133 + uniqueness fix is NOT verified on QA4 in comments yet \u2014 please retest on a build that includes those fixes."
+  ],
+  "dev": [
+    "D1 Parent closes on last-child \u2014 Result: Pass (local).",
+    "D2 Outstanding principal paid clean \u2014 Result: Pass (local).",
+    "D3 Child\u2194parent transaction parity (non-last) \u2014 Result: Pass (local).",
+    "D4 Child dedicated force-bill billing / no EMI hijack \u2014 Result: Pass (local, dirty EMI billing row).",
+    "D5 Parent dedicated force-bill billing \u2014 Result: Pass (local) \u00b7 NOT-VERIFIED-ON-QA4.",
+    "D6 Last-child amount equals principal, excess=0 \u2014 Result: Pass (local) \u00b7 NOT-VERIFIED-ON-QA4.",
+    "D7 Accrued \u2264 Original \u2014 Result: Pass (local).",
+    "D8 Webapp Summary Accrued vs Original (interest Accrued/Original fields + INT 0 guard) \u2014 Result: Pass (local) \u00b7 NOT-VERIFIED-ON-QA4.",
+    "D9 Webapp Overview excess=0 \u2014 Result: Pass (local) \u00b7 NOT-VERIFIED-ON-QA4.",
+    "D10 Statement force-bill: last child prefix visible; parent visible by reference \u2014 Result: Partial (local) \u00b7 NOT-VERIFIED-ON-QA4.",
+    "D11 Dirty EMI billing row preserved \u2014 Result: Pass (local).",
+    "D12 Same-date multi-child force-bill uniqueness \u2014 Result: Pass (local sim + sequential run) \u00b7 NOT-VERIFIED-ON-QA4 as full runtime fail\u2192pass.",
+    "Harness: forced FAIL auto-discover exits non-zero; pinned Pass exits 0.",
+    "Note for QA \u2014 prefer a fresh group on QA4; confirm build includes parent force-bill + excess=0 + Accrued reconcile + unique force-bill reference."
+  ],
+  "result": "Developer scenarios: Pass (local). QA4 retest still required.",
+  "service": "Accounting",
+  "pre": "NA",
+  "post": "NA",
+  "notes": "Product decisions still open: (1) non-last amount vs principal \u2014 enforce equality or sign-off as intended; (2) \u20b91 future schedule INT parent vs member \u2014 fix or tolerance-document. Vikram 07-22: 'There is a \u20b91 difference in the future schedule interest between the parent LAN and the remaining member.' Earlier clarification once called parent force-bill 'not a bug'; product later required parent force-bill \u2014 that fix is in the build under retest.",
+  "aitdp_percent": 0.8,
+  "aitdp_remarks": "AI-assisted close-out: confirmed Summary interest fields against the UI API, hardened the local fail-closed test harness, re-ran the D1\u2013D12 acceptance checklist, and drafted this handoff without posting. Product decisions for non-last amount and \u20b91 schedule drift left open."
+}

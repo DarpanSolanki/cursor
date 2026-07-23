@@ -270,12 +270,55 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
 
 
 def _run_flow_case(case_id: str, case: dict) -> int:
+    """Run a registry flow case. Fail-closed: non-zero child rc OR printed FAIL with rc=0.
+
+    Applies ``defaults`` (same as API cases) then optional ``env`` overlays so pinned
+    DCF fixtures (PARENT_LAN/…) actually reach the e2e script. Captures combined
+    output so a printed ``FAIL:`` line cannot exit 0 (draft.ntest.dcf_e2e_fail_exit).
+    """
+    import re
+
     cmd = case["cmd"]
     env = os.environ.copy()
+    # defaults first (os.environ wins when already set — empty string keeps unpinned)
+    env.update(_resolve_defaults(case))
     env.update({k: str(v) for k, v in (case.get("env") or {}).items()})
-    print(f"=== {case_id} [flow] ===\n$ {cmd}")
+    print(f"=== {case_id} [flow] ===\n$ {cmd}", flush=True)
     t0 = time.time()
-    rc = subprocess.call(cmd, shell=True, cwd=str(ROOT), env=env)
+    proc = subprocess.run(
+        cmd,
+        shell=True,
+        cwd=str(ROOT),
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    # Live-echo for operators (preserve prior UX); keep combined text for FAIL scan.
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if proc.stdout:
+        sys.stdout.write(proc.stdout)
+        sys.stdout.flush()
+    if proc.stderr:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.flush()
+    rc = int(proc.returncode or 0)
+    # Defense-in-depth: unrecovered printed FAIL must never report as PASS.
+    # Prefer trailing === PASS: on stdout (stderr may flush FAIL lines later when
+    # nested harness self-tests deliberately print FAIL then PASS).
+    if rc == 0:
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
+        combined = stdout + stderr
+        tail_lines = [ln for ln in stdout.rstrip().splitlines() if ln.strip()]
+        trailing_pass = bool(tail_lines) and tail_lines[-1].startswith("=== PASS:")
+        has_fail = re.search(r"(?m)^FAIL:\s", combined) is not None
+        if has_fail and not trailing_pass:
+            print(
+                f"=== {case_id} FAIL — child printed unrecovered FAIL: with exit 0; "
+                f"forcing rc=1 (ntest.dcf_e2e_fail_exit)",
+                file=sys.stderr,
+            )
+            rc = 1
     _telemetry(case_id, rc == 0, time.time() - t0)
     return rc
 

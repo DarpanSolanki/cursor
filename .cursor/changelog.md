@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | TDPQA-72 close-out — harness fail-exit + D8 + registry pins
+ntest `_run_flow_case` applies registry `defaults` + coerces unrecovered printed `FAIL:` to exit ≠0 (`ntest.dcf_e2e_fail_exit`). D8 asserts `interest_details.accrued_amount`/`original_amount` with SQL parity / INT-0 guard. Promoted: `ntest.dcf_e2e_fail_exit`, `dcf.non_last_rsch_amount_eq_principal`, `dcf.parent_statement_dfc_prtl`, `dcf.parent_member_future_int_parity`. D-matrix local Pass; QA4 NOT-VERIFIED; product Qs open for non-last amount≠prin + ₹1 schedule.
+
 ## 2026-07-22 | workspace | Upgrade 8 TASK E — local-parity gate
 ship-discipline + process_matrix `local_parity` (conditional schema/masterdata): migrations/seeds must back local schema; duplicate Flyway versions fail (GAP-077); DDL hand-patches via db-local-write logged and must match Flyway/initial-setup (GAP-076 class). Fixture UPDATEs ignored. Summary: `LOCAL PASS — parity: migrations ✓ / seeds ✓ (predicts <train> envs)`.
 
