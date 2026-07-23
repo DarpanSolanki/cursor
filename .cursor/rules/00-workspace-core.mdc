@@ -42,6 +42,25 @@ After bootstrap, for every user instruction except narrow exceptions below, prin
 
 If unsure whether mutation will follow → treat as **MUTATION** (STOP-AND-WAIT).
 
+## Post-analysis OPTIONS BOARD (mandatory — planning engine)
+
+After **any** analysis / RCA / Jira triage / performance review / “what’s next?”, the response **must** include an **OPTIONS BOARD** before a single recommended next step:
+
+| Tier | Meaning |
+|------|---------|
+| **L0** | Hotfix / config / ops — deploy today |
+| **L1** | Proper code/config fix in-framework |
+| **L2** | Enhancement (index, schema, topic, tuning) |
+| **L3** | Architectural / cross-module / framework |
+
+**Rules:**
+- Emit **L0 + L1 + L2 + L3** every time (use `N/A — <one line>` only when a tier truly does not apply).
+- **Include code-fix options when they exist** — do not end with evidence-gathering alone when L1/L2 code paths are available.
+- Evidence/prod checks may sit **under** a tier as a prerequisite, never as a substitute for the board.
+- Still **STOP-AND-WAIT** before mutating; the board is discuss-only until the user picks a tier.
+
+Autopilot prints `OPTIONS BOARD (mandatory after analysis): …` on matching plans. Skill detail: `.cursor/skills/architect-thinking/tiered-solutions.md`.
+
 ## Mixed-train banner (Gate A — before any RCA conclusion)
 
 Autopilot prints a computed `TRAINS: … [MIXED|ALIGNED]` line from `.cursor/git-workspace-state.json` (never hand-written).

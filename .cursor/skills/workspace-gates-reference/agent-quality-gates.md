@@ -78,7 +78,7 @@ Subset e2e (loan CLOSED, txn exists) is **not Done** while the acceptance shape 
 ## Gate E — Outputs (RCA / JIRA / release)
 
 - Diplomatic edge-case framing for RCA and QA comments (`jira-fix-update` skill).
-- Tiered L0/L1 minimum for bugs (`tiered-solution-approach.mdc`).
+- Tiered L0–L3 OPTIONS BOARD after analysis (`00-workspace-core` + `tiered-solutions.md`); evidence-only next-step forbidden.
 - Minimal fix gate before propose (`minimal-fix-impact-gate.mdc`).
 
 ## Autopilot

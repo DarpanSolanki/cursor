@@ -53,9 +53,11 @@ When working on **any** bug, production issue, JIRA, or enhancement — always p
 
 ## Rules
 
+- **After every analysis / RCA / Jira triage / “what’s next?”**: emit a full **OPTIONS BOARD** — **L0 + L1 + L2 + L3** — before recommending a single next step. Planning engine enforces this via autopilot + `00-workspace-core.mdc`.
 - **Always start with L0**. Even if the real fix is L2, the team needs something deployable NOW for production fires.
-- **Always include at least L0 + L1**. Quick fix + proper fix is the minimum.
-- **L2 and L3 are optional** but recommended when the issue reveals a structural gap. Even a 1-line mention is valuable — it plants the seed.
+- **L2 and L3 are not optional after analysis** — if a tier does not apply, write `N/A — <one line why>`, do not omit the row.
+- **Include code-fix options when they exist** — do not bury L1/L2 behind “gather more evidence” when the hotspot is already visible in code.
+- Evidence/prod checks may be a **prerequisite under a tier**, never a substitute for the board.
 - **Be honest about trade-offs**: L0 may leave tech debt. Say so. L3 may take weeks. Say so.
 - **Tag effort and risk**: For each level, indicate approximate effort (hours/days) and deployment risk (low/medium/high).
 - **Don't over-engineer L0**: The point is speed. A perfect L0 that takes 3 days defeats the purpose.

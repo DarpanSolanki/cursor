@@ -14,7 +14,7 @@ Deep patterns live in **`.cursor/skills/architect-thinking/`** (on-demand). This
 
 ## Tiered solution approach (mandatory)
 
-For every bug, issue, JIRA, or enhancement, present **at least L0 + L1** (mention L2/L3 when structural):
+For every bug, issue, JIRA, analysis, or enhancement — after analysis emit a full **OPTIONS BOARD** (**L0 + L1 + L2 + L3**). Do not end with evidence-only / single next-step when code options exist. `N/A — <one line>` only when a tier truly does not apply.
 
 | Tier | When | Effort / risk |
 |------|------|----------------|
@@ -23,7 +23,7 @@ For every bug, issue, JIRA, or enhancement, present **at least L0 + L1** (mentio
 | **L2 Enhancement** | Schema, index, config, new topic. Planned release. | Days |
 | **L3 Architectural** | Framework upgrade, outbox, circuit breaker, cross-module. | Weeks |
 
-Full examples and L3 seeds: `.cursor/skills/architect-thinking/tiered-solutions.md`.
+Full examples and L3 seeds: `.cursor/skills/architect-thinking/tiered-solutions.md`. Planning engine: `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD + autopilot directive.
 
 ## Repository layer — no comments
 

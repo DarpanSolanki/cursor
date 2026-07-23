@@ -52,7 +52,7 @@ Do not say "pushed" or "done" with `Post-ship gate: FAIL`.
 
 ## Enhancement — all fronts
 
-Before proposing/shipping any fix/enhancement, walk Scale / Index-SQL / Poison / Cross-service / Idempotency / Ops(SQL impact) / Regression / Contract. **Tiered delivery (always present L0 + L1).** Always present **L0 + L1**. Native SQL → query-index audit or label NOT VERIFIED. Do **not** close SQL/batch enhancement with only code trace.
+Before proposing/shipping any fix/enhancement, walk Scale / Index-SQL / Poison / Cross-service / Idempotency / Ops(SQL impact) / Regression / Contract. **Tiered delivery: after analysis always present L0 + L1 + L2 + L3** (`N/A` one-liner OK). Native SQL → query-index audit or label NOT VERIFIED. Do **not** close SQL/batch enhancement with only code trace.
 
 ## Internal API local harness (money-tier close)
 

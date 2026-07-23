@@ -93,5 +93,5 @@ Machine gate: `acceptance_coverage.py` — fail closed on subset / SQL-only weba
 **Enforced domains (ratchet):** `death_foreclosure`, `disbursement`, `repayment`, `foreclosure` — may only GROW (`registry_proposals.py ratchet`). All `smoke_tier:money` cases must declare `verify_mode` (ship-discipline fails otherwise).
 
 ### Gate E — Outputs
-Diplomatic RCA; tiered L0/L1 minimum; minimal-fix gate before propose.
+Diplomatic RCA; after analysis emit full **OPTIONS BOARD (L0 + L1 + L2 + L3)** — code options included when they exist; evidence-only next-step is not enough; then minimal-fix gate before propose. See `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.
 

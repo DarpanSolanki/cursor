@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Post-analysis OPTIONS BOARD (planning engine)
+After RCA/Jira/perf analysis always emit L0+L1+L2+L3 (code options included); evidence-only next-step forbidden. Autopilot directive + `00-workspace-core` § board; Gate E / tiered-solutions / memory `feedback_post_analysis_options_board`.
+
 ## 2026-07-23 | workspace | Upgrade 10 — KG map enrichment (extractors)
 Extractor-only close of Brain Truth Audit gaps: money aliases (`account_entry`/`client_reference_number`), Kafka topics+emits/consumes, doc nodes (392), scheduler nodes, repo-scoped request IDs (deleteUser/createTaskWorkflow), Writer CRUD, bus→graph promotion, map-completeness SELF-REPORT+doctor, 3 missing flow docs (writeoff/MJE/DCF), explicit exclusions in `build_config.json`. Rebuild 7535n/35524e; req coverage weak repos →100%.
 

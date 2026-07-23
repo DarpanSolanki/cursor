@@ -56,6 +56,33 @@ class Plan:
     agent_directives: list[str] = field(default_factory=list)
 
 
+# Post-analysis option board — printed on BUG/RCA / INVESTIGATION / analyse / next-action plans.
+# Agents must not end analysis with evidence-only next steps; every tier must be listed.
+OPTIONS_BOARD_DIRECTIVE = (
+    "OPTIONS BOARD (mandatory after analysis): emit **L0 + L1 + L2 + L3** before recommending "
+    "a single next step. Include code/config/ops options when they exist — do not bury code fixes "
+    "behind evidence-gathering. Format each tier: change / where / effort / risk / what it does NOT fix. "
+    "Use `N/A — <one line>` only when a tier truly does not apply. Evidence/prod checks may be a "
+    "prerequisite under a tier, never a substitute for the board. "
+    "See `.cursor/skills/architect-thinking/tiered-solutions.md` + `.cursor/rules/00-workspace-core.mdc`."
+)
+
+
+def _needs_options_board(kind: str, text: str) -> bool:
+    """True when the plan is analysis / RCA / ticket triage / next-action (not pure social)."""
+    if kind in ("BUG/RCA", "INVESTIGATION", "FEATURE", "FIX+SHIP", "OPS_SQL", "CODE/DAO"):
+        return True
+    t = (text or "").lower()
+    return bool(
+        re.search(
+            r"\b(analyse|analyze|analysis|rca|root.?cause|next.?action|action.?plan|jira|"
+            r"performance|bottleneck|slowness|optimis|optimiz|what.?can.?we.?do|"
+            r"options?|tiered|l0|hotfix|proper.?fix)\b",
+            t,
+        )
+    )
+
+
 def load_state() -> dict:
     if not STATE_PATH.is_file():
         return {}
@@ -396,6 +423,10 @@ def build_plan(
             "before soft-archive or LOCAL_RESET_ARCHIVED; output Minimal permanent / Contract-native / "
             "Anything lost / Code-proven checklist."
         )
+    # Post-analysis OPTIONS BOARD — never end analysis with evidence-only / single next-step.
+    # L0–L3 (or N/A one-liner) must appear so code/config/ops options are always selectable.
+    if _needs_options_board(kind, text):
+        directives.append(OPTIONS_BOARD_DIRECTIVE)
     if api and kind in ("BUG/RCA", "FEATURE", "FIX+SHIP", "TEST"):
         directives.append(
             "Trace already ran — do not re-run orient unless full crud/why needed."

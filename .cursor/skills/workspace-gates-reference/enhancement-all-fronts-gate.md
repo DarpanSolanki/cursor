@@ -17,7 +17,9 @@ Before proposing or shipping **any** fix, enhancement, or new capability, walk *
 | **Regression** | Adjacent batch/API paths; registry case or audit script |
 | **Contract** | Additive-only; all callers |
 
-## Tiered delivery (always present L0 + L1)
+## Tiered delivery (always present L0 + L1 + L2 + L3 after analysis)
+
+After analysis / RCA / enhancement discussion, emit full **OPTIONS BOARD** (L0–L3; `N/A` one-liner only if truly inapplicable). Include code options when they exist — evidence-only next-step is not enough. See `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.
 
 | Tier | When | Example |
 |------|------|---------|

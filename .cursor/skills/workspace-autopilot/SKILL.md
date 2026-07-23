@@ -62,12 +62,14 @@ Test PASS → hook → `mark-verified` → cooldown → `ship-and-continue`. Use
 | Type | Auto-runs | You do next |
 |------|-----------|-------------|
 | TEST | preflight, before-test, trace | `ntest auto <api>`; money/disburse: column-value asserts required (`column_audit` / `acceptance.db_asserts`) — never Pass on HTTP 200 alone |
-| BUG/RCA | preflight, trace --fast | logs, DB, orchestration XML, RCA |
-| FIX+SHIP | trace, preflight | fix → test → `autopilot end` |
-| FEATURE | trace, preflight | kg flow + XML + impact |
+| BUG/RCA | preflight, trace --fast | logs, DB, orchestration XML, RCA → **OPTIONS BOARD L0–L3** then recommend |
+| FIX+SHIP | trace, preflight | fix → test → `autopilot end` (board already shown at propose) |
+| FEATURE | trace, preflight | kg flow + XML + impact → **OPTIONS BOARD L0–L3** |
 | WORKSPACE | corroborate, max-pass | implement infra if asked |
 | RELEASE | (skills) | release-details skill |
 | OPS_SQL (prod/adhoc UPDATE, CRR, DTFC reset) | preflight | load `prod-ops-sql-impact` → answer “is contract-native FAIL enough?” → impact matrix → minimal UPDATEs (not local-archive by default) → print SQL path only (no IDE auto-open) |
+
+**OPTIONS BOARD:** Autopilot injects `OPTIONS BOARD (mandatory after analysis): …` for analyse/RCA/Jira/perf plans. After analysis, always list L0–L3 (code options included when they exist); do not end with evidence-only next-step. Detail: `.cursor/rules/00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.
 
 ## Task end
 

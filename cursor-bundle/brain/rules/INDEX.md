@@ -8,7 +8,7 @@ Production-incident-derived rules. **Read the relevant ones before any change to
 - [`multi-path-state-persistence-safety.md`](multi-path-state-persistence-safety.md) — when multiple paths can write the same state, ensure idempotency + monotonic-forward transitions. Pairs with `feedback_no_inmem_mutation_after_cas` memory.
 - [`execution-context-discipline.md`](execution-context-discipline.md) — EC keys must be read/written safely; no leak across processors; no overwrite of a downstream-needed key.
 - [`api-contract-safety.md`](api-contract-safety.md) — never change an existing response semantic; add new fields, keep old behaviour. Born of the `charges_configured` LOS-KFS incident.
-- [`tiered-solution-approach.md`](tiered-solution-approach.md) — always offer L0 (hotfix) + L1 (proper fix); optional L2/L3 depending on scope.
+- [`tiered-solution-approach.md`](tiered-solution-approach.md) — after analysis emit full OPTIONS BOARD L0+L1+L2+L3 (`N/A` one-liner OK); include code options; evidence-only next-step forbidden.
 - [`discuss-before-updating.md`](discuss-before-updating.md) — confirm scope with the user before structural changes.
 - [`novopay-framework-awareness.md`](novopay-framework-awareness.md) — SOF / orchestration / processor / `<Transaction>` block awareness; no `@Transactional` on processors.
 
