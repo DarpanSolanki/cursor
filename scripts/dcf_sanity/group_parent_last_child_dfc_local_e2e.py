@@ -15,11 +15,14 @@ from __future__ import annotations
 
 import atexit
 import fcntl
+import json
 import os
 import subprocess
 import sys
 import time
-from decimal import Decimal
+import urllib.error
+import urllib.request
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +52,11 @@ DCF_FIXTURE_BLOCKLIST = frozenset(
     for lan in os.environ.get("DCF_FIXTURE_BLOCKLIST", "6003896527,6003973025").split(",")
     if lan.strip()
 )
+# Vikram QA path (TDPQA-72): child1 regular FC via loanPrepayment → RSTCRE → child2 last DFC.
+VIKRAM_PATH = os.environ.get("VIKRAM_PATH", "0") == "1"
+ACCOUNTING_URL = os.environ.get("ACCOUNTING_URL", "http://localhost:8002/accounting/api/v1")
+ICF_USER_ID = os.environ.get("ICF_USER_ID", "103")
+ICF_OFFICE_ID = os.environ.get("ICF_OFFICE_ID", "2")
 
 PG_ENV = {**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")}
 PG = [
@@ -61,8 +69,31 @@ PG = [
 
 
 def psql(sql: str) -> str:
-    out = subprocess.check_output([*PG, "-c", sql], env=PG_ENV, text=True)
-    return out.strip().split("\n")[0] if out.strip() else ""
+    """Single-row psql with YB timeout retry (fail-fast after a few attempts)."""
+    last: BaseException | None = None
+    for attempt in range(1, 5):
+        try:
+            out = subprocess.check_output([*PG, "-c", sql], env=PG_ENV, text=True, stderr=subprocess.STDOUT)
+            return out.strip().split("\n")[0] if out.strip() else ""
+        except subprocess.CalledProcessError as exc:
+            last = exc
+            err = (exc.output or "") if isinstance(getattr(exc, "output", None), str) else ""
+            if not err and exc.stderr:
+                err = exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode("utf-8", "replace")
+            transient = any(
+                s in err
+                for s in (
+                    "Timed out waiting",
+                    "kProcessingRequest",
+                    "Connection refused",
+                    "could not connect",
+                    "server closed the connection",
+                )
+            )
+            if not transient or attempt == 4:
+                raise
+            time.sleep(min(2 * attempt, 6))
+    raise last or RuntimeError("psql failed")
 
 
 def acquire_dcf_e2e_lock() -> int:
@@ -194,7 +225,7 @@ WHERE tm.reference_number='{ref}' ORDER BY reference_code;
 
 def _txn_refs_for_lan(lan: str, txn_type: str) -> list[str]:
     """Collect transaction_master.reference_number values for GL balance audit."""
-    if txn_type in ("DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE"):
+    if txn_type in ("DEATH_FORECLOSURE", "RSCH_DEATH_FORECLOSURE", "LOAN_PREPAYMENT"):
         ref, _ = latest_txn(lan, txn_type)
         return [ref] if ref else []
     if txn_type == "BILLING":
@@ -487,6 +518,14 @@ def child_already_closed_from_dfc(child_lan: str) -> bool:
     return bool(ref)
 
 
+def child_already_closed_from_fc(child_lan: str) -> bool:
+    st = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';")
+    if st != "CLOSED":
+        return False
+    ref, _ = latest_txn(child_lan, "LOAN_PREPAYMENT")
+    return bool(ref)
+
+
 def cleanup_abandoned_staging(child_lans: list[str], keep_staging_id: int | None = None) -> None:
     """Stop insurance reader from re-picking stale inbound rows (batch min/max id window)."""
     lan_list = ",".join(f"'{lan}'" for lan in child_lans)
@@ -519,25 +558,24 @@ WHERE id <> {keep_staging_id}
 
 
 def wait_batch_by_start(job_name: str, started_epoch: int, timeout_s: int = 300) -> str:
-    """Poll batch_job_execution by job name + start time (Spring param is `time`, not request job_time)."""
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
-        row = psql(f"""
-SELECT bje.status
-FROM mfi_batch.batch_job_execution bje
-JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
-WHERE bji.job_name = '{job_name}'
-  AND EXTRACT(EPOCH FROM bje.create_time)::bigint >= {started_epoch}
-ORDER BY bje.job_execution_id DESC
-LIMIT 1;
-""")
-        if row == "COMPLETED":
-            print(f"  batch {job_name} COMPLETED")
-            return row
-        if row in ("FAILED", "STOPPED", "ABANDONED"):
-            raise RuntimeError(f"batch {job_name} {row}")
-        time.sleep(2)
-    raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
+    """Deprecated wall-clock wait — delegates to TZ-corrected harness helper."""
+    from clb_queue_harness import wait_batch_by_start as _wait
+
+    return _wait(job_name, started_epoch, timeout_s=timeout_s)
+
+
+def wait_batch_after_id(job_name: str, min_execution_id: int, timeout_s: int = 300) -> str:
+    from clb_queue_harness import wait_batch_after
+
+    status = wait_batch_after(job_name, min_execution_id, timeout_s=timeout_s)
+    print(f"  batch {job_name} COMPLETED")
+    return status
+
+
+def max_job_execution_id(job_name: str) -> int:
+    from clb_queue_harness import max_batch_execution_id
+
+    return max_batch_execution_id(job_name)
 
 def _resolve_death_date_sql(parent_id: int, *, latest: bool) -> str:
     """Day-after-PRIN-due death date aligned with ChildLoanRestructuring (`due_date > death`).
@@ -855,6 +893,376 @@ def _eod_ms_ist(iso_date: str) -> str:
     )
 
 
+def _acct_post(api: str, body: dict) -> dict:
+    url = f"{ACCOUNTING_URL}/{api}"
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        return json.loads(exc.read())
+
+
+def _lp_headers(stan: str, *, function_code: str = "APPROVE") -> dict:
+    td = str(int(time.time() * 1000))
+    return {
+        "tenant_code": "mfi",
+        "client_code": "NOVOPAY",
+        "channel_code": "WEB",
+        "end_channel_code": "NOVOPAY",
+        "function_code": function_code,
+        "function_sub_code": "DEFAULT",
+        "run_mode": "REAL",
+        "operation_mode": "SELF",
+        "locale": "en-in",
+        "stan": stan,
+        "transmission_datetime": td,
+        "user_id": ICF_USER_ID,
+        "actor_type": "EMPLOYEE",
+        "user_handle_value": ICF_USER_ID,
+        "office_id": ICF_OFFICE_ID,
+    }
+
+
+def _lp_component(due: str) -> dict:
+    d = Decimal(str(due or "0"))
+    return {
+        "due_amount": str(d),
+        "is_waived": "0",
+        "is_fully_waived": "0",
+        "waiver_percentage": "",
+        "waived_amount": "0",
+        "amount_to_be_paid": str(d),
+    }
+
+
+def _lp_simulate(lan: str, foreclosure_date_ms: str) -> dict:
+    stan = f"vikram_sim_{lan}_{int(time.time())}"
+    body = {
+        "headers": _lp_headers(stan, function_code="DEFAULT"),
+        "request": {"account_number": lan, "foreclosure_date": foreclosure_date_ms},
+    }
+    resp = _acct_post("fetchLoanForeclosureSimulationDetails", body)
+    status = resp.get("response_status", {})
+    if status.get("code") != "30360":
+        raise RuntimeError(f"fetchLoanForeclosureSimulationDetails failed: {status}")
+    return resp
+
+
+def _lp_build_request(sim: dict, lan: str, foreclosure_date_ms: str, receipt: str) -> dict:
+    fs = sim.get("foreclosure_simulation_details") or {}
+    charges = sim.get("charges_details") or []
+    request: dict = {
+        "billed_interest_details": _lp_component(str(fs.get("billed_interest") or "0")),
+        "billed_principal_details": _lp_component(str(fs.get("billed_principal") or "0")),
+        "balance_principal_details": _lp_component(str(fs.get("balance_principal") or "0")),
+        "bpi_details": _lp_component(str(fs.get("bpi_amount") or "0")),
+        "current_lpp_details": _lp_component(str(fs.get("current_lpp") or "0")),
+        "future_lpp_details": _lp_component(str(fs.get("future_lpp") or "0")),
+        "foreclosure_fee_details": _lp_component(str(fs.get("foreclosure_fee") or "0")),
+        "fee_details": [{**_lp_component(str(fs.get("cbc_fee") or "0")), "identifier_code": "cbc_fee"}],
+        "charges_details": charges,
+    }
+    if fs.get("billed_dpi") is not None:
+        request["billed_dpi_details"] = _lp_component(str(fs.get("billed_dpi") or "0"))
+    if fs.get("bpd_amount") is not None:
+        request["bpd_details"] = _lp_component(str(fs.get("bpd_amount") or "0"))
+
+    total = (
+        Decimal(str(fs.get("billed_interest") or "0"))
+        + Decimal(str(fs.get("billed_principal") or "0"))
+        + Decimal(str(fs.get("balance_principal") or "0"))
+        + Decimal(str(fs.get("bpi_amount") or "0"))
+        + Decimal(str(fs.get("billed_dpi") or "0"))
+        + Decimal(str(fs.get("bpd_amount") or "0"))
+        + Decimal(str(fs.get("current_lpp") or "0"))
+        + Decimal(str(fs.get("foreclosure_fee") or "0"))
+        + Decimal(str(fs.get("cbc_fee") or "0"))
+    )
+    # Exclusive tax on foreclosure_fee (ValidateLoanPrepaymentDataProcessor adds fetchExclusiveTaxAmount)
+    for ch in charges:
+        ident = str(ch.get("charge_identifier") or "")
+        if ident != "foreclosure_fee":
+            continue
+        inclusive = str(ch.get("charge_inclusive_of_tax") or "").lower()
+        if inclusive == "false":
+            total += Decimal(str(ch.get("total_tax_amount") or "0"))
+    excess = Decimal(str(fs.get("excess_amount") or "0"))
+    if excess > 0:
+        total -= excess
+    rounded = total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    round_off = rounded - total
+    request["loan_foreclosure_details"] = {
+        "account_number": lan,
+        "foreclosure_date": foreclosure_date_ms,
+        "total_foreclosure_amount": str(rounded),
+        "round_off_amount": str(round_off),
+        "receipt_number": receipt,
+        "currency_code": "INR",
+        "currency_code_value": "INR",
+        "payment_mode": "CASH",
+        "payment_mode_value": "Cash",
+        "closure_reason": "RELOC",
+        "closure_reason_value": "Relocation",
+        "notes": "VIKRAM_PATH local child regular FC",
+        "paid_by": "CUSTOMER",
+        "paid_by_value": "Customer",
+        "depositor_name": "LOCAL_TEST",
+        "excess_amount": str(fs.get("excess_amount") or "0"),
+    }
+    return request
+
+
+def _vikram_fc_date(death_date: str) -> str:
+    """loanPrepayment rejects foreclosure_date < platform today (134292).
+
+    DCF death_date may be mid-cycle in the past; regular FC must use today (or later).
+    ISO YYYY-MM-DD string compare is chronological.
+    """
+    today = time.strftime("%Y-%m-%d")
+    return death_date if death_date >= today else today
+
+
+def settle_parent_overdue_before_vikram_fc(parent_lan: str) -> None:
+    """Product rule 433: cannot foreclose member while parent has overdue.
+
+    Real loanRepayment on parent for open overdue pending (not SQL wipe).
+    """
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts/testing"))
+    from lib.api_client import fire_api, fresh_stan  # type: ignore
+    from lib.envelope import build_envelope  # type: ignore
+
+    pending = Decimal(psql(f"""
+SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::text
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id = ldd.loan_account_id
+WHERE la.la_account_number = '{parent_lan}'
+  AND ldd.is_deleted = false
+  AND ldd.due_date::date < CURRENT_DATE
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0;
+""") or "0")
+    if pending <= 0:
+        print(f"  Vikram prep: parent {parent_lan} has no overdue pending")
+        return
+    # Round up to whole rupee like collection screens
+    repay_amt = pending.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    if repay_amt < pending:
+        repay_amt += Decimal("1")
+    today_ms = str(int(time.time() * 1000))
+    crn = f"VOD{parent_lan[-4:]}{time.time_ns()}"[:32]
+    body = {
+        "loan_repayment_details": {
+            "account_number": parent_lan,
+            "repayment_amount": str(repay_amt),
+            "repayment_time": today_ms,
+            "value_date": today_ms,
+            "repayment_mode": "CASH",
+            "receipt_number": crn,
+            "client_reference_number": crn,
+        }
+    }
+    env = build_envelope("accounting", body, stan=fresh_stan("loanRepayment"))
+    env["headers"]["function_sub_code"] = "WITHOUT_MAKER_CHECKER"
+    env["headers"]["operation_mode"] = "SELF"
+    env["headers"]["actor_type"] = "CUSTOMER"
+    print(
+        f"  Vikram prep: settle parent overdue via loanRepayment "
+        f"parent={parent_lan} pending={pending} repay={repay_amt} crn={crn}"
+    )
+    result = fire_api("loanRepayment", env, timeout_s=180)
+    code, status = result.response_status()
+    if status and status.upper() != "SUCCESS":
+        raise RuntimeError(
+            f"Vikram prep loanRepayment FAIL parent={parent_lan} code={code} body={result.body[:600]}"
+        )
+    left = Decimal(psql(f"""
+SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::text
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id = ldd.loan_account_id
+WHERE la.la_account_number = '{parent_lan}'
+  AND ldd.is_deleted = false
+  AND ldd.due_date::date < CURRENT_DATE
+  AND (ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)) > 0;
+""") or "0")
+    if left > 0:
+        raise RuntimeError(
+            f"Vikram prep FAIL: parent {parent_lan} still overdue pending={left} after repay={repay_amt}"
+        )
+    print(f"  Vikram prep PASS: parent {parent_lan} overdue cleared")
+
+
+def ensure_rstcre_pending_after_vikram_fc(
+    parent_lan: str,
+    parent_id: int,
+    closed_child_lan: str,
+    remaining_child_lan: str,
+) -> bool:
+    """ICF does not run childLoanForeclosureEventGenerationProcessor (loanPrepayment does).
+
+    Seed RSTCRE PENDING in the same JSON shape as that processor so the existing
+    childLoanEventProcessingBatchJob drain path runs.
+    Returns True when a drain is needed; False when already completed for this FC.
+    """
+    pending = int(psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_status NOT IN ('C','COMPLETED');
+""") or "0")
+    if pending > 0:
+        print(f"  Vikram RSTCRE: already PENDING count={pending} (loanPrepayment path) — skip seed")
+        return True
+
+    prep = psql(f"""
+SELECT pd.id::text,
+       (EXTRACT(EPOCH FROM pd.foreclosure_date) * 1000)::bigint::text
+FROM mfi_accounting.prepayment_details pd
+JOIN mfi_accounting.loan_account la ON la.account_id = pd.loan_account_id
+WHERE la.la_account_number = '{closed_child_lan}'
+  AND pd.prepayment_status = 'APPROVED'
+  AND COALESCE(pd.is_deleted,false) = false
+ORDER BY pd.id DESC LIMIT 1;
+""")
+    if not prep:
+        raise RuntimeError(
+            f"Vikram RSTCRE seed FAIL: no APPROVED prepayment_details for closed child {closed_child_lan}"
+        )
+    prep_id, fc_ms = prep.split("|", 1)
+
+    already = int(psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
+  AND event_id={prep_id} AND event_status IN ('C','COMPLETED');
+""") or "0")
+    if already > 0:
+        print(
+            f"  Vikram RSTCRE: already COMPLETED for prepayment event_id={prep_id} "
+            f"(count={already}) — skip seed/drain"
+        )
+        return False
+
+    rem = psql(f"""
+SELECT la.account_id::text, COALESCE(la.loan_amount,0)::text, la.parent_loan_account_id::text
+FROM mfi_accounting.loan_account la
+WHERE la.la_account_number = '{remaining_child_lan}' AND COALESCE(la.is_deleted,false)=false;
+""")
+    if not rem:
+        raise RuntimeError(f"Vikram RSTCRE seed FAIL: remaining child {remaining_child_lan} not found")
+    rem_id, rem_amt, rem_parent = rem.split("|", 2)
+    if int(rem_parent) != parent_id:
+        raise RuntimeError(
+            f"Vikram RSTCRE seed FAIL: remaining child parent_loan_account_id={rem_parent} != {parent_id}"
+        )
+
+    # Mirror ChildLoanForeclosureEventGenerationProcessor RSTCRE payload (single remaining member → fraction 1.0)
+    payload = [{
+        "child_restructuring_data": [{
+            "child_loan_account_id": rem_id,
+            "parent_account_id": str(parent_id),
+            "rescheduling_effective_date": fc_ms,
+            "restructuring_impact": "REDUCE_EMI",
+            "fraction_of_loan_amount": "1.0",
+        }],
+        "parent_account_id": str(parent_id),
+        "function_code": "FORECLOSURE",
+    }]
+    data_json = json.dumps(payload, separators=(",", ":"))
+    data_sql = data_json.replace("'", "''")
+    psql_multi(f"""
+INSERT INTO mfi_accounting.loan_account_events_queue (
+  parent_account_id, event_type, data, event_status, event_id,
+  created_on, created_by, updated_on, updated_by, is_deleted
+) VALUES (
+  {parent_id}, 'RSTCRE', '{data_sql}', 'P', {prep_id},
+  NOW(), 'VIKRAM_E2E', NOW(), 'VIKRAM_E2E', false
+);
+""")
+    print(
+        f"  Vikram RSTCRE seed PASS: parent={parent_lan} remaining={remaining_child_lan} "
+        f"event_id(prepayment)={prep_id} fc_ms={fc_ms} (ICF path — mirrors event-gen processor)"
+    )
+    return True
+
+
+def run_child_loan_prepayment_fc(child_lan: str, death_date: str) -> None:
+    """Vikram path: child regular foreclosure.
+
+    Prefer individualChildLoanForeclosure (same force-bill orch hook; no createTask/BRE).
+    Falls back to loanPrepayment DEFAULT→APPROVE only if ICF_USE_LOAN_PREPAYMENT=1.
+    """
+    if os.environ.get("ICF_USE_LOAN_PREPAYMENT", "0") == "1":
+        _run_child_loan_prepayment_via_loan_prepayment(child_lan, death_date)
+        return
+    _run_child_fc_via_individual_child(child_lan, death_date)
+
+
+def _run_child_fc_via_individual_child(child_lan: str, death_date: str) -> None:
+    """individualChildLoanForeclosure — proves FC force-bill write path (Obs H)."""
+    fc_date = _vikram_fc_date(death_date)
+    fd_ms = _eod_ms_ist(fc_date)
+    print(
+        f"  Vikram FC: individualChildLoanForeclosure child={child_lan} "
+        f"foreclosure_date={fc_date} ({fd_ms} ms) (death_date={death_date})"
+    )
+    sim = _lp_simulate(child_lan, fd_ms)
+    receipt = f"vikicf{int(time.time()) % 10**12:012d}"
+    request = _lp_build_request(sim, child_lan, fd_ms, receipt)
+    # ICF notes
+    request["loan_foreclosure_details"]["notes"] = "VIKRAM_PATH ICF child regular FC"
+    stan = f"vikram_icf_{child_lan}_{int(time.time())}"
+    body = {"headers": _lp_headers(stan, function_code="APPROVE"), "request": request}
+    # office from loan
+    off = psql(
+        f"SELECT la_office_id::text FROM mfi_accounting.loan_account "
+        f"WHERE la_account_number='{child_lan}';"
+    )
+    if off:
+        body["headers"]["office_id"] = off
+    resp = _acct_post("individualChildLoanForeclosure", body)
+    status = resp.get("response_status", {})
+    code = status.get("code")
+    st = status.get("status")
+    print(f"  individualChildLoanForeclosure: {code}/{st} — {str(status.get('message', ''))[:160]}")
+    if code not in ("30267", "000") and st != "SUCCESS":
+        raise RuntimeError(f"individualChildLoanForeclosure failed for {child_lan}: {code}/{st}")
+    wait_loan_closed(child_lan, timeout_s=300)
+
+
+def _run_child_loan_prepayment_via_loan_prepayment(child_lan: str, death_date: str) -> None:
+    """loanPrepayment DEFAULT → APPROVE_TASK → APPROVE (needs task/BRE; generates RSTCRE)."""
+    fc_date = _vikram_fc_date(death_date)
+    fd_ms = _eod_ms_ist(fc_date)
+    print(
+        f"  Vikram FC: loanPrepayment child={child_lan} "
+        f"foreclosure_date={fc_date} ({fd_ms} ms IST EOD) "
+        f"(death_date={death_date}; clamped for 134292 if past)"
+    )
+    sim = _lp_simulate(child_lan, fd_ms)
+    receipt = f"vikram{int(time.time()) % 10**12:012d}"
+    request = _lp_build_request(sim, child_lan, fd_ms, receipt)
+    ok_codes = frozenset({"000", "30365", "30364", "30267", "30366"})
+    for fc in ("DEFAULT", "APPROVE_TASK", "APPROVE"):
+        stan = f"vikram_fc_{fc.lower()}_{child_lan}_{int(time.time())}"
+        body = {"headers": _lp_headers(stan, function_code=fc), "request": request}
+        resp = _acct_post("loanPrepayment", body)
+        status = resp.get("response_status", {})
+        code = status.get("code")
+        st = status.get("status")
+        print(
+            f"  loanPrepayment {fc}: {code}/{st} — "
+            f"{str(status.get('message', ''))[:160]}"
+        )
+        if code not in ok_codes and st != "SUCCESS":
+            if fc == "APPROVE_TASK" and code in ("333", "13005", "334"):
+                print(f"  WARN: APPROVE_TASK {code} — continuing to APPROVE if PENDING prepayment exists")
+                time.sleep(1)
+                continue
+            raise RuntimeError(f"loanPrepayment {fc} failed for {child_lan}: {code}/{st}")
+        time.sleep(1)
+    wait_loan_closed(child_lan, timeout_s=300)
+
+
 def _advance_emi_labd_count(child_lan: str, advance_due: str) -> int:
     row = psql(f"""
 SELECT COUNT(*)::text
@@ -960,10 +1368,10 @@ WHERE (account_id={parent_id} OR parent_loan_account_id={parent_id}) AND is_dele
     quarantine_billing_portfolio(int(parent_id), [i for i in sibling_ids if i != int(parent_id)])
     try:
         for api in ("interestAccrualCalculation", "interestAccrualPosting", "loanAccountBillingJob"):
-            started = int(time.time())
+            before_id = max_job_execution_id(api)
             try:
                 fire_batch(api, jt)
-                wait_batch_by_start(api, started, timeout_s=180)
+                wait_batch_after_id(api, before_id, timeout_s=180)
             except RuntimeError as e:
                 print(f"  WARN: {api} skipped ({e}) — EMI labd harness may apply")
     finally:
@@ -1632,7 +2040,7 @@ WHERE la.la_account_number='{parent_lan}' AND ldd.component_type='PRIN' AND ldd.
     )
 
 
-def assert_force_bill_labd(child_lan: str) -> None:
+def assert_force_bill_labd(child_lan: str, *, require_emi_fixture: bool | None = None) -> None:
     """Issue B (QA acceptance): death-child force-bill must have DEDICATED labd visibility.
 
     QA obs1: EMI labd hijack — an existing EMI billing row's transaction_reference_number is
@@ -1690,7 +2098,9 @@ JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
 WHERE la.la_account_number = '{child_lan}'
   AND labd.transaction_reference_number LIKE 'EMI_LABD_FIXTURE_%';
 """) or "0")
-    if SEED_EMI_LABD and ACCEPTANCE_STRICT:
+    if require_emi_fixture is None:
+        require_emi_fixture = SEED_EMI_LABD and ACCEPTANCE_STRICT
+    if require_emi_fixture:
         if emi_left < 1:
             raise AssertionError(
                 f"ACCEPTANCE FAIL (Obs1): EMI_LABD_FIXTURE rows missing after DFC for {child_lan} "
@@ -1699,6 +2109,22 @@ WHERE la.la_account_number = '{child_lan}'
         print(f"  Issue B PASS: EMI_LABD_FIXTURE rows preserved count={emi_left}")
     elif emi_left > 0:
         print(f"  Issue B: EMI fixture rows present count={emi_left}")
+
+
+def assert_loan_prepayment_force_bill(child_lan: str) -> None:
+    """Vikram Obs H: FC force-bill labd (CRN accountId||valueDateMs) + LOAN_PREPAYMENT tm exists."""
+    ref, amt = latest_txn_poll(child_lan, "LOAN_PREPAYMENT")
+    if not ref:
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(
+                f"Vikram FC FAIL: child {child_lan} missing LOAN_PREPAYMENT txn "
+                f"(regular foreclosure must post before force-bill assert)"
+            )
+        print(f"  Vikram FC WARN: LOAN_PREPAYMENT missing for {child_lan}")
+    else:
+        print(f"  Vikram FC PASS: LOAN_PREPAYMENT child={child_lan} ref={ref} amount={amt}")
+    # EMI_LABD_FIXTURE is a DFC Obs1 guard (seeded only on DFC children). Skip on FC path.
+    assert_force_bill_labd(child_lan, require_emi_fixture=False)
 
 
 def compute_outstanding_rounded(child_lan: str, death_date: str) -> str:
@@ -1763,11 +2189,11 @@ WHERE id={staging_id};
 """)
 
     quarantine_all_other_inbound_staging(staging_id)
-    started = int(time.time())
+    before_id = max_job_execution_id("deathForeclosureInsuranceJob")
     jt = str(int(time.time() * 1000))
     fire_batch("deathForeclosureInsuranceJob", jt)
     try:
-        wait_batch_by_start("deathForeclosureInsuranceJob", started, timeout_s=180)
+        wait_batch_after_id("deathForeclosureInsuranceJob", before_id, timeout_s=180)
     except RuntimeError as exc:
         # glCBSIntegration / YB conflicts may mark batch FAILED while loan still closes — poll loan next.
         print(f"  WARN: deathForeclosureInsuranceJob batch: {exc} (polling loan_status)")
@@ -1831,14 +2257,14 @@ def fire_and_wait_child_events_batch(parent_id: int, dfd_id: int) -> str:
     last_job_time = ""
     for attempt in range(1, 5):
         job_time = str(int(time.time() * 1000))
-        started = int(time.time())
+        before_id = max_job_execution_id("childLoanEventProcessingBatchJob")
         print(
             f"  RSTCRE spine: firing childLoanEventProcessingBatchJob parent_id={parent_id} "
             f"dfd_id={dfd_id} job_time={job_time} attempt={attempt}"
         )
         fire_batch("childLoanEventProcessingBatchJob", job_time)
         try:
-            wait_batch_by_start("childLoanEventProcessingBatchJob", started, timeout_s=300)
+            wait_batch_after_id("childLoanEventProcessingBatchJob", before_id, timeout_s=300)
         except RuntimeError as exc:
             print(f"  WARN: childLoanEventProcessingBatchJob: {exc}")
         # Brief settle — processor may flip P→C just after batch COMPLETED row commits.
@@ -2057,6 +2483,25 @@ WHERE la.la_account_number='{child_lan}' AND ldd.component_type='PRIN' AND ldd.i
     if not ref:
         raise AssertionError(f"child {child_lan} missing DEATH_FORECLOSURE txn")
     print(f"  child {child_lan} PRIN waived={prin_waived} (expect 0 on child path)")
+
+
+def assert_child_closed_fc(child_lan: str) -> None:
+    """Vikram regular FC: child CLOSED with LOAN_PREPAYMENT (not DEATH_FORECLOSURE)."""
+    st = psql(f"SELECT loan_status FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';")
+    if st != "CLOSED":
+        raise AssertionError(f"child {child_lan} Vikram FC expected CLOSED got {st!r}")
+    pending = Decimal(psql(f"""
+SELECT COALESCE(SUM(due_amount-paid_amount-waived_amount),0)
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{child_lan}' AND ldd.is_deleted=false;
+""") or "0")
+    if pending != 0:
+        raise AssertionError(f"child {child_lan} Vikram FC pending dues {pending} != 0")
+    ref, amt = latest_txn(child_lan, "LOAN_PREPAYMENT")
+    if not ref:
+        raise AssertionError(f"child {child_lan} Vikram FC missing LOAN_PREPAYMENT txn")
+    print(f"  child {child_lan} Vikram FC CLOSED LOAN_PREPAYMENT ref={ref} amount={amt}")
 
 
 def assert_parent_last_child(parent_lan: str) -> None:
@@ -2337,12 +2782,15 @@ def main() -> int:
     else:
         parent, child1, child2, death_date = discover_fresh_fixture()
     # Non-last child must run first: last-child detection counts ACTIVE siblings only.
-    children_in_order = [child2, child1]
+    # Default two-DFC: child2 non-last, child1 last. Vikram: child1 FC then child2 last DFC.
+    children_in_order = [child1, child2] if VIKRAM_PATH else [child2, child1]
 
     print("=== SDCP-10199 group parent last-child DFC local e2e (real batches) ===")
+    if VIKRAM_PATH:
+        print("mode=VIKRAM (regular FC → RSTCRE → last DFC)")
     print(f"parent={parent} child1={child1} child2={child2} death_date={death_date}")
     print(
-        f"acceptance_scope={ACCEPTANCE_SCOPE} acceptance_strict={ACCEPTANCE_STRICT} "
+        f"vikram_path={VIKRAM_PATH} acceptance_scope={ACCEPTANCE_SCOPE} acceptance_strict={ACCEPTANCE_STRICT} "
         f"seed_extra={SEED_EXTRA} seed_emi_labd={SEED_EMI_LABD} "
         f"allow_a2_netting_display_diff={ALLOW_A2_NETTING_DISPLAY_DIFF}"
     )
@@ -2407,51 +2855,95 @@ def main() -> int:
 
         for idx, child in enumerate(children_in_order, start=1):
             is_last = idx == len(children_in_order)
+            vikram_fc_child = VIKRAM_PATH and not is_last
             if is_last:
                 print(f"\n--- Pre last-child: assert no PENDING RSTCRE on parent ---")
                 assert_no_pending_rstcre(parent_id, parent)
                 assert_no_legacy_force_bill_crn_collision(parent, death_date)
 
-            print(f"\n--- CHILD {idx} {child}: seed + approve job ---")
-            if SEED_EXTRA and child == last_child and not child_already_closed_from_dfc(child):
-                print(f"\n--- EXTRA>0 fixture via loanRepayment on last child {child} ---")
-                expected_extra = seed_extra_via_loan_repayment(child, death_date)
-            if child_already_closed_from_dfc(child):
-                print(f"  skip batch — {child} already CLOSED with DEATH_FORECLOSURE (prior run)")
-                assert_child_closed(child)
-            else:
-                if not is_last:
-                    remaining_child_schedule_before[children_in_order[idx]] = snapshot_future_emi_dates(
-                        children_in_order[idx], death_date,
+            if vikram_fc_child:
+                print(f"\n--- CHILD {idx} {child}: Vikram regular FC (loanPrepayment) ---")
+                remaining = children_in_order[idx]
+                if child_already_closed_from_fc(child):
+                    print(f"  skip loanPrepayment — {child} already CLOSED with LOAN_PREPAYMENT (prior run)")
+                    assert_child_closed_fc(child)
+                    assert_loan_prepayment_force_bill(child)
+                else:
+                    settle_parent_overdue_before_vikram_fc(parent)
+                    remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
+                        remaining, death_date,
                     )
-                if SEED_EMI_LABD:
-                    seed_pre_existing_emi_labd(child, death_date)
-                dfd_id, staging_id = seed_dfc_child(child, death_date)
-                cleanup_abandoned_staging([child1, child2], keep_staging_id=staging_id)
+                    run_child_loan_prepayment_fc(child, death_date)
+                    assert_child_closed_fc(child)
+                    assert_loan_prepayment_force_bill(child)
+                # Always ensure RSTCRE + drain after FC (ICF does not enqueue; resume-safe)
+                if remaining not in remaining_child_schedule_before:
+                    remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
+                        remaining, death_date,
+                    )
                 prior_event_id = latest_parent_event_id(parent)
-                run_inbound_approve_only(child, dfd_id, staging_id, death_date)
-                assert_child_closed(child)
-                if not is_last:
+                need_drain = ensure_rstcre_pending_after_vikram_fc(parent, parent_id, child, remaining)
+                if need_drain:
                     rstcre_proof = drain_rstcre_with_retry(
-                        parent_id, parent, dfd_id, prior_event_id, child,
+                        parent_id, parent, 0, prior_event_id, child,
+                        max_attempts=2 if os.environ.get("FAIL_FAST", "1") == "1" else 5,
                     )
-                    print(f"  RSTCRE SQL proof: {rstcre_proof}")
-                    remaining = children_in_order[idx]
-                    after_sched = snapshot_future_emi_dates(remaining, death_date)
-                    assert_remaining_child_schedule_changed(
-                        remaining,
-                        remaining_child_schedule_before.get(remaining, []),
-                        after_sched,
-                    )
+                    print(f"  RSTCRE SQL proof (after Vikram FC): {rstcre_proof}")
+                else:
+                    print("  RSTCRE SQL proof (after Vikram FC): already COMPLETED — skipped drain")
+                after_sched = snapshot_future_emi_dates(remaining, death_date)
+                assert_remaining_child_schedule_changed(
+                    remaining,
+                    remaining_child_schedule_before.get(remaining, []),
+                    after_sched,
+                )
+            else:
+                print(f"\n--- CHILD {idx} {child}: seed + approve job ---")
+                if SEED_EXTRA and child == last_child and not child_already_closed_from_dfc(child):
+                    print(f"\n--- EXTRA>0 fixture via loanRepayment on last child {child} ---")
+                    expected_extra = seed_extra_via_loan_repayment(child, death_date)
+                if child_already_closed_from_dfc(child):
+                    print(f"  skip batch — {child} already CLOSED with DEATH_FORECLOSURE (prior run)")
+                    assert_child_closed(child)
+                else:
+                    if not is_last:
+                        remaining_child_schedule_before[children_in_order[idx]] = snapshot_future_emi_dates(
+                            children_in_order[idx], death_date,
+                        )
+                    if SEED_EMI_LABD:
+                        seed_pre_existing_emi_labd(child, death_date)
+                    dfd_id, staging_id = seed_dfc_child(child, death_date)
+                    cleanup_abandoned_staging([child1, child2], keep_staging_id=staging_id)
+                    prior_event_id = latest_parent_event_id(parent)
+                    run_inbound_approve_only(child, dfd_id, staging_id, death_date)
+                    assert_child_closed(child)
+                    if not is_last:
+                        rstcre_proof = drain_rstcre_with_retry(
+                            parent_id, parent, dfd_id, prior_event_id, child,
+                        )
+                        print(f"  RSTCRE SQL proof: {rstcre_proof}")
+                        remaining = children_in_order[idx]
+                        after_sched = snapshot_future_emi_dates(remaining, death_date)
+                        assert_remaining_child_schedule_changed(
+                            remaining,
+                            remaining_child_schedule_before.get(remaining, []),
+                            after_sched,
+                        )
             snapshot_dues(parent, f"parent-after-child{idx}")
-            if idx == 1:
-                print("\n--- Non-last child parent RSCH parity (S4) ---")
-                assert_amount_calculations_non_last(child, parent)
-                print("\n--- GL balance after non-last child (S6 partial) ---")
-                assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
-                assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
-                print("\n--- Transaction audit after non-last child (S7 partial) ---")
-                assert_transaction_posting_audit(child, parent, phase="non_last")
+            if not is_last:
+                if vikram_fc_child:
+                    print("\n--- Vikram non-last FC asserts (LOAN_PREPAYMENT + force-bill Obs H) ---")
+                    assert_loan_prepayment_force_bill(child)
+                    print("\n--- GL balance after Vikram non-last FC ---")
+                    assert_gl_balance_for_loan(child, ["LOAN_PREPAYMENT"])
+                else:
+                    print("\n--- Non-last child parent RSCH parity (S4) ---")
+                    assert_amount_calculations_non_last(child, parent)
+                    print("\n--- GL balance after non-last child (S6 partial) ---")
+                    assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
+                    assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
+                    print("\n--- Transaction audit after non-last child (S7 partial) ---")
+                    assert_transaction_posting_audit(child, parent, phase="non_last")
 
         print("\n--- PARENT last-child assertions (S1) ---")
         assert_parent_last_child(parent)
@@ -2464,14 +2956,20 @@ def main() -> int:
 
         print("\n--- Issue B (force-bill labd on death children) (S3) ---")
         for child in children_in_order:
-            assert_force_bill_labd(child)
+            if VIKRAM_PATH and child != last_child:
+                assert_loan_prepayment_force_bill(child)
+            else:
+                assert_force_bill_labd(child)
 
         print("\n--- Obs1b parent force-bill (any-child DFC; re-check after last child) ---")
         assert_parent_force_bill_labd(parent)
 
         print("\n--- GL balance full matrix (S6) ---")
         for child in children_in_order:
-            assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
+            if VIKRAM_PATH and child != last_child:
+                assert_gl_balance_for_loan(child, ["LOAN_PREPAYMENT"])
+            else:
+                assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
         assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
 
         print("\n--- Transaction posting audit full (S7) ---")
@@ -2485,8 +2983,14 @@ def main() -> int:
         print("\n--- Webapp-bound APIs (summary / overview / statement) (S8) ---")
         assert_webapp_bound_apis(parent, children_in_order, last_child)
 
-        print("\n=== PASS: SDCP-10199 group parent last-child DFC local e2e "
-              f"(matrix S1-S8 strict={ACCEPTANCE_STRICT} extra={SEED_EXTRA} emi_labd={SEED_EMI_LABD}) ===")
+        pass_label = (
+            "VIKRAM FC→RSTCRE→last DFC"
+            if VIKRAM_PATH
+            else "SDCP-10199 group parent last-child DFC local e2e"
+        )
+        print(f"\n=== PASS: {pass_label} "
+              f"(matrix S1-S8 strict={ACCEPTANCE_STRICT} extra={SEED_EXTRA} emi_labd={SEED_EMI_LABD} "
+              f"vikram={VIKRAM_PATH}) ===")
         return 0
     finally:
         if snapshot_enabled:
@@ -2501,6 +3005,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (AssertionError, RuntimeError) as e:
-        print(f"\nFAIL: {e}", file=sys.stderr)
+    except (AssertionError, RuntimeError, subprocess.CalledProcessError) as e:
+        print(f"\nFAIL: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
+    except Exception as e:
+        print(f"\nFAIL: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        raise

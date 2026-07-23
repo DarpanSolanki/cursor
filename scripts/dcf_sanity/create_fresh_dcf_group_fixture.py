@@ -28,9 +28,10 @@ sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
 from clb_queue_harness import (  # noqa: E402
     child_labd_count,
     dedupe_clb_rep_acct_for_parent,
+    max_batch_execution_id,
     quarantine_billing_portfolio,
     restore_billing_portfolio_quarantine,
-    wait_batch_by_start,
+    wait_batch_after,
 )
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -248,14 +249,14 @@ WHERE c.parent_loan_account_id={parent_id} AND c.is_deleted=false
             print(f"  child events OK: parent={parent_lan} children disbursed with schedule")
             return
         dedupe_clb_rep_acct_for_parent(parent_id)
-        started = int(time.time())
+        before_id = max_batch_execution_id("childLoanEventProcessingBatchJob")
         subprocess.check_call(
             ["python3", str(ROOT / "scripts/testing/api-fire.py"),
              "childLoanEventProcessingBatchJob", "--batch",
              "--job-time", str(int(time.time() * 1000))],
             cwd=str(ROOT),
         )
-        wait_batch_by_start("childLoanEventProcessingBatchJob", started, timeout_s=min(120, timeout_s))
+        wait_batch_after("childLoanEventProcessingBatchJob", before_id, timeout_s=min(120, timeout_s))
         time.sleep(2)
     raise RuntimeError(f"childLoanEventProcessingBatchJob timeout for parent {parent_lan}")
 
@@ -306,14 +307,16 @@ WHERE t.id = {template_id};
 
 
 def fire_batch(api: str, job_time: str) -> None:
-    started = int(time.time())
+    # Wait by execution id, not wall-clock vs create_time — timestamp-without-tz
+    # EXTRACT(EPOCH) is ~+5.5h vs time.time() and was matching old FAILED rows.
+    before_id = max_batch_execution_id(api)
     rc = subprocess.call(
         ["python3", str(ROOT / "scripts/testing/api-fire.py"), api, "--batch", "--job-time", job_time],
         cwd=str(ROOT),
     )
     if rc != 0:
         raise RuntimeError(f"batch {api} HTTP fire failed rc={rc}")
-    wait_batch_by_start(api, started, timeout_s=180)
+    wait_batch_after(api, before_id, timeout_s=180)
 
 
 def sync_billing_for_group(parent_lan: str, child_lans: list[str], through_date: str) -> None:

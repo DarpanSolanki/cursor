@@ -41,6 +41,7 @@ _HEADER_TEMPLATES: dict[str, dict[str, Any]] = {
         "function_code": "DEFAULT",
         "function_sub_code": "BATCH",
         "run_mode": "REAL",
+        "operation_mode": "SELF",
         "stan": "{{$timestamp}}",
     },
 }

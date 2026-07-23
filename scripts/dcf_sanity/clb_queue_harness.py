@@ -90,8 +90,18 @@ WHERE id = {qid_int} AND event_type = 'CLB' AND event_status = 'P' AND is_delete
     return qid_int
 
 
-def wait_batch_by_start(job_name: str, started_epoch: int, timeout_s: int = 180) -> str:
-    """Poll mfi_batch.batch_job_execution by job name + create_time (param stored as `time`)."""
+def max_batch_execution_id(job_name: str) -> int:
+    row = psql(f"""
+SELECT COALESCE(MAX(bje.job_execution_id), 0)::text
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = '{job_name}';
+""")
+    return int(row or "0")
+
+
+def wait_batch_after(job_name: str, min_execution_id: int, timeout_s: int = 180) -> str:
+    """Wait for a new batch_job_execution with id > min_execution_id (TZ-safe; no create_time epoch)."""
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         row = psql(f"""
@@ -99,7 +109,33 @@ SELECT bje.status
 FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
 WHERE bji.job_name = '{job_name}'
-  AND EXTRACT(EPOCH FROM bje.create_time)::bigint >= {started_epoch}
+  AND bje.job_execution_id > {min_execution_id}
+ORDER BY bje.job_execution_id DESC
+LIMIT 1;
+""")
+        if row == "COMPLETED":
+            return row
+        if row in ("FAILED", "STOPPED", "ABANDONED"):
+            raise RuntimeError(f"batch {job_name} {row}")
+        time.sleep(2)
+    raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
+
+
+def wait_batch_by_start(job_name: str, started_epoch: int, timeout_s: int = 180) -> str:
+    """Legacy wrapper: wall-clock start is unreliable vs timestamp-without-tz create_time.
+
+    Prefer wait_batch_after(max_batch_execution_id) from fire sites. Kept for callers that
+    only have a wall clock — compare create_time in session TimeZone (Asia/Kolkata).
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        row = psql(f"""
+SELECT bje.status
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = '{job_name}'
+  AND EXTRACT(EPOCH FROM (bje.create_time AT TIME ZONE current_setting('TimeZone')))::bigint
+      >= {started_epoch}
 ORDER BY bje.job_execution_id DESC
 LIMIT 1;
 """)

@@ -53,6 +53,8 @@ def batch_envelope(api_name: str, *, job_time: str, stan: str | None = None) -> 
             "function_code": "DEFAULT",
             "function_sub_code": "BATCH",
             "run_mode": "REAL",
+            # Required: workers inherit headers into postTransaction → transaction_master.operation_mode NOT NULL
+            "operation_mode": "SELF",
         },
         "request": {"job_time": str(job_time), "op_code": "START"},
     }

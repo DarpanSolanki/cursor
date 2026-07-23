@@ -1650,6 +1650,82 @@
     },
     "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE \u2192 childLoanEventProcessingBatchJob \u2192 childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py."
   },
+  "dcf.vikram_fc_rstcre_dfc_e2e": {
+    "type": "flow",
+    "api": "deathForeclosureInsuranceJob",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "dcf",
+      "death_foreclosure",
+      "foreclosure",
+      "shg",
+      "tdpqa-72",
+      "vikram"
+    ],
+    "title": "Vikram QA path: child1 loanPrepayment FC \u2192 RSTCRE \u2192 child2 last DFC (TDPQA-72)",
+    "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-08-02",
+      "VIKRAM_PATH": "1",
+      "SEED_EXTRA": "0",
+      "DCF_SEED_EMI_LABD": "0",
+      "ACCEPTANCE_STRICT": "1",
+      "ACCEPTANCE_SCOPE": "obs123"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "boundary_zero",
+        "adjacent_sibling",
+        "downstream_ui"
+      ],
+      "verify_mode": "runtime",
+      "ui_fields": [
+        "getLoanAccountSummaryDetails",
+        "interest_details.accrued_amount",
+        "interest_details.original_amount",
+        "getLoanAccountStatement",
+        "DFC_PRTL_BILL",
+        "account.status"
+      ],
+      "ui_asserted": true,
+      "webapp_required": true,
+      "db_asserts": [
+        {
+          "table": "transaction_master",
+          "assert": "child1 LOAN_PREPAYMENT exists; child1 FC force-bill labd CRN accountId||valueDateMs (optional dfdId absent); child2 DFC force-bill; parent FB only after last DFC",
+          "checked_by": "assert_loan_prepayment_force_bill + assert_force_bill_labd + assert_parent_force_bill_labd"
+        },
+        {
+          "table": "loan_account_events_queue",
+          "assert": "RSTCRE drained after child1 regular FC via childLoanEventProcessingBatchJob",
+          "checked_by": "drain_rstcre_with_retry + assert_rstcre_drained"
+        },
+        {
+          "table": "loan_account_payments_details",
+          "assert": "last-child parent RSCH amount==principal excess=0 (Obs2); non-last Vikram skips RSCH_DEATH_FORECLOSURE parity",
+          "checked_by": "assert_amount_calculations_last_child (last child only)"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "Obs3 Accrued<=Original for parent and both children after last DFC",
+          "checked_by": "assert_accrued_le_original"
+        }
+      ],
+      "na": {
+        "non_last_rsch_death_foreclosure": "Vikram child1 uses loanPrepayment part-prepayment/RSTCRE \u2014 not RSCH_DEATH_FORECLOSURE until child2 last DFC"
+      },
+      "note": "VIKRAM_PATH=1: child1 regular FC (loanPrepayment DEFAULT\u2192APPROVE_TASK\u2192APPROVE) at death_date midnight IST; child2 last DFC unchanged Obs1\u20133. SEED_EXTRA=0 clean path. foreclosure_date=_eod_ms_ist(DEATH_DATE)."
+    },
+    "note": "TDPQA-72 Vikram QA path. Same harness as dcf.group_parent_last_child_e2e with VIKRAM_PATH=1 child order child1\u2192child2."
+  },
   "dcf.group_parent_last_child_e2e_clean": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",

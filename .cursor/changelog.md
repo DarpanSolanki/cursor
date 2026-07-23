@@ -1,3 +1,37 @@
+## 2026-07-24 | scripts/testing + dcf_sanity | TDPQA-72 harness: batch headers + wait-by-exec-id
+- `api-fire`/`batch_envelope` was missing `operation_mode=SELF` (prod scheduler sends it) → billing/accrual `postTransaction` hit NOT NULL and jobs FAILED; suite falsely blamed product.
+- Also: wait used `EXTRACT(EPOCH FROM create_time)` without TZ → matched old FAILED rows; now `wait_batch_after(max_execution_id)`.
+- Product `CreateTransactionMasterProcessor` unchanged (SELF default reverted).
+
+## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 parent FB = child FB; drop harness hacks
+- Product: every DFC/FC child force-bill is mirrored on parent with the **same amount** (SHG sync).
+- Removed: Accrued consume-after-FB, parent EMI labd harness, alignParentNewestAccruedToAllChildren.
+- Kept SHG child EXCESS_*=0 — QA 391188 GROSS Δ52 + 390372 excess-on-txn (EXTRA already in PRIN).
+- FC: `RegularForeclosureForceBillService` mirrors parent after child FB.
+- Verify: full Vikram matrix this session.
+
+## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Wave A+B genuine fixes; remove Accrued hacks
+- Superseded by parent=child FB entry above (consume/alignParent removed per Darpan).
+
+## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Accrued≤Original invariant + CLOSED child Accrued re-lift
+- `InterestAccrualBookingService`: parent Accrued aligned to Σ children before forceful book (see 2026-07-24).
+- ~~`AccruedInterestToBilledOriginalReconciler`~~ removed.
+
+## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 L1 split FC vs DFC force-bill policy
+- Separate policy: `DeathForeclosureForceBillService` (value_date=reporting, cycle=death−1→next INT) vs `RegularForeclosureForceBillService` (foreclosure never backdated = business today; labd on last INT due ≤ today, not future EMI). Shared: `ForceBillBillingSupport`, `PartialCycleForceBillAmountResolver`, `AccruedInterestToBilledOriginalReconciler`.
+- FC Obs3 reconcile moved after CLOSED in `loans_orc` / `group_mfi_orc` (mirror DFC Writer late pass).
+- Verify: full Vikram/DFC matrix pending this session.
+
+## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 L1 force-bill = partial-cycle (not Σ Accrued)
+- `resolvePartialCycleBillAmount` / `latestPeriodAccruedAmount`: bill newest IAD period Accrued capped by reporting/BPI — matches QA4 FB≈15/16; stops lifetime Σ Accrued over-bill.
+- FC processor + DFC `syncForceBillToAccruedAfterBooking` use the same helper. Orch already covers `loanPrepayment` (INDL/JLG) + ICF (SHG child).
+- Verify: fresh Vikram PASS — FC FB=17 DFC FB=11 parent FB=28 (=17+11); audit fails=0. Open: parent posted≠Accrued (V2), QA4 ₹1 (V4), INDL dedicated LAN e2e not run.
+
+## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Obs H — FC force-bill (mirror DFC)
+- `ForceBillPartialCycleInterestForForeclosureProcessor`: after accrual booking on `loanPrepayment` / `individualChildLoanForeclosure`, partial-cycle BILLING via `DeathForeclosureSettlementSupport.forceBillPartialCycleInterest` (CRN deathForeclosureDetailsId=null). Amount rule corrected in L1 entry above (not lifetime Accrued).
+- Orch: `loans_orc.xml` do_prepayment + `group_mfi_orc.xml` individualChildLoanForeclosure — after `bookingNonPostedPenalProcessor`, before `updateDueDetailsForPrepaymentProcessor`.
+- Explicitly **not** flipping IAD parent→last-child adjust (existing SHG booking rule).
+
 ## 2026-07-23 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Vikram reopen + ₹1 RSTCRE @ `c0d8c52f76`
 - Extracted `DeathForeclosureSettlementSupport`: force-bill = reportingAccrual (no max BPI → Accrued 14 vs FB 15); after booking bill Accrued IAD; EXTRA applied to PRIN dues then netted appropriation + child lapd; parent last-child same.
 - `ChildLoanRestructuringProcessor`: single-child absorb residual (no peer ₹1 loop); multi-child fail-fast when no surplus/shortfall peer.
