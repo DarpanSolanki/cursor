@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated": "2026-07-22",
-  "description": "Process selection matrix — speed by selection, never by weakening money gates. Cell: required | conditional(<trigger>) | skip.",
+  "updated": "2026-07-23",
+  "description": "Process selection matrix \u2014 speed by selection, never by weakening money gates. Cell: required | conditional(<trigger>) | skip.",
   "classes": [
     "question",
     "read-only-rca",
@@ -19,7 +19,7 @@
     "train_banner": 120
   },
   "money_floor": {
-    "comment": "These processes stay required on money-fix — ratchet forbids weaken to conditional/skip",
+    "comment": "These processes stay required on money-fix \u2014 ratchet forbids weaken to conditional/skip",
     "processes": [
       "train_banner",
       "kg_watermark_gate",
@@ -109,7 +109,7 @@
         "read-only-rca": "conditional(qa_env_named)",
         "non-money-fix": "skip",
         "money-fix": "conditional(qa_env_named)",
-        "batch-dpi": "skip",
+        "batch-dpi": "conditional(qa_env_named)",
         "release": "conditional(qa_env_named)",
         "docs-kb": "skip"
       }
@@ -118,7 +118,7 @@
       "ttl_key": "services",
       "cells": {
         "question": "skip",
-        "read-only-rca": "skip",
+        "read-only-rca": "conditional(needs_runtime)",
         "non-money-fix": "conditional(needs_runtime)",
         "money-fix": "required",
         "batch-dpi": "required",
@@ -193,14 +193,14 @@
         "read-only-rca": "skip",
         "non-money-fix": "conditional(flyway_touched)",
         "money-fix": "conditional(flyway_touched)",
-        "batch-dpi": "skip",
+        "batch-dpi": "conditional(flyway_touched)",
         "release": "conditional(flyway_touched)",
         "docs-kb": "skip"
       }
     },
     "local_parity": {
       "ttl_key": null,
-      "comment": "GAP-076/077 class — only when schema/masterdata or DDL hand-patch on money tables",
+      "comment": "GAP-076/077 class \u2014 only when schema/masterdata or DDL hand-patch on money tables",
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -243,7 +243,20 @@
         "non-money-fix": "conditional(code_touch)",
         "money-fix": "required",
         "batch-dpi": "required",
-        "release": "skip",
+        "release": "conditional(code_touch)",
+        "docs-kb": "skip"
+      }
+    },
+    "impact_tests": {
+      "ttl_key": null,
+      "comment": "Dynamic KG blast-radius plan (git diff \u2192 flows \u2192 registry cases). Required on money/batch-dpi; conditional when code touched otherwise.",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(code_touched)",
+        "money-fix": "required",
+        "batch-dpi": "required",
+        "release": "conditional(code_touched)",
         "docs-kb": "skip"
       }
     },

@@ -31,3 +31,6 @@ Generated: 2026-07-22T15:49:44Z · Upgrade 8 self-metrics
 ## KG map-completeness
 - map-completeness: overall=98.8% req=100.0% table=97.5% doc=392/392 topic=153 sched=16 excluded=4
 - measured: 2026-07-23T08:46:54Z
+## Self-upgrade (2026-07-23)
+- unincorporated findings: 0 (oldest age n/a)
+- unincorporated findings: 2 (oldest age 0d)

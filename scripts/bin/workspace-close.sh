@@ -107,6 +107,18 @@ if [[ -f "$PENDING_KG" && -f "$CHANGELOG" ]]; then
   fi
 fi
 
+# 2b — dynamic impact-tests plan (KG blast radius) before ship-loop for code tiers
+CLOSE_TIER_CHECK="$(python3 -c "
+import json
+from pathlib import Path
+p=Path('$PENDING')
+print(json.load(open(p)).get('tier','workspace') if p.is_file() else 'workspace')
+" 2>/dev/null || echo workspace)"
+if [[ "$CLOSE_TIER_CHECK" == "money" || "$CLOSE_TIER_CHECK" == "service" ]]; then
+  echo "→ impact-tests plan (dynamic KG)"
+  bash "$ROOT/scripts/bin/impact-tests.sh" --mark-ran || die "impact-tests plan failed"
+fi
+
 # 3 — tier-aware ship-loop (workspace | service | money); knowledge gate once at end
 SHIP_ARGS=()
 [[ "$FROM_PENDING" -eq 1 ]] && SHIP_ARGS+=(--from-pending)

@@ -80,6 +80,7 @@ case "$cmd" in
       python3 scripts/testing/sync_engine.py compact-bus 2>/dev/null || true
       PYTHONPATH=scripts/testing python3 scripts/testing/learn_lifecycle.py age || true
       PYTHONPATH=scripts/testing:scripts/lib python3 scripts/testing/autonomy_loop.py self-report || true
+      python3 scripts/lib/self_upgrade.py weekly || true
       python3 scripts/lib/registry_proposals.py mine || true
       PYTHONPATH=scripts/lib python3 scripts/lib/process_router.py ratchet || true
       if [[ "${RUN_PLATFORM_SCAN:-0}" == "1" ]]; then

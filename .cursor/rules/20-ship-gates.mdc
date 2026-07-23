@@ -22,9 +22,9 @@ Push blocked when pending ship files exist but `.ship-loop-passed.json` stale/ti
 
 ## Ship test mandatory (all fixes)
 
-`edit → compile (if Java) → workspace-close.sh --from-pending → then push`. Do **not** push after `compileJava` alone. HTTP 200 on batch trigger is **not** enough — wait `COMPLETED`.
+`edit → compile (if Java) → bash scripts/bin/impact-tests.sh --mark-ran → workspace-close.sh --from-pending → then push`. Do **not** push after `compileJava` alone. HTTP 200 on batch trigger is **not** enough — wait `COMPLETED`.
 
-**Change→test map (autonomous):** path/class → apiName → registry cases via `scripts/lib/change_test_map.json` + `resolve_ship_impact` (always re-resolve). Money tier with zero cases **fails closed**. See `cursor-bundle/memory/feedback_ship_test_autonomy_change_map.md`.
+**Change→test map (autonomous):** **Dynamic SoT** = `scripts/lib/impact_tests.py` (git diff → KG blast radius via written tables / topics / processors → registry cases + WHY). Static `change_test_map.json` is seed/override only. Money/service ship **blocked** unless impact plan ran this session (`--mark-ran`) or `IMPACT_TESTS_WAIVER` logged. See `cursor-bundle/memory/feedback_ship_test_autonomy_change_map.md`.
 
 Money ships: real-flow DB write validation — drive actual orch/API/job; assert **exact column values** on every touched money table (`acceptance.db_asserts` / `expect.db_eq`). Presence-only / status-only fail closed. Adversarial matrix: happy / dirty / UI equality / webapp-bound APIs — or Out-of-scope-documented. Assert must **FAIL** on exact QA fail mode.
 

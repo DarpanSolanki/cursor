@@ -68,6 +68,38 @@ fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="
 
+# Impact-tests gate FIRST: money/service ships must have run dynamic impact plan this session
+# (or an explicit logged waiver). Skip for pure workspace tier.
+if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then
+  if [[ "${IMPACT_TESTS_WAIVER:-}" != "" ]]; then
+    python3 "$ROOT/scripts/lib/impact_tests.py" --waiver "$IMPACT_TESTS_WAIVER" || true
+    echo "→ impact-tests WAIVER: $IMPACT_TESTS_WAIVER"
+  elif ! python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >/dev/null 2>&1; then
+    echo "ship-loop-gate: FAIL — impact-tests plan not run for current pending files." >&2
+    echo "  Run: bash scripts/bin/impact-tests.sh --mark-ran" >&2
+    echo "  Or set IMPACT_TESTS_WAIVER='reason' (logged)." >&2
+    python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >&2 || true
+    exit 1
+  else
+    echo "→ impact-tests ran: $(python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran 2>/dev/null || true)"
+    # Union KG blast-radius cases into the ship run set
+    mapfile -t _IMPACT_CASES < <(python3 -c "
+import json
+from pathlib import Path
+p=Path('$ROOT')/'.cursor/.impact-tests-ran.json'
+if p.is_file():
+  d=json.loads(p.read_text())
+  for c in d.get('ordered_cases') or []:
+    print(c)
+" 2>/dev/null || true)
+    if [[ ${#_IMPACT_CASES[@]} -gt 0 ]]; then
+      _UNION="$(printf '%s\n' "${_SMART_CASES[@]}" "${_IMPACT_CASES[@]}" | awk 'NF && !seen[$0]++')"
+      mapfile -t _SMART_CASES <<< "$_UNION"
+      echo "→ impact cases union: ${_IMPACT_CASES[*]}"
+    fi
+  fi
+fi
+
 # Fail-closed: money/service ships must resolve at least one impacted ntest case (or api→case).
 # Health/smoke-only fallback for money is forbidden (compile-adjacent push).
 if [[ "$TIER" == "money" ]]; then

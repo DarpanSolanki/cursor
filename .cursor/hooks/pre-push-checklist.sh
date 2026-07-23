@@ -14,6 +14,10 @@ PENDING="$ROOT/.cursor/.pending-ship-work.json"
 PASSED="$ROOT/.cursor/.ship-loop-passed.json"
 GATE="$ROOT/scripts/lib/ship_push_gate.py"
 
+# Impact plan banner for dirty/unpushed tree (human or agent — git is SoT)
+echo "pre-push: impact plan (git dirty/unpushed)…" >&2
+python3 "$ROOT/scripts/lib/impact_tests.py" --banner --no-stubs >&2 || true
+
 # Auto-close pending ship work before denying push (agent can push to origin after build+test).
 if [[ -f "$PENDING" && "${SHIP_PUSH_NO_AUTO_CLOSE:-}" != "1" ]]; then
   if python3 "$GATE" --needs-close 2>/dev/null; then

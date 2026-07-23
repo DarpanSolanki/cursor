@@ -16,6 +16,13 @@ fi
 
 bash "$ROOT/.cursor/hooks/kg-write-state.sh"
 
+# Human-edit impact plan banner (reads git dirty/unpushed — never agent memory)
+export IMPACT_BANNER=""
+if [[ "${1:-}" == "sessionStart" ]]; then
+  IMPACT_BANNER="$(python3 "$ROOT/scripts/lib/impact_tests.py" --banner --no-stubs 2>/dev/null || true)"
+  export IMPACT_BANNER
+fi
+
 if [[ "${1:-}" == "workspaceOpen" ]]; then
   exit 0
 fi
@@ -43,6 +50,12 @@ if pending:
     extra = "\n\n⚠ Pending KG enrich after commit — changelog-add.sh when fix is stable."
 if stale:
     extra += "\n\n🛑 KG STALE — `scripts/bin/kg-ensure-fresh.sh` before money-path analysis."
+impact = (os.environ.get("IMPACT_BANNER") or "").strip()
+if impact:
+    # Cap so sessionStart stays usable
+    if len(impact) > 3500:
+        impact = impact[:3500] + "\n… (truncated; run: bash scripts/bin/impact-tests.sh)"
+    extra += "\n\n" + impact
 ctx = f"""## KG session watermark (multi-branch cache)
 Read `.cursor/workspace-kg-state.md` · branch-set `.cursor/.kg-branch-set.json`
 {bs}

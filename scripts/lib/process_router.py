@@ -124,8 +124,8 @@ def eval_trigger(trigger: str, text: str, ctx: dict) -> bool:
     t = (text or "").lower()
     if trigger == "api_or_flow_named":
         return bool(ctx.get("api_hint") or re.search(r"\b[a-z]+[A-Z][a-zA-Z]+\b", text or ""))
-    if trigger == "code_touch":
-        return bool(ctx.get("code_touch") or "fix" in t or "implement" in t)
+    if trigger == "code_touch" or trigger == "code_touched":
+        return bool(ctx.get("code_touch") or ctx.get("code_touched") or "fix" in t or "implement" in t)
     if trigger == "cross_service_or_money_words":
         return any(w in t for w in MONEY_WORDS) or "cross" in t or "kafka" in t
     if trigger == "multi_repo":

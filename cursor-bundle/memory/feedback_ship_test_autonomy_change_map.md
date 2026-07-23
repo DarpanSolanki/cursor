@@ -17,3 +17,7 @@
 ## Agent rule
 
 Do **not** `git push` service repos after `compileJava` alone. Use `push-origin.sh` / `workspace-close.sh --from-pending` so impacted registry cases run.
+
+## 2026-07-23 reconcile — DYNAMIC layer
+SoT is now `scripts/lib/impact_tests.py` over live KG (written-table siblings + topics).
+`change_test_map.json` = seed/override only. Ship blocked without `--mark-ran` (or waiver).

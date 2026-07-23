@@ -38,8 +38,9 @@
     ["/disbursement/", "disburseLoan"]
   ],
   "notes": [
+    "SEED/OVERRIDE LAYER ONLY — live SoT is scripts/lib/impact_tests.py over KG.",
     "InterestAccrualBooking* maps to interestAccrualPosting (registry api).",
     "Penal* must win over bare interestaccrual substring matching.",
-    "derivedfields / unknown batchnew packages resolve to [] api — ship-loop fails closed until mapped."
+    "derivedfields / unknown batchnew packages resolve via KG or [] — ship-loop fails closed until mapped."
   ]
 }
