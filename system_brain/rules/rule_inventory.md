@@ -51,6 +51,17 @@ Classification meaning:
 | `.cursor/rules/00-workspace-core.mdc` | true | — | Strong | Unified dev+test loop: KG orient → `ntest` registry → fix → smoke; one row per API in `registry.json`. |
 | `.cursor/rules/20-ship-gates.mdc` | true | — | Strong | Prefer realtime; when stage blocked use orch sibling / processor mirror sims from disk; enrich platform registry. |
 | `.cursor/rules/00-workspace-core.mdc` | true | — | Strong | Once-and-for-all contract; machine gates not daily re-setup; ship-discipline fail-closed. |
+| `.cursor/rules/30-kg-discipline.mdc` | true | — | Strong | KG validate/fresh before money conclusions; MCP first for LOOKUPs; self-learning + DPI branch gate. |
+| `.cursor/rules/darpan.mdc` | true | — | Strong | Personal boundary: sliProd root, brain-first, proof-backed, no upstream push. |
+| `.cursor/rules/accounting-134207-placeholder-iad.mdc` | false | agent-requestable | Strong | postTransaction/disburseLoan placeholder→IAD for PROC_FEE/GST/STAMP_DUTY. |
+| `.cursor/rules/accounting-full-flow-gate.mdc` | false | accounting + money scripts/registry | Strong | Full-flow gate before accounting money ships. |
+| `.cursor/rules/batch-write-skip-contract.mdc` | false | `GenericListenerV3`, `*FailureEntityMapper` (3.4.2.x); Skip+dpi on 3.7.1+ | Strong | force_async write-skip: Future resolve in listener only. |
+| `.cursor/rules/death-foreclosure-sanity-suite.mdc` | false | `scripts/dcf_sanity*` + deathforeclosure | Strong | DCF local harness entrypoints. |
+| `.cursor/rules/debugging-production-issues.mdc` | false | `**/*.{java,xml}` | Strong | Principal Engineer RCA workflow (logs→DB→orch). |
+| `.cursor/rules/disbursement-testing-playbook.mdc` | false | disburse sanity scripts/json | Useful but incomplete | DisburseLoan local testing playbook. |
+| `.cursor/rules/dpi-money-proof-gate.mdc` | false | `scripts/dpic/**`, dpi scripts, registry (Java dpi on 3.7.1+) | Strong | DPI SQL proof chain before ship/QA. |
+| `.cursor/rules/release-details.mdc` | false | — (skill-triggered) | Strong | Paste-ready release mail + impact gate. |
+| `.cursor/rules/repository-layer-no-comments.mdc` | false | `**/repository/**/*.java` | Strong | No narrative comments in repository layer. |
 
 ## Maintainer note
 

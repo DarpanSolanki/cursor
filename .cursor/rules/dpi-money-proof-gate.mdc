@@ -1,14 +1,20 @@
 ---
 description: "DPI money path — mandatory SQL proof chain before ship or QA hand-off"
-globs: ["**/dpi/**/*.java", "scripts/dpic/**", "scripts/testing/registry.json"]
+globs: ["scripts/dpic/**", "scripts/bin/dpi-*.sh", "scripts/testing/registry.json"]
 alwaysApply: false
 ---
 
 # DPI money-proof gate
 
+## Train note (Upgrade 9)
+
+On the **current watermark** (accounting `mfi_integration_v3.4.2.x`): there is **no** live `**/dpi/**/*.java` tree. Attach via `scripts/dpic/**`, `scripts/bin/dpi-*.sh`, and registry only.
+
+Java under `trustt-platform-accounting/**/batchnew/dpi/**` lands on **3.7.1 / DPI feature** — when those paths exist in the checkout, treat edits there as in-scope for this gate (same proof chain).
+
 ## When this applies
 
-Any change to `DpiAccrualCalculation*`, `DpiAccrualBooking*`, `DpiBilling*`, or `scripts/dpic/**` verify SQL.
+Any change to `DpiAccrualCalculation*`, `DpiAccrualBooking*`, `DpiBilling*` (when present), or `scripts/dpic/**` verify SQL.
 
 ## Mandatory before declaring DPI fix done
 

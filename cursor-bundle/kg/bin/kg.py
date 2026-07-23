@@ -27,6 +27,8 @@ Commands:
   doctor                         health + freshness + branch-watermark drift (sources newer than kg.db, repo moved off built branch)
   watermark                      per-repo branch@sha the knowledge was built from vs live HEAD ("knowledge current up to which branch")
   fresh                          one-line verdict: is the KG branch-correct for the current live checkout? (used at session start)
+  validate                       KG integrity + min nodes/edges check (exit 1 on fail; MCP: kg_validate)
+  orient <request>               LOOKUP entry — flow spine + why/silent branches + cases (MCP: kg_orient)
   stale [<doc>]                  brain docs that cite repo files which no longer exist (drift vs code)
   sql "<SELECT ...>"             arbitrary read-only SQL over nodes/edges (power users)
 Node ids are typed: request:  processor:  service:  api:  doc:  table:  case:  error:  diag:

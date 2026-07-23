@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Upgrade 9 — sweep remainders
+pr-review freshness: merged OK when head+pull agree; base = PR base.sha (not live tip). Skill `--depth` = agent-only. rule_inventory +11; skills-manifest regen (canonical `cursor-bundle/brain/`; sweep false miss). batch-write-skip + dpi-money-proof globs retargeted to 3.4.2.x live paths. kg.py --help validate/orient. intel-automation daily/weekly → `.cursor/automations/logs/` (utc|job|exit|duration, rotate 30). Skip #7 KG miss churn (ops).
+
 ## 2026-07-23 | workspace | Final full-system sweep — mechanical pre-U3 drift
 Digest-first onboarding; skill dead refs (`kg.py test-gaps`, tiered-solution-approach.mdc, gbuild.sh); sync-branches primary (git-workflow, mixed-train, memory, OPS-INDEX); glob path fixes (dcf docs, disburse reset script); config.yml mcp-atlassian comment→plugin. Structural: pr-review merged-PR freshness hard-exit, rule_inventory lag, skills-manifest missing, batch-write-skip/dpi globs, KG telemetry misses — proposed only. Details: `scripts/scratch/final-sweep-details.md`.
 

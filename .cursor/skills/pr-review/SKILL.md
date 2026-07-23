@@ -16,7 +16,7 @@ incorrect suggestion.
 ## Inputs
 
 - Required: GitHub PR URL or `owner/repo#number`.
-- Optional: Jira key, target environment, review depth (`quick` or `full`), and explicit review focus.
+- Optional: Jira key, target environment, review depth (`quick` or `full` — **agent reading depth only**; `pr-review.sh` has no `--depth` flag), and explicit review focus.
 - Optional mutation request: post a PR review or Jira comment. Treat this as a separate, explicit action after presenting the draft.
 
 If the PR or target environment is ambiguous, collect metadata first and ask only for the missing decision that changes the verdict.

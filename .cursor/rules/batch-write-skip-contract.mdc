@@ -1,10 +1,16 @@
 ---
 description: "Batch write-skip contract — platform Future resolve vs job mapper responsibilities (force_async)"
-globs: ["**/GenericListenerV3.java", "**/BatchWriterSkipItemSupport.java", "**/*FailureEntityMapper.java", "**/batchnew/dpi/**"]
+globs: ["**/GenericListenerV3.java", "**/*FailureEntityMapper.java"]
 alwaysApply: false
 ---
 
 # Batch write-skip contract (`force_async`)
+
+## Train note (Upgrade 9)
+
+On the **current watermark** (lib/accounting `mfi_integration_v3.4.2.x`): live attach points are `GenericListenerV3` + `*FailureEntityMapper.java` only.
+
+`BatchWriterSkipItemSupport.java` and `**/batchnew/dpi/**` exist on **3.7.1 / DPI feature** trains — **not** on 3.4.2.x checkout. Do not invent globs for missing paths; when those files appear in the workspace, apply this same contract to them.
 
 ## Problem this prevents
 
@@ -14,11 +20,11 @@ When `batch_job_parameter.force_async=TRUE`, `AsyncItemWriter` passes a **`Futur
 
 | Layer | Owns | Must NOT |
 |-------|------|----------|
-| **platform-lib** `GenericListenerV3` | `BatchWriterSkipItemSupport.resolveSkipItem(item)` then `fromWriter(O)` | Cast `SkipListener<I,O>` on raw skip item |
+| **platform-lib** `GenericListenerV3` | `BatchWriterSkipItemSupport.resolveSkipItem(item)` then `fromWriter(O)` (when class present) | Cast `SkipListener<I,O>` on raw skip item |
 | **Vo-typed mapper** (calc, billing, penal VO) | Null-safe field read on `O` | `Future`, `resolveSkipItem`, `DpiBatchWriterSkipItemSupport`, `unwrap()` |
 | **List-typed mapper** (booking, interest posting) | `item == null \|\| item.isEmpty()` then `item.get(0)` | Future unwrap (listener already resolved) |
 
-## DPI jobs (mandatory pairing)
+## DPI jobs (mandatory pairing — 3.7.1+ when sources present)
 
 All three use `GenericListenerV3` in `*BatchConfigService`:
 

@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "updated": "2026-07-22",
+  "updated": "2026-07-23",
   "hub": ".cursor/workspace-intelligence-state.md",
   "bus": "cursor-bundle/flow-test/learning_bus.jsonl",
   "super_agent": {
@@ -60,71 +60,6 @@
       "writes": [],
       "feeds": [],
       "scripts": []
-    },
-    {
-      "id": "workspace-gates-reference",
-      "path": ".cursor/skills/workspace-gates-reference/SKILL.md",
-      "triggers": [
-        "pre-U3 rule",
-        "mandate checklist",
-        "gate archive",
-        "verbatim rule"
-      ],
-      "requires": [],
-      "reads": [
-        ".cursor/rules/00-workspace-core.mdc",
-        ".cursor/rules/10-quality-gates.mdc"
-      ],
-      "writes": [],
-      "feeds": [],
-      "scripts": []
-    },
-    {
-      "id": "open-final-file",
-      "path": ".cursor/skills/open-final-file/SKILL.md",
-      "triggers": [
-        "open final",
-        "final version",
-        "no diff",
-        "forward file",
-        "open in IDE",
-        "open-final"
-      ],
-      "requires": [],
-      "reads": [],
-      "writes": [],
-      "feeds": [],
-      "scripts": [
-        "scripts/bin/open-final.sh"
-      ]
-    },
-    {
-      "id": "prod-ops-sql-impact",
-      "path": ".cursor/skills/prod-ops-sql-impact/SKILL.md",
-      "triggers": [
-        "prod sql",
-        "ops sql",
-        "adhoc update",
-        "soft-archive CRR",
-        "client_request_response_log",
-        "prod patch",
-        "DTFC reset"
-      ],
-      "requires": [],
-      "reads": [
-        ".cursor/rules/prod-ops-sql-impact-gate.mdc",
-        "cursor-bundle/memory/feedback_prod_ops_sql_crr_impact_gate.md",
-        "scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
-      ],
-      "writes": [
-        "scripts/sql/adhoc/**"
-      ],
-      "feeds": [
-        "open-final-file"
-      ],
-      "scripts": [
-        "scripts/bin/open-final.sh"
-      ]
     },
     {
       "id": "autonomous-workspace-ops",
@@ -263,6 +198,25 @@
       "scripts": []
     },
     {
+      "id": "open-final-file",
+      "path": ".cursor/skills/open-final-file/SKILL.md",
+      "triggers": [
+        "open final",
+        "final version",
+        "no diff",
+        "forward file",
+        "open in IDE",
+        "open-final"
+      ],
+      "requires": [],
+      "reads": [],
+      "writes": [],
+      "feeds": [],
+      "scripts": [
+        "scripts/bin/open-final.sh"
+      ]
+    },
+    {
       "id": "pr-review",
       "path": ".cursor/skills/pr-review/SKILL.md",
       "triggers": [
@@ -287,6 +241,34 @@
       "feeds": [],
       "scripts": [
         "scripts/bin/pr-review.sh"
+      ]
+    },
+    {
+      "id": "prod-ops-sql-impact",
+      "path": ".cursor/skills/prod-ops-sql-impact/SKILL.md",
+      "triggers": [
+        "prod sql",
+        "ops sql",
+        "adhoc update",
+        "soft-archive CRR",
+        "client_request_response_log",
+        "prod patch",
+        "DTFC reset"
+      ],
+      "requires": [],
+      "reads": [
+        ".cursor/rules/prod-ops-sql-impact-gate.mdc",
+        "cursor-bundle/memory/feedback_prod_ops_sql_crr_impact_gate.md",
+        "scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql"
+      ],
+      "writes": [
+        "scripts/sql/adhoc/**"
+      ],
+      "feeds": [
+        "open-final-file"
+      ],
+      "scripts": [
+        "scripts/bin/open-final.sh"
       ]
     },
     {
@@ -386,6 +368,24 @@
         "workspace"
       ],
       "reads": [],
+      "writes": [],
+      "feeds": [],
+      "scripts": []
+    },
+    {
+      "id": "workspace-gates-reference",
+      "path": ".cursor/skills/workspace-gates-reference/SKILL.md",
+      "triggers": [
+        "pre-U3 rule",
+        "mandate checklist",
+        "gate archive",
+        "verbatim rule"
+      ],
+      "requires": [],
+      "reads": [
+        ".cursor/rules/00-workspace-core.mdc",
+        ".cursor/rules/10-quality-gates.mdc"
+      ],
       "writes": [],
       "feeds": [],
       "scripts": []

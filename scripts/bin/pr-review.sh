@@ -372,18 +372,17 @@ freshness = {
     },
 }
 
-base_shas = {
-    initial_base_sha,
-    final_base_sha,
-    initial_base_ref_sha,
-    final_base_ref_sha,
-}
+# Freshness (Upgrade 9):
+# - Head: metadata + refs/pull/N/head must agree (stable during collection).
+# - Base: compare only the PR's base.sha (metadata) across the collection window.
+#   Live branch tip (git_ref_*) may advance after merge — informational, not STALE.
 head_shas = {
     initial_head_sha,
     final_head_sha,
     initial_pull_ref_sha,
     final_pull_ref_sha,
 }
+base_meta_shas = {initial_base_sha, final_base_sha}
 same_identity = (
     pr_final.get("number") == pr.get("number")
     and pr_final.get("base", {}).get("repo", {}).get("full_name")
@@ -391,7 +390,10 @@ same_identity = (
     and pr_final.get("base", {}).get("ref") == pr.get("base", {}).get("ref")
     and pr_final.get("head", {}).get("ref") == pr.get("head", {}).get("ref")
 )
-if len(base_shas) != 1 or len(head_shas) != 1 or not same_identity:
+freshness["base"]["tip_advanced"] = (
+    initial_base_ref_sha != initial_base_sha or final_base_ref_sha != initial_base_sha
+)
+if len(base_meta_shas) != 1 or len(head_shas) != 1 or not same_identity:
     freshness["status"] = "STALE"
     (out / "freshness.json").write_text(
         json.dumps(freshness, indent=2, sort_keys=True) + "\n",

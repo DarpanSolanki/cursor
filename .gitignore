@@ -87,3 +87,7 @@ cursor-bundle/memory/self-reports/
 # Compiled helpers
 *.class
 scripts/lib/flyway_checksum/*.class
+
+# Automation run logs (rotate 30; keep dir)
+.cursor/automations/logs/*
+!.cursor/automations/logs/.gitkeep
