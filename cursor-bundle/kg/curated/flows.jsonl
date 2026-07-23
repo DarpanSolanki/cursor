@@ -1,0 +1,7 @@
+# Curated pipeline-order edges (`next`) — scheduled-job chains and verified money-path order.
+# Not inferable from orchestration XML alone. Extend here + build.sh.
+{"t":"edge","from":"request:dpiAccrualCalculation","to":"request:dpiAccrualBooking","rel":"next","note":"DPIC EOD step 1→2 (separate batch jobs)","src":"cursor-bundle/brain/dpic/04-dpic-flow.md"}
+{"t":"edge","from":"request:dpiAccrualBooking","to":"request:dpiBilling","rel":"next","note":"DPIC EOD step 2→3","src":"cursor-bundle/brain/dpic/04-dpic-flow.md"}
+{"t":"edge","from":"request:interestAccrualCalculation","to":"request:interestAccrualBooking","rel":"next","note":"EOD interest pipeline step 1→2","src":"cursor-bundle/brain/accounting/03-batch-dependency.md"}
+{"t":"edge","from":"request:interestAccrualBooking","to":"request:interestBilling","rel":"next","note":"EOD interest pipeline step 2→3","src":"cursor-bundle/brain/accounting/03-batch-dependency.md"}
+{"t":"edge","from":"request:runEODJobs","to":"request:generatePostEODReports","rel":"next","note":"EOD umbrella triggers post-EOD reporting","src":"cursor-bundle/brain/accounting/03-batch-dependency.md"}

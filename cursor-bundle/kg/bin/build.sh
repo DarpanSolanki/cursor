@@ -60,9 +60,12 @@ python3 "$BIN/build_orchestration.py" $REPOS      >> "$tmp"
 python3 "$BIN/build_services.py"                  >> "$tmp"
 python3 "$BIN/build_tables.py" $REPOS             >> "$tmp"
 python3 "$BIN/build_dataaccess.py" "$tmp" $REPOS  >> "$tmp"
-python3 "$BIN/build_docs.py" "$tmp"               >> "$tmp"
+python3 "$BIN/build_money_concepts.py" "$tmp" $REPOS >> "$tmp"
+python3 "$BIN/build_kafka.py" "$tmp" $REPOS       >> "$tmp"
+python3 "$BIN/build_schedulers.py" "$tmp"         >> "$tmp"
 python3 "$BIN/build_cases.py" "$tmp"              >> "$tmp"
 python3 "$BIN/build_curated.py"                   >> "$tmp"
+python3 "$BIN/build_docs.py" "$tmp"               >> "$tmp"
 python3 "$BIN/build_failuremodes.py" "$tmp" $REPOS >> "$tmp"
 
 python3 - "$tmp" "$DATA/kg.jsonl" "$DATA/stats.json" $REPOS <<'PY'
@@ -73,15 +76,27 @@ repos = sys.argv[4:]
 seen = set()
 nodes = []
 edges = []
+# Track processor bean -> set of repos (from orch emits) for shared-attr fix
+proc_repos = collections.defaultdict(set)
 for line in open(raw, encoding="utf-8"):
     o = json.loads(line)
     if o["t"] == "node":
+        if o.get("kind") == "processor" and o.get("repo"):
+            proc_repos[o["id"]].add(o["repo"])
         if o["id"] in seen:
             continue
         seen.add(o["id"])
         nodes.append(o)
     else:
         edges.append(o)
+# Shared processors used from multiple repos → repo=shared (fixes ATTR_DRIFT)
+for n in nodes:
+    if n.get("kind") != "processor":
+        continue
+    rs = proc_repos.get(n["id"]) or set()
+    if len(rs) > 1:
+        n["repo"] = "shared"
+        n["repos"] = sorted(rs)
 with open(out, "w", encoding="utf-8") as fh:
     for o in nodes + edges:
         fh.write(json.dumps(o, ensure_ascii=False) + "\n")

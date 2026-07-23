@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Upgrade 10 — KG map enrichment (extractors)
+Extractor-only close of Brain Truth Audit gaps: money aliases (`account_entry`/`client_reference_number`), Kafka topics+emits/consumes, doc nodes (392), scheduler nodes, repo-scoped request IDs (deleteUser/createTaskWorkflow), Writer CRUD, bus→graph promotion, map-completeness SELF-REPORT+doctor, 3 missing flow docs (writeoff/MJE/DCF), explicit exclusions in `build_config.json`. Rebuild 7535n/35524e; req coverage weak repos →100%.
+
 ## 2026-07-23 | workspace | Brain truth audit — coverage+SoT corrections
 Fail-closed KG/brain truth vs disk on watermark `ad0a3619`. SoT: ACC `entity_type` key FIXED-STALE→RESOLVED; citation refresh (flushDb/Pending-FR/asset-criteria); GAP-079/080/081 + resolved tooling rows; edge_case entity_type doc corrected. Full: `scripts/scratch/brain-truth-audit.md`.
 

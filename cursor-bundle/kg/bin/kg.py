@@ -45,13 +45,34 @@ def conn():
     c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; return c
 
 def resolve(c, q):
-    if c.execute("SELECT 1 FROM nodes WHERE id=?", (q,)).fetchone(): return q
-    for pref in ("request:","service:","processor:","api:","doc:"):
-        if c.execute("SELECT 1 FROM nodes WHERE id=?", (pref+q,)).fetchone(): return pref+q
-    hits=[r[0] for r in c.execute("SELECT id FROM nodes WHERE id LIKE ?", (f"%{q}%",)).fetchall()]
-    if len(hits)==1: return hits[0]
-    if len(hits)>1:
-        sys.stderr.write(f"ambiguous '{q}' -> {hits[:12]}{' ...' if len(hits)>12 else ''}\n")
+    """Resolve a node id. Requests are repo-scoped (request:{repo}/{name}); bare
+    names resolve by unique label. Use repo/name when ambiguous."""
+    if c.execute("SELECT 1 FROM nodes WHERE id=?", (q,)).fetchone():
+        return q
+    for pref in ("request:", "service:", "processor:", "api:", "doc:", "topic:", "scheduler:", "table:"):
+        if c.execute("SELECT 1 FROM nodes WHERE id=?", (pref + q,)).fetchone():
+            return pref + q
+    # request by label (Upgrade 10 repo-scope)
+    if "/" not in q and not q.startswith("request:"):
+        hits = [r[0] for r in c.execute(
+            "SELECT id FROM nodes WHERE kind='request' AND label=?", (q,)
+        ).fetchall()]
+        if len(hits) == 1:
+            return hits[0]
+        if len(hits) > 1:
+            sys.stderr.write(f"ambiguous 'request:{q}' -> {hits[:12]}{' ...' if len(hits) > 12 else ''}\n")
+            sys.stderr.write("  hint: use <repo>/<name> e.g. trustt-platform-api-gateway/deleteUser\n")
+            return None
+    # repo/name shorthand → request:{repo}/{name}
+    if "/" in q and not q.startswith("request:"):
+        cand = "request:" + q
+        if c.execute("SELECT 1 FROM nodes WHERE id=?", (cand,)).fetchone():
+            return cand
+    hits = [r[0] for r in c.execute("SELECT id FROM nodes WHERE id LIKE ?", (f"%{q}%",)).fetchall()]
+    if len(hits) == 1:
+        return hits[0]
+    if len(hits) > 1:
+        sys.stderr.write(f"ambiguous '{q}' -> {hits[:12]}{' ...' if len(hits) > 12 else ''}\n")
     return None
 
 def cmd_stats(c,a):
@@ -83,12 +104,18 @@ def cmd_node(c,a):
     for e in ins[:80]: print(f"  {e[1]} -{e[0]}->  [{e[3] or '?'}]")
 
 def cmd_flow(c,a):
-    nid=resolve(c, "request:"+a[0]) or resolve(c,a[0])
-    if not nid: print("request not found"); return
-    rows=c.execute("SELECT seq,cond,dst_id,src FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
+    # bare name or repo/name — resolve() handles repo-scoped request ids
+    nid=resolve(c, a[0]) or resolve(c, "request:"+a[0])
+    if not nid or not str(nid).startswith("request:"):
+        # try label uniquely
+        nid=resolve(c, a[0])
+    if not nid:
+        print("request not found"); return
+    rows=c.execute("SELECT seq,cond,dst_id,src,json FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
     print(f"FLOW {nid}  ({len(rows)} processors)")
     for e in rows:
         cond="" if (e[1] or "*")=="*" else f"  [if function_code={e[1]}]"
+        # prefer orch path repo over shared processor.repo (ATTR fix)
         print(f"  {e[0]:3}. {e[2].split(':',1)[1]}{cond}  [{e[3]}]")
     apis=c.execute("SELECT dst_id,src FROM edges WHERE src_id=? AND rel='calls_api'",(nid,)).fetchall()
     if apis:
@@ -458,7 +485,7 @@ def cmd_crud(c,a):
     """The full DB footprint of a flow: every processor's reads/writes/deletes, then the
     aggregate read-set / write-set / delete-set — the map a test simulator needs."""
     if not a: print("usage: kg crud <request>"); return
-    nid=resolve(c,"request:"+a[0]) or resolve(c,a[0])
+    nid=resolve(c,a[0]) or resolve(c,"request:"+a[0])
     if not nid: print("request not found"); return
     procs=[r[0] for r in c.execute("SELECT DISTINCT dst_id FROM edges WHERE src_id=? AND rel='invokes'",(nid,)).fetchall()]
     if not procs: print(f"{nid}: no processors"); return

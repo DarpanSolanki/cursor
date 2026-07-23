@@ -51,6 +51,14 @@ else
 fi
 
 echo ""
+echo "--- KG map-completeness ---"
+if python3 "$ROOT/cursor-bundle/kg/bin/map_completeness.py" --doctor-warn 2>&1; then
+  ok "map-completeness (no regression)"
+else
+  echo "  WARN map-completeness regression (see above) — not a hard fail"
+fi
+
+echo ""
 echo "--- KG freshness ---"
 if bash scripts/bin/kg-ensure-fresh.sh --check-only --quiet 2>/dev/null; then
   ok "KG FRESH (branch-set)"

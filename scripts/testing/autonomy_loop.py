@@ -176,11 +176,28 @@ def generate_self_report() -> Path:
     for cls in sorted(by_class) or ["question", "read-only-rca", "money-fix"]:
         vals = by_class.get(cls) or []
         lines.append(f"- `{cls}`: p50={pct(vals, 50)} p95={pct(vals, 95)} n={len(vals)}")
+    # map-completeness (Upgrade 10)
+    map_line = "n/a"
+    try:
+        import subprocess
+
+        r = subprocess.run(
+            [sys.executable, str(ROOT / "cursor-bundle/kg/bin/map_completeness.py")],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        map_line = (r.stdout or "").strip().splitlines()[-1] if r.stdout else "n/a"
+    except Exception as e:
+        map_line = f"error: {e}"
+
     lines += [
         "",
         "## KG",
         f"- cache hit ratio (telemetry window): {hit_ratio} (hit={hits} miss={misses})",
         f"- gate hits (PROVISIONAL): {gates} — revisit kg-profiles.md if ≥8/week",
+        f"- map-completeness: {map_line}",
         "",
         "## QA bar",
         f"- enforced acceptance domains: **{len(enforced)}/21** — {', '.join(enforced)}",

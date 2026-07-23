@@ -97,25 +97,100 @@ def _is_rate_limited(event_type: str, source: str, detail: str | None) -> bool:
     return False
 
 
+LEARNINGS = ROOT / "cursor-bundle/brain/testing/learnings.jsonl"
+PROMOTED = ROOT / "cursor-bundle/kg/curated/promoted_learnings.jsonl"
+
+
+def _promote_learnings_to_graph() -> dict:
+    """Upgrade 10: verified learnings → curated KG nodes (intake stays on the bus).
+
+    Promotes gotcha/learning rows with a real api + non-probe text into
+    diag:/case: nodes in curated/promoted_learnings.jsonl for the next build.
+    """
+    if not LEARNINGS.is_file():
+        return {"promoted": 0, "reason": "no_learnings"}
+    existing: set[str] = set()
+    if PROMOTED.is_file():
+        for line in PROMOTED.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                o = json.loads(line)
+                if o.get("id"):
+                    existing.add(o["id"])
+            except json.JSONDecodeError:
+                pass
+    new_rows: list[dict] = []
+    for line in LEARNINGS.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            o = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        kind = o.get("kind") or o.get("type") or ""
+        api = (o.get("api") or "").strip()
+        text = (o.get("text") or o.get("detail") or "").strip()
+        if not api or api in ("sanityWorkspace", "unknownApi", "unknown"):
+            continue
+        if not text or "sanity probe" in text.lower():
+            continue
+        if kind not in ("gotcha", "learning_verified", "fix_shipped", "learning_adopted", ""):
+            # allow plain learnings.jsonl gotchas
+            if kind and kind not in ("gotcha",):
+                continue
+        digest = __import__("hashlib").sha1(f"{api}|{text}".encode()).hexdigest()[:10]
+        nid = f"diag:learn.{digest}"
+        if nid in existing:
+            continue
+        existing.add(nid)
+        new_rows.append({
+            "t": "node",
+            "id": nid,
+            "kind": "diag",
+            "label": f"{api}: {text[:80]}",
+            "role": "promoted_learning",
+            "src": "brain/testing/learnings.jsonl",
+            "api": api,
+            "note": text[:240],
+        })
+    if not new_rows:
+        return {"promoted": 0, "existing": len(existing)}
+    PROMOTED.parent.mkdir(parents=True, exist_ok=True)
+    with PROMOTED.open("a", encoding="utf-8") as f:
+        if PROMOTED.stat().st_size == 0:
+            f.write("# Promoted learnings — written by learning_bus.compact_bus; consumed by build_curated.py\n")
+        for row in new_rows:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return {"promoted": sum(1 for r in new_rows if r.get("t") == "node"), "ids": [r["id"] for r in new_rows if r.get("t") == "node"][:5]}
+
+
 def compact_bus(*, max_events: int = BUS_MAX_EVENTS, max_age_days: int = BUS_MAX_AGE_DAYS) -> dict:
-    """Trim bus to max_events and drop rows older than max_age_days."""
+    """Trim bus to max_events / max age, then promote verified learnings into the KG curated layer."""
     rows = _read_all_rows()
+    promo = _promote_learnings_to_graph()
     if not rows:
-        return {"before": 0, "after": 0, "removed": 0}
+        return {"before": 0, "after": 0, "removed": 0, "graph_promote": promo}
     cutoff = time.time() - max_age_days * 86400
     kept = [r for r in rows if _parse_ts(r.get("ts", "")) >= cutoff]
     if len(kept) > max_events:
         kept = kept[-max_events:]
     removed = len(rows) - len(kept)
-    if removed <= 0:
-        return {"before": len(rows), "after": len(rows), "removed": 0}
-    header = "# Learning bus — append-only; skills read/write via learning_bus.py\n"
-    BUS.parent.mkdir(parents=True, exist_ok=True)
-    with BUS.open("w", encoding="utf-8") as f:
-        f.write(header)
-        for row in kept:
-            f.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
-    return {"before": len(rows), "after": len(kept), "removed": removed}
+    if removed > 0:
+        header = "# Learning bus — append-only; skills read/write via learning_bus.py\n"
+        BUS.parent.mkdir(parents=True, exist_ok=True)
+        with BUS.open("w", encoding="utf-8") as f:
+            f.write(header)
+            for row in kept:
+                f.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+    return {
+        "before": len(rows),
+        "after": len(kept) if removed > 0 else len(rows),
+        "removed": max(0, removed),
+        "graph_promote": promo,
+    }
 
 
 def _maybe_rotate() -> None:

@@ -89,7 +89,7 @@ def parse_header_fields(header: str) -> dict[str, str | None]:
 
 
 def main() -> int:
-    req_ids: set[str] = set()
+    req_by_label: dict[str, list[str]] = {}
     tbl_ids: set[str] = set()
     if len(sys.argv) > 1 and __import__("os").path.exists(sys.argv[1]):
         for line in open(sys.argv[1], encoding="utf-8"):
@@ -97,7 +97,7 @@ def main() -> int:
             if o.get("t") != "node":
                 continue
             if o["kind"] == "request":
-                req_ids.add(o["label"])
+                req_by_label.setdefault(o["label"], []).append(o["id"])
             elif o["kind"] == "table":
                 tbl_ids.add(o["label"])
 
@@ -144,19 +144,38 @@ def main() -> int:
         )
 
         linked: set[str] = set()
-        for name in req_ids:
+        for name, ids in req_by_label.items():
             if len(name) >= 6 and re.search(r"\b" + re.escape(name) + r"\b", body):
-                if name not in linked:
-                    linked.add(name)
+                for rid in ids:
+                    if rid in linked:
+                        continue
+                    # Prefer same-repo request when case meta has repo
+                    if meta.get("repo") and f"request:{meta['repo']}/" not in rid and len(ids) > 1:
+                        continue
+                    linked.add(rid)
                     emit(
                         {
                             "t": "edge",
                             "from": cid,
-                            "to": f"request:{name}",
+                            "to": rid,
                             "rel": "touches",
                             "src": "brain/changelog/CHANGELOG.md",
                         }
                     )
+                # if repo filter dropped all, link all
+                if name not in {x.split("/")[-1] for x in linked} and name in body:
+                    for rid in ids:
+                        if rid not in linked:
+                            linked.add(rid)
+                            emit(
+                                {
+                                    "t": "edge",
+                                    "from": cid,
+                                    "to": rid,
+                                    "rel": "touches",
+                                    "src": "brain/changelog/CHANGELOG.md",
+                                }
+                            )
         for tbl in tbl_ids:
             if len(tbl) >= 6 and re.search(r"\b" + re.escape(tbl) + r"\b", body):
                 emit(

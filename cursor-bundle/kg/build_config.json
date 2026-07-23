@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "updated": "2026-07-23",
+  "description": "KG build policy — exclusions and coverage expectations (Upgrade 10).",
+  "exclude_from_orch_coverage": [
+    {
+      "repo": "trustt-platform-ai-codegen-artifacts-java",
+      "reason": "Codegen artifacts / docs only — no runtime orchestration or money processors."
+    },
+    {
+      "repo": "trustt-platform-dependency-mgmt",
+      "reason": "Gradle BOM / plugin versions only — no service orch or JPA model."
+    },
+    {
+      "repo": "trustt-platform-simulators",
+      "reason": "Test doubles / stubs — deliberately outside production flow map."
+    },
+    {
+      "repo": "novopay-platform-lib",
+      "reason": "Alias path of trustt-platform-lib; covered once under trustt-platform-lib."
+    }
+  ],
+  "partial_coverage_declared": [
+    {
+      "repo": "trustt-platform-lib",
+      "kinds": ["processor", "table"],
+      "reason": "Framework processors live here but are not Request-wired; orch coverage N/A. Optional class index only."
+    },
+    {
+      "repo": "trustt-platform-reporting",
+      "kinds": ["processor"],
+      "reason": "Batch ItemProcessors (*ItemProcessor) are Spring Batch steps, not <Request> beans — orch-linked % is expected <100%."
+    },
+    {
+      "repo": "trustt-platform-los",
+      "kinds": ["processor"],
+      "reason": "Same as reporting: many batch/item processors not in orchestration XML."
+    },
+    {
+      "repo": "trustt-platform-webapp",
+      "kinds": ["request", "processor"],
+      "reason": "UI shell — service node only; no backend orch in this repo."
+    },
+    {
+      "repo": "trustt-platform-initial-setup",
+      "kinds": ["request", "processor"],
+      "reason": "Flyway/SQL bootstrap — service node only."
+    }
+  ],
+  "money_concept_aliases": {
+    "client_reference_number": {
+      "physical_via": "column_on_entity",
+      "note": "Logical money key; physical column on transaction_master (dedup) and related money tables."
+    },
+    "account_entry": {
+      "physical_via": "alias_to",
+      "alias_to": "transaction_details",
+      "note": "Audit/conceptual posting entry name → transaction_details legs."
+    }
+  }
+}

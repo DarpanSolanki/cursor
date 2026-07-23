@@ -28,3 +28,6 @@ Generated: 2026-07-22T15:49:44Z · Upgrade 8 self-metrics
 - gap stubs still high (18)
 - KG gate hits 8 — consider kg-profiles
 
+## KG map-completeness
+- map-completeness: overall=98.8% req=100.0% table=97.5% doc=392/392 topic=153 sched=16 excluded=4
+- measured: 2026-07-23T08:46:54Z

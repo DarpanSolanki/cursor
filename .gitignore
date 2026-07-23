@@ -36,6 +36,9 @@ cursor-bundle/*
 cursor-bundle/kg/*
 !cursor-bundle/kg/bin/
 !cursor-bundle/kg/bin/**
+!cursor-bundle/kg/build_config.json
+!cursor-bundle/kg/curated/
+!cursor-bundle/kg/curated/**
 cursor-bundle/kg/data/cache/
 cursor-bundle/kg/data/*.db-journal
 

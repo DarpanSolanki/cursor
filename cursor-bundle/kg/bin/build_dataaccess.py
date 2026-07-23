@@ -357,16 +357,26 @@ def main():
         # real miss only if the body genuinely has DB access we failed to extract; else it's a no-DB helper
         return "dao_body_empty_REAL" if any(i.get("hasdb") for i in c.methods[meth]) else "no_db_helper"
 
-    # ---- emit processor -> table edges ----
+    # ---- emit processor/writer -> table edges ----
+    # Upgrade 10: also scan *Writer / *ItemWriter (batch writers were under-extracted).
+    def is_data_actor(name):
+        return name.endswith("Processor") or name.endswith("Writer") or name.endswith("ItemWriter")
+
     edges={}  # (bean, rel, table, op) -> src (first wins)
     unresolved=0; proc_seen=0; proc_with_db=0; real_miss=0; no_db_skip=0
     miss_tbl=collections.Counter()
     unres_detail=collections.Counter()   # (reason, ftype, method) -> count
     for name,c in classes.items():
-        if not name.endswith("Processor"): continue
+        if not is_data_actor(name): continue
         bean=bean_name(name)
-        if bean not in KNOWN_PROC:   # not wired into any <Request> flow -> skip (logged)
+        is_writer = name.endswith("Writer") or name.endswith("ItemWriter")
+        if bean not in KNOWN_PROC and not is_writer:
             continue
+        # Writers not in orch: still emit a processor node so edges are not dangling
+        if is_writer and bean not in KNOWN_PROC:
+            emit({"t":"node","id":f"processor:{bean}","kind":"processor","label":bean,
+                  "role":"batch_writer","src":os.path.relpath(c.file, start=os.getcwd())})
+            KNOWN_PROC.add(bean)
         proc_seen+=1
         rel=os.path.relpath(c.file, start=os.getcwd())
         hits=set()
