@@ -17,7 +17,7 @@ from impact_tests import (  # noqa: E402
     self_report_unincorporated,
 )
 
-FINDINGS = ROOT / ".cursor/self-upgrade-findings.json"
+FINDINGS = ROOT / "cursor-bundle/memory/self-upgrade-findings.json"
 SELF_REPORT = ROOT / "cursor-bundle/memory/SELF-REPORT.md"
 BACKLOG = ROOT / "scripts/workspace-backlog.json"
 

@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "updated": "2026-07-23",
+  "description": "Workspace infra debt \u2014 agents drain auto_safe items via workspace-max-pass.sh",
+  "items": [
+    {
+      "id": "WS-001",
+      "title": "Session start KG sync uses --fast when branch-set fresh",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true
+    },
+    {
+      "id": "WS-002",
+      "title": "Cache orchestration XML mtime in intel fingerprint (avoid rglob each stale check)",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true
+    },
+    {
+      "id": "WS-003",
+      "title": "kg-flow changelog emits fix_shipped to learning_bus",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false
+    },
+    {
+      "id": "WS-004",
+      "title": "workspace-health + workspace-max-pass entrypoints",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true
+    },
+    {
+      "id": "WS-005",
+      "title": "workspace-smoke: skip close when ship_push_gate satisfied (default)",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true
+    },
+    {
+      "id": "WS-006",
+      "title": "Registry case: DPI 134497 cross-EOD replay guard",
+      "status": "done",
+      "auto_safe": false,
+      "perf": false,
+      "note": "Shipped 2026-06-23: dpic.cross_eod_replay_134497 + run_dpi_cross_eod_replay_guard.sh"
+    },
+    {
+      "id": "WS-007",
+      "title": "Registry cases: loanDeathForeclosure DPI waiver legs",
+      "status": "done",
+      "auto_safe": false,
+      "perf": false,
+      "note": "Shipped 2026-06-23: foreclosure.dpi_waiver_smoke + run_dfc_dpi_waiver_smoke.sh"
+    },
+    {
+      "id": "WS-008",
+      "title": "Incremental KG case DB refresh (refresh_cases only sqlite upsert)",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true,
+      "note": "refresh_cases.py uses build_db.py --incremental-cases"
+    },
+    {
+      "id": "WS-009",
+      "title": "Fix nps_app_log missing in agent-ops state writer",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false,
+      "evidence": "2026-07-10: added nps_app_log to scripts/lib/novopay-service-lib.sh (was missing; agent-ops-lib called it)",
+      "done_date": "2026-07-10"
+    },
+    {
+      "id": "WS-010",
+      "title": "super-agent corroborate subcommand (super-machine.sh corroborate)",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false
+    },
+    {
+      "id": "WS-011",
+      "title": "hooks: after-ship-path-edit tier + post-commit-ship-test",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false,
+      "evidence": "2026-07-10: hooks.json afterFileEdit\u2192after-ship-path-edit.sh; afterShellExecution wires post-commit-ship-test.sh (was claimed done earlier while still on after-money-path-edit)",
+      "done_date": "2026-07-10",
+      "honesty_note": "Was marked done before hooks.json actually wired ship-path + post-commit-ship-test \u2014 corrected this session"
+    },
+    {
+      "id": "WS-012",
+      "title": "Zero manual ops rule + autopilot gate directives per classification",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false
+    },
+    {
+      "id": "WS-013",
+      "title": "Classifier meta-intent + incident-signal disambiguation; git hooks fail-open; classifier regression self-tests",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false
+    },
+    {
+      "id": "WS-014",
+      "title": "Fix hub staleness oscillation (learning_bus not a hub trigger; intelligence_hub stamps fingerprint)",
+      "status": "done",
+      "auto_safe": true,
+      "perf": true
+    },
+    {
+      "id": "WS-016",
+      "title": "Think-first minimal fix \u2014 universal autopilot ladder + alwaysApply rule + skill",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false,
+      "notes": "Orient\u2192understand\u2192propose\u2192implement before Edit; pairs with keep_code_simple + minimal_fix_gate"
+    },
+    {
+      "id": "WS-018",
+      "title": "00-workspace-core.mdc + workspace-verify.sh + bootstrap/autopilot wiring",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false,
+      "note": "Shipped 2026-07-06: master contract rule, WORKSPACE.md, verify script, autopilot bootstrap step, always-on/autopilot alignment"
+    },
+    {
+      "id": "WS-019",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Portfolio transfer ntest case for executeLMSPortfolioTransfer",
+      "detail": "Domain portfolio is thin \u2014 add flow/api registry case when local fixture exists; until then fallback health.accounting",
+      "domain": "portfolio",
+      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+    },
+    {
+      "id": "WS-020",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "loanWriteoff registry e2e (writeoff domain)",
+      "detail": "Orchestration loanWriteoff exists; no ntest case \u2014 add when writeoff fixture + money-path harness ready",
+      "domain": "writeoff",
+      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+    },
+    {
+      "id": "WS-021",
+      "status": "open",
+      "auto_safe": false,
+      "area": "brain",
+      "title": "Refresh historical DFC walkthrough branch refs to 3.7.1 pointer",
+      "detail": "death-foreclosure-walkthrough.md still cites sdcp-9301-hotfix; banner added 2026-07-10 \u2014 full rewrite deferred",
+      "domain": "death_foreclosure",
+      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+    },
+    {
+      "id": "WS-022",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin accounting domains need dedicated release_cases",
+      "detail": "Domains still without release_cases after fallback: []. Prefer real e2e over health.accounting only.",
+      "domain": ""
+    },
+    {
+      "id": "WS-023",
+      "status": "open",
+      "auto_safe": false,
+      "area": "testing",
+      "title": "ASK-027C extract DCF test helpers to scripts/testing/lib/",
+      "detail": "payments stub, actor seed, staging cleanup, batch wait \u2014 extract from dcf_sanity for reuse"
+    },
+    {
+      "id": "WS-024",
+      "status": "open",
+      "auto_safe": false,
+      "area": "testing",
+      "title": "ASK-027E group-flow smoke: child repayment fan-out + CLB stuck read-only",
+      "detail": "Add registry cases after helpers (WS-023); read-only first"
+    },
+    {
+      "id": "WS-025",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `repayment` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "repayment",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-026",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `prepayment` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "prepayment",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-027",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `reversal` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "reversal",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-028",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `restructuring` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "restructuring",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-029",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `eod_bod` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "eod_bod",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-030",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `read_inquiry` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "read_inquiry",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-031",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `write_ops` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "write_ops",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-032",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `mandates_si` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "mandates_si",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-033",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `insurance` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "insurance",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-034",
+      "status": "open",
+      "auto_safe": false,
+      "area": "registry",
+      "title": "Thin domain `batch_other` \u2014 add release_case when orch+fixture exist",
+      "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
+      "domain": "batch_other",
+      "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
+      "owner": "gap-closure / ASK-H09"
+    },
+    {
+      "id": "WS-035",
+      "status": "done",
+      "auto_safe": true,
+      "area": "gates",
+      "title": "Ship discipline hard gate + path-absolute smoke/enrichment + workspace-contract",
+      "detail": "Fail-closed money/service ship without .ship-discipline.json; fix cwd bugs that false-failed smoke; restore corroborate CLI; max-pass self-heals enrichment-sync. User will not re-setup daily.",
+      "done_date": "2026-07-15",
+      "evidence": "ship_discipline_gate.py + 00-workspace-core.mdc + feedback_workspace_once_and_for_all.md"
+    },
+    {
+      "id": "WS-036",
+      "status": "done",
+      "auto_safe": true,
+      "area": "perf",
+      "title": "workspace-disk-clean.sh + super-agent clean \u2014 purge archived service logs",
+      "detail": "Safe reclaim ~300MB+ rotated logback archives; skip active logs when bootRun up; wired into max-pass + autopilot end",
+      "done_date": "2026-07-16",
+      "perf": true
+    },
+    {
+      "id": "SU-IMPACT-001",
+      "title": "Impact-tests was static change_test_map; need dynamic KG blast-radius resolver",
+      "status": "done",
+      "auto_safe": true,
+      "perf": false,
+      "source": "self_upgrade",
+      "draft_plan": "APPLIED: scripts/lib/impact_tests.py dynamic KG resolver; change_test_map demoted to seed; ship-loop gate + process_matrix impact_tests + sessionStart/pre-push banners",
+      "created_at": "2026-07-23T11:32:45Z",
+      "done_date": "2026-07-23",
+      "note": "weekly_drain"
+    },
+    {
+      "id": "SU-RES-001",
+      "title": "Registry cases for postTransaction/postManualJournalEntry/doGLTransfer",
+      "status": "open",
+      "auto_safe": false,
+      "source": "self_upgrade",
+      "draft_plan": "Draft registry money cases with value-level db_asserts; promote from impact stubs impact.stub.*",
+      "created_at": "2026-07-23T11:34:18Z"
+    },
+    {
+      "id": "SU-RES-002",
+      "title": "KG request nodes lack registry mapping for many posting flows",
+      "status": "open",
+      "auto_safe": false,
+      "source": "self_upgrade",
+      "draft_plan": "Mine impact.stub.* weekly; add registry api+smoke_tier=money for top missing by ship frequency",
+      "created_at": "2026-07-23T11:34:18Z"
+    }
+  ]
+}

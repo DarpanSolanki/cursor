@@ -94,3 +94,4 @@ scripts/lib/flyway_checksum/*.class
 # Automation run logs (rotate 30; keep dir)
 .cursor/automations/logs/*
 !.cursor/automations/logs/.gitkeep
+!scripts/workspace-backlog.json

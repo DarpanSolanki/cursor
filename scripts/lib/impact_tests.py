@@ -24,7 +24,7 @@ PROPOSALS = ROOT / "scripts/testing/registry-proposals.json"
 PENDING = ROOT / ".cursor/.pending-ship-work.json"
 RAN_FILE = ROOT / ".cursor/.impact-tests-ran.json"
 WAIVER_LOG = ROOT / ".cursor/.impact-tests-waivers.log"
-FINDINGS = ROOT / ".cursor/self-upgrade-findings.json"
+FINDINGS = ROOT / "cursor-bundle/memory/self-upgrade-findings.json"
 BACKLOG = ROOT / "scripts/workspace-backlog.json"
 
 try:
