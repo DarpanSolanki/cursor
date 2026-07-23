@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Brain truth audit — coverage+SoT corrections
+Fail-closed KG/brain truth vs disk on watermark `ad0a3619`. SoT: ACC `entity_type` key FIXED-STALE→RESOLVED; citation refresh (flushDb/Pending-FR/asset-criteria); GAP-079/080/081 + resolved tooling rows; edge_case entity_type doc corrected. Full: `scripts/scratch/brain-truth-audit.md`.
+
 ## 2026-07-23 | workspace | Micro-fix daily sanity kg CLI
 workspace-sanity: replace removed `kg map`/`test-gaps` with validate/watermark/orient; fix test-learn.sh SLIPROD_WORKSPACE so learn probe exits 0. Daily log exit 0.
 
