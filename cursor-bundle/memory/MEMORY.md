@@ -1,4 +1,5 @@
 # Memory Index
+- [Push-origin no invented disburse](feedback_push_origin_no_invented_disburse.md) — MessageBroker/SMS notification must not default to disburseLoan/disburse-quick; knowledge-only HEAD skips money auto-close. (2026-07-23)
 - [Post-analysis OPTIONS BOARD](feedback_post_analysis_options_board.md) — after RCA/Jira/perf analysis always emit L0+L1+L2+L3 (code options included); evidence-only next-step forbidden; autopilot + 00-workspace-core. (2026-07-23 SP-308 correction)
 - [Disburse column audit mandatory](feedback_disburse_column_audit_mandatory.md) — disburse/money API Pass requires value-level column asserts (loan_account/installments/dues/mode/LDT/TM/CRR); registry db_asserts + `column_audit.py`; SHG needs member REP_ACCT + child batch; unified `disburse-any-quick.sh`. (2026-07-20)
 - [Disburse Kafka E2E + LOS ensure](feedback_disburse_kafka_e2e_los_ensure.md) — `los`+`simulators` in novopay-service map; before-test disburse fail-closes on Kafka consumer; use `disburse-indl-kafka-quick.sh` for TDPQA-54 (not HTTP-only). Deploy accounting before/with LOS. (2026-07-21)

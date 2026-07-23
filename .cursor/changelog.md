@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Fix push-origin hang: no invented disburseLoan for SMS/MessageBroker
+Root cause: `kg_ship_resolve` defaulted any MessageBroker.xml → `disburseLoan` → `disburse-quick` E2E hung KB pushes. Fix: no invent default; notification paths = service tier; knowledge-only HEAD skips auto-close.
+
 ## 2026-07-23 | accounting+notifications | SP-308/TDPQA-79 L0+L1 on 3.4.2.5
 L0: SMS consumer threads 1→4, maxPollRecords 10→50. L1: step-scope cache for getCustomerDetails in due+bounce notification writers (N+1 actor HTTP). Train `mfi_integration_v3.4.2.5`.
 

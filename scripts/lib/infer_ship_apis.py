@@ -61,6 +61,16 @@ _DPI_FULL_SUITE_CASES = frozenset(
 
 TIER_RANK = {"workspace": 0, "service": 1, "money": 2}
 
+# SMS / installment-notification paths are service-tier (throughput/cache), not ledger money.
+# Misclassifying them as money + inventing disburseLoan hung push-origin on disburse-quick E2E.
+NON_MONEY_SERVICE_PATH_HINTS = (
+    "/batchnew/notifications/",
+    "loaninstallmentduenotification",
+    "loaninstallmentbouncenotification",
+    "trustt-platform-notifications/",
+    "novopay-platform-notifications/",
+)
+
 EXPLICIT: list[tuple[str, str]] = [
     ("GetLoanAccountOverviewDetails", "getLoanAccountOverviewDetails"),
     ("getLoanAccountOverviewDetails_responseTemplate", "getLoanAccountOverviewDetails"),
@@ -77,6 +87,57 @@ WORKSPACE_MARKERS = (
     "AGENTS.md",
     "WORKSPACE.md",
 )
+
+KNOWLEDGE_ONLY_PREFIXES = (
+    ".cursor/",
+    "cursor-bundle/",
+    "system_brain/",
+    "docs/",
+    "AGENTS.md",
+    "WORKSPACE.md",
+    ".cursorrules",
+)
+
+
+def is_knowledge_only_paths(paths: list[str]) -> bool:
+    """True when every path is workspace knowledge/docs (safe to push without money E2E)."""
+    if not paths:
+        return False
+    for rel in paths:
+        s = rel.replace("\\", "/")
+        while s.startswith("./"):
+            s = s[2:]
+        if s in ("AGENTS.md", "WORKSPACE.md", ".cursorrules"):
+            continue
+        if not any(
+            s.startswith(p)
+            for p in (
+                ".cursor/",
+                "cursor-bundle/",
+                "system_brain/",
+                "docs/",
+            )
+        ):
+            return False
+    return True
+
+
+def head_commit_paths(repo: Path | None = None) -> list[str]:
+    repo = repo or ROOT
+    out = subprocess.run(
+        ["git", "-C", str(repo), "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if out.returncode != 0:
+        return []
+    return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+
+
+def is_knowledge_only_head(repo: Path | None = None) -> bool:
+    return is_knowledge_only_paths(head_commit_paths(repo))
+
 
 MONEY_REPO_HINTS: dict[str, tuple[str, ...]] = {
     "trustt-platform-accounting": (
@@ -171,13 +232,20 @@ def is_service_path(path: str) -> bool:
 
 def is_money_path(path: str) -> bool:
     s = path.replace("\\", "/")
+    sl = s.lower()
+    if any(h in sl for h in NON_MONEY_SERVICE_PATH_HINTS):
+        return False
     repo = infer_repo_from_path(s)
     if repo and repo in MONEY_REPO_HINTS:
-        if any(h.lower() in s.lower() for h in MONEY_REPO_HINTS[repo]):
+        if any(h.lower() in sl for h in MONEY_REPO_HINTS[repo]):
             return True
     if "/orchestration/" in s and s.endswith(".xml"):
         return True
-    if "LmsMessageBrokerConsumer" in s or "MessageBroker.xml" in s:
+    if "LmsMessageBrokerConsumer" in s:
+        return True
+    # Accounting MessageBroker can gate disburse Kafka — still money.
+    # Notifications MessageBroker already excluded via NON_MONEY_SERVICE_PATH_HINTS.
+    if "MessageBroker.xml" in s and "accounting" in sl:
         return True
     if "trustt-platform-lib/" in s and any(
         x in s for x in ("RedisCache", "message-broker", "navigation", "service-gateway")

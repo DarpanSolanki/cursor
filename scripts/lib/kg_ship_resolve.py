@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 KG_DB = ROOT / "cursor-bundle/kg/data/kg.db"
 
 # Path segment → primary sanity api when KG/grep yields nothing (last resort).
+# Never invent disburseLoan for unrelated MessageBroker / generic accounting paths.
 DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
     ("/loan/disbursement/", "disburseLoan"),
     ("/disbursement/", "disburseLoan"),
@@ -21,6 +22,9 @@ DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
     ("/interest/accrual", "interestAccrualCalculation"),
     ("/dpi", "getLoanAccountOverviewDetails"),
     ("/billing/", "dpiBilling"),
+    ("/batchnew/notifications/", "loanInstallmentDueNotificationJob"),
+    ("loaninstallmentduenotification", "loanInstallmentDueNotificationJob"),
+    ("loaninstallmentbouncenotification", "loanInstallmentBounceNotificationJob"),
 )
 
 # Prefer these when multiple requests share a util (bank-call util → disburse first).
@@ -197,10 +201,18 @@ def resolve_apis_for_path(path: str) -> list[str]:
     for b in _orchestration_processors_in_file(p):
         apis.update(requests_for_processor_bean(b, conn))
 
-    # MessageBroker / consumer config
+    # MessageBroker / consumer config — only map when domain path is known.
+    # NEVER default to disburseLoan (that hung KB/SMS pushes on disburse-quick E2E).
     if "MessageBroker" in stem or p.name == "MessageBroker.xml":
-        hint = _domain_hint_api(s) or "disburseLoan"
-        apis.add(hint)
+        hint = _domain_hint_api(s)
+        if hint:
+            apis.add(hint)
+        elif "trustt-platform-notifications" in s.replace("\\", "/") or "novopay-platform-notifications" in s.replace(
+            "\\", "/"
+        ):
+            # SMS/email/FCM consumer tuning — no money apiName
+            pass
+        # accounting MessageBroker without domain hint: leave unresolved (no invented api)
 
     if conn:
         conn.close()

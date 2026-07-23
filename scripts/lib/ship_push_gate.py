@@ -105,6 +105,14 @@ def is_merge_commit(repo_dir: Path) -> bool:
     return subj.startswith("Merge ")
 
 
+def is_knowledge_only_head(repo_dir: Path | None = None) -> bool:
+    """HEAD only touches .cursor/cursor-bundle/docs — do not block push on money pending."""
+    sys.path.insert(0, str(ROOT / "scripts/lib"))
+    from infer_ship_apis import is_knowledge_only_head as _ikoh  # noqa: WPS433
+
+    return _ikoh(repo_dir or ROOT)
+
+
 def last_ship_repo_dir() -> Path | None:
     last = ROOT / ".cursor/.last-ship-commit"
     if not last.is_file():
@@ -125,6 +133,7 @@ def main() -> int:
     ap.add_argument("--satisfied", action="store_true")
     ap.add_argument("--pending-apis", action="store_true")
     ap.add_argument("--is-merge-head", action="store_true")
+    ap.add_argument("--is-knowledge-head", action="store_true")
     ap.add_argument("--root", default=str(ROOT))
     args = ap.parse_args()
     root = Path(args.root)
@@ -139,6 +148,8 @@ def main() -> int:
         for api in pending_apis(pending_p):
             print(api)
         return 0
+    if args.is_knowledge_head:
+        sys.exit(0 if is_knowledge_only_head(root) else 1)
     if args.is_merge_head:
         repo = last_ship_repo_dir()
         if repo and is_merge_commit(repo):

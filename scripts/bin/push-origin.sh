@@ -33,6 +33,11 @@ _run_close_if_needed() {
   if ! python3 "$ROOT/scripts/lib/ship_push_gate.py" --needs-close 2>/dev/null; then
     return 0
   fi
+  # Knowledge-only HEAD (changelog/rules/brain) must not run money E2E (e.g. disburse-quick).
+  if python3 "$ROOT/scripts/lib/ship_push_gate.py" --is-knowledge-head 2>/dev/null; then
+    echo "=== push-origin: HEAD is knowledge-only — skip auto workspace-close (pending ship left intact) ===" >&2
+    return 0
+  fi
   echo "=== push-origin: auto workspace-close (pending ship work) ===" >&2
   local -a close_args=(--from-pending)
   local api
