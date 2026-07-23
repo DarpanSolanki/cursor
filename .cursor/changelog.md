@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | SP-308 local-test gap: registry + wait_batch + ship wire
+Honest miss: L0/L1 pushed compile-only. Added due/bounce batch smokes + SMS throughput assert; ship path-triggers them; fixed wait_batch_job (match run_started / `time` param). Local: config PASS + due job COMPLETED PASS.
+
 ## 2026-07-23 | workspace | Fix push-origin hang: no invented disburseLoan for SMS/MessageBroker
 Root cause: `kg_ship_resolve` defaulted any MessageBroker.xml → `disburseLoan` → `disburse-quick` E2E hung KB pushes. Fix: no invent default; notification paths = service tier; knowledge-only HEAD skips auto-close.
 

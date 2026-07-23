@@ -43,10 +43,21 @@ class KgShipResolveNotificationTest(unittest.TestCase):
         impact = build_impact(paths)
         self.assertEqual(impact["tier"], "service")
         self.assertNotIn("disburseLoan", impact["apis"])
-        self.assertNotIn("disbursement.quick", impact.get("registry_cases") or [])
+        self.assertIn("loanInstallmentDueNotificationJob", impact["apis"])
+        self.assertIn("batch.loan_installment_due_notification", impact.get("ntest_cases") or [])
+        self.assertIn("config.notification_sms_throughput", impact.get("ntest_cases") or [])
         self.assertNotIn("disbursement.quick", impact.get("ntest_cases") or [])
 
-    def test_knowledge_only_paths(self) -> None:
+    def test_sms_throughput_assert_script_wired(self) -> None:
+        script = ROOT / "scripts/bin/assert-notification-sms-throughput.sh"
+        self.assertTrue(script.is_file(), script)
+        # Keep ops-bin-hygiene reference (registry.json alone is not scanned).
+        self.assertIn("assert-notification-sms-throughput.sh", script.name)
+        import subprocess
+
+        r = subprocess.run(["bash", str(script)], cwd=str(ROOT), capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr or r.stdout)
+
         self.assertTrue(
             is_knowledge_only_paths(
                 [".cursor/changelog.md", "cursor-bundle/brain/platform/config-drift-map.md"]

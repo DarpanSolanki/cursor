@@ -40,6 +40,9 @@ PATH_TRIGGERED_CASES = frozenset(
         "dpic.eod_txn_regression",
         "dpic.two_emi_full_chain",
         "dpic.npa_dpi_movement_e2e",
+        "batch.loan_installment_due_notification",
+        "batch.loan_installment_bounce_notification",
+        "config.notification_sms_throughput",
     }
 )
 
@@ -251,6 +254,19 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "tdpqa102",
             "reopening/",
             "group_mfi_orc",
+        ),
+        "batch.loan_installment_due_notification": (
+            "loaninstallmentduenotification",
+            "/batchnew/notifications/loaninstallmentdue",
+        ),
+        "batch.loan_installment_bounce_notification": (
+            "loaninstallmentbouncenotification",
+            "/batchnew/notifications/loaninstallmentbounce",
+        ),
+        "config.notification_sms_throughput": (
+            "trustt-platform-notifications",
+            "novopay-platform-notifications",
+            "notification_sms_",
         ),
     }
     hints = rules.get(cid)

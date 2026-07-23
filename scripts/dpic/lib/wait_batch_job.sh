@@ -21,16 +21,16 @@ next_progress=$((started_epoch + PROGRESS_S))
 last_status=""
 
 query_status() {
-  if [[ -n "$JOB_TIME" && -n "$RUN_STARTED" ]]; then
-    "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name="$JOB_NAME" -v job_time="$JOB_TIME" -v run_started="$RUN_STARTED" <<'SQL'
+  # Prefer create_time window from ntest run_started (epoch seconds).
+  # Do NOT require parameter_name=job_time — many jobs store `time` instead, and
+  # correlator JOB_TIME often does not match the value Spring Batch persisted.
+  if [[ -n "$RUN_STARTED" ]]; then
+    "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name="$JOB_NAME" -v run_started="$RUN_STARTED" <<'SQL'
 SELECT bje.status
 FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
-JOIN mfi_batch.batch_job_execution_params p ON p.job_execution_id = bje.job_execution_id
 WHERE bji.job_name = :'job_name'
-  AND p.parameter_name = 'job_time'
-  AND p.parameter_value = :'job_time'
-  AND bje.create_time > NOW() - INTERVAL '30 minutes'
+  AND bje.create_time >= to_timestamp((:'run_started')::bigint)
 ORDER BY bje.job_execution_id DESC
 LIMIT 1;
 SQL
@@ -41,9 +41,9 @@ FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
 JOIN mfi_batch.batch_job_execution_params p ON p.job_execution_id = bje.job_execution_id
 WHERE bji.job_name = :'job_name'
-  AND p.parameter_name = 'job_time'
+  AND p.parameter_name IN ('job_time', 'time')
   AND p.parameter_value = :'job_time'
-  AND bje.create_time > NOW() - INTERVAL '10 minutes'
+  AND bje.create_time > NOW() - INTERVAL '30 minutes'
 ORDER BY bje.job_execution_id DESC
 LIMIT 1;
 SQL

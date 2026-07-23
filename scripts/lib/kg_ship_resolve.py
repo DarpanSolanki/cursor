@@ -210,8 +210,8 @@ def resolve_apis_for_path(path: str) -> list[str]:
         elif "trustt-platform-notifications" in s.replace("\\", "/") or "novopay-platform-notifications" in s.replace(
             "\\", "/"
         ):
-            # SMS/email/FCM consumer tuning — no money apiName
-            pass
+            # SMS consumer throughput pairs with due-notification producer path
+            apis.add("loanInstallmentDueNotificationJob")
         # accounting MessageBroker without domain hint: leave unresolved (no invented api)
 
     if conn:
