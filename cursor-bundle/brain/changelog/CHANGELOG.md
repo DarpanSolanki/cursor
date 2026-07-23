@@ -1,3 +1,7 @@
+## 2026-07-24 | kb | Job-owned tables — never hand-mutate Accrued/IAD
+- Standing map: `.cursor/skills/accounting-knowledge/job-owned-tables.md` (+ critical-lessons / MEMORY)
+- Rejected: writer `reconcileAccruedInterestToBilledOriginal` (IAD only via accrual jobs / forceful booking)
+
 ## 2026-07-24 | TDPQA-72 | SHG parent force-bill = child FB (FC+DFC)
 - sha: trustt-platform-accounting `5f4661b038` on `mfi_integration_v3.4.2.4` (not 3.4.2.5)
 - apiName: loanDeathForeclosure / loanPrepayment / individualChildLoanForeclosure; tables: loan_account_due_details (force-bill), interest_accrual_details sync

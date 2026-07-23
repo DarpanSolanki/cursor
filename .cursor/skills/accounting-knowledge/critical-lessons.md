@@ -2,6 +2,7 @@
 
 ## Critical lessons (from production incidents)
 
+- **Job-owned tables — never hand-mutate** (TDPQA-72): `interest_accrual_details` (and peer job staging) must only change via accrual **jobs** / forceful **booking** processor / catalogue BILLING — never writer `setTotalAccruedAmount` “Accrued≤Original” hacks. Map: `job-owned-tables.md`.
 - **paid_amount vs waived_amount**: NEVER mix. "Extra interest paid" = actual paid only. Waived = loss bucket.
 - **Future INT dues**: do NOT use future due rows' paid_amount to infer "extra interest". Use deterministic as-of-date calc.
 - **Reject/recreate**: earlier attempts can mutate due rows. Always compute from stable inputs (dates + rates), not mutable DB state.

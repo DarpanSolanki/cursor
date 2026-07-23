@@ -24,6 +24,7 @@ Auto-attached gate: `.cursor/rules/accounting.mdc` (financial signoff + routing 
 | `critical-lessons.md` | Incident lessons |
 | `batch-platform.md` | Scheduler ↔ batch |
 | `batchnew-jobs.md` | Job inventory |
+| `job-owned-tables.md` | Tables jobs own — **never** hand-mutate Accrued/IAD/etc. |
 | `_source-accounting-module-knowledge.md` | Full prior module-knowledge body |
 | `_source-accounting-mdc-deep2-duplicate.md` | Second deep copy from old accounting.mdc |
 

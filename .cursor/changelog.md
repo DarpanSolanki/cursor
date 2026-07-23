@@ -1,3 +1,6 @@
+## 2026-07-24 | accounting-knowledge | Job-owned tables map (never hand-mutate IAD)
+Standing rule + map: `.cursor/skills/accounting-knowledge/job-owned-tables.md`. Reject Accrued trim in DCF writer; IAD only via jobs/forceful booking. Memory: `feedback_job_owned_tables_no_hand_mutate.md`. TDPQA-72 Obs3 reconciler = hack (not restore).
+
 ## 2026-07-24 | scripts/testing + dcf_sanity | TDPQA-72 harness: batch headers + wait-by-exec-id
 - `api-fire`/`batch_envelope` was missing `operation_mode=SELF` (prod scheduler sends it) → billing/accrual `postTransaction` hit NOT NULL and jobs FAILED; suite falsely blamed product.
 - Also: wait used `EXTRACT(EPOCH FROM create_time)` without TZ → matched old FAILED rows; now `wait_batch_after(max_execution_id)`.

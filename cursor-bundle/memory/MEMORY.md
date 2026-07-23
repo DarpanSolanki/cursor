@@ -1,6 +1,7 @@
 - Ship-test autonomy (change→impact on push): `feedback_ship_test_autonomy_change_map.md` + `scripts/lib/change_test_map.json`.
 
 # Memory Index
+- [Job-owned tables no hand-mutate](feedback_job_owned_tables_no_hand_mutate.md) — IAD/penal/DPI accrual + billing staging owned by jobs; never writer Accrued trim hacks. Map: accounting-knowledge `job-owned-tables.md`. (TDPQA-72 2026-07-24)
 - [Local test mandatory for notification ship](feedback_local_test_mandatory_notification_ship.md) — SP-308 pushed compile-only; no registry/wait_batch wire. Fixed registry + wait_batch + ship infer. Never push service code without matching ntest PASS. (2026-07-23)
 - [Push-origin no invented disburse](feedback_push_origin_no_invented_disburse.md) — MessageBroker/SMS notification must not default to disburseLoan/disburse-quick; knowledge-only HEAD skips money auto-close. (2026-07-23)
 - [Post-analysis OPTIONS BOARD](feedback_post_analysis_options_board.md) — after RCA/Jira/perf analysis always emit L0+L1+L2+L3 (code options included); evidence-only next-step forbidden; autopilot + 00-workspace-core. (2026-07-23 SP-308 correction)

@@ -19,14 +19,16 @@ Children Accrued==Original after force-bill labd.
 Root: after sibling FC → parent RSCH, **new schedule INT dues lack labd** while IAD for those
 calendar periods remains. Child-only force-bill does not close parent gap.
 
-## Permanent write-path
+## Permanent write-path — SUPERSEDED (2026-07-24)
 
-`DeathForeclosureInsuranceWriter.reconcileAccruedInterestToBilledOriginal`:
-- After child force-bill and after parent `waiveFutureInterestPastReporting` on last-child
-- Max billed INT due_date via `getDueDetails` + `findByLoanInstallmentDetailsId` (reuse + Java)
-- Zero `total_accrued_amount` on IAD with `end_date` after cutoff; batch save
+~~`reconcileAccruedInterestToBilledOriginal` (zero/trim IAD)~~ — **FORBIDDEN hack.**
+`interest_accrual_details` is **job-owned**; do not mutate Accrued outside accrual calc/booking.
+See `feedback_job_owned_tables_no_hand_mutate.md` + `job-owned-tables.md`.
 
-Do **not** invent parent `DFC_PRTL_BILL` (Obs1b Out-of-scope).
+**Correct direction:** BILLING force-bill (AIR→BI) + forceful accrual booking; parent FB = child FB amount.
+Vikram **latest** reopen (391188/391228) is GL/FC-FB/₹1 — not re-raise of summary Accrued>Original.
+
+Do **not** invent parent `DFC_PRTL_BILL` as Accrued bandage (Obs1b is separate force-bill product ask).
 
 ## Asserts
 
