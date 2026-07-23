@@ -1,3 +1,6 @@
+## 2026-07-23 | accounting+notifications | SP-308/TDPQA-79 L0+L1 on 3.4.2.5
+L0: SMS consumer threads 1→4, maxPollRecords 10→50. L1: step-scope cache for getCustomerDetails in due+bounce notification writers (N+1 actor HTTP). Train `mfi_integration_v3.4.2.5`.
+
 ## 2026-07-23 | workspace | Post-analysis OPTIONS BOARD (planning engine)
 After RCA/Jira/perf analysis always emit L0+L1+L2+L3 (code options included); evidence-only next-step forbidden. Autopilot directive + `00-workspace-core` § board; Gate E / tiered-solutions / memory `feedback_post_analysis_options_board`.
 
