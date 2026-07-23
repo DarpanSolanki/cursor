@@ -7,13 +7,13 @@
 #   test-learn.sh --api fetchLoanForeclosureSimulationDetails --kind canned_sql --canned 11-accruals-by-lan --text "check DPI accruals before sim"
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+export SLIPROD_WORKSPACE="$ROOT"
+cd "$ROOT"
 exec python3 - "$@" <<'PY'
-import argparse, json, sys
+import argparse, json, os, sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[2] if False else Path(sys.argv[0]).resolve().parents[2]
-# fix path — script is invoked via heredoc; use env
-import os
-ROOT = Path(os.environ.get("SLIPROD_WORKSPACE", Path(__file__).resolve().parents[2] if "__file__" in dir() else "/home/darpan/Documents/sliProd"))
+
+ROOT = Path(os.environ["SLIPROD_WORKSPACE"])
 sys.path.insert(0, str(ROOT / "scripts/testing"))
 from lib.test_learnings import append_learning, LEARNINGS
 
@@ -36,5 +36,5 @@ rec = append_learning(
     canned=args.canned or "",
 )
 print(f"[test-learn] → {LEARNINGS}")
-print(json.dumps(rec, indent=2))
+print(json.dumps({"ok": True, **rec}, indent=2))
 PY

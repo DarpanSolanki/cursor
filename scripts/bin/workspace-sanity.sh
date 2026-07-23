@@ -102,15 +102,16 @@ fi
 echo ""
 echo "--- KG CLI extensions ---"
 python3 cursor-bundle/kg/bin/kg.py validate >/dev/null 2>&1 && pass "kg validate" || fail "kg validate" ""
-if python3 cursor-bundle/kg/bin/kg.py --no-drift-check map stats 2>/dev/null | grep -q "platform_api"; then
-  pass "kg map stats"
+# Current CLI (Upgrade 9): validate / orient / watermark — not legacy map/test-gaps
+if python3 cursor-bundle/kg/bin/kg.py watermark 2>/dev/null | grep -qE "KG built|watermark|trustt-platform"; then
+  pass "kg watermark"
 else
-  fail "kg map stats" "no output"
+  fail "kg watermark" "no output"
 fi
-if python3 cursor-bundle/kg/bin/kg.py --no-drift-check test-gaps --limit 3 2>/dev/null | grep -q "TEST GAPS"; then
-  pass "kg test-gaps"
+if python3 cursor-bundle/kg/bin/kg.py orient disburseLoan 2>/dev/null | grep -qE "ORIENT \(evidence only|populateUserDetails|FLOW request"; then
+  pass "kg orient"
 else
-  fail "kg test-gaps" "no output"
+  fail "kg orient" "no output"
 fi
 
 echo ""

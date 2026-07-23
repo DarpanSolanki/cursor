@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Micro-fix daily sanity kg CLI
+workspace-sanity: replace removed `kg map`/`test-gaps` with validate/watermark/orient; fix test-learn.sh SLIPROD_WORKSPACE so learn probe exits 0. Daily log exit 0.
+
 ## 2026-07-23 | workspace | Upgrade 9 — sweep remainders
 pr-review freshness: merged OK when head+pull agree; base = PR base.sha (not live tip). Skill `--depth` = agent-only. rule_inventory +11; skills-manifest regen (canonical `cursor-bundle/brain/`; sweep false miss). batch-write-skip + dpi-money-proof globs retargeted to 3.4.2.x live paths. kg.py --help validate/orient. intel-automation daily/weekly → `.cursor/automations/logs/` (utc|job|exit|duration, rotate 30). Skip #7 KG miss churn (ops).
 
