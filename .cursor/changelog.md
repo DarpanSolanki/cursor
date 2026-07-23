@@ -1,3 +1,6 @@
+## 2026-07-23 | workspace | Upgrade 11-LEAN — query-plan-gate
+Detect query_touched → local EXPLAIN PASS/WARN/FAIL + reuse proof; ship-loop conditional; process_matrix + impact-tests WHY. Catalog deferred as SU-PERF-IDIOMS-001.
+
 ## 2026-07-23 | workspace | IMPACT-TESTING dynamic KG resolver (reconcile+prove)
 Kept change_test_map as seed only. Added impact_tests.py (git→KG writes/topics/processors→cases+WHY+stubs), ship-loop block, process_matrix impact_tests, sessionStart/pre-push banners, self_upgrade pipeline (SU-IMPACT-001 done). Proofs: sibling WHY, ship FAIL without plan, sessionStart banner.
 

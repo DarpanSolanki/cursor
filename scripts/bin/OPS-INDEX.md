@@ -8,6 +8,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `accounting-flow-proof.sh` | Accounting flow proof — routes by detected domain (ALL flows, not money-only). | — |
 | `agent-ops.sh` | Autonomous workspace ops — agents call this; do not re-decide manually. | scripts/bin/disburse-indl-kafka-quick.sh, scripts/bin/disburse-indl-quick.sh, scripts/bin/disburse-quick.sh, scripts/bin/disburse-shg-quick.sh, scripts/bin/ship-loop-gate.sh, scripts/lib/agent-ops-lib.sh, scripts/testing/agent_router.py, scripts/testing/corroborate.py |
 | `agent-router.sh` | Classify user task → skill chain + consultation order (proof-backed routing). | scripts/bin/workspace-sanity.sh, scripts/testing/super_agent.py |
+| `assert-notification-sms-throughput.sh` | Assert SP-308 L0 SMS consumer throughput settings on the active notifications train. | scripts/lib/test_kg_ship_resolve_notification.py |
 | `audit-batch-skip-mappers.sh` | Enforce batch write-skip contract (platform-lib + job mappers stay aligned). | scripts/bin/ship-loop-gate.sh |
 | `brain-gap-capture.sh` | Record a gap/risk discovered during analysis or implementation (self-learning inbox). | — |
 | `brain-triage.sh` | Triage discovery inbox → promote to gaps or dismiss. | scripts/bin/workspace-sanity.sh |
@@ -41,6 +42,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `git-fetch-all.sh` | Fetch origin + upstream for all service repos (no checkout/rebase). Updates workspace stat | scripts/bin/sync-branches.sh |
 | `git-workspace-status.sh` | Refresh cross-session git workspace state (local only, no fetch — fast). | scripts/lib/train_banner.py |
 | `hot-path-scan.sh` | Workspace hot-path perf heuristic (DAO-in-loop, stream-in-loop). Agents only. | scripts/bin/ship-loop-gate.sh, scripts/testing/workspace_autopilot.py |
+| `impact-tests.sh` | Dynamic impact-tests — git diff → KG blast radius → registry cases + WHY. | .cursor/hooks/kg-session-watermark.sh, scripts/bin/ship-loop-gate.sh, scripts/bin/workspace-close.sh |
 | `initial-setup-local.sh` | (no header) | — |
 | `install-kg-git-hooks.sh` | Install post-checkout hook in each service repo → kg-session-sync on branch change. | scripts/bin/install-user-cursor-gates.sh |
 | `install-user-cursor-gates.sh` | Install / verify Cursor hooks + git gates for sliProd. | scripts/bin/workspace-max-pass.sh |
@@ -64,6 +66,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `purge-local-dpi.sh` | Wipe all local DPI accruals/dues/GL txns + drop agent backup tables. Local only. | — |
 | `push-origin.sh` | Push to origin after ship-loop gate (auto workspace-close if pending). | .cursor/hooks/pre-push-checklist.sh, scripts/lib/ship_push_gate.py, scripts/testing/workspace_autopilot.py |
 | `query-index-perf-audit.sh` | Index + EXPLAIN audit for native @Query / batch reader SQL profiles. | — |
+| `query-plan-gate.sh` | Query plan gate — DETECT query_touched → EXPLAIN local YB → PASS/WARN/FAIL. | scripts/bin/ship-loop-gate.sh, scripts/lib/impact_tests.py, scripts/lib/test_query_plan_gate.py |
 | `run-guarded.sh` | Minimal wrapper used by ship-loop tooling. | scripts/bin/ship-loop-gate.sh |
 | `setup-local.sh` | One-time / periodic local workspace check for sliProd. | scripts/bin/initial-setup-local.sh, scripts/bin/workspace-doctor.sh |
 | `setup-qa-db.sh` | Bootstrap / preflight QA DB env profiles (qa1–qa5). | — |
@@ -75,14 +78,14 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `super-agent.sh` | Super agent — unified KG + test KG + skills orchestrator. | .cursor/hooks/intel-session-sync.sh, scripts/bin/capture-flow.sh, scripts/bin/intel-automation.sh, scripts/bin/ship-knowledge-gate.sh, scripts/bin/super-machine-smoke.sh, scripts/bin/super-machine.sh, scripts/bin/sync-branches.sh, scripts/bin/workspace-close.sh |
 | `super-machine-smoke.sh` | Super machine smoke — verify all integration points (no assumptions). | — |
 | `super-machine.sh` | Super machine — single entry for the full intelligence stack. | scripts/bin/super-machine-smoke.sh, scripts/testing/corroborate.py |
-| `sync-branches.sh` | Multi-repo branch sync — upstream (trusttai) + origin (fork), KG-aware. Prefer `--domain`/`--train`/`--yes`. | scripts/lib/train_banner.py; deprecated wrapper: sync_branches_v2.sh |
+| `sync-branches.sh` | Multi-repo branch sync — upstream (trusttai) + origin (fork), KG-aware. | scripts/lib/train_banner.py, sync_branches_v2.sh |
 | `sync-intelligence.sh` | Master intelligence sync — contracts + chains + footprints + FTG + KG gates. | scripts/bin/sync-test-intelligence.sh, scripts/testing/agent_router.py, scripts/testing/sync_engine.py |
 | `sync-test-intelligence.sh` | Test intelligence sync — fingerprint-gated (fast default). | scripts/bin/sync-intelligence.sh, scripts/bin/test-map.sh, scripts/testing/corroborate.py, scripts/testing/cross_learn.py, scripts/testing/flow_scaffold.py, scripts/testing/flow_trace.py, scripts/testing/intelligence_hub.py, scripts/testing/sync_engine.py |
 | `test-learn.sh` | Capture generic test/flow knowledge for future ntest runs (self-learning). | scripts/bin/workspace-sanity.sh, scripts/testing/intelligence_hub.py, scripts/testing/learn_cli.py |
 | `test-map.sh` | Alias kept for muscle-memory: test-map.sh → sync-test-intelligence.sh | scripts/bin/sync-test-intelligence.sh |
 | `workspace-autopilot.sh` | Workspace autopilot — zero manual ops for agents. | .cursor/hooks/post-ntest-intel-sync.sh, .cursor/hooks/stop-ship-nudge.sh, .cursor/hooks/workspace-autopilot-session.sh, scripts/bin/super-machine-smoke.sh, scripts/testing/corroborate.py, scripts/testing/workspace_autopilot.py |
 | `workspace-bootstrap.sh` | Compatibility entry — prefer workspace-verify / workspace-doctor. | — |
-| `workspace-close.sh` | Single task-close entry: fresh KG → ship-loop → sync → knowledge gate → hygiene. | .cursor/hooks/after-money-path-edit.sh, .cursor/hooks/after-ship-path-edit.sh, .cursor/hooks/pre-push-checklist.sh, scripts/bin/push-origin.sh, scripts/bin/workspace-smoke.sh, scripts/lib/register_pending_ship.py, scripts/testing/corroborate.py, scripts/testing/workspace_autopilot.py |
+| `workspace-close.sh` | Single task-close entry: fresh KG → ship-loop → sync → knowledge gate → hygiene. | .cursor/hooks/after-money-path-edit.sh, .cursor/hooks/pre-push-checklist.sh, scripts/bin/push-origin.sh, scripts/bin/workspace-smoke.sh, scripts/lib/register_pending_ship.py, scripts/testing/corroborate.py, scripts/testing/workspace_autopilot.py |
 | `workspace-disk-clean.sh` | Smart disk cleanup for sliProd — service archived logs, scratch, pycache, large ops logs. | scripts/bin/workspace-max-pass.sh, scripts/testing/super_agent.py, scripts/testing/workspace_autopilot.py |
 | `workspace-doctor.sh` | Unified workspace health — KG, hooks, DB, registry, optional services. | scripts/bin/workspace-bootstrap.sh, scripts/bin/workspace-sanity.sh |
 | `workspace-health.sh` | Fast workspace health (~1–3s) — no ntest, no workspace-close, no full KG rebuild. | scripts/bin/super-machine-smoke.sh, scripts/bin/workspace-max-pass.sh, scripts/testing/workspace_autopilot.py |
@@ -93,5 +96,5 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `workspace-verify.sh` | Back-compat entrypoint: older rules/tools call `workspace-verify.sh`. | scripts/bin/install-user-cursor-gates.sh, scripts/bin/workspace-bootstrap.sh |
 | `write-intelligence-hub.sh` | Regenerate session intelligence hub (--fast skips slow kg subprocess). | scripts/bin/ship-knowledge-gate.sh, scripts/bin/smoke-workspace.sh, scripts/bin/sync-intelligence.sh, scripts/bin/sync-test-intelligence.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-sanity.sh, scripts/testing/agent_router.py, scripts/testing/workspace_autopilot.py |
 
-_Generated 88 entries._
+_Generated 91 entries._
 

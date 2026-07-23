@@ -126,6 +126,15 @@ def eval_trigger(trigger: str, text: str, ctx: dict) -> bool:
         return bool(ctx.get("api_hint") or re.search(r"\b[a-z]+[A-Z][a-zA-Z]+\b", text or ""))
     if trigger == "code_touch" or trigger == "code_touched":
         return bool(ctx.get("code_touch") or ctx.get("code_touched") or "fix" in t or "implement" in t)
+    if trigger == "query_touched":
+        if ctx.get("query_touched"):
+            return True
+        try:
+            from query_plan_gate import query_touched as _qt
+
+            return bool(_qt())
+        except Exception:
+            return "@query" in t or "nativequery" in t or "repository" in t
     if trigger == "cross_service_or_money_words":
         return any(w in t for w in MONEY_WORDS) or "cross" in t or "kafka" in t
     if trigger == "multi_repo":

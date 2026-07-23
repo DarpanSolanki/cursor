@@ -260,6 +260,19 @@
         "docs-kb": "skip"
       }
     },
+    "query_plan_gate": {
+      "ttl_key": null,
+      "comment": "Upgrade 11-LEAN — EXPLAIN heuristics when @Query/native SQL/repo methods in diff. reuse_query_gate + query-index-perf-audit remain SoT for ladder/matrix.",
+      "cells": {
+        "question": "skip",
+        "read-only-rca": "skip",
+        "non-money-fix": "conditional(query_touched)",
+        "money-fix": "conditional(query_touched)",
+        "batch-dpi": "conditional(query_touched)",
+        "release": "conditional(query_touched)",
+        "docs-kb": "skip"
+      }
+    },
     "learn_phase": {
       "ttl_key": null,
       "cells": {

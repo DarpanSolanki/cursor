@@ -95,3 +95,5 @@ scripts/lib/flyway_checksum/*.class
 .cursor/automations/logs/*
 !.cursor/automations/logs/.gitkeep
 !scripts/workspace-backlog.json
+.cursor/query-plan-evidence/
+.cursor/.query-plan-gate-result.json

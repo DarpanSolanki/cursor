@@ -47,7 +47,7 @@ Ladder: (1) reuse existing query + Java filter → (2) extend existing only if n
 
 Ship touching query semantics requires `.ship-discipline.json` `reuse_query` block via `ship-discipline.sh write … --reuse-step …`. Gate: `reuse_query_gate.py`.
 
-No new `@Query` without steps 1–2 attempted and documented.
+No new `@Query` without steps 1–2 attempted and documented. When `query_touched`: ship-loop runs `query-plan-gate.sh` (EXPLAIN heuristics).
 
 Step-2 performance: Extension must be backward-compatible for current callers. **Do not** widen `WHERE` or drop index-friendly predicates for hot/batch callers. If extension hurts any hot path → stay on step 1 or step 3 — **do not** mutate the hot query.
 

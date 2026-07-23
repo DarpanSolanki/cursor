@@ -68,6 +68,19 @@ fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="
 
+# Query plan gate — only when pending touches @Query/native SQL/repo methods (conditional).
+if [[ "$FROM_PENDING" -eq 1 || "$PENDING_FILES" -gt 0 ]]; then
+  if bash "$ROOT/scripts/bin/query-plan-gate.sh" --check-touched >/dev/null 2>&1; then
+    echo "→ query-plan-gate: query_touched — running EXPLAIN heuristics"
+    if ! bash "$ROOT/scripts/bin/query-plan-gate.sh" --from-pending; then
+      echo "ship-loop-gate: FAIL — query-plan-gate (see .cursor/.query-plan-gate-result.json)" >&2
+      exit 1
+    fi
+  else
+    echo "→ query-plan-gate: SKIPPED (no query_touched)"
+  fi
+fi
+
 # Impact-tests gate FIRST: money/service ships must have run dynamic impact plan this session
 # (or an explicit logged waiver). Skip for pure workspace tier.
 if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then

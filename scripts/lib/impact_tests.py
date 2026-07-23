@@ -483,6 +483,14 @@ def build_plan(
     case_ids = [c["case"] for c in cases]
     ordered = list(dict.fromkeys(guards + case_ids))
 
+    q_files = []
+    try:
+        from query_plan_gate import collect_query_touches
+
+        q_files = [t["file"] for t in collect_query_touches(changed)]
+    except Exception:
+        q_files = []
+
     plan = {
         "built_at": _utc(),
         "source": "impact_tests_dynamic_kg",
@@ -496,7 +504,13 @@ def build_plan(
         "drafted_stubs": [s["id"] for s in stubs],
         "acceptance_guards": guards,
         "why_lines": [f"{c['case']}: {c['why']}" for c in cases],
+        "query_touched": bool(q_files),
+        "query_files": q_files,
     }
+    if q_files:
+        plan["why_lines"] = [
+            f"query-plan-gate: {len(q_files)} query file(s) — run bash scripts/bin/query-plan-gate.sh"
+        ] + list(plan["why_lines"])
     return plan
 
 
@@ -580,6 +594,11 @@ def format_banner(plan: dict) -> str:
         printed += 1
         if printed >= 40:
             break
+    if plan.get("query_touched"):
+        lines.append(
+            f"  QUERY_GATE query_touched=yes files={len(plan.get('query_files') or [])} "
+            f"(run: bash scripts/bin/query-plan-gate.sh)"
+        )
     if printed < 20:
         for fl in plan.get("flows") or []:
             for w in fl.get("why") or []:

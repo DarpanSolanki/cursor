@@ -34,3 +34,4 @@ Generated: 2026-07-22T15:49:44Z · Upgrade 8 self-metrics
 ## Self-upgrade (2026-07-23)
 - unincorporated findings: 0 (oldest age n/a)
 - unincorporated findings: 2 (oldest age 0d)
+- query-gate runs=1 WARN=0 FAIL=1 (2026-07-23)
