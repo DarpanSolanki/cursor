@@ -1,3 +1,9 @@
+## 2026-07-24 | TDPQA-72 | SHG parent force-bill = child FB (FC+DFC)
+- sha: trustt-platform-accounting `5f4661b038` on `mfi_integration_v3.4.2.4` (not 3.4.2.5)
+- apiName: loanDeathForeclosure / loanPrepayment / individualChildLoanForeclosure; tables: loan_account_due_details (force-bill), interest_accrual_details sync
+- Parent FB amount mirrors each child event (accumulate same installment); EXCESS_*=0 on SHG child; Accrued-cap/consume/parent-EMI harness removed
+- Verify: Vikram matrix_20260724_012246 clean PASS; adversarial Obs3 Accrued>Original pending
+
 # Changelog — `/home/darpan/darpan/`
 
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
