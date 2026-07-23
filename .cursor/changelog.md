@@ -1,3 +1,6 @@
+## 2026-07-23 | accounting | SP-308 cache mobile_number only (due+bounce)
+Step-scope Map<String,String> for msisdn — keeps HTTP dedupe, drops full getCustomerDetails map retention (JVM-safe). Job SMS behavior unchanged.
+
 ## 2026-07-23 | workspace | Upgrade 11-LEAN — query-plan-gate
 Detect query_touched → local EXPLAIN PASS/WARN/FAIL + reuse proof; ship-loop conditional; process_matrix + impact-tests WHY. Catalog deferred as SU-PERF-IDIOMS-001.
 
