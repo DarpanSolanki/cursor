@@ -44,13 +44,17 @@ def paths_from_commit(repo_dir: Path, ref: str = "HEAD") -> list[str]:
         text=True,
         check=False,
     )
-    repo = repo_dir.name
+    try:
+        rel_repo = str(repo_dir.resolve().relative_to(ROOT.resolve()))
+    except ValueError:
+        rel_repo = repo_dir.name
+    prefix = "" if rel_repo in (".", "") else f"{rel_repo}/"
     paths: list[str] = []
     for line in out.stdout.splitlines():
         line = line.strip()
         if not line:
             continue
-        full = f"{repo}/{line}"
+        full = f"{prefix}{line}"
         if is_ship_path(full):
             paths.append(full)
     return paths
@@ -138,11 +142,35 @@ def register_from_last_commit(root: Path) -> dict:
     repo = lines[0].strip() if lines else ""
     if not repo:
         return {"registered": False, "reason": "empty last-ship-commit"}
-    repo_dir = root / repo
+    if repo in (".", ""):
+        repo_dir = root
+    else:
+        repo_dir = root / repo
+    if not (repo_dir / ".git").is_dir():
+        return {"registered": False, "reason": f"not a git repo: {repo}"}
     paths = paths_from_commit(repo_dir, "HEAD")
     if not paths:
         return {"registered": False, "reason": "HEAD has no ship paths"}
     return register_paths(root, paths, source="commit")
+
+
+def write_last_ship_commit(root: Path, repo_dir: Path, ref: str = "HEAD") -> Path:
+    """Persist repo-relative name + sha for post-commit / ship-and-continue."""
+    sha = subprocess.run(
+        ["git", "-C", str(repo_dir), "rev-parse", ref],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    try:
+        name = str(repo_dir.resolve().relative_to(root.resolve()))
+    except ValueError:
+        name = repo_dir.name
+    if name == ".":
+        name = "."
+    LAST_COMMIT.parent.mkdir(parents=True, exist_ok=True)
+    LAST_COMMIT.write_text(f"{name}\n{sha}\n", encoding="utf-8")
+    return LAST_COMMIT
 
 
 def main() -> int:

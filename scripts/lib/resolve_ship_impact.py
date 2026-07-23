@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from infer_ship_apis import (  # noqa: E402
     resolve_apis_smart,
     strip_money_cases_for_workspace,
 )
+from ship_push_gate import fingerprints_for_files  # noqa: E402
 
 
 def resolve(
@@ -40,45 +42,56 @@ def resolve(
         for f in pending.get("files") or []
         if f and not f.startswith(".cursor/") and not f.startswith("scripts/scratch/")
     ]
-    apis = list(dict.fromkeys(cli_apis or (pending.get("apis") or [])))
+    honor_explicit = os.environ.get("SHIP_HONOR_EXPLICIT_CASES", "") == "1"
     explicit_cases = pending.get("registry_cases") or pending.get("ntest_cases") or []
 
-    if paths and not explicit_cases:
+    dpi_scoped = False
+    impact_scoped = False
+    accounting_scoped = False
+    repos: list[str] = list(pending.get("repos") or [])
+    apis = list(dict.fromkeys(cli_apis or []))
+    cases: list[str] = []
+    tier = cli_tier or pending.get("tier") or "workspace"
+
+    if paths:
         impact = build_impact(paths)
-        tier = impact["tier"]
-        apis = list(dict.fromkeys(apis + (impact.get("apis") or []))) if not cli_apis else apis
-        cases = strip_money_cases_for_workspace(
-            filter_dpi_batch_cases(impact.get("ntest_cases") or [], apis, paths, tier), tier
-        )
-        repos = impact.get("repos") or []
+        tier = impact["tier"] or tier
         dpi_scoped = bool(impact.get("dpi_scoped"))
         impact_scoped = bool(impact.get("impact_scoped"))
         accounting_scoped = bool(impact.get("accounting_scoped"))
-    elif paths:
-        impact = build_impact(paths)
-        tier = impact["tier"]
-        dpi_scoped = bool(impact.get("dpi_scoped"))
-        impact_scoped = bool(impact.get("impact_scoped"))
-        accounting_scoped = bool(impact.get("accounting_scoped"))
-        if cli_apis:
-            apis = list(dict.fromkeys(cli_apis))
+        repos = impact.get("repos") or repos
+        if not cli_apis:
+            # Fresh path→api resolution wins over stale pending apis
+            apis = list(impact.get("apis") or [])
+        if honor_explicit and explicit_cases and not cli_apis:
+            cases = strip_money_cases_for_workspace(list(explicit_cases), tier)
+        else:
             cases = strip_money_cases_for_workspace(
-                filter_dpi_batch_cases(ntest_cases_for_impact(paths, apis, tier), apis, paths, tier),
+                filter_dpi_batch_cases(
+                    ntest_cases_for_impact(paths, apis, tier),
+                    apis,
+                    paths,
+                    tier,
+                ),
                 tier,
             )
-        else:
-            if not apis:
-                apis = list(impact.get("apis") or [])
-            # Honor explicit registry_cases from pending — do not expand via resolve_ship_cases.
-            cases = strip_money_cases_for_workspace(list(explicit_cases), tier)
-        repos = impact.get("repos") or pending.get("repos") or []
+        # Persist re-resolved impact so afterFileEdit freeze cannot stick
+        if from_pending and pending_path and not honor_explicit:
+            pending["tier"] = tier
+            pending["apis"] = apis
+            pending["repos"] = repos
+            pending["registry_cases"] = cases
+            pending["ntest_cases"] = cases
+            pending["resolution"] = "resolve_ship_impact"
+            pending["file_fingerprints"] = fingerprints_for_files(
+                root, pending.get("files") or []
+            )
+            try:
+                pending_path.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
+            except OSError:
+                pass
     else:
-        tier = pending.get("tier") or cli_tier or "workspace"
         cases = ntest_cases_for_impact(paths, apis, tier)
-        repos = pending.get("repos") or []
-        dpi_scoped = False
-        impact_scoped = False
-        accounting_scoped = False
 
     if not apis and not from_pending:
         for repo in git_dirty_repos():

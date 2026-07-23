@@ -67,7 +67,31 @@ def ship_loop_satisfied(pending_path: Path, passed_path: Path) -> bool:
         return False
     if apis and not apis.issubset(set(passed.get("apis") or [])):
         return False
+    # Fingerprint gate: files changed since the last PASS must re-run ship-loop
+    root = pending_path.parent.parent if pending_path.parent.name == ".cursor" else ROOT
+    current = fingerprints_for_files(root, files)
+    passed_fps = passed.get("file_fingerprints") or {}
+    if passed_fps:
+        for rel in files:
+            key = rel.replace("\\", "/")
+            cur = current.get(key)
+            if cur and passed_fps.get(key) and cur != passed_fps.get(key):
+                return False
     return True
+
+
+def should_skip_auto_close_for_knowledge_head(repo_dir: Path | None = None) -> bool:
+    """Skip money E2E only when HEAD is knowledge-only AND pending has no service/money code."""
+    if not is_knowledge_only_head(repo_dir or ROOT):
+        return False
+    pending = load_json(ROOT / ".cursor/.pending-ship-work.json")
+    files = pending.get("files") or []
+    if not files:
+        return True
+    sys.path.insert(0, str(ROOT / "scripts/lib"))
+    from infer_ship_apis import is_knowledge_only_paths  # noqa: WPS433
+
+    return is_knowledge_only_paths(files)
 
 
 def pending_apis(pending_path: Path) -> list[str]:
@@ -134,6 +158,7 @@ def main() -> int:
     ap.add_argument("--pending-apis", action="store_true")
     ap.add_argument("--is-merge-head", action="store_true")
     ap.add_argument("--is-knowledge-head", action="store_true")
+    ap.add_argument("--skip-auto-close-knowledge", action="store_true")
     ap.add_argument("--root", default=str(ROOT))
     args = ap.parse_args()
     root = Path(args.root)
@@ -148,6 +173,8 @@ def main() -> int:
         for api in pending_apis(pending_p):
             print(api)
         return 0
+    if args.skip_auto_close_knowledge:
+        sys.exit(0 if should_skip_auto_close_for_knowledge_head(root) else 1)
     if args.is_knowledge_head:
         sys.exit(0 if is_knowledge_only_head(root) else 1)
     if args.is_merge_head:

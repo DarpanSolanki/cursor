@@ -36,8 +36,51 @@ def service_path_blob(paths: list[str] | None) -> str:
 
 
 def _api_matches(api: str, hints: list[str]) -> bool:
+    """Match apiName to domain hints without substring false positives (penal vs interest)."""
     low = api.lower()
-    return any(h.lower() in low or low in h.lower() for h in hints if h)
+    for h in hints:
+        if not h:
+            continue
+        hl = h.lower()
+        if low == hl:
+            return True
+        # Prefer token boundary: hint must not be a mid-token substring of api
+        if hl in low:
+            i = low.find(hl)
+            before = low[i - 1] if i > 0 else ""
+            after_i = i + len(hl)
+            after = low[after_i] if after_i < len(low) else ""
+            if (not before or not before.isalnum()) and (not after or not after.isalnum()):
+                return True
+        if low in hl:
+            i = hl.find(low)
+            before = hl[i - 1] if i > 0 else ""
+            after_i = i + len(low)
+            after = hl[after_i] if after_i < len(hl) else ""
+            if (not before or not before.isalnum()) and (not after or not after.isalnum()):
+                return True
+    return False
+
+
+def _path_hint_matches(hint: str, blob: str) -> bool:
+    """True if hint appears as a path token prefix — not mid-token (penal+interest).
+
+    ``getloan`` may match ``getloanaccount…`` (alnum after OK).
+    ``interestaccrual`` must not match inside ``penalinterestaccrual``.
+    """
+    if not hint or hint not in blob:
+        return False
+    if hint.startswith("/"):
+        return True
+    start = 0
+    while True:
+        i = blob.find(hint, start)
+        if i < 0:
+            return False
+        before = blob[i - 1] if i > 0 else ""
+        if (not before) or (not before.isalnum()):
+            return True
+        start = i + 1
 
 
 def detect_domains(blob: str, apis: set[str] | None = None) -> list[str]:
@@ -48,7 +91,7 @@ def detect_domains(blob: str, apis: set[str] | None = None) -> list[str]:
     for did, meta in domains.items():
         hints = tuple(meta.get("path_hints") or [])
         api_hints = meta.get("api_hints") or []
-        if hints and any(h in blob for h in hints):
+        if hints and any(_path_hint_matches(h, blob) for h in hints):
             hit.append(did)
             continue
         if api_hints and any(_api_matches(a, api_hints) for a in apis):

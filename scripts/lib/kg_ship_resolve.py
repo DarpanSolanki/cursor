@@ -5,14 +5,33 @@ from __future__ import annotations
 import re
 import sqlite3
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 KG_DB = ROOT / "cursor-bundle/kg/data/kg.db"
 
+_LIB = str(ROOT / "scripts/lib")
+if _LIB not in sys.path:
+    sys.path.insert(0, _LIB)
+
+from change_test_map import api_from_class_stem, api_from_path  # noqa: E402
+
 # Path segment → primary sanity api when KG/grep yields nothing (last resort).
 # Never invent disburseLoan for unrelated MessageBroker / generic accounting paths.
+# More-specific needles first (penal before interest; notifications before generic).
 DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
+    ("loaninstallmentduenotification", "loanInstallmentDueNotificationJob"),
+    ("loaninstallmentbouncenotification", "loanInstallmentBounceNotificationJob"),
+    ("/batchnew/notifications/", "loanInstallmentDueNotificationJob"),
+    ("penalinterestaccrualcalculation", "penalInterestAccrualCalculation"),
+    ("penalinterestaccrualbooking", "penalInterestAccrualBooking"),
+    ("/batchnew/penal/", "penalInterestAccrualCalculation"),
+    ("loanadvancerepayment", "loanAdvanceRepayment"),
+    ("interestaccrualbooking", "interestAccrualPosting"),
+    ("interestaccrualposting", "interestAccrualPosting"),
+    ("interestaccrualcalculation", "interestAccrualCalculation"),
+    ("/batchnew/interest/", "interestAccrualCalculation"),
     ("/loan/disbursement/", "disburseLoan"),
     ("/disbursement/", "disburseLoan"),
     ("/foreclos/", "fetchLoanForeclosureSimulationDetails"),
@@ -22,9 +41,6 @@ DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
     ("/interest/accrual", "interestAccrualCalculation"),
     ("/dpi", "getLoanAccountOverviewDetails"),
     ("/billing/", "dpiBilling"),
-    ("/batchnew/notifications/", "loanInstallmentDueNotificationJob"),
-    ("loaninstallmentduenotification", "loanInstallmentDueNotificationJob"),
-    ("loaninstallmentbouncenotification", "loanInstallmentBounceNotificationJob"),
 )
 
 # Prefer these when multiple requests share a util (bank-call util → disburse first).
@@ -74,21 +90,33 @@ def requests_for_processor_bean(bean: str, conn: sqlite3.Connection | None = Non
     ).fetchall()
     if own:
         conn.close()
-    return sorted({r[0].split(":", 1)[1] for r in rows})
+    return sorted({_normalize_api_name(r[0].split(":", 1)[1]) for r in rows})
+
+
+def _normalize_api_name(name: str) -> str:
+    """KG sometimes stores request labels as repo/apiName — ship cases need bare apiName."""
+    n = (name or "").strip()
+    if n.startswith("request:"):
+        n = n.split(":", 1)[1]
+    if "/" in n:
+        n = n.rsplit("/", 1)[-1]
+    return n
 
 
 def requests_for_batch_job(job_name: str, conn: sqlite3.Connection | None = None) -> list[str]:
-    """Batch job names often match apiName (dpiAccrualCalculation, etc.)."""
+    """Return apiName only when KG knows the batch job — never invent from a class stem."""
+    if not job_name:
+        return []
     own = conn is None
     if own:
         conn = _kg_conn()
     if not conn:
-        return [job_name] if job_name else []
+        return []
     nid = f"batch_job:{job_name}"
     row = conn.execute("SELECT id FROM nodes WHERE id=? OR label=?", (nid, job_name)).fetchone()
     if own:
         conn.close()
-    return [job_name] if row or job_name else []
+    return [job_name] if row else []
 
 
 def _grep_java_referencing(class_name: str, repo_dir: Path) -> list[str]:
@@ -141,11 +169,22 @@ def _orchestration_request_names_in_file(path: Path) -> list[str]:
 
 
 def _domain_hint_api(path: str) -> str | None:
+    mapped = api_from_path(path)
+    if mapped:
+        return mapped
     s = path.replace("\\", "/").lower()
     for needle, api in DOMAIN_PRIMARY_API:
         if needle in s:
             return api
     return None
+
+
+def _batch_api_for_stem(stem: str, path: str) -> str | None:
+    """Resolve ItemWriter/BatchService stem → known apiName (map + registry), else domain hint."""
+    mapped = api_from_class_stem(stem)
+    if mapped:
+        return mapped
+    return _domain_hint_api(path)
 
 
 def _rank_apis(apis: list[str]) -> list[str]:
@@ -177,21 +216,20 @@ def resolve_apis_for_path(path: str) -> list[str]:
     if bean:
         apis.update(requests_for_processor_bean(bean, conn))
 
-    # *BatchService / *ItemWriter / *Consumer
-    for suffix, kind in (
-        ("BatchService", "batch"),
-        ("ItemWriter", "batch"),
-        ("Consumer", "kafka"),
-    ):
+    # *BatchService / *ItemWriter / *Consumer — map to known apiName; never invent class stem
+    batch_resolved = False
+    for suffix in ("BatchService", "ItemWriter", "ConfigService", "Consumer"):
         if stem.endswith(suffix):
-            job = stem[0].lower() + stem[1:]
-            apis.update(requests_for_batch_job(job, conn))
-            hint = _domain_hint_api(s)
-            if hint:
-                apis.add(hint)
+            mapped = _batch_api_for_stem(stem, s)
+            if mapped:
+                apis.add(mapped)
+                apis.update(requests_for_batch_job(mapped, conn))
+                batch_resolved = True
+            break
 
     # Util / service / bank-call — grep → processors → requests
-    if repo_dir and stem not in (bean,):
+    # Skip when batch stem already mapped (grep finds sibling processors with KG repo/api labels)
+    if repo_dir and stem not in (bean,) and not batch_resolved:
         for ref_bean in _grep_java_referencing(stem, repo_dir):
             apis.update(requests_for_processor_bean(ref_bean, conn))
 
@@ -222,7 +260,9 @@ def resolve_apis_for_path(path: str) -> list[str]:
         if hint:
             apis.add(hint)
 
-    return _rank_apis(list(apis))
+    cleaned = [_normalize_api_name(a) for a in apis if a]
+    cleaned = [a for a in cleaned if a]
+    return _rank_apis(list(dict.fromkeys(cleaned)))
 
 
 def resolve_apis_for_paths(paths: list[str]) -> list[str]:

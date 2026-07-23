@@ -1,3 +1,9 @@
+## 2026-07-23 — Ship-test autonomy: change→impact cases (permanent)
+
+- **Why:** Code ships were pushable after compile / wrong frozen cases / knowledge HEAD skipped money close.
+- **Fix:** `register_pending_ship` on afterFileEdit; `resolve_ship_impact` always re-resolves; money fail-closed empty cases; `change_test_map.json`; penal/advance/notification domains; fingerprint + push-origin knowledge gate; post-commit `.last-ship-commit` re-register.
+- **Verify:** `python3 -m unittest scripts.lib.test_ship_change_test_autonomy scripts.lib.test_kg_ship_resolve_notification scripts.lib.test_ship_change_scope scripts.lib.test_accounting_flow_domains` → OK (30).
+
 ## 2026-07-23 | workspace | SP-308 local-test gap: registry + wait_batch + ship wire
 Honest miss: L0/L1 pushed compile-only. Added due/bounce batch smokes + SMS throughput assert; ship path-triggers them; fixed wait_batch_job (match run_started / `time` param). Local: config PASS + due job COMPLETED PASS.
 

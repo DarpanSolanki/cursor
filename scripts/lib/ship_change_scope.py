@@ -47,8 +47,26 @@ def _norm(rel: str) -> str:
     return rel.replace("\\", "/").lstrip("./")
 
 
+def _to_workspace_rel(path: str) -> str:
+    """Normalize absolute or relative paths to workspace-relative form."""
+    raw = (path or "").strip()
+    if not raw:
+        return ""
+    p = Path(raw)
+    if p.is_absolute():
+        try:
+            return str(p.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
+        except ValueError:
+            s = str(p).replace("\\", "/")
+            root_s = str(ROOT.resolve()).replace("\\", "/")
+            if s.startswith(root_s + "/"):
+                return s[len(root_s) + 1 :]
+            return _norm(s)
+    return _norm(raw)
+
+
 def is_harness_path(path: str) -> bool:
-    s = _norm(path)
+    s = _to_workspace_rel(path)
     if not s.startswith("scripts/"):
         return False
     if s.startswith("scripts/scratch/"):
@@ -61,7 +79,7 @@ def is_harness_path(path: str) -> bool:
 
 
 def is_testing_infra_path(path: str) -> bool:
-    s = _norm(path)
+    s = _to_workspace_rel(path)
     return s == "scripts/testing/registry.json" or (
         s.startswith("scripts/testing/") and s.endswith((".py", ".json"))
     )
@@ -70,14 +88,14 @@ def is_testing_infra_path(path: str) -> bool:
 def is_workspace_kb_path(path: str) -> bool:
     from infer_ship_apis import is_workspace_path
 
-    s = _norm(path)
+    s = _to_workspace_rel(path)
     if is_harness_path(s) or is_testing_infra_path(s):
         return False
     return is_workspace_path(s)
 
 
 def is_money_harness_path(path: str) -> bool:
-    s = _norm(path)
+    s = _to_workspace_rel(path)
     return is_harness_path(s) and any(m in s for m in _MONEY_HARNESS_MARKERS)
 
 
@@ -91,7 +109,9 @@ def partition_ship_paths(paths: list[str]) -> dict[str, list[str]]:
     from infer_ship_apis import infer_repo_from_path, is_service_path
 
     for raw in paths:
-        p = _norm(raw)
+        p = _to_workspace_rel(raw)
+        if not p:
+            continue
         if is_testing_infra_path(p):
             testing_infra.append(p)
         elif is_workspace_kb_path(p):
@@ -238,8 +258,15 @@ def resolve_change_scope(
         ntest_cases_for_impact,
         strip_money_cases_for_workspace,
         touches_dpi,
-        _accounting_scoped,
     )
+
+    def _accounting_scoped(paths_in: list[str], apis_in: list[str], tier_in: str) -> bool:
+        if any(
+            ("trustt-platform-accounting" in p or "novopay-platform-accounting" in p)
+            for p in paths_in
+        ):
+            return True
+        return tier_in == "money" and bool(apis_in)
 
     if reg is None:
         from infer_ship_apis import load_registry
@@ -269,7 +296,7 @@ def resolve_change_scope(
 
     cases: list[str] = []
     if service and tier != "workspace":
-        cases = ntest_cases_for_impact(service, apis, tier, reg)
+        cases = ntest_cases_for_impact(service, apis, tier)
         cases = filter_dpi_batch_cases(cases, apis, service, tier)
 
     harness_cases = harness_cases_for_paths(harness, reg)

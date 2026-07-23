@@ -43,6 +43,9 @@ PATH_TRIGGERED_CASES = frozenset(
         "batch.loan_installment_due_notification",
         "batch.loan_installment_bounce_notification",
         "config.notification_sms_throughput",
+        "batch.penal_interest_accrual_calc",
+        "batch.penal_interest_accrual_booking",
+        "batch.loan_advance_repayment",
     }
 )
 
@@ -267,6 +270,18 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "trustt-platform-notifications",
             "novopay-platform-notifications",
             "notification_sms_",
+        ),
+        "batch.penal_interest_accrual_calc": (
+            "penalinterestaccrualcalculation",
+            "/batchnew/penal/",
+        ),
+        "batch.penal_interest_accrual_booking": (
+            "penalinterestaccrualbooking",
+            "/batchnew/penal/",
+        ),
+        "batch.loan_advance_repayment": (
+            "loanadvancerepayment",
+            "/batchnew/loanadvancerepayment/",
         ),
     }
     hints = rules.get(cid)

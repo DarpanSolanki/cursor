@@ -50,8 +50,7 @@
       ],
       "api_hints": [
         "loanRepayment",
-        "childLoanRepayment",
-        "loanAdvanceRepayment"
+        "childLoanRepayment"
       ],
       "impact_cases": [
         "dpic.repayment_e2e"
@@ -258,7 +257,7 @@
     "interest_accrual": {
       "label": "Interest accrual calc & posting",
       "path_hints": [
-        "interestaccrual",
+        "/batchnew/interest/",
         "/interest/accrual",
         "interestaccrualcalculation",
         "interestaccrualbooking",
@@ -275,6 +274,65 @@
       "deep_cases": [],
       "release_cases": [
         "batch.interest_accrual_calc"
+      ]
+    },
+    "penal_interest": {
+      "label": "Penal interest accrual calc & booking",
+      "path_hints": [
+        "/batchnew/penal/",
+        "penalinterest",
+        "penalinterestaccrualcalculation",
+        "penalinterestaccrualbooking"
+      ],
+      "api_hints": [
+        "penalInterestAccrualCalculation",
+        "penalInterestAccrualBooking"
+      ],
+      "impact_cases": [
+        "batch.penal_interest_accrual_calc",
+        "batch.penal_interest_accrual_booking"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "batch.penal_interest_accrual_calc"
+      ]
+    },
+    "loan_advance_repayment": {
+      "label": "Loan advance repayment EOD batch",
+      "path_hints": [
+        "loanadvancerepayment",
+        "/batchnew/loanadvancerepayment/"
+      ],
+      "api_hints": [
+        "loanAdvanceRepayment"
+      ],
+      "impact_cases": [
+        "batch.loan_advance_repayment"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "batch.loan_advance_repayment"
+      ]
+    },
+    "loan_installment_notification": {
+      "label": "Installment due/bounce notification batches + SMS throughput",
+      "path_hints": [
+        "loaninstallmentduenotification",
+        "loaninstallmentbouncenotification",
+        "/batchnew/notifications/"
+      ],
+      "api_hints": [
+        "loanInstallmentDueNotificationJob",
+        "loanInstallmentBounceNotificationJob"
+      ],
+      "impact_cases": [
+        "batch.loan_installment_due_notification",
+        "batch.loan_installment_bounce_notification",
+        "config.notification_sms_throughput"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "batch.loan_installment_due_notification"
       ]
     },
     "loan_billing": {

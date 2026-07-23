@@ -66,7 +66,29 @@ if [[ "$PENDING_FILES" -eq 0 && ${#APIS[@]} -eq 0 && "$FROM_PENDING" -eq 1 ]]; t
   exit 2
 fi
 
-echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} files=$PENDING_FILES ==="
+echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="
+
+# Fail-closed: money/service ships must resolve at least one impacted ntest case (or api→case).
+# Health/smoke-only fallback for money is forbidden (compile-adjacent push).
+if [[ "$TIER" == "money" ]]; then
+  if [[ ${#_SMART_CASES[@]} -eq 0 ]]; then
+    echo "ship-loop-gate: FAIL — money tier with zero ntest cases. Map path→registry (change_test_map.json / resolve_ship_cases) or pass --api." >&2
+    exit 1
+  fi
+elif [[ "$TIER" == "service" ]]; then
+  if [[ ${#_SMART_CASES[@]} -eq 0 && ${#APIS[@]} -eq 0 ]]; then
+    # health fallback still allowed below — but only when repos map to health probes
+    _HAS_HEALTH=$(echo "$PENDING_JSON" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(1 if (d.get('health_cases') or d.get('repos')) else 0)
+" 2>/dev/null || echo 0)
+    if [[ "$_HAS_HEALTH" != "1" ]]; then
+      echo "ship-loop-gate: FAIL — service tier with no cases/apis/health repos." >&2
+      exit 1
+    fi
+  fi
+fi
 
 # Batch write-skip contract: platform GenericListenerV3 vs job mappers must stay aligned
 _BATCH_SKIP_MODE="$(echo "$PENDING_JSON" | python3 -c "
@@ -284,15 +306,8 @@ for r in repos:
     elif [[ ${#APIS[@]} -gt 0 ]]; then
       _run_api_tests || exit 1
     else
-      echo "→ money tier: build OK — running health + quick smoke fallback"
-      mapfile -t _HEALTH < <(echo "$PENDING_JSON" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-for c in d.get('health_cases') or ['health.accounting']:
-    print(c)
-" 2>/dev/null)
-      [[ ${#_HEALTH[@]} -gt 0 ]] && _run_case_list "health" "${_HEALTH[@]}" || true
-      bash "$ROOT/scripts/bin/ntest.sh" smoke --quick || exit 1
+      echo "ship-loop-gate: FAIL — money tier empty cases/apis (no health/smoke fallback)" >&2
+      exit 1
     fi
   # Auto-escalation: deep phase (path-aware, not manual verify-dpi)
   mapfile -t _DEEP_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase deep --list 2>/dev/null || true)

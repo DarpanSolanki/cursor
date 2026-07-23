@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "purpose": "Change path / Java class → apiName for ship-loop impact tests. Prefer registry.json batch api names; never invent disburseLoan or raw class stems.",
+  "class_to_api": {
+    "LoanInstallmentDueNotificationWriter": "loanInstallmentDueNotificationJob",
+    "LoanInstallmentDueNotificationConfigService": "loanInstallmentDueNotificationJob",
+    "LoanInstallmentBounceNotificationWriter": "loanInstallmentBounceNotificationJob",
+    "InterestAccrualCalculationBatchService": "interestAccrualCalculation",
+    "InterestAccrualBookingBatchService": "interestAccrualPosting",
+    "InterestAccrualPostingBatchService": "interestAccrualPosting",
+    "PenalInterestAccrualCalculationBatchService": "penalInterestAccrualCalculation",
+    "PenalInterestAccrualBookingBatchService": "penalInterestAccrualBooking",
+    "LoanAdvanceRepaymentBatchService": "loanAdvanceRepayment",
+    "LoanAdvanceRepaymentItemWriter": "loanAdvanceRepayment",
+    "LoanAccountBillingBatchService": "loanAccountBillingJob",
+    "LoanAccountAutoClosureItemWriter": "loanAccountClosure",
+    "LoanAccountDpdCalcBatchService": "loanAccountDpdCalcJob",
+    "DpiAccrualCalculationBatchService": "dpiAccrualCalculation",
+    "DpiAccrualBookingBatchService": "dpiAccrualBooking",
+    "DpiBillingBatchService": "dpiBilling"
+  },
+  "path_to_api": [
+    ["loaninstallmentduenotification", "loanInstallmentDueNotificationJob"],
+    ["loaninstallmentbouncenotification", "loanInstallmentBounceNotificationJob"],
+    ["/batchnew/notifications/", "loanInstallmentDueNotificationJob"],
+    ["penalinterestaccrualcalculation", "penalInterestAccrualCalculation"],
+    ["penalinterestaccrualbooking", "penalInterestAccrualBooking"],
+    ["/batchnew/penal/", "penalInterestAccrualCalculation"],
+    ["loanadvancerepayment", "loanAdvanceRepayment"],
+    ["interestaccrualbooking", "interestAccrualPosting"],
+    ["interestaccrualposting", "interestAccrualPosting"],
+    ["interestaccrualcalculation", "interestAccrualCalculation"],
+    ["/batchnew/interest/", "interestAccrualCalculation"],
+    ["loanaccountbilling", "loanAccountBillingJob"],
+    ["loanaccountclosure", "loanAccountClosure"],
+    ["loanaccountdpd", "loanAccountDpdCalcJob"],
+    ["/loan/disbursement/", "disburseLoan"],
+    ["/disbursement/", "disburseLoan"]
+  ],
+  "notes": [
+    "InterestAccrualBooking* maps to interestAccrualPosting (registry api).",
+    "Penal* must win over bare interestaccrual substring matching.",
+    "derivedfields / unknown batchnew packages resolve to [] api — ship-loop fails closed until mapped."
+  ]
+}
