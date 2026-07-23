@@ -5,6 +5,12 @@
 ---
 ## 2026-07-21 | workspace | sliProd | main | kb-only | Fail-closed cross-branch reuse gate
 
+## 2026-07-23 | acct `b3478a1a6` | accounting-v2 | mfi_integration_v3.4.2.5 | SP-329 nestloop/BNL off on EOD readers
+NestloopDisabledJdbcCursorItemReader SET LOCAL enable_nestloop/yb_enable_batchednl/yb_prefer_bnl off + work_mem=4MB on cursor conn; wired interest/penal/billing/advance/closure/DPD readers | kg-flow | batch.reader
+
+---
+
+
 ## 2026-07-22 | workspace | sliProd | main | kb-only | Upgrade 8 TASK E local-parity gate
 local_parity_gate in ship-discipline; process_matrix conditional; db-local-write DDL log; GAP-076/077 class — local PASS predicts train envs only when migrations/seeds cover schema
 

@@ -518,3 +518,5 @@ SDCP-11058: forbidden-token pre-flight scan + mandatory assignee/owners; cleaned
 
 ## 2026-07-22 | acct `935c52743` | mfi_integration_v3.4.2.4 | DCF force-bill CRN uniqueness (134497)
 DeathForeclosureInsuranceWriter.buildForceBillClientReference now includes deathForeclosureDetailsId so non-last then last-child parent force-bill on same reporting date do not collide.
+
+## 2026-07-23 | SP-329 | accounting | nestloop/BNL off on EOD batch readers (b3478a1a6)
