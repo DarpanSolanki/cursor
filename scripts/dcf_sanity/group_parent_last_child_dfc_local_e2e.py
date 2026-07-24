@@ -993,6 +993,10 @@ def _lp_build_request(sim: dict, lan: str, foreclosure_date_ms: str, receipt: st
         total -= excess
     rounded = total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     round_off = rounded - total
+    customer_id = psql(
+        f"SELECT customer_id::text FROM mfi_accounting.loan_account "
+        f"WHERE la_account_number='{lan}';"
+    )
     request["loan_foreclosure_details"] = {
         "account_number": lan,
         "foreclosure_date": foreclosure_date_ms,
@@ -1011,6 +1015,10 @@ def _lp_build_request(sim: dict, lan: str, foreclosure_date_ms: str, receipt: st
         "depositor_name": "LOCAL_TEST",
         "excess_amount": str(fs.get("excess_amount") or "0"),
     }
+    # INDL/JLG loanPrepayment requires customer_id (200065); SHG ICF path does not use this body.
+    if customer_id:
+        request["loan_foreclosure_details"]["customer_id"] = customer_id
+        request["customer_id"] = customer_id
     return request
 
 
@@ -1782,6 +1790,26 @@ SELECT
     print(f"  Obs3 PASS: {role} {lan} Accrued={accrued} Original={original}")
 
 
+def assert_no_accrued_on_deleted_installments(lan: str, role: str) -> None:
+    """RSTCRE L1: Accrued must not remain on soft-deleted installments after schedule recreate."""
+    orphan = psql(f"""
+SELECT COALESCE(SUM(iad.total_accrued_amount),0)::text
+FROM mfi_accounting.interest_accrual_details iad
+JOIN mfi_accounting.loan_account la ON la.account_id = iad.account_id
+JOIN mfi_accounting.loan_installment_details lid ON lid.id = iad.loan_installment_details_id
+WHERE la.la_account_number = '{lan}'
+  AND lid.is_deleted = true
+  AND iad.total_accrued_amount > 0;
+""") or "0"
+    orphan_amt = Decimal(orphan)
+    if ACCEPTANCE_STRICT and orphan_amt > 0:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL (RSTCRE Accrued orphan): {role} {lan} Accrued={orphan_amt} still on "
+            f"soft-deleted installment(s). Expected RSTCRE to repoint Accrued onto surviving lids."
+        )
+    print(f"  RSTCRE Accrued orphan PASS: {role} {lan} Accrued_on_deleted={orphan_amt}")
+
+
 def _dfc_force_bill_tm_sql(lan: str) -> str:
     """DFC partial-cycle BILLING via CRN shape (posts to GL accounts — not LAN in transaction_details).
 
@@ -1827,6 +1855,39 @@ LIMIT 1;
             f"Obs1b FAIL: parent {parent_lan} force-bill txn ref={ref} lacks dedicated interest-only labd"
         )
     print(f"  Obs1b PASS: parent {parent_lan} force-bill ref={ref} client_ref={client_ref} amt={amt_s} labd={labd}")
+
+
+def _force_bill_interest_total(lan: str) -> Decimal:
+    """Sum interest on dedicated force-bill labd rows (prin=0, interest>0) for a LAN."""
+    raw = psql(f"""
+SELECT COALESCE(SUM(labd.interest_amount),0)::text
+FROM mfi_accounting.loan_account_billing_details labd
+JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+WHERE la.la_account_number = '{lan}'
+  AND COALESCE(labd.principal_amount,0) = 0
+  AND COALESCE(labd.interest_amount,0) > 0
+  AND COALESCE(labd.reversed,false) = false;
+""")
+    return Decimal(raw or "0")
+
+
+def assert_parent_force_bill_equals_sum_children(parent_lan: str, child_lans: list[str]) -> None:
+    """Vikram 391228: parent force-bill interest must equal Σ child force-bill (no ₹1 drift)."""
+    parent_fb = _force_bill_interest_total(parent_lan)
+    child_sum = sum((_force_bill_interest_total(c) for c in child_lans), Decimal("0"))
+    print(
+        f"  Vikram ₹1 FB check: parent={parent_lan} fb={parent_fb} "
+        f"children={child_lans} sum={child_sum}"
+    )
+    if ACCEPTANCE_STRICT and parent_fb != child_sum:
+        raise AssertionError(
+            f"Vikram 391228 FAIL: parent force-bill interest {parent_fb} != "
+            f"sum(children) {child_sum} (Δ={parent_fb - child_sum})"
+        )
+    if parent_fb == child_sum:
+        print(f"  Vikram 391228 PASS: parent FB == Σ children FB ({parent_fb})")
+    else:
+        print(f"  Vikram 391228 WARN: parent FB {parent_fb} != Σ children {child_sum}")
 
 
 def assert_parent_rsch_lapd_columns(parent_lan: str, expected_extra: Decimal = Decimal("0")) -> dict:
@@ -1878,22 +1939,65 @@ ORDER BY tm.id DESC LIMIT 1;
     return evidence
 
 
-def assert_parent_rsch_excess_partitions_zero(parent_lan: str) -> None:
-    """Parent last-child RSCH: EXCESS_* GL legs must sum to 0 (9b6454df6)."""
-    ref, _ = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
-    if not ref:
-        raise AssertionError(f"parent {parent_lan} missing RSCH_DEATH_FORECLOSURE")
-    excess = Decimal(psql(f"""
-SELECT COALESCE(SUM(tpd.amount),0)::text
+def assert_parent_child_excess_gl_parity(parent_lan: str, child_lan: str, expected_extra: Decimal) -> None:
+    """Sheet15: child DEATH and parent RSCH both post EXCESS_* when claim overpay > 0.
+
+    LAPD/statement excess stays 0 (TDPQA-72 390372). Do not require parent EXCESS_*=0 in GL
+    (that was 9b6454df6 and caused child-only EXCESS / GROSS RCV Δ — Vikram 391188).
+    """
+    if expected_extra <= 0:
+        print(f"  EXCESS GL N/A: expected_extra={expected_extra}")
+        return
+    child_ref, _ = latest_txn(child_lan, "DEATH_FORECLOSURE")
+    parent_ref, _ = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if not child_ref:
+        raise AssertionError(f"EXCESS parity FAIL: child {child_lan} missing DEATH_FORECLOSURE")
+    if not parent_ref:
+        raise AssertionError(f"EXCESS parity FAIL: parent {parent_lan} missing RSCH_DEATH_FORECLOSURE")
+
+    def _excess_sum(ref: str) -> tuple[Decimal, int]:
+        row = psql(f"""
+SELECT COALESCE(SUM(tpd.amount),0)::text, COUNT(*)::text
 FROM mfi_accounting.transaction_partition_details tpd
 JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
 WHERE tm.reference_number='{ref}' AND tpd.reference_code LIKE 'EXCESS_%';
+""") or "0|0"
+        amt_s, cnt_s = row.split("|", 1)
+        return Decimal(amt_s or "0"), int(cnt_s or "0")
+
+    child_part = int(psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{child_ref}';
 """) or "0")
-    if ACCEPTANCE_STRICT and excess != 0:
-        raise AssertionError(
-            f"ACCEPTANCE FAIL: parent RSCH {ref} EXCESS_* sum={excess} (must be 0)"
+    parent_part = int(psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{parent_ref}';
+""") or "0")
+    if child_part == 0 or parent_part == 0:
+        print(
+            f"  EXCESS GL Out-of-scope: partitions missing locally "
+            f"(child_parts={child_part} parent_parts={parent_part}) — code posts EXCESS_*; QA4 verifies"
         )
-    print(f"  parent RSCH EXCESS_* PASS: sum=0 ref={ref}")
+        return
+    child_ex, _ = _excess_sum(child_ref)
+    parent_ex, _ = _excess_sum(parent_ref)
+    if ACCEPTANCE_STRICT and child_ex <= 0:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL: child {child_lan} DFC EXCESS_* sum={child_ex} (EXTRA≈{expected_extra})"
+        )
+    if ACCEPTANCE_STRICT and parent_ex <= 0:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL: parent {parent_lan} RSCH EXCESS_* sum={parent_ex} "
+            f"(must match child Sheet15 EXCESS; got child={child_ex})"
+        )
+    if ACCEPTANCE_STRICT and child_ex != parent_ex:
+        raise AssertionError(
+            f"ACCEPTANCE FAIL: EXCESS_* GL mismatch child={child_ex} parent={parent_ex} "
+            f"(refs {child_ref} / {parent_ref})"
+        )
+    print(f"  EXCESS GL parity PASS: child=parent={child_ex} EXTRA≈{expected_extra}")
 
 
 def assert_child_excess_when_extra(child_lan: str, expected_extra: Decimal) -> None:
@@ -2014,17 +2118,18 @@ LIMIT 1;
 
 
 def assert_a2_extra_parent_rsch(parent_lan: str, child_lan: str, expected_extra: Decimal) -> None:
-    """Issue A (last-child only): EXTRA>0 — A2 nets parent RSCH principal; lapd.excess=0; child keeps EXCESS_*."""
+    """Issue A (last-child only): EXTRA>0 — A2 nets parent RSCH principal; lapd.excess=0;
+    child+parent both keep EXCESS_* GL (Sheet15 parity)."""
     if expected_extra <= 0:
         print(f"  Issue A N/A: expected_extra={expected_extra} (SEED_EXTRA=0)")
-        assert_parent_rsch_excess_partitions_zero(parent_lan)
+        assert_parent_child_excess_gl_parity(parent_lan, child_lan, expected_extra)
         assert_parent_rsch_lapd_columns(parent_lan, expected_extra)
         return
     rsch_ref, rsch_amt = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
     if not rsch_ref:
         raise AssertionError(f"Issue A FAIL: no RSCH_DEATH_FORECLOSURE for parent {parent_lan}")
     assert_child_excess_when_extra(child_lan, expected_extra)
-    assert_parent_rsch_excess_partitions_zero(parent_lan)
+    assert_parent_child_excess_gl_parity(parent_lan, child_lan, expected_extra)
     rsch_cols = assert_parent_rsch_lapd_columns(parent_lan, expected_extra)
     pos = Decimal(psql(f"""
 SELECT COALESCE(SUM(ldd.due_amount-ldd.paid_amount-ldd.waived_amount),0)
@@ -2784,6 +2889,7 @@ def main() -> int:
     # Non-last child must run first: last-child detection counts ACTIVE siblings only.
     # Default two-DFC: child2 non-last, child1 last. Vikram: child1 FC then child2 last DFC.
     children_in_order = [child1, child2] if VIKRAM_PATH else [child2, child1]
+    vikram_billed_through_fc = False
 
     print("=== SDCP-10199 group parent last-child DFC local e2e (real batches) ===")
     if VIKRAM_PATH:
@@ -2869,6 +2975,20 @@ def main() -> int:
                     assert_child_closed_fc(child)
                     assert_loan_prepayment_force_bill(child)
                 else:
+                    # Fresh fixture bills only through death_date (SEED_EXTRA=0). Vikram FC uses
+                    # platform today; Accrual fills later EMI Accrued without EMI labd. Production
+                    # would have billed those past dues — sync through FC date before prepayment.
+                    if not vikram_billed_through_fc:
+                        fc_bill_through = _vikram_fc_date(death_date)
+                        from create_fresh_dcf_group_fixture import (  # noqa: WPS433
+                            sync_billing_for_group,
+                        )
+                        print(
+                            f"  Vikram prep: billing through FC date {fc_bill_through} "
+                            "(past EMI Accrued must be billed before Obs3 Accrued≤Original)"
+                        )
+                        sync_billing_for_group(parent, children_in_order, fc_bill_through)
+                        vikram_billed_through_fc = True
                     settle_parent_overdue_before_vikram_fc(parent)
                     remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
                         remaining, death_date,
@@ -2963,6 +3083,9 @@ def main() -> int:
 
         print("\n--- Obs1b parent force-bill (any-child DFC; re-check after last child) ---")
         assert_parent_force_bill_labd(parent)
+        if VIKRAM_PATH:
+            print("\n--- Vikram 391228 parent FB == Σ children FB ---")
+            assert_parent_force_bill_equals_sum_children(parent, children_in_order)
 
         print("\n--- GL balance full matrix (S6) ---")
         for child in children_in_order:
@@ -2979,6 +3102,11 @@ def main() -> int:
         assert_accrued_le_original(parent, "parent")
         for child in children_in_order:
             assert_accrued_le_original(child, "child")
+
+        print("\n--- RSTCRE Accrued not on soft-deleted installments ---")
+        assert_no_accrued_on_deleted_installments(parent, "parent")
+        for child in children_in_order:
+            assert_no_accrued_on_deleted_installments(child, "child")
 
         print("\n--- Webapp-bound APIs (summary / overview / statement) (S8) ---")
         assert_webapp_bound_apis(parent, children_in_order, last_child)

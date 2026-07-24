@@ -1,3 +1,13 @@
+## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Accrued follows schedule + FC/DFC force-bill EMI align
+- RSTCRE: after soft-delete+recreate future EMIs, repoint Accrued off deleted lids onto replacement lids (same date).
+- FC/DFC force-bill labd attaches to newest Accrued EMI (same as bill amount); stops Accrued>Original by FB amount after member exit.
+- Local Vikram `dcf.vikram_fc_rstcre_dfc_e2e` PASS (Obs3 + Accrued_on_deleted=0). Product confirm asked on TDPQA-72 (comment 391450) for Accrued-after-rebuild + ₹1 parent vs members.
+
+## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 restore Sheet15 EXCESS_* on child+parent RSCH
+- L1: child DEATH and parent last-child RSCH both push EXCESS_* again (same catalogues; undo SHG child zero + parent GL zero from `5f4661b03`/`9b6454df6` GL half).
+- Keep `lapd.excess_amount=0` — that was Darpan fix for JIRA **390372** (₹54 Excess on txn UI while already in Principal).
+- Targets Vikram GROSS RCV child-only EXCESS Δ (391188).
+
 ## 2026-07-24 | accounting-knowledge | Job-owned tables map (never hand-mutate IAD)
 Standing rule + map: `.cursor/skills/accounting-knowledge/job-owned-tables.md`. Reject Accrued trim in DCF writer; IAD only via jobs/forceful booking. Memory: `feedback_job_owned_tables_no_hand_mutate.md`. TDPQA-72 Obs3 reconciler = hack (not restore).
 
@@ -9,7 +19,7 @@ Standing rule + map: `.cursor/skills/accounting-knowledge/job-owned-tables.md`. 
 ## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 parent FB = child FB; drop harness hacks
 - Product: every DFC/FC child force-bill is mirrored on parent with the **same amount** (SHG sync).
 - Removed: Accrued consume-after-FB, parent EMI labd harness, alignParentNewestAccruedToAllChildren.
-- Kept SHG child EXCESS_*=0 — QA 391188 GROSS Δ52 + 390372 excess-on-txn (EXTRA already in PRIN).
+- ~~Kept SHG child EXCESS_*=0~~ — superseded: restore EXCESS_* GL on child+parent; lapd excess stays 0 (390372).
 - FC: `RegularForeclosureForceBillService` mirrors parent after child FB.
 - Verify: full Vikram matrix this session.
 

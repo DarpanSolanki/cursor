@@ -1715,8 +1715,8 @@
         },
         {
           "table": "interest_accrual_details",
-          "assert": "Obs3 Accrued<=Original for parent and both children after last DFC",
-          "checked_by": "assert_accrued_le_original"
+          "assert": "Obs3 Accrued<=Original (+₹1) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
+          "checked_by": "assert_accrued_le_original + assert_no_accrued_on_deleted_installments"
         }
       ],
       "na": {
