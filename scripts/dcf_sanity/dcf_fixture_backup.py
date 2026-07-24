@@ -59,6 +59,11 @@ SCOPED_BY_LOAN_ACCOUNT_ID = [
     "prepayment_details",
     "loan_account_part_prepayment_details",
 ]
+# account_id-scoped (not loan_account_id) — required so restore undoes Obs1 labd dirt + account.status.
+SCOPED_BY_ACCOUNT_ID = [
+    "loan_account_billing_details",
+    "interest_accrual_details",
+]
 SCOPED_BY_ACCOUNT_NUMBER = [
     "transaction_details",
     "transaction_partition_details",
@@ -141,8 +146,12 @@ def snapshot(parent_lan: str) -> None:
 
     stmts = [f"DROP SCHEMA IF EXISTS {bak} CASCADE;", f"CREATE SCHEMA {bak};"]
     stmts.append(f"CREATE TABLE {bak}.loan_account AS SELECT * FROM {SCH}.loan_account WHERE account_id IN ({id_list});")
+    # account row (status ACTIVE/CLOSED) — missing this left CLOSED after restore → Vikram AUTO 134468.
+    stmts.append(f"CREATE TABLE {bak}.account AS SELECT * FROM {SCH}.account WHERE id IN ({id_list});")
     for t in SCOPED_BY_LOAN_ACCOUNT_ID:
         stmts.append(f"CREATE TABLE {bak}.{t} AS SELECT * FROM {SCH}.{t} WHERE loan_account_id IN ({id_list});")
+    for t in SCOPED_BY_ACCOUNT_ID:
+        stmts.append(f"CREATE TABLE {bak}.{t} AS SELECT * FROM {SCH}.{t} WHERE account_id IN ({id_list});")
     for t in SCOPED_BY_ACCOUNT_NUMBER:
         stmts.append(f"CREATE TABLE {bak}.{t} AS SELECT * FROM {SCH}.{t} WHERE account_number IN ({lan_list});")
     # original transaction_master ids for these LANs — restore deletes any NOT in this set.
@@ -151,7 +160,7 @@ def snapshot(parent_lan: str) -> None:
         f"SELECT DISTINCT td.transaction_id AS id FROM {SCH}.transaction_details td "
         f"WHERE td.account_number IN ({lan_list});")
     run("\n".join(stmts))
-    print("  snapshot done")
+    print("  snapshot done (loan_account+account+labd+iad+dues+txns)")
 
 
 def restore(parent_lan: str) -> None:
@@ -170,12 +179,27 @@ def restore(parent_lan: str) -> None:
     stmts.append(f"DELETE FROM {SCH}.transaction_partition_details WHERE transaction_id IN {test_txns};")
     stmts.append(f"DELETE FROM {SCH}.transaction_details WHERE transaction_id IN {test_txns};")
     stmts.append(f"DELETE FROM {SCH}.transaction_master WHERE id IN {test_txns};")
-    # 2) loan_account: exact row restore
+    # 2) account + loan_account: exact row restore (account.status must return to ACTIVE)
+    if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{bak}' AND table_name='account';") == "1":
+        stmts.append(f"DELETE FROM {SCH}.account WHERE id IN ({id_list});")
+        stmts.append(f"INSERT INTO {SCH}.account SELECT * FROM {bak}.account;")
+    else:
+        # Legacy snapshots without account table — heal CLOSED→ACTIVE so Vikram AUTO works.
+        stmts.append(
+            f"UPDATE {SCH}.account SET status='ACTIVE', updated_on=NOW(), updated_by='DCF_FIXTURE_RESTORE_HEAL' "
+            f"WHERE id IN ({id_list}) AND COALESCE(status,'') <> 'ACTIVE';"
+        )
     stmts.append(f"DELETE FROM {SCH}.loan_account WHERE account_id IN ({id_list});")
     stmts.append(f"INSERT INTO {SCH}.loan_account SELECT * FROM {bak}.loan_account;")
     # 3) loan-account-scoped tables
     for t in SCOPED_BY_LOAN_ACCOUNT_ID:
         stmts.append(f"DELETE FROM {SCH}.{t} WHERE loan_account_id IN ({id_list});")
+        stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
+    # 3b) account_id-scoped (labd / IAD) — skip if legacy snapshot lacks table
+    for t in SCOPED_BY_ACCOUNT_ID:
+        if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{bak}' AND table_name='{t}';") != "1":
+            continue
+        stmts.append(f"DELETE FROM {SCH}.{t} WHERE account_id IN ({id_list});")
         stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
     # 4) account-number-scoped tables
     for t in SCOPED_BY_ACCOUNT_NUMBER:

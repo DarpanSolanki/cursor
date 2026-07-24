@@ -329,8 +329,19 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not case:
         print(f"unknown case: {args.id}", file=sys.stderr)
         return 2
+    q = case.get("quarantine") or {}
+    if q and not getattr(args, "include_quarantine", False):
+        label = q.get("label") or "QUARANTINE"
+        reason = q.get("reason") or "quarantined in registry"
+        print(
+            f"=== {args.id} SKIP [{label}] — {reason}\n"
+            f"    (re-run with --include-quarantine to force)"
+        )
+        return 0
     if case.get("type") == "flow":
         return _run_flow_case(args.id, case)
+    if case.get("type") == "health":
+        return _run_health_case(args.id, case)
     rc, _ = _run_api_case(args.id, case, watch=args.watch_log, health=args.health)
     return rc
 
@@ -652,6 +663,11 @@ def main() -> int:
     rn.add_argument("id")
     rn.add_argument("--watch-log", action="store_true")
     rn.add_argument("--health", action="store_true")
+    rn.add_argument(
+        "--include-quarantine",
+        action="store_true",
+        help="Run cases marked quarantine in registry (default: skip with rc=0)",
+    )
     rn.set_defaults(func=cmd_run)
 
     sm = sub.add_parser("smoke", help="Registry API cases (or --quick / --tier)")

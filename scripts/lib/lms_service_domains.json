@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "description": "LMS-wide (non-money-only) service → mandatory impact cases. Used by impact_tests when trustt-/novopay- repos change outside accounting money domains.",
+  "services": {
+    "accounting": {
+      "repo_hints": ["trustt-platform-accounting", "novopay-platform-accounting"],
+      "impact_cases": ["health.accounting", "accounting.read_smoke"],
+      "fallback_case": "health.accounting"
+    },
+    "los": {
+      "repo_hints": ["trustt-platform-los", "novopay-mfi-los", "mfi-los"],
+      "path_hints": ["/los/", "disbursementsync", "origination"],
+      "impact_cases": ["health.los"],
+      "fallback_case": "health.los"
+    },
+    "payments": {
+      "repo_hints": ["trustt-platform-payments", "novopay-platform-payments"],
+      "path_hints": ["/payments/", "collectionloanrepayment", "bulkcollection"],
+      "impact_cases": ["health.payments"],
+      "fallback_case": "health.payments"
+    },
+    "actor": {
+      "repo_hints": ["trustt-platform-actor", "novopay-platform-actor"],
+      "path_hints": ["/actor/"],
+      "impact_cases": ["health.actor", "actor.user_basic"],
+      "fallback_case": "health.actor"
+    },
+    "task": {
+      "repo_hints": ["trustt-platform-task", "novopay-platform-task"],
+      "path_hints": ["/task/"],
+      "impact_cases": ["health.task"],
+      "fallback_case": "health.task"
+    },
+    "notifications": {
+      "repo_hints": ["trustt-platform-notifications", "novopay-platform-notifications"],
+      "path_hints": ["/notifications/"],
+      "impact_cases": ["health.notifications"],
+      "fallback_case": "health.notifications"
+    },
+    "authorization": {
+      "repo_hints": ["trustt-platform-authorization", "novopay-platform-authorization"],
+      "path_hints": ["/authorization/"],
+      "impact_cases": ["health.authorization"],
+      "fallback_case": "health.authorization"
+    },
+    "approval": {
+      "repo_hints": ["trustt-platform-approval", "novopay-platform-approval"],
+      "path_hints": ["/approval/"],
+      "impact_cases": ["health.approval"],
+      "fallback_case": "health.approval"
+    },
+    "masterdata": {
+      "repo_hints": ["trustt-platform-masterdata", "novopay-platform-masterdata"],
+      "path_hints": ["/masterdata/", "updatebusinessdate"],
+      "impact_cases": ["health.masterdata"],
+      "fallback_case": "health.masterdata"
+    },
+    "batch": {
+      "repo_hints": ["trustt-platform-batch", "novopay-platform-batch"],
+      "path_hints": ["/batch/", "batchschedule"],
+      "impact_cases": ["health.batch"],
+      "fallback_case": "health.batch"
+    },
+    "dms": {
+      "repo_hints": ["trustt-platform-dms", "novopay-platform-dms"],
+      "path_hints": ["/dms/"],
+      "impact_cases": ["health.dms"],
+      "fallback_case": "health.dms"
+    },
+    "api_gateway": {
+      "repo_hints": ["trustt-platform-api-gateway", "novopay-platform-api-gateway"],
+      "path_hints": ["/api-gateway/", "requestforward"],
+      "impact_cases": ["health.api_gateway"],
+      "fallback_case": "health.api_gateway"
+    },
+    "simulators": {
+      "repo_hints": ["trustt-platform-simulators", "novopay-platform-simulators"],
+      "path_hints": ["/simulators/"],
+      "impact_cases": ["health.simulators"],
+      "fallback_case": "health.simulators"
+    },
+    "platform_lib": {
+      "repo_hints": ["trustt-platform-lib", "novopay-platform-lib"],
+      "path_hints": ["infra-", "util-platform"],
+      "impact_cases": ["health.accounting", "health.actor", "workspace.doctor.services"],
+      "fallback_case": "workspace.doctor.services",
+      "note": "platform-lib blast → multi-service health + doctor; money paths still via accounting_flow_domains"
+    }
+  }
+}

@@ -42,6 +42,87 @@ SERVICES: dict[str, dict[str, Any]] = {
         "probe_api": "getCollectionList",
         "probe_request": {"page_size": "1", "offset": "0"},
     },
+    "los": {
+        "base_url": os.environ.get("LOS_BASE_URL", "http://localhost:8013"),
+        "context_path": os.environ.get("LOS_CONTEXT_PATH", "/los"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-los/logs/mfi/los-mfi.log",
+        "probe_api": "getOriginateLoanCount",
+        "probe_request": {},
+    },
+    "notifications": {
+        "base_url": os.environ.get("NOTIFICATIONS_BASE_URL", "http://localhost:8015"),
+        "context_path": os.environ.get("NOTIFICATIONS_CONTEXT_PATH", "/notifications"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-notifications/logs/mfi/notifications-mfi.log",
+        "probe_api": "getNotificationsCount",
+        "probe_request": {},
+    },
+    "authorization": {
+        "base_url": os.environ.get("AUTHORIZATION_BASE_URL", "http://localhost:8007"),
+        "context_path": os.environ.get("AUTHORIZATION_CONTEXT_PATH", "/authorization"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-authorization/logs/mfi/authorization-mfi.log",
+        "probe_api": "getPermissionList",
+        "probe_request": {},
+    },
+    "masterdata": {
+        "base_url": os.environ.get("MASTERDATA_BASE_URL", "http://localhost:8014"),
+        "context_path": os.environ.get("MASTERDATA_CONTEXT_PATH", "/masterdata"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-masterdata-management/logs/mfi/masterdata-mfi.log",
+        "probe_api": "getBulkUniqueMasterData",
+        "probe_request": {},
+    },
+    "simulators": {
+        "base_url": os.environ.get("SIMULATORS_BASE_URL", "http://localhost:8018"),
+        "context_path": os.environ.get("SIMULATORS_CONTEXT_PATH", ""),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-simulators/logs/mfi/simulators-mfi.log",
+        "probe_api": None,
+        "probe_request": {},
+    },
+    "approval": {
+        "base_url": os.environ.get("APPROVAL_BASE_URL", "http://localhost:8008"),
+        "context_path": os.environ.get("APPROVAL_CONTEXT_PATH", "/approval"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-approval/logs/mfi/approval-mfi.log",
+        "probe_api": None,
+        "probe_request": {},
+    },
+    "batch": {
+        "base_url": os.environ.get("BATCH_BASE_URL", "http://localhost:8009"),
+        "context_path": os.environ.get("BATCH_CONTEXT_PATH", "/batch"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-batch/logs/mfi/batch-mfi.log",
+        "probe_api": None,
+        "probe_request": {},
+    },
+    "dms": {
+        "base_url": os.environ.get("DMS_BASE_URL", "http://localhost:8010"),
+        "context_path": os.environ.get("DMS_CONTEXT_PATH", "/dms"),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-dms/logs/mfi/dms-mfi.log",
+        "probe_api": None,
+        "probe_request": {},
+    },
+    "api_gateway": {
+        "base_url": os.environ.get("API_GATEWAY_BASE_URL", "http://localhost:8080"),
+        "context_path": os.environ.get("API_GATEWAY_CONTEXT_PATH", ""),
+        "api_version": "v1",
+        "health_path": "/actuator/health",
+        "log_rel": "trustt-platform-api-gateway/logs/mfi/api-gateway-mfi.log",
+        "probe_api": None,
+        "probe_request": {},
+    },
 }
 
 
@@ -50,8 +131,8 @@ def api_url(service: str, api_name: str) -> str:
     if not svc:
         raise ValueError(f"unknown service {service!r}; known: {list(SERVICES)}")
     base = str(svc["base_url"]).rstrip("/")
-    ctx = str(svc["context_path"])
-    if not ctx.startswith("/"):
+    ctx = str(svc["context_path"] or "")
+    if ctx and not ctx.startswith("/"):
         ctx = f"/{ctx}"
     ver = svc["api_version"]
     return f"{base}{ctx}/api/{ver}/{api_name}"
@@ -60,8 +141,8 @@ def api_url(service: str, api_name: str) -> str:
 def health_url(service: str) -> str:
     svc = SERVICES[service]
     base = str(svc["base_url"]).rstrip("/")
-    ctx = str(svc["context_path"])
-    if not ctx.startswith("/"):
+    ctx = str(svc["context_path"] or "")
+    if ctx and not ctx.startswith("/"):
         ctx = f"/{ctx}"
     hp = str(svc.get("health_path", "/actuator/health"))
     if not hp.startswith("/"):

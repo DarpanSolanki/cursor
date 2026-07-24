@@ -35,6 +35,21 @@ def service_path_blob(paths: list[str] | None) -> str:
     return path_blob(service)
 
 
+def accounting_path_blob(paths: list[str] | None) -> str:
+    """Path hints for accounting_flow_domains — accounting repo only.
+
+    Prevents LOS ``…/disbursement/…`` (and similar) from falsely pulling money DCF/FC suites.
+    """
+    acct = [
+        p
+        for p in (paths or [])
+        if "accounting" in p.replace("\\", "/").lower()
+        or "scripts/dpic/" in p.replace("\\", "/").lower()
+        or "scripts/dcf_" in p.replace("\\", "/").lower()
+    ]
+    return path_blob(acct)
+
+
 def _api_matches(api: str, hints: list[str]) -> bool:
     """Match apiName to domain hints without substring false positives (penal vs interest)."""
     low = api.lower()
@@ -108,9 +123,10 @@ def touches_accounting(
         return True
     if "trustt-platform-accounting" in blob:
         return True
-    if any(p in blob for p in ("/accounting/", "mfi_accounting", "scripts/dpic/")):
+    if any(p in blob for p in ("/accounting/", "mfi_accounting", "scripts/dpic/", "scripts/dcf_")):
         return True
-    return bool(detect_domains(blob, apis))
+    # API hints only — do NOT path-match LOS/payments "disbursement" etc. as accounting.
+    return bool(detect_domains("", apis))
 
 
 def domain_cases(
@@ -141,7 +157,10 @@ def resolve_accounting_domain_cases(
     if not touches_accounting(blob, apis):
         return base
 
-    domain_blob = service_path_blob(paths) if paths else blob
+    domain_blob = accounting_path_blob(paths) if paths else blob
+    # Fall back to full service blob only when APIs already resolved (KG flow hit)
+    if not domain_blob and apis:
+        domain_blob = service_path_blob(paths) if paths else blob
     domains = detect_domains(domain_blob, apis)
     # Death FC path matches generic foreclosure hint ("foreclos") — prefer death-specific guards only.
     if "death_foreclosure" in domains and "foreclosure" in domains:

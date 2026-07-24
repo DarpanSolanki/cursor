@@ -175,11 +175,11 @@
             "SEED_EXTRA": "0",
             "DCF_SEED_EMI_LABD": "0",
             "PARENT_LAN": "6000137433",
-            "DEATH_DATE": "2025-09-15"
+            "DEATH_DATE": "2025-08-02"
           },
           "expect_status": "PASS",
           "gap074_status": "OPEN",
-          "note": "Full gate PASS observed (int_pending=0) on this fixture — does NOT close GAP-074. Tip 935c527430 still uses child INT_AMT; INT-180 parked @61278d5f8 (ASK-057 DEFERRED). Do not claim QA Pass for GAP-074. Residual-exposing fixture still needed for honest FAIL."
+          "note": "DEATH_DATE aligned to 2025-08-02 (POS integrity on pin). Full gate PASS observed (int_pending=0) does NOT close GAP-074. Tip still uses child INT_AMT; INT-180 parked. Residual-exposing fixture still needed for honest FAIL. Prior 2025-09-15 pin window quarantined as FIXTURE (POS drift)."
         }
       ],
       "local_e2e": "python3 scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py",

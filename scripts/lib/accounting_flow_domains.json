@@ -114,16 +114,20 @@
         "getLoanForeclosureDetails"
       ],
       "impact_cases": [
-        "foreclosure.individual_child"
+        "foreclosure.individual_child",
+        "foreclosure.shg_bpi_parity",
+        "dcf.vikram_fc_rstcre_dfc_e2e"
       ],
       "deep_cases": [
         "dpic.foreclosure_sim",
         "dpic.foreclosure_details_flow",
         "dpic.foreclosure_bpd_growth",
-        "dpic.loan_prepayment_billed_dpi_e2e"
+        "dpic.loan_prepayment_billed_dpi_e2e",
+        "foreclosure.dpi_waiver_smoke"
       ],
       "release_cases": [
-        "foreclosure.individual_child"
+        "foreclosure.individual_child",
+        "foreclosure.shg_bpi_parity"
       ]
     },
     "death_foreclosure": {
@@ -144,20 +148,23 @@
       "impact_cases": [
         "dcf.force_bill_crn_sim",
         "dcf.principal_split_sim",
-        "dcf.group_parent_last_child_e2e",
         "dcf.group_parent_last_child_e2e_clean",
-        "dcf.group_parent_last_child_e2e_full",
+        "dcf.group_parent_last_child_e2e",
+        "dcf.vikram_fc_rstcre_dfc_e2e",
         "dcf.group_parent_last_child_fresh_e2e"
       ],
       "deep_cases": [
         "dcf.insurance_reupload_index_audit",
-        "dcf.group_parent_last_child_e2e_full"
+        "dcf.group_parent_last_child_e2e_full",
+        "dcf.non_last_rsch_amount_eq_principal",
+        "dcf.parent_member_future_int_parity",
+        "dcf.parent_statement_dfc_prtl"
       ],
       "release_cases": [
-        "dcf.group_parent_last_child_e2e",
-        "dcf.group_parent_last_child_e2e_clean"
+        "dcf.group_parent_last_child_e2e_clean",
+        "dcf.vikram_fc_rstcre_dfc_e2e"
       ],
-      "proof": "ntest run dcf.force_bill_crn_sim; ntest run dcf.group_parent_last_child_e2e; ACCEPTANCE_SCOPE=full \u2192 dcf.group_parent_last_child_e2e_full (honest FAIL while GAP-074 open)",
+      "proof": "ntest run dcf.force_bill_crn_sim; ntest run dcf.group_parent_last_child_e2e_clean; ntest run dcf.vikram_fc_rstcre_dfc_e2e; ACCEPTANCE_SCOPE=full \u2192 dcf.group_parent_last_child_e2e_full (honest FAIL while GAP-074 open)",
       "runbooks": [
         "cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md",
         "cursor-bundle/brain/runbooks/dcf-local-stack.md"

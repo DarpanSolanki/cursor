@@ -21,12 +21,19 @@ if echo "$output" | grep -qiE 'nothing to commit|no changes added|failed|fatal:'
   exit 0
 fi
 
-mkdir -p "$ROOT/.cursor"
+mkdir -p "$ROOT/.cursor" "$ROOT/scripts/scratch/logs"
 date -u +%Y-%m-%dT%H:%M:%SZ >"$ROOT/.cursor/.pending-kg-rebuild"
 
-# Auto-sync when watermark drifted (extended sessions / checkout without kg-switch)
-if ! python3 "$ROOT/scripts/lib/kg_watermark_gate.py" check --soft >/dev/null 2>&1; then
-  timeout 120 bash "$ROOT/scripts/bin/enrichment-sync.sh" >/dev/null 2>&1 || true
+# Self-heal: always attempt tiered enrich (FULL/CASES/SKIP) — do not wait for push.
+# Cursor Hooks must be enabled in Settings for this hook to fire; agents also run
+# enrichment-sync via workspace-autopilot end / ship-and-continue.
+if [[ -x "$ROOT/scripts/bin/enrichment-sync.sh" ]]; then
+  timeout 180 bash "$ROOT/scripts/bin/enrichment-sync.sh" >>"$ROOT/.cursor/enrichment-sync.log" 2>&1 || true
 fi
 
-echo '{"additional_context":"Git commit completed — when changelog is prepended for a stable fix, run scripts/bin/kg-enrich.sh to fold cases into the KG. If KG was stale, enrichment-sync auto-ran."}'
+# Drain learning_bus so PASS/gotcha events stay compact for hub/KG cases.
+timeout 30 env PYTHONPATH="$ROOT/scripts/testing${PYTHONPATH:+:$PYTHONPATH}" \
+  python3 -c "from learning_bus import compact_bus; print(compact_bus())" \
+  >>"$ROOT/scripts/scratch/logs/learning-bus-drain.log" 2>&1 || true
+
+echo '{"additional_context":"Git commit completed — enrichment-sync + learning_bus compact attempted (see .cursor/enrichment-sync.log). Enable Cursor Settings → Hooks if this did not run."}'

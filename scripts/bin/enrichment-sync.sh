@@ -47,7 +47,12 @@ case "$_tier" in
     ;;
   cases)
     log "enrichment-sync: tier=CASES — $_reason"
-    python3 "$BIN/refresh_cases.py" >>"$LOG" 2>&1
+    if [[ ! -f "$ROOT/cursor-bundle/kg/data/kg.jsonl" ]]; then
+      log "enrichment-sync: kg.jsonl missing — escalating CASES→FULL"
+      bash "$BIN/build.sh" >>"$LOG" 2>&1
+    else
+      python3 "$BIN/refresh_cases.py" >>"$LOG" 2>&1
+    fi
     rm -f "$PENDING"
     bash "$ROOT/.cursor/hooks/kg-session-watermark.sh" enrichment-sync >/dev/null 2>&1 || true
     log "enrichment-sync: done (cases)"

@@ -447,6 +447,70 @@ def acceptance_guards(flows: list[dict], cases: list[dict]) -> list[str]:
     return list(dict.fromkeys(guards))
 
 
+def domain_mandatory_cases(
+    changed: list[str], flows: list[dict], cases: list[dict]
+) -> tuple[list[str], list[str]]:
+    """Mandatory suite: accounting money domains + LMS-wide service health/impact.
+
+    Accounting paths use accounting_flow_domains.json. Non-accounting LMS repos
+    (LOS, payments, actor, …) use lms_service_domains.json → health.* cases.
+    Quarantined registry cases are excluded. Fail-closed via ship-loop ordered_cases.
+    """
+    try:
+        from accounting_flow_domains import resolve_accounting_domain_cases  # noqa: WPS433
+    except ImportError:
+        resolve_accounting_domain_cases = None  # type: ignore
+    try:
+        from lms_service_domains import resolve_lms_service_cases  # noqa: WPS433
+    except ImportError:
+        resolve_lms_service_cases = None  # type: ignore
+
+    reg = load_registry()
+    apis = {str(f.get("api") or "") for f in flows if f.get("api")}
+    for c in cases:
+        if c.get("api"):
+            apis.add(str(c["api"]))
+    blob = " ".join(p.replace("\\", "/").lower() for p in changed)
+    moneyish = bool(acceptance_guards(flows, cases))
+    for c in cases:
+        meta = reg.get(c["case"]) or {}
+        if meta.get("smoke_tier") == "money":
+            moneyish = True
+            break
+    tier = "money" if moneyish else "service"
+    base = [c["case"] for c in cases if not (reg.get(c["case"]) or {}).get("quarantine")]
+    merged = list(base)
+    added: list[str] = []
+
+    # Accounting money domains only when an accounting/dpic/dcf path is touched.
+    # LOS …/disbursement/… maps to disburseLoan via change_test_map — that must NOT
+    # pull the full DCF/FC mandatory suite (lms_service_domains covers health.los).
+    acct_path_touch = any(
+        any(tok in p.replace("\\", "/").lower() for tok in (
+            "accounting", "scripts/dpic/", "scripts/dcf_", "scripts/foreclosure"
+        ))
+        for p in changed
+    )
+    if resolve_accounting_domain_cases and acct_path_touch:
+        acct = resolve_accounting_domain_cases(
+            blob, apis, merged, tier=tier, reg=reg, paths=changed
+        )
+        for cid in acct:
+            if cid not in merged and not (reg.get(cid) or {}).get("quarantine"):
+                merged.append(cid)
+                if cid not in base:
+                    added.append(cid)
+
+    if resolve_lms_service_cases:
+        lms_merged, lms_added = resolve_lms_service_cases(changed, merged, reg=reg)
+        for cid in lms_added:
+            if cid not in added:
+                added.append(cid)
+        merged = lms_merged
+
+    return merged, added
+
+
 def build_plan(
     *,
     range_spec: str | None = None,
@@ -461,7 +525,6 @@ def build_plan(
     nodes: list[dict] = []
     for p in changed:
         nodes.extend(path_to_nodes(p, conn))
-    # dedupe nodes
     seen_n: set[str] = set()
     uniq_nodes = []
     for n in nodes:
@@ -476,12 +539,18 @@ def build_plan(
         conn.close()
 
     cases, missing = cases_for_flows(flows)
+    reg = load_registry()
+    cases = [c for c in cases if not (reg.get(c["case"]) or {}).get("quarantine")]
     stubs = draft_missing_stubs(missing) if draft_stubs else []
     guards = acceptance_guards(flows, cases)
+    domain_ordered, domain_added = domain_mandatory_cases(changed, flows, cases)
 
-    # Order: money guards first, then alphabetical
     case_ids = [c["case"] for c in cases]
-    ordered = list(dict.fromkeys(guards + case_ids))
+    ordered = [
+        c
+        for c in dict.fromkeys(guards + domain_ordered + case_ids)
+        if not (reg.get(c) or {}).get("quarantine")
+    ]
 
     q_files = []
     try:
@@ -495,6 +564,10 @@ def build_plan(
         "built_at": _utc(),
         "source": "impact_tests_dynamic_kg",
         "seed_layer": "change_test_map.json (override only)",
+        "domain_layer": (
+            "accounting_flow_domains.json + lms_service_domains.json "
+            "(mandatory LMS money + non-money service health)"
+        ),
         "files": changed,
         "nodes": uniq_nodes,
         "flows": flows,
@@ -503,7 +576,9 @@ def build_plan(
         "missing_flows": missing,
         "drafted_stubs": [s["id"] for s in stubs],
         "acceptance_guards": guards,
-        "why_lines": [f"{c['case']}: {c['why']}" for c in cases],
+        "domain_mandatory_added": domain_added,
+        "why_lines": [f"{c['case']}: {c['why']}" for c in cases]
+        + [f"{cid}: domain_mandatory_suite" for cid in domain_added],
         "query_touched": bool(q_files),
         "query_files": q_files,
     }
@@ -608,6 +683,12 @@ def format_banner(plan: dict) -> str:
                     break
             if printed >= 40:
                 break
+    if plan.get("domain_mandatory_added"):
+        lines.append(
+            f"  DOMAIN_MANDATORY +{len(plan['domain_mandatory_added'])} "
+            f"({', '.join(plan['domain_mandatory_added'][:12])}"
+            f"{'…' if len(plan['domain_mandatory_added']) > 12 else ''})"
+        )
     for m in (plan.get("missing_flows") or [])[:10]:
         lines.append(f"  MISSING_CASE api={m.get('api')} (stub draftable)")
     if plan.get("drafted_stubs"):

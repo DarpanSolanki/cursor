@@ -17,7 +17,16 @@
     "LoanAccountDpdCalcBatchService": "loanAccountDpdCalcJob",
     "DpiAccrualCalculationBatchService": "dpiAccrualCalculation",
     "DpiAccrualBookingBatchService": "dpiAccrualBooking",
-    "DpiBillingBatchService": "dpiBilling"
+    "DpiBillingBatchService": "dpiBilling",
+    "DeathForeclosureInsuranceWriter": "deathForeclosureInsuranceJob",
+    "DeathForeclosureForceBillService": "deathForeclosureInsuranceJob",
+    "DeathForeclosureSettlementSupport": "deathForeclosureInsuranceJob",
+    "ForceBillBillingSupport": "loanPrepayment",
+    "RegularForeclosureForceBillService": "loanPrepayment",
+    "ChildLoanForeclosureProcessor": "individualChildLoanForeclosure",
+    "ChildLoanForeclosureEventGenerationProcessor": "loanPrepayment",
+    "ValidateForChildLoanPrepaymentProcessor": "loanPrepayment",
+    "ForceBillPartialCycleInterestForForeclosureProcessor": "loanPrepayment"
   },
   "path_to_api": [
     ["loaninstallmentduenotification", "loanInstallmentDueNotificationJob"],
@@ -35,12 +44,19 @@
     ["loanaccountclosure", "loanAccountClosure"],
     ["loanaccountdpd", "loanAccountDpdCalcJob"],
     ["/loan/disbursement/", "disburseLoan"],
-    ["/disbursement/", "disburseLoan"]
+    ["/disbursement/", "disburseLoan"],
+    ["deathforeclosure", "deathForeclosureInsuranceJob"],
+    ["/loan/deathforeclosure/", "deathForeclosureInsuranceJob"],
+    ["forcebill", "loanPrepayment"],
+    ["/loan/foreclosure/", "loanPrepayment"],
+    ["childloanforeclosure", "individualChildLoanForeclosure"],
+    ["/loan/prepayment/", "loanPrepayment"]
   ],
   "notes": [
-    "SEED/OVERRIDE LAYER ONLY — live SoT is scripts/lib/impact_tests.py over KG.",
+    "SEED/OVERRIDE LAYER ONLY — live SoT is scripts/lib/impact_tests.py over KG + accounting_flow_domains.json impact_cases.",
     "InterestAccrualBooking* maps to interestAccrualPosting (registry api).",
     "Penal* must win over bare interestaccrual substring matching.",
+    "Death FC / FC multi-child: domain impact_cases (dcf.* + foreclosure.*) are mandatory when paths match — see impact_tests.domain_mandatory_cases.",
     "derivedfields / unknown batchnew packages resolve via KG or [] — ship-loop fails closed until mapped."
   ]
 }

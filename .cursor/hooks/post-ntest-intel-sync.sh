@@ -15,6 +15,13 @@ mkdir -p "$ROOT/scripts/scratch/logs"
 timeout 30 python3 "$ROOT/scripts/testing/sync_engine.py" fast-sync --quiet \
   >>"$ROOT/scripts/scratch/logs/intel-post-ntest.log" 2>&1 || true
 
+# Self-learn drain: compact bus + tiered KG enrich when changelog/pending exist
+timeout 60 bash "$ROOT/scripts/bin/enrichment-sync.sh" \
+  >>"$ROOT/.cursor/enrichment-sync.log" 2>&1 || true
+timeout 20 env PYTHONPATH="$ROOT/scripts/testing${PYTHONPATH:+:$PYTHONPATH}" \
+  python3 -c "from learning_bus import compact_bus; print(compact_bus())" \
+  >>"$ROOT/scripts/scratch/logs/learning-bus-drain.log" 2>&1 || true
+
 EXTRA=""
 # ntest / sanity PASS → mark verified + try push (cooldown inside ship-and-continue)
 if [[ "$CMD" =~ ntest|disburse-quick|dpi-sanity|verify-dpi|verify-disburse ]]; then

@@ -1,3 +1,7 @@
+## 2026-07-25 | workspace | FC/DFC fixtures closed + LMS-wide impact + KG self-learn
+- Harness: dcf_fixture_backup restores account+labd+iad; pin 6000137433 re-snapped; Vikram→fresh default; Obs1b accumulate fallback; quarantine overdue-window + pinned-Vikram 134207.
+- LMS-wide: lms_service_domains.json/py + impact_tests mandatory health.* for LOS/payments/actor/…; ntest quarantine skip; enrichment-sync CASES→FULL if kg.jsonl missing; hooks drain learning_bus.
+
 ## 2026-07-24 | workspace | local Sheet15 DFC/RSCH TAR sync
 - Added `scripts/sql/setup/local_setup_sheet15_dfc_rsch_tar.sql` (QA4→local DEATH_FORECLOSURE + RSCH_DEATH_FORECLOSURE rules, FEE_WAIVED IAD 6793 + products 1/44/45 placeholder maps). After apply flush Redis DB5 TAR cache for catalogues 22/428. Local retest: settlement Debit=Credit on child DFC + parent RSCH.
 
