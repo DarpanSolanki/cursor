@@ -120,6 +120,15 @@ else
 fi
 
 echo ""
+echo "--- flow_coverage YES↔registry ---"
+if python3 scripts/lib/flow_coverage_gate.py --warn 2>&1; then
+  ok "flow_coverage YES rows have registry expect PASS/PARTIAL"
+else
+  echo "  WARN flow_coverage aspirational YES (see above) — flip only after green fresh run"
+  ok "flow_coverage gate (WARN)"
+fi
+
+echo ""
 echo "--- fixed tax (alwaysApply soft ceiling 35000B) ---"
 _tax="$(python3 - <<'PY'
 from pathlib import Path

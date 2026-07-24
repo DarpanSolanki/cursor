@@ -1,8 +1,8 @@
 {
   "version": 1,
   "updated": "2026-07-25",
-  "source": "FLOWTEST F1 + F2 + F3 + F4",
-  "notes": "harness_ready is fail-closed: YES only when a registry runtime case exists and has been live-run locally. Never mark ready by aspiration.",
+  "source": "FLOWTEST F1–F5",
+  "notes": "harness_ready YES only after green fresh run + registry expect PASS/PARTIAL. Enforced: scripts/lib/flow_coverage_gate.py (doctor WARN).",
   "flows": [
     {
       "flow": "disburseLoan",
@@ -124,33 +124,34 @@
     {
       "flow": "loanAccountReopening",
       "verify_mode": "runtime",
-      "harness_ready": "NO",
-      "blocker": "SU-FLOW-REOPEN-DOC",
+      "harness_ready": "YES",
+      "blocker": null,
       "registry": "flowtest.loan_reopening",
-      "note": "F4 — ICF compose CLOSED REAL; reopen fails document version mandatory"
+      "note": "F5 — ICF compose + document_details stub; ACTIVE + dues reinstated"
     },
     {
       "flow": "childLoanReopening",
       "verify_mode": "orch_sibling_sim",
-      "harness_ready": "NO",
-      "blocker": "via-parent-reopen-doc",
-      "registry": "reopening.child_payments_parity_sim"
+      "harness_ready": "PARTIAL",
+      "blocker": "via-parent-reopen",
+      "registry": "flowtest.loan_reopening",
+      "note": "F5 — parent Request loanAccountReopening green; child async event path not separately asserted"
     },
     {
       "flow": "waiveLoanAccountCharges",
       "verify_mode": "runtime",
-      "harness_ready": "NO",
-      "blocker": "SU-FLOW-WAIVER-DOC",
+      "harness_ready": "YES",
+      "blocker": null,
       "registry": "flowtest.waiver_charges",
-      "note": "F4 — cut; DMS document tax"
+      "note": "F5 — age+waive INT due with document_details stub"
     },
     {
       "flow": "loanWriteoff",
       "verify_mode": "runtime",
       "harness_ready": "NO",
-      "blocker": "SU-FLOW-WRITEOFF-AMT-SCALE",
+      "blocker": "SU-FLOW-WRITEOFF-GAP062",
       "registry": "flowtest.loan_writeoff",
-      "note": "F4 — amountValidator 6dp vs IAD exact; GAP-062 latent"
+      "note": "F5 L1 amount 2dp IAD scale PASS; DEFAULT NPE PrepaymentApproppriationProcessor:85 GAP-062"
     },
     {
       "flow": "proactiveExcessAmountRefund",
@@ -268,5 +269,5 @@
       "registry": "dpic.two_emi_full_chain"
     }
   ],
-  "self_report": "FLOWTEST coverage YES 14/35 = 40.0% (F4 onboarded 4 flows as NO/PARTIAL — no YES flip without green money)"
+  "self_report": "FLOWTEST coverage YES 16/35 = 45.7% (F5 unlocked reopen+waiver; writeoff amount harness green but GAP-062 blocks YES)"
 }

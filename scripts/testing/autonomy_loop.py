@@ -194,15 +194,29 @@ def generate_self_report() -> Path:
 
     # flow-coverage % (F1 ratchet — scripts/testing/flow_coverage.json)
     flow_cov = "n/a"
+    su_flow = 0
     try:
         import json as _json
+        import re as _re
 
         fc = _json.loads((ROOT / "scripts/testing/flow_coverage.json").read_text(encoding="utf-8"))
         rows = fc.get("flows") or []
         yes = sum(1 for r in rows if (r.get("harness_ready") or "").upper() == "YES")
         flow_cov = f"{yes}/{len(rows)} ({(100.0 * yes / len(rows)) if rows else 0:.1f}%)"
+        blockers = [str(r.get("blocker") or "") for r in rows]
+        su_flow = len({b for b in blockers if b.startswith("SU-FLOW-")})
+        # also count SU-FLOW tokens in notes
+        for r in rows:
+            for m in _re.findall(r"SU-FLOW-[A-Z0-9-]+", str(r.get("note") or "") + str(r.get("blocker") or "")):
+                pass
+        su_set = set()
+        for r in rows:
+            blob = f"{r.get('blocker') or ''} {r.get('note') or ''}"
+            su_set.update(_re.findall(r"SU-FLOW-[A-Z0-9-]+", blob))
+        su_flow = len(su_set)
     except Exception as e:
         flow_cov = f"error: {e}"
+        su_flow = -1
 
     lines += [
         "",
@@ -215,6 +229,7 @@ def generate_self_report() -> Path:
         f"- enforced acceptance domains: **{len(enforced)}/21** — {', '.join(enforced)}",
         f"- money verify_mode coverage: **{vm}/{len(money)}**",
         f"- flow-coverage (live harness YES): **{flow_cov}**",
+        f"- SU-FLOW backlog count: **{su_flow}**",
         f"- proposals: total={len(proposals)} drafts={drafts} gap_stubs={stubs}",
         f"- flaky: {flaky}",
         "",
@@ -222,6 +237,7 @@ def generate_self_report() -> Path:
         "- env-smoke: see `.cursor/workspace-ops-state.md` § Env smoke",
         "- money-cell process ratchet + acceptance enforced_domains ratchet: active",
         "- flow_coverage.json ratchet: harness_ready YES count must not decrease",
+        "- flow_coverage YES↔registry expect: scripts/lib/flow_coverage_gate.py (doctor WARN)",
         "",
         "## Red flags",
     ]

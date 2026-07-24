@@ -1975,18 +1975,18 @@
       "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
       "ACCEPTANCE_STRICT": "1"
     },
-    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "expect": {"status": "PASS"},
     "acceptance": {
       "verify_mode": "runtime",
       "dimensions": ["happy_path"],
       "db_asserts": [
         {
           "table": "loan_account",
-          "assert": "blocked — document_details.version mandatory (SU-FLOW-REOPEN-DOC); ICF compose CLOSED proven",
-          "checked_by": "scenario exits 2 after ICF SUCCESS + reopen 130303"
+          "assert": "status ACTIVE after reopen; prin_pending reinstated",
+          "checked_by": "loan_status PASS + dues INFO"
         }
       ],
-      "note": "Compose chain: ICF LOAN_PREPAYMENT close → reopen. Doc tax same family as waiver."
+      "note": "F5: document_details stub (version/number_of_files/file_names objects); reason=OTHER."
     }
   },
   "flowtest.loan_writeoff": {
@@ -1995,8 +1995,8 @@
     "apis": ["loanWriteoff"],
     "smoke_tier": "money",
     "verify_mode": "runtime",
-    "tags": ["flowtest", "f4", "writeoff"],
-    "title": "Age dues → loanWriteoff (F4 FLOW B)",
+    "tags": ["flowtest", "f5", "writeoff"],
+    "title": "Age dues → loanWriteoff (F5 L1 amount scale; GAP-062 block)",
     "cmd": "bash scripts/testing/flowtest/run_loan_writeoff.sh",
     "defaults": {
       "PARENT_LAN": "6000137433",
@@ -2011,11 +2011,11 @@
       "db_asserts": [
         {
           "table": "loan_due_details",
-          "assert": "blocked — amountValidator(132265) rejects IAD 6dp; 2dp fails exact equality 134136 (SU-FLOW-WRITEOFF-AMT-SCALE); GAP-062 latent",
-          "checked_by": "scenario exits 2 with dual attempt evidence"
+          "assert": "amount harness 2dp IAD-scaled accepted; blocked on GAP-062 PrepaymentApproppriationProcessor NPE",
+          "checked_by": "AMOUNT_HARNESS PASS + SU-FLOW-WRITEOFF-GAP062"
         }
       ],
-      "note": "Outstanding = PRIN + IAD(posted+carry−INT paid/waived≤today) + PINT≤today (ValidateLoanWriteOffDataProcessor)."
+      "note": "L1 amount fixed harness-side; LMS defect handoff scripts/scratch/flowtest-f5/LMS-DEFECT-writeoff-gap062-npe.md"
     }
   },
   "flowtest.waiver_charges": {
@@ -2024,25 +2024,26 @@
     "apis": ["waiveLoanAccountCharges"],
     "smoke_tier": "money",
     "verify_mode": "runtime",
-    "tags": ["flowtest", "f4", "waiver"],
-    "title": "waiveLoanAccountCharges blocked on document tax (F4 FLOW C)",
+    "tags": ["flowtest", "f5", "waiver"],
+    "title": "waiveLoanAccountCharges age→waive (F5 FLOW C)",
     "cmd": "bash scripts/testing/flowtest/run_waiver_charges.sh",
     "defaults": {
       "PARENT_LAN": "6000137433",
-      "CHILD1_LAN": "6000137440"
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
     },
-    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "expect": {"status": "PASS"},
     "acceptance": {
       "verify_mode": "runtime",
       "dimensions": ["happy_path"],
       "db_asserts": [
         {
-          "table": "waiver_details",
-          "assert": "blocked — document version/number_of_files (SU-FLOW-WAIVER-DOC); no DMS harness",
-          "checked_by": "scenario exits 2 immediately"
+          "table": "loan_due_details",
+          "assert": "INT due fully waived; int_waived increased",
+          "checked_by": "waived PASS"
         }
       ],
-      "note": "KG primary webapp Request = waiveLoanAccountCharges."
+      "note": "F5 document_details stub; compose age_dues_for_dpd."
     }
   },
   "flowtest.proactive_excess_refund": {

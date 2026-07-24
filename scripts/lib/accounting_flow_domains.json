@@ -241,7 +241,7 @@
       "release_cases": [
         "flowtest.loan_reopening"
       ],
-      "release_cases_note": "F4 runtime BLOCKED on document version (SU-FLOW-REOPEN-DOC); ICF compose proven"
+      "release_cases_note": "F5 green loanAccountReopening (doc stub); child async PARTIAL"
     },
     "dpi": {
       "label": "Delayed payment interest (DPI)",
@@ -573,7 +573,7 @@
         "flowtest.loan_writeoff"
       ],
       "fallback_case": "health.accounting",
-      "release_cases_note": "F4 BLOCKED SU-FLOW-WRITEOFF-AMT-SCALE (amountValidator vs IAD exact); GAP-062 latent"
+      "release_cases_note": "F5 amount 2dp IAD harness PASS; BLOCKED GAP-062 NPE (LMS-DEFECT-writeoff-gap062-npe.md)"
     },
     "waiver": {
       "label": "Waive loan account charges",
@@ -593,7 +593,7 @@
       "release_cases": [
         "flowtest.waiver_charges"
       ],
-      "release_cases_note": "F4 BLOCKED SU-FLOW-WAIVER-DOC (document version/number_of_files)"
+      "release_cases_note": "F5 green waiveLoanAccountCharges (doc stub)"
     },
     "excess_refund": {
       "label": "Proactive excess amount refund",
