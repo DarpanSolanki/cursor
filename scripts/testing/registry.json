@@ -1766,7 +1766,7 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names)",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
           "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ]
@@ -1863,7 +1863,7 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names)",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
           "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ],

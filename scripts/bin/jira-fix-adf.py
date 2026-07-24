@@ -689,6 +689,14 @@ def scan_forbidden(text: str, *, issue_key: str | None = None) -> list[str]:
             if sql_like:
                 hits.append("SQL/DDL content")
 
+    # Child GL display: never label child settlement with parent GL names without CG* codes.
+    # Mistake class TDPQA-72: strip CG + join general_ledger.name → "REG EMI-JLGDL- BI" on child.
+    if re.search(
+        r"(?is)\bchild\b.{0,240}(?:REG\s+EMI-JLGDL|INT\s+ACC\s+NOT\s+DUE-JLGDL)",
+        raw,
+    ) and not re.search(r"\bCG\d{3,}\b", raw):
+        hits.append("child_gl_renamed_to_parent_name")
+
     return hits
 
 

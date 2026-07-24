@@ -194,6 +194,8 @@ python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-
 # exit 2 = FORBIDDEN hits — rewrite until OK
 ```
 
+**Child vs parent GL display (TDPQA-72):** Child settlement legs store `CG*` codes (e.g. `CG13336`). Do **not** strip `CG` and show parent GL names (`REG EMI-JLGDL- BI` / `INT ACC NOT DUE-JLGDL-AIR`) on child proof. Parent may use named GLs. Scan rejects `child_gl_renamed_to_parent_name` when Child text uses those parent names without any `CG####`. Memory: `feedback_child_cg_gl_vs_parent_named.md`.
+
 Rationale + example forbidden drafts: `cursor-bundle/memory/feedback_jira_enrich_forbidden_scan_assignee.md`.
 
 Reject and rewrite if any of these appear (case-insensitive):

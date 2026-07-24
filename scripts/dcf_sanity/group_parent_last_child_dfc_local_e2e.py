@@ -269,6 +269,15 @@ WHERE tm.reference_number = '{ref}';
     credit = Decimal(parts[1] or "0")
     part_count = int(parts[2] or "0")
     if part_count == 0:
+        # Local tip often has SUCCESS DEATH_FORECLOSURE / RSCH_DEATH_FORECLOSURE TM with
+        # 0 transaction_details + 0 partitions (env/masterdata — PREPAYMENT/BILLING OK).
+        # Under ACCEPTANCE_STRICT do not soft-skip: empty GL when TM exists is a fail.
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(
+                f"GL balance FAIL {label} ref={ref}: SUCCESS tm exists but 0 partition rows "
+                f"(local DFC/RSCH often miss legs; fix PTC/posting or set ACCEPTANCE_STRICT=0 "
+                f"only for debug). Soft Out-of-scope removed for force-bill/GL proof."
+            )
         print(
             f"  GL balance Out-of-scope: {label} ref={ref} has 0 partition rows locally "
             f"(tm exists; GL legs not materialized in local stack)"
@@ -287,7 +296,8 @@ def assert_force_bill_gl_shape(ref: str, label: str, *, expect_child_cg: bool) -
     """Force-bill BILLING: print raw gl_code; child must be CG*, parent must not.
 
     Do not strip CG and join parent general_ledger.name for child legs
-    (feedback_child_cg_gl_vs_parent_named.md). Soft-skip when 0 partitions.
+    (feedback_child_cg_gl_vs_parent_named.md). Under ACCEPTANCE_STRICT, 0 partitions = FAIL
+    (force-bill BILLING normally materializes legs locally — unlike DFC/RSCH).
     """
     if not ref:
         return
@@ -308,6 +318,11 @@ ORDER BY tpd.cr_dr_indicator, tpd.gl_code;
         text=True,
     ).strip()
     if not rows:
+        if ACCEPTANCE_STRICT:
+            raise AssertionError(
+                f"Force-bill GL shape FAIL {label} ref={ref}: BILLING tm has 0 partition rows "
+                f"(expected CG* child or bare parent gl_code legs)"
+            )
         print(f"  Force-bill GL shape Out-of-scope: {label} ref={ref} has 0 partition rows")
         return
     legs = []

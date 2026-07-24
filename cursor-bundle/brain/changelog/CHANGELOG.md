@@ -1,3 +1,7 @@
+## 2026-07-24 | kb | CG prevention harden + local DFC zero-partition diag
+- Fail-closed harness under ACCEPTANCE_STRICT when TM has 0 partitions; jira scan `child_gl_renamed_to_parent_name`
+- KG diag nodes: child CG* vs parent named GL; local DFC/RSCH empty partitions env gap
+
 ## 2026-07-24 | kb | Child CG* vs parent named GL display SoT (TDPQA-72)
 - Never strip `CG` / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored
 - Memory `feedback_child_cg_gl_vs_parent_named.md` + brain `08-gl-posting-engine.md` display rule; harness `assert_force_bill_gl_shape`

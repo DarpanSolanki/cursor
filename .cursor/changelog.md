@@ -1,3 +1,9 @@
+## 2026-07-24 | workspace | CG prevention harden + DFC 0-partition fail-closed
+- Harness: `ACCEPTANCE_STRICT` → FAIL when TM exists with 0 partitions (force-bill shape + DFC/RSCH GL); no soft Out-of-scope.
+- JIRA: `jira-fix-adf` hit `child_gl_renamed_to_parent_name`; jira-fix-update skill note.
+- KG curated: `diag:display.child_cg_gl_vs_parent_named` + `diag:env.dfc_rsch_tm_zero_partitions_local` (FTS/why).
+- Local note: DFC/RSCH SUCCESS TM with 0 legs is env-systemic (product-44 PTC present; PREPAYMENT/BILLING OK).
+
 ## 2026-07-24 | workspace kb + dcf harness | Child CG* vs parent named GL (TDPQA-72)
 - Root cause of wrong handoff: agents stripped CG and joined parent `general_ledger.name`; child force-bill stores `CG13336`/`CG13578`.
 - Docs: memory `feedback_child_cg_gl_vs_parent_named.md`, brain `08-gl-posting-engine.md` display rule, `gl-and-placeholders.md`, SDCP-10199 runbook GL shape row, registry BILLING assert.

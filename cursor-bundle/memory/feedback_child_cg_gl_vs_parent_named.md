@@ -17,7 +17,12 @@ Handoff / report showed child force-bill settlement as parent-style names (`REG 
 1. Quote **`transaction_partition_details.gl_code` as stored** — do not strip `CG` for child legs in JIRA/reports.
 2. Parent named GL (`general_ledger.name`) is OK **only** when `gl_code` has no `CG` prefix / `is_child_gl_code=false`.
 3. `ia_code` / `account_number` on the partition may still be the bare numeric code even on child rows — that is **not** the display GL code.
-4. Harness: `assert_force_bill_gl_shape` prints/verifies CG vs named on force-bill BILLING refs.
+4. Harness: `assert_force_bill_gl_shape` prints/verifies CG vs named on force-bill BILLING refs; under `ACCEPTANCE_STRICT`, **0 partitions = FAIL** (no soft Out-of-scope).
+5. JIRA scan: `jira-fix-adf.py` hit `child_gl_renamed_to_parent_name` when Child text uses parent GL names without `CG####`.
+
+## Local DFC/RSCH empty partitions (related)
+
+Local tip often has SUCCESS `DEATH_FORECLOSURE` / `RSCH_DEATH_FORECLOSURE` TM with **0** `transaction_details` + **0** partitions (44/44 recent), while `LOAN_PREPAYMENT` / force-bill `BILLING` materialize legs. Product-44 PTC bindings exist — treat as **local env/posting gap**, not “GL balanced Out-of-scope”. Under `ACCEPTANCE_STRICT`, `assert_gl_balanced_txn` now **fails** when TM exists with 0 partitions.
 
 ## Why workspace “missed” it
 
