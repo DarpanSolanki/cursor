@@ -1,43 +1,260 @@
 {
   "version": 1,
   "updated": "2026-07-25",
-  "source": "FLOWTEST DISCOVERY C2 + F1 pilot",
+  "source": "FLOWTEST F1 + F2",
   "notes": "harness_ready is fail-closed: YES only when a registry runtime case exists and has been live-run locally. Never mark ready by aspiration.",
   "flows": [
-    {"flow": "disburseLoan", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "disbursement.quick"},
-    {"flow": "childLoanDisbursement", "verify_mode": "processor_mirror_sim", "harness_ready": "PARTIAL", "blocker": "mirror-sim", "registry": "disbursement.child_sanction_date_sim"},
-    {"flow": "loanRepayment", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "thin-dpic", "registry": "dpic.repayment_e2e"},
-    {"flow": "childLoanRepayment", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "thin-dpic", "registry": "dpic.child_repayment_e2e"},
-    {"flow": "loanRecurringPaymentBatchApi", "verify_mode": "processor_mirror_sim", "harness_ready": "NO", "blocker": "async-collection", "registry": "collections.tdpfr547_dpi_amountmap_sim"},
-    {"flow": "loanPrepayment", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "vikram-embedded", "registry": "foreclosure.shg_bpi_parity"},
-    {"flow": "loanAccountPartPrepayment", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "thin-dpic", "registry": "dpic.part_prepayment_write_e2e"},
-    {"flow": "parentLoanAccountPartPrepayment", "verify_mode": "none", "harness_ready": "NO", "blocker": "internal-only", "registry": null},
-    {"flow": "individualChildLoanForeclosure", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "icf-harness", "registry": "foreclosure.individual_child"},
-    {"flow": "childLoanForeclosure", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "via-icf", "registry": "foreclosure.individual_child"},
-    {"flow": "deathForeclosureInsuranceJob", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "dcf.group_parent_last_child_e2e"},
-    {"flow": "loanDeathForeclosure", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "sql-seed-stages", "registry": "foreclosure.dpi_waiver_smoke"},
-    {"flow": "childLoanRestructuring", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "flowtest.rstcre_spine", "note": "F1 pilot — RSTCRE via childLoanEventProcessingBatchJob"},
-    {"flow": "childLoanEventProcessingBatchJob", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "flowtest.rstcre_spine"},
-    {"flow": "loanAccountReschedule", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "childLoanRebooking", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "loanAccountReopening", "verify_mode": "none", "harness_ready": "NO", "blocker": "async-reopen", "registry": null},
-    {"flow": "childLoanReopening", "verify_mode": "orch_sibling_sim", "harness_ready": "NO", "blocker": "sibling-sim", "registry": "reopening.child_payments_parity_sim"},
-    {"flow": "waiveLoanAccountCharges", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "loanWriteoff", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "proactiveExcessAmountRefund", "verify_mode": "none", "harness_ready": "NO", "blocker": "high-risk-batch", "registry": null},
-    {"flow": "loanAccountExcessAmountRefund", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "loanAccountTransactionReversal", "verify_mode": "runtime", "harness_ready": "PARTIAL", "blocker": "thin-dpic", "registry": "dpic.repayment_reversal_e2e"},
-    {"flow": "childLoanTransactionReversal", "verify_mode": "none", "harness_ready": "NO", "blocker": "no-harness", "registry": null},
-    {"flow": "interestAccrualCalculation", "verify_mode": "none", "harness_ready": "PARTIAL", "blocker": "batch-date", "registry": "batch.interest_accrual_calc"},
-    {"flow": "interestAccrualPosting", "verify_mode": "none", "harness_ready": "PARTIAL", "blocker": "batch-date", "registry": "batch.interest_accrual_posting"},
-    {"flow": "penalInterestAccrualCalculation", "verify_mode": "none", "harness_ready": "NO", "blocker": "batch-date", "registry": "batch.penal_interest_accrual_calc"},
-    {"flow": "penalInterestAccrualBooking", "verify_mode": "none", "harness_ready": "NO", "blocker": "batch-date", "registry": "batch.penal_interest_accrual_booking"},
-    {"flow": "loanAccountBillingJob", "verify_mode": "none", "harness_ready": "PARTIAL", "blocker": "batch-date", "registry": "batch.loan_account_billing"},
-    {"flow": "loanAccountDpdCalcJob", "verify_mode": "none", "harness_ready": "NO", "blocker": "batch-date", "registry": "batch.dpd_calc"},
-    {"flow": "loanAccountAssetCriteriaJob", "verify_mode": "none", "harness_ready": "NO", "blocker": "batch-date", "registry": null},
-    {"flow": "loanAccountAssetClassificationJob", "verify_mode": "none", "harness_ready": "NO", "blocker": "batch-date", "registry": null},
-    {"flow": "dpiAccrualCalculation", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "dpic.shg_parent_child_parity"},
-    {"flow": "dpiAccrualBooking", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "dpic.posting_calendar_regression"},
-    {"flow": "dpiBilling", "verify_mode": "runtime", "harness_ready": "YES", "blocker": null, "registry": "dpic.two_emi_full_chain"}
-  ]
+    {
+      "flow": "disburseLoan",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "disbursement.quick"
+    },
+    {
+      "flow": "childLoanDisbursement",
+      "verify_mode": "processor_mirror_sim",
+      "harness_ready": "PARTIAL",
+      "blocker": "mirror-sim",
+      "registry": "disbursement.child_sanction_date_sim"
+    },
+    {
+      "flow": "loanRepayment",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.repayment_reversal",
+      "note": "F2 \u2014 covered by repayment_reversal spine"
+    },
+    {
+      "flow": "childLoanRepayment",
+      "verify_mode": "runtime",
+      "harness_ready": "PARTIAL",
+      "blocker": "thin-dpic",
+      "registry": "dpic.child_repayment_e2e"
+    },
+    {
+      "flow": "loanRecurringPaymentBatchApi",
+      "verify_mode": "processor_mirror_sim",
+      "harness_ready": "NO",
+      "blocker": "async-collection",
+      "registry": "collections.tdpfr547_dpi_amountmap_sim"
+    },
+    {
+      "flow": "loanPrepayment",
+      "verify_mode": "runtime",
+      "harness_ready": "PARTIAL",
+      "blocker": "SU-FLOW-PREPAY-VIKRAM",
+      "registry": "foreclosure.shg_bpi_parity",
+      "note": "Vikram loanPrepayment parent AUTO 134207; F2 FC uses ICF Sim A instead"
+    },
+    {
+      "flow": "loanAccountPartPrepayment",
+      "verify_mode": "runtime",
+      "harness_ready": "NO",
+      "blocker": "SU-FLOW-PARTPREP-PTC-GLAD",
+      "registry": "flowtest.part_prepayment",
+      "note": "REAL blocked getLoanAccountDetails/200065; TRIAL posts PTC/placeholder missing product-70"
+    },
+    {
+      "flow": "parentLoanAccountPartPrepayment",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "internal-only",
+      "registry": null
+    },
+    {
+      "flow": "individualChildLoanForeclosure",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.loan_prepayment_fc",
+      "note": "F2 \u2014 ICF on DCF bak child (maturity window hygiene)"
+    },
+    {
+      "flow": "childLoanForeclosure",
+      "verify_mode": "runtime",
+      "harness_ready": "PARTIAL",
+      "blocker": "via-icf",
+      "registry": "foreclosure.individual_child"
+    },
+    {
+      "flow": "deathForeclosureInsuranceJob",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "dcf.group_parent_last_child_e2e"
+    },
+    {
+      "flow": "loanDeathForeclosure",
+      "verify_mode": "runtime",
+      "harness_ready": "PARTIAL",
+      "blocker": "sql-seed-stages",
+      "registry": "foreclosure.dpi_waiver_smoke"
+    },
+    {
+      "flow": "childLoanRestructuring",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.rstcre_spine",
+      "note": "F1 pilot \u2014 RSTCRE via childLoanEventProcessingBatchJob"
+    },
+    {
+      "flow": "childLoanEventProcessingBatchJob",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.rstcre_spine"
+    },
+    {
+      "flow": "loanAccountReschedule",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "childLoanRebooking",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "loanAccountReopening",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "async-reopen",
+      "registry": null
+    },
+    {
+      "flow": "childLoanReopening",
+      "verify_mode": "orch_sibling_sim",
+      "harness_ready": "NO",
+      "blocker": "sibling-sim",
+      "registry": "reopening.child_payments_parity_sim"
+    },
+    {
+      "flow": "waiveLoanAccountCharges",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "loanWriteoff",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "proactiveExcessAmountRefund",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "high-risk-batch",
+      "registry": null
+    },
+    {
+      "flow": "loanAccountExcessAmountRefund",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "loanAccountTransactionReversal",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.repayment_reversal",
+      "note": "F2 \u2014 repay+rev on DCF child (NPA slab hygiene)"
+    },
+    {
+      "flow": "childLoanTransactionReversal",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "no-harness",
+      "registry": null
+    },
+    {
+      "flow": "interestAccrualCalculation",
+      "verify_mode": "none",
+      "harness_ready": "PARTIAL",
+      "blocker": "batch-date",
+      "registry": "batch.interest_accrual_calc"
+    },
+    {
+      "flow": "interestAccrualPosting",
+      "verify_mode": "none",
+      "harness_ready": "PARTIAL",
+      "blocker": "batch-date",
+      "registry": "batch.interest_accrual_posting"
+    },
+    {
+      "flow": "penalInterestAccrualCalculation",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "batch-date",
+      "registry": "batch.penal_interest_accrual_calc"
+    },
+    {
+      "flow": "penalInterestAccrualBooking",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "batch-date",
+      "registry": "batch.penal_interest_accrual_booking"
+    },
+    {
+      "flow": "loanAccountBillingJob",
+      "verify_mode": "none",
+      "harness_ready": "PARTIAL",
+      "blocker": "batch-date",
+      "registry": "batch.loan_account_billing"
+    },
+    {
+      "flow": "loanAccountDpdCalcJob",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "batch-date",
+      "registry": "batch.dpd_calc"
+    },
+    {
+      "flow": "loanAccountAssetCriteriaJob",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "batch-date",
+      "registry": null
+    },
+    {
+      "flow": "loanAccountAssetClassificationJob",
+      "verify_mode": "none",
+      "harness_ready": "NO",
+      "blocker": "batch-date",
+      "registry": null
+    },
+    {
+      "flow": "dpiAccrualCalculation",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "dpic.shg_parent_child_parity"
+    },
+    {
+      "flow": "dpiAccrualBooking",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "dpic.posting_calendar_regression"
+    },
+    {
+      "flow": "dpiBilling",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "dpic.two_emi_full_chain"
+    }
+  ],
+  "self_report": "FLOWTEST coverage YES 10/35 = 28.6%"
 }

@@ -53,6 +53,7 @@
         "childLoanRepayment"
       ],
       "impact_cases": [
+        "flowtest.repayment_reversal",
         "dpic.repayment_e2e"
       ],
       "deep_cases": [],
@@ -90,6 +91,7 @@
         "getPartPrepaymentBPIAmount"
       ],
       "impact_cases": [
+        "flowtest.part_prepayment",
         "dpic.part_prepayment_write_e2e"
       ],
       "deep_cases": [
@@ -111,9 +113,11 @@
         "individualChildLoanForeclosure",
         "childLoanForeclosure",
         "fetchLoanForeclosureSimulationDetails",
-        "getLoanForeclosureDetails"
+        "getLoanForeclosureDetails",
+        "loanPrepayment"
       ],
       "impact_cases": [
+        "flowtest.loan_prepayment_fc",
         "foreclosure.individual_child",
         "foreclosure.shg_bpi_parity",
         "dcf.vikram_fc_rstcre_dfc_e2e"
@@ -181,6 +185,7 @@
         "childLoanTransactionReversal"
       ],
       "impact_cases": [
+        "flowtest.repayment_reversal",
         "dpic.repayment_reversal_e2e"
       ],
       "deep_cases": [],

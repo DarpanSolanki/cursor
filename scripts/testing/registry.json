@@ -1702,6 +1702,149 @@
     },
     "note": "Pilot for scripts/testing/flowtest/. Shared lock/fixture/asserts. Does not replace dcf.group_parent_last_child_e2e."
   },
+  "flowtest.loan_prepayment_fc": {
+    "type": "flow",
+    "api": "individualChildLoanForeclosure",
+    "apis": [
+      "individualChildLoanForeclosure",
+      "loanPrepayment"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "f2",
+      "foreclosure",
+      "prepayment"
+    ],
+    "title": "ICF foreclosure on DCF child (F2 \u2014 non-DPI reshape)",
+    "cmd": "bash scripts/testing/flowtest/run_loan_prepayment_fc.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-08-02",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ICF_OFFICE_ID": "2"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "downstream_ui"
+      ],
+      "db_asserts": [
+        {
+          "table": "loan_account",
+          "assert": "child loan_status=CLOSED after loanPrepayment APPROVE",
+          "checked_by": "assert_child_closed_fc + loan_status PASS"
+        },
+        {
+          "table": "loan_due_details",
+          "assert": "prin_pending=0 after FC",
+          "checked_by": "dues PASS prin_pending=0"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "LOAN_PREPAYMENT debit==credit",
+          "checked_by": "GL balance PASS"
+        }
+      ],
+      "note": "F2 green: ICF Sim A on dcf_bak child after maturity/lid/dues window hygiene. Vikram loanPrepayment deferred SU-FLOW-PREPAY-VIKRAM."
+    }
+  },
+  "flowtest.part_prepayment": {
+    "type": "flow",
+    "api": "loanAccountPartPrepayment",
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "f2",
+      "part-prepayment"
+    ],
+    "title": "loanAccountPartPrepayment REAL on DCF child (F2)",
+    "cmd": "bash scripts/testing/flowtest/run_part_prepayment.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "PART_PREP_NET": "500",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path"
+      ],
+      "db_asserts": [
+        {
+          "table": "transaction_partition_details",
+          "assert": "BILLED_DPI/ADV_BILLED_DPI legs present for pp_write stan",
+          "checked_by": "dpic verify_dpi_part_prepayment_posting.sql + GL legs PASS"
+        },
+        {
+          "table": "loan_account_payments_details",
+          "assert": "no phantom excess on recent lapd (TRIAL typically 0 rows)",
+          "checked_by": "excess PASS"
+        }
+      ],
+      "note": "BLOCKED product-70: REAL getLoanAccountDetails\u2192getCustomerDetails 200065; TRIAL postTransaction PTC/placeholder missing. SU-FLOW-PARTPREP-PTC-GLAD. JTF nest loan_account_part_prepayment + paid_by=CUSTOMER verified."
+    }
+  },
+  "flowtest.repayment_reversal": {
+    "type": "flow",
+    "api": "loanRepayment",
+    "apis": [
+      "loanRepayment",
+      "loanAccountTransactionReversal"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "f2",
+      "repayment",
+      "reversal"
+    ],
+    "title": "loanRepayment + TransactionReversal on DCF child (F2)",
+    "cmd": "bash scripts/testing/flowtest/run_repayment_reversal.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "replay_idempotency"
+      ],
+      "db_asserts": [
+        {
+          "table": "transaction_master",
+          "assert": "repayment tm.reversed=true after APPROVE reversal",
+          "checked_by": "txn reversed PASS"
+        },
+        {
+          "table": "loan_due_details",
+          "assert": "DPI pending restored after reversal when DPI was paid",
+          "checked_by": "dues restore PASS"
+        }
+      ],
+      "na": {
+        "si_ach_enach": "Rails OUT \u2014 coverage NO+blocker async-collection"
+      },
+      "note": "F2 green: WITHOUT_MAKER_CHECKER repay + reversal DEFAULT/APPROVE; NPA\u2192regular slab hygiene."
+    }
+  },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",
