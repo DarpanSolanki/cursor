@@ -1,3 +1,6 @@
+## 2026-07-24 | workspace | local Sheet15 DFC/RSCH TAR sync
+- Added `scripts/sql/setup/local_setup_sheet15_dfc_rsch_tar.sql` (QA4→local DEATH_FORECLOSURE + RSCH_DEATH_FORECLOSURE rules, FEE_WAIVED IAD 6793 + products 1/44/45 placeholder maps). After apply flush Redis DB5 TAR cache for catalogues 22/428. Local retest: settlement Debit=Credit on child DFC + parent RSCH.
+
 ## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 trim Accrued/force-bill comment noise
 - After live-schedule Accrued query: shortened verbose Javadoc/inline comments on DaoService RSTCRE repoint, force-bill resolvers/services, ChildLoanRestructuringProcessor. No logic change; live-join SUM kept. Processor rewrite already reverted earlier.
 
