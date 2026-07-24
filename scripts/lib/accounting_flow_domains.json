@@ -234,12 +234,14 @@
         "getLoanAccountReopeningDetails"
       ],
       "impact_cases": [
+        "flowtest.loan_reopening",
         "reopening.child_payments_parity_sim"
       ],
       "deep_cases": [],
       "release_cases": [
-        "reopening.child_payments_parity_sim"
-      ]
+        "flowtest.loan_reopening"
+      ],
+      "release_cases_note": "F4 runtime BLOCKED on document version (SU-FLOW-REOPEN-DOC); ICF compose proven"
     },
     "dpi": {
       "label": "Delayed payment interest (DPI)",
@@ -563,13 +565,56 @@
       "api_hints": [
         "loanWriteoff"
       ],
-      "impact_cases": [],
+      "impact_cases": [
+        "flowtest.loan_writeoff"
+      ],
       "deep_cases": [],
       "release_cases": [
-        "health.accounting"
+        "flowtest.loan_writeoff"
       ],
       "fallback_case": "health.accounting",
-      "release_cases_note": "fallback_case used until dedicated e2e exists"
+      "release_cases_note": "F4 BLOCKED SU-FLOW-WRITEOFF-AMT-SCALE (amountValidator vs IAD exact); GAP-062 latent"
+    },
+    "waiver": {
+      "label": "Waive loan account charges",
+      "path_hints": [
+        "waiver",
+        "waiveLoan",
+        "childWaive"
+      ],
+      "api_hints": [
+        "waiveLoanAccountCharges",
+        "childWaiveLoanAccountCharges"
+      ],
+      "impact_cases": [
+        "flowtest.waiver_charges"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "flowtest.waiver_charges"
+      ],
+      "release_cases_note": "F4 BLOCKED SU-FLOW-WAIVER-DOC (document version/number_of_files)"
+    },
+    "excess_refund": {
+      "label": "Proactive excess amount refund",
+      "path_hints": [
+        "excess",
+        "proactiveExcess",
+        "excess_amount_refund"
+      ],
+      "api_hints": [
+        "proactiveExcessAmountRefund",
+        "proactiveExcessAmountRefundStaging",
+        "loanAccountExcessAmountRefund"
+      ],
+      "impact_cases": [
+        "flowtest.proactive_excess_refund"
+      ],
+      "deep_cases": [],
+      "release_cases": [
+        "flowtest.proactive_excess_refund"
+      ],
+      "release_cases_note": "F4 PARTIAL — jobs COMPLETED, money may not move (SU-FLOW-EXCESS-RAILS)"
     }
   },
   "jira_graph": "cursor-bundle/brain/jira/jira-flow-graph.json",

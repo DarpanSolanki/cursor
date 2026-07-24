@@ -148,7 +148,12 @@ LIMIT 1;
 
 
 def quarantine_billing_portfolio(parent_account_id: int, child_account_ids: list[int]) -> None:
-    """Local harness: close other ACTIVE loans so billing batch scans only the fresh SHG group."""
+    """Local harness: park other portfolio loans so EOD jobs scan only the fixture group.
+
+    Closes ACTIVE *and* FORECLOSURE_FREEZE (AssetCriteria reader includes both —
+    F3 SU-FLOW-NPA-CRITERIA-FLIP: ACTIVE-only quarantine left 95+ FREEZE rows and
+    the job FAILED on portfolio 'Invalid amount' before tagging the fixture LAN).
+    """
     keep = ",".join(str(i) for i in [parent_account_id, *child_account_ids])
     psql_multi(f"""
 CREATE TABLE IF NOT EXISTS mfi_accounting._dcf_fresh_billing_quarantine_backup (
@@ -159,7 +164,7 @@ CREATE TABLE IF NOT EXISTS mfi_accounting._dcf_fresh_billing_quarantine_backup (
 INSERT INTO mfi_accounting._dcf_fresh_billing_quarantine_backup (account_id, loan_status)
 SELECT la.account_id, la.loan_status
 FROM mfi_accounting.loan_account la
-WHERE la.loan_status = 'ACTIVE' AND la.is_deleted = false
+WHERE la.loan_status IN ('ACTIVE','FORECLOSURE_FREEZE') AND la.is_deleted = false
   AND la.account_id NOT IN ({keep})
   AND NOT EXISTS (
     SELECT 1 FROM mfi_accounting._dcf_fresh_billing_quarantine_backup b
@@ -167,7 +172,7 @@ WHERE la.loan_status = 'ACTIVE' AND la.is_deleted = false
   );
 UPDATE mfi_accounting.loan_account la
 SET loan_status = 'CLOSED', updated_on = NOW(), updated_by = 'DCF_FRESH_BILLING_Q'
-WHERE la.loan_status = 'ACTIVE' AND la.is_deleted = false
+WHERE la.loan_status IN ('ACTIVE','FORECLOSURE_FREEZE') AND la.is_deleted = false
   AND la.account_id NOT IN ({keep});
 """)
 

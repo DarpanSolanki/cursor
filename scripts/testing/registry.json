@@ -1959,6 +1959,125 @@
       "note": "Lazy path: dues aged SEEDED; jobs REAL. Shared force_regular_asset_slab from loan_state."
     }
   },
+  "flowtest.loan_reopening": {
+    "type": "flow",
+    "api": "loanAccountReopening",
+    "apis": ["loanAccountReopening", "individualChildLoanForeclosure"],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f4", "reopening"],
+    "title": "ICF close → loanAccountReopening (F4 FLOW A)",
+    "cmd": "bash scripts/testing/flowtest/run_loan_reopening.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-08-02",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "loan_account",
+          "assert": "blocked — document_details.version mandatory (SU-FLOW-REOPEN-DOC); ICF compose CLOSED proven",
+          "checked_by": "scenario exits 2 after ICF SUCCESS + reopen 130303"
+        }
+      ],
+      "note": "Compose chain: ICF LOAN_PREPAYMENT close → reopen. Doc tax same family as waiver."
+    }
+  },
+  "flowtest.loan_writeoff": {
+    "type": "flow",
+    "api": "loanWriteoff",
+    "apis": ["loanWriteoff"],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f4", "writeoff"],
+    "title": "Age dues → loanWriteoff (F4 FLOW B)",
+    "cmd": "bash scripts/testing/flowtest/run_loan_writeoff.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "loan_due_details",
+          "assert": "blocked — amountValidator(132265) rejects IAD 6dp; 2dp fails exact equality 134136 (SU-FLOW-WRITEOFF-AMT-SCALE); GAP-062 latent",
+          "checked_by": "scenario exits 2 with dual attempt evidence"
+        }
+      ],
+      "note": "Outstanding = PRIN + IAD(posted+carry−INT paid/waived≤today) + PINT≤today (ValidateLoanWriteOffDataProcessor)."
+    }
+  },
+  "flowtest.waiver_charges": {
+    "type": "flow",
+    "api": "waiveLoanAccountCharges",
+    "apis": ["waiveLoanAccountCharges"],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f4", "waiver"],
+    "title": "waiveLoanAccountCharges blocked on document tax (F4 FLOW C)",
+    "cmd": "bash scripts/testing/flowtest/run_waiver_charges.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440"
+    },
+    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "waiver_details",
+          "assert": "blocked — document version/number_of_files (SU-FLOW-WAIVER-DOC); no DMS harness",
+          "checked_by": "scenario exits 2 immediately"
+        }
+      ],
+      "note": "KG primary webapp Request = waiveLoanAccountCharges."
+    }
+  },
+  "flowtest.proactive_excess_refund": {
+    "type": "flow",
+    "api": "proactiveExcessAmountRefund",
+    "apis": [
+      "proactiveExcessAmountRefundStaging",
+      "proactiveExcessAmountRefund"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f4", "excess", "refund"],
+    "title": "Seed excess → proactiveExcessAmountRefund batch (F4 FLOW D PARTIAL)",
+    "cmd": "bash scripts/testing/flowtest/run_proactive_excess_refund.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "FLOWTEST_SEED_EXCESS": "250",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "PARTIAL", "exit_code": 0},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "loan_account",
+          "assert": "PARTIAL — staging+refund jobs COMPLETED; excess may stay seeded (SU-FLOW-EXCESS-RAILS / writer swallow)",
+          "checked_by": "PARTIAL exit 0 with LAYERS_DECLARE"
+        }
+      ],
+      "note": "High-risk ProactiveExcessAmountRefundItemWriter; honest PARTIAL when bank/rails no-op."
+    }
+  },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",

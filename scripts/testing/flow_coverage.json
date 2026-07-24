@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-07-25",
-  "source": "FLOWTEST F1 + F2 + F3",
+  "source": "FLOWTEST F1 + F2 + F3 + F4",
   "notes": "harness_ready is fail-closed: YES only when a registry runtime case exists and has been live-run locally. Never mark ready by aspiration.",
   "flows": [
     {
@@ -123,38 +123,42 @@
     },
     {
       "flow": "loanAccountReopening",
-      "verify_mode": "none",
+      "verify_mode": "runtime",
       "harness_ready": "NO",
-      "blocker": "async-reopen",
-      "registry": null
+      "blocker": "SU-FLOW-REOPEN-DOC",
+      "registry": "flowtest.loan_reopening",
+      "note": "F4 — ICF compose CLOSED REAL; reopen fails document version mandatory"
     },
     {
       "flow": "childLoanReopening",
       "verify_mode": "orch_sibling_sim",
       "harness_ready": "NO",
-      "blocker": "sibling-sim",
+      "blocker": "via-parent-reopen-doc",
       "registry": "reopening.child_payments_parity_sim"
     },
     {
       "flow": "waiveLoanAccountCharges",
-      "verify_mode": "none",
+      "verify_mode": "runtime",
       "harness_ready": "NO",
-      "blocker": "no-harness",
-      "registry": null
+      "blocker": "SU-FLOW-WAIVER-DOC",
+      "registry": "flowtest.waiver_charges",
+      "note": "F4 — cut; DMS document tax"
     },
     {
       "flow": "loanWriteoff",
-      "verify_mode": "none",
+      "verify_mode": "runtime",
       "harness_ready": "NO",
-      "blocker": "no-harness",
-      "registry": null
+      "blocker": "SU-FLOW-WRITEOFF-AMT-SCALE",
+      "registry": "flowtest.loan_writeoff",
+      "note": "F4 — amountValidator 6dp vs IAD exact; GAP-062 latent"
     },
     {
       "flow": "proactiveExcessAmountRefund",
-      "verify_mode": "none",
-      "harness_ready": "NO",
-      "blocker": "high-risk-batch",
-      "registry": null
+      "verify_mode": "runtime",
+      "harness_ready": "PARTIAL",
+      "blocker": "SU-FLOW-EXCESS-RAILS",
+      "registry": "flowtest.proactive_excess_refund",
+      "note": "F4 — staging+refund COMPLETED; excess unchanged (writer/rails)"
     },
     {
       "flow": "loanAccountExcessAmountRefund",
@@ -228,19 +232,19 @@
     },
     {
       "flow": "loanAccountAssetCriteriaJob",
-      "verify_mode": "none",
+      "verify_mode": "runtime",
       "harness_ready": "PARTIAL",
-      "blocker": "criteria-failed-soft",
+      "blocker": "SU-FLOW-NPA-CRITERIA-FLIP",
       "registry": "flowtest.dpd_npa",
-      "note": "job FAILED soft; NPA slab not flipped"
+      "note": "F4 triage: fixture selected REGULAR_TO_NPA; postTransaction fails varchar(64)/code 333 then SkipListener CCE — is_npa not flipped"
     },
     {
       "flow": "loanAccountAssetClassificationJob",
-      "verify_mode": "none",
+      "verify_mode": "runtime",
       "harness_ready": "PARTIAL",
       "blocker": "npa-slab-unchanged",
       "registry": "flowtest.dpd_npa",
-      "note": "ran COMPLETED; is_npa still false"
+      "note": "ran COMPLETED; is_npa still false after criteria FAIL"
     },
     {
       "flow": "dpiAccrualCalculation",
@@ -264,5 +268,5 @@
       "registry": "dpic.two_emi_full_chain"
     }
   ],
-  "self_report": "FLOWTEST coverage YES 14/35 = 40.0%"
+  "self_report": "FLOWTEST coverage YES 14/35 = 40.0% (F4 onboarded 4 flows as NO/PARTIAL — no YES flip without green money)"
 }
