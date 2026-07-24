@@ -4,6 +4,7 @@
 #       → APPROVE TRIAL with full total (PASS) → APPROVE TRIAL excluding billed DPI (132268).
 # Note: loanPrepayment CREATE REAL needs BRE :8025 (getForeclosureRoles). When BRE is down,
 #       CREATE fails LOS-0118 after amount validation; this harness still proves the approve gate.
+#       For full CREATE locally: bash scripts/dcf_sanity/local_bre_stub.sh ensure (harness-only).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
