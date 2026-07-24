@@ -1,3 +1,7 @@
+## 2026-07-24 | accounting | TDPQA-72 L1a Summary Accrued on live schedule only
+
+`GetInterestAccrualDetailsProcessor` (getLoanAccountSummaryDetails only) sums Accrued on live installment lines; excludes Accrued still linked to soft-deleted schedule rows. Shared money-path Accrued totals unchanged. Local proof parent 6004134925: Accrued-all 2707 → live 2681 = Original 2681.
+
 ## 2026-07-24 | dcf harness | TDPQA-72 default child FC = loanPrepayment (ICF_USE_LOAN_PREPAYMENT=1)
 
 Vikram non-last child FC path defaults to webapp loanPrepayment (parent PPP + RSTCRE). Opt-in Sim A: ICF_USE_LOAN_PREPAYMENT=0 for individualChildLoanForeclosure only. Parent POS≠remaining after ICF was harness-only — not an Accounting product bug.
