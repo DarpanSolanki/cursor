@@ -1,37 +1,36 @@
-# SELF-REPORT — week of 2026-07-22
+# SELF-REPORT — week of 2026-07-24
 
-Generated: 2026-07-22T15:49:44Z · Upgrade 8 self-metrics
+Generated: 2026-07-24T21:33:17Z · Upgrade 8 self-metrics
 
 ## Fixed tax
-- alwaysApply bytes: **30120** / soft ceiling **35000** — OK
-- largest offenders: 00-workspace-core.mdc=7855, 10-quality-gates.mdc=7449, darpan.mdc=5940, 30-kg-discipline.mdc=4544, 20-ship-gates.mdc=4332
+- alwaysApply bytes: **31972** / soft ceiling **35000** — OK
+- largest offenders: 00-workspace-core.mdc=8953, 10-quality-gates.mdc=7717, darpan.mdc=5940, 20-ship-gates.mdc=4818, 30-kg-discipline.mdc=4544
 
 ## Speed (wall-clock by process class)
-- `question`: p50=0.01s p95=0.01s n=1
-- `read-only-rca`: p50=0.02s p95=0.02s n=1
+- `batch-dpi`: p50=0.01s p95=0.01s n=4
+- `docs-kb`: p50=0.02s p95=0.02s n=3
+- `money-fix`: p50=0.01s p95=0.02s n=8
+- `non-money-fix`: p50=0.01s p95=0.02s n=29
+- `question`: p50=0.01s p95=0.02s n=20
+- `read-only-rca`: p50=0.01s p95=0.02s n=19
 
 ## KG
-- cache hit ratio (telemetry window): 0% (hit=0 miss=5)
-- gate hits (PROVISIONAL): 8 — revisit kg-profiles.md if ≥8/week
+- cache hit ratio (telemetry window): 0% (hit=0 miss=19)
+- gate hits (PROVISIONAL): 1 — revisit kg-profiles.md if ≥8/week
+- map-completeness: map-completeness: overall=98.8% req=100.0% table=97.5% doc=393/393 topic=153 sched=16 excluded=4
 
 ## QA bar
 - enforced acceptance domains: **4/21** — death_foreclosure, disbursement, repayment, foreclosure
-- money verify_mode coverage: **56/56**
-- proposals: total=20 drafts=2 gap_stubs=18
-- flaky: flaky: demo.case: 2/3 fails
+- money verify_mode coverage: **63/63**
+- flow-coverage (live harness YES): **7/35 (20.0%)**
+- proposals: total=26 drafts=2 gap_stubs=18
+- flaky: flaky: batch.interest_accrual_posting: 10/10 fails; dcf.group_parent_last_child_e2e: 7/10 fails; dpic.overview_api: 6/6 fails; dcf.group_parent_last_child_e2e_clean: 5/7 fails; disbursement.quick: 5/7 fails; dpic.summary_api: 4/4 fails; dcf.vikram_fc_rstcre_dfc_e2e: 4/5 fails; ntest.dcf_e2e_fail_exit.sim: 3/10 fails; dpic.part_prepayment_write_e2e: 3/3 fails; dpic.foreclosure_bpd_day_window_sim: 3/3 fails; dcf.group_parent_last_child_fresh_e2e: 3/5 fails; demo.case: 2/3 fails; dcf.force_bill_crn_sim: 2/10 fails; ntest.dcf_e2e_fail_exit: 2/4 fails; tmp.fail: 2/2 fails
 
 ## Env / ratchets
 - env-smoke: see `.cursor/workspace-ops-state.md` § Env smoke
 - money-cell process ratchet + acceptance enforced_domains ratchet: active
+- flow_coverage.json ratchet: harness_ready YES count must not decrease
 
 ## Red flags
 - gap stubs still high (18)
-- KG gate hits 8 — consider kg-profiles
 
-## KG map-completeness
-- map-completeness: overall=98.8% req=100.0% table=97.5% doc=392/392 topic=153 sched=16 excluded=4
-- measured: 2026-07-23T08:46:54Z
-## Self-upgrade (2026-07-23)
-- unincorporated findings: 0 (oldest age n/a)
-- unincorporated findings: 2 (oldest age 0d)
-- query-gate runs=0 WARN=1 FAIL=0 (2026-07-24)

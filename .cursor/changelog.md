@@ -1,3 +1,6 @@
+## 2026-07-25 | workspace | FLOWTEST F1 — extract flow-agnostic harness core + RSTCRE pilot
+Shared `scripts/testing/flowtest/` (lock/fixture profiles/asserts/runner); DFC wraps same core; registry `flowtest.rstcre_spine` + domains restructuring impact; `flow_coverage.json` ratchet + SELF-REPORT %. Pilot 54s PASS; DFC parity 187s S1-S8 PASS.
+
 ## 2026-07-25 | workspace | FC/DFC fixtures closed + LMS-wide impact + KG self-learn
 - Harness: dcf_fixture_backup restores account+labd+iad; pin 6000137433 re-snapped; Vikram→fresh default; Obs1b accumulate fallback; quarantine overdue-window + pinned-Vikram 134207.
 - LMS-wide: lms_service_domains.json/py + impact_tests mandatory health.* for LOS/payments/actor/…; ntest quarantine skip; enrichment-sync CASES→FULL if kg.jsonl missing; hooks drain learning_bus.

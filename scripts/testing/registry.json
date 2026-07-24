@@ -23,7 +23,7 @@
       "dpi",
       "restructuring"
     ],
-    "title": "getLoanAccountOverviewDetails — DPI amounts",
+    "title": "getLoanAccountOverviewDetails \u2014 DPI amounts",
     "service": "accounting",
     "api": "getLoanAccountOverviewDetails",
     "request": {
@@ -55,7 +55,7 @@
       "dpi",
       "restructuring"
     ],
-    "title": "getLoanAccountBPIAmount — bpi_amount + bpd_amount (restructuring)",
+    "title": "getLoanAccountBPIAmount \u2014 bpi_amount + bpd_amount (restructuring)",
     "service": "accounting",
     "api": "getLoanAccountBPIAmount",
     "request": {
@@ -87,7 +87,7 @@
       "dpi",
       "restructuring"
     ],
-    "title": "getLoanAccountSummaryDetails — Loan 360 dpi_details block",
+    "title": "getLoanAccountSummaryDetails \u2014 Loan 360 dpi_details block",
     "service": "accounting",
     "api": "getLoanAccountSummaryDetails",
     "request": {
@@ -122,7 +122,7 @@
     "tags": [
       "dpi"
     ],
-    "title": "fetchLoanForeclosureSimulationDetails — billed_dpi + bpd_amount",
+    "title": "fetchLoanForeclosureSimulationDetails \u2014 billed_dpi + bpd_amount",
     "service": "accounting",
     "api": "fetchLoanForeclosureSimulationDetails",
     "defaults": {
@@ -147,7 +147,7 @@
       "foreclosure_simulation_details.bpd_amount",
       "foreclosure_simulation_details.balance_principal"
     ],
-    "note": "LAN maturity must be after FORECLOSURE_DATE; DEFAULT requires FD >= value-date (wall clock in test env). BPD: DpiForeclosureBrokenPeriodService projects from business date (not nextDay) + HALF_UP 0dp — QA LAN 6003768627 FC 29-Jul-2026 expects bpd≈29 (persisted~10 + 9×daily~2.082).",
+    "note": "LAN maturity must be after FORECLOSURE_DATE; DEFAULT requires FD >= value-date (wall clock in test env). BPD: DpiForeclosureBrokenPeriodService projects from business date (not nextDay) + HALF_UP 0dp \u2014 QA LAN 6003768627 FC 29-Jul-2026 expects bpd\u224829 (persisted~10 + 9\u00d7daily~2.082).",
     "acceptance": {
       "dimensions": [
         "adjacent_sibling"
@@ -162,7 +162,7 @@
       "dpi",
       "foreclosure"
     ],
-    "title": "DEFAULT FC sim twice — bpd_amount increases (SDCP-11016)",
+    "title": "DEFAULT FC sim twice \u2014 bpd_amount increases (SDCP-11016)",
     "cmd": "bash scripts/dpic/run_foreclosure_bpd_growth_e2e.sh",
     "env": {
       "ACCOUNT_NUMBER": "6004055825",
@@ -189,7 +189,7 @@
       "dpi",
       "foreclosure"
     ],
-    "title": "getLoanForeclosureDetails — billed_dpi_details + bpd_details",
+    "title": "getLoanForeclosureDetails \u2014 billed_dpi_details + bpd_details",
     "service": "accounting",
     "api": "getLoanForeclosureDetails",
     "request": {
@@ -241,7 +241,7 @@
       "dpi",
       "repayment"
     ],
-    "title": "loanRepayment — billed DPI appropriation + dpi_amount on payment row",
+    "title": "loanRepayment \u2014 billed DPI appropriation + dpi_amount on payment row",
     "cmd": "bash scripts/dpic/run_dpi_repayment_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -301,7 +301,7 @@
           "checked_by": "dpic.repayment_e2e loan_account readback"
         }
       ],
-      "note": "U7 acceptance — value-level asserts cite dpic repayment e2e; promote/strengthen when suite upgrades"
+      "note": "U7 acceptance \u2014 value-level asserts cite dpic repayment e2e; promote/strengthen when suite upgrades"
     }
   },
   "dpic.repayment_reversal_e2e": {
@@ -314,7 +314,7 @@
       "repayment",
       "reversal"
     ],
-    "title": "loanRepayment then reversal — DPI dues restored",
+    "title": "loanRepayment then reversal \u2014 DPI dues restored",
     "cmd": "bash scripts/dpic/run_dpi_repayment_reversal_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -333,7 +333,7 @@
       "dpi",
       "integration"
     ],
-    "title": "DPI extended regression — all consumer flows (batch, APIs, repay, reversal, waiver)",
+    "title": "DPI extended regression \u2014 all consumer flows (batch, APIs, repay, reversal, waiver)",
     "cmd": "bash scripts/dpic/run_dpi_extended_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -349,7 +349,7 @@
       "dpi",
       "preflight"
     ],
-    "title": "DPI extended regression preflight — DB, catalogues, services, registry",
+    "title": "DPI extended regression preflight \u2014 DB, catalogues, services, registry",
     "cmd": "bash scripts/dpic/run_dpi_regression_preflight.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -362,7 +362,7 @@
       "dpi",
       "part-prepayment"
     ],
-    "title": "getPartPrepaymentBPIAmount — bpd_amount for rescheduling date",
+    "title": "getPartPrepaymentBPIAmount \u2014 bpd_amount for rescheduling date",
     "service": "accounting",
     "api": "getPartPrepaymentBPIAmount",
     "request": {
@@ -392,7 +392,7 @@
       "dpi",
       "part-prepayment"
     ],
-    "title": "getLoanAccountPartPrepaymentDetails — live bpd_amount (PENDING row)",
+    "title": "getLoanAccountPartPrepaymentDetails \u2014 live bpd_amount (PENDING row)",
     "service": "accounting",
     "api": "getLoanAccountPartPrepaymentDetails",
     "request": {
@@ -437,7 +437,7 @@
       "dpi",
       "part-prepayment"
     ],
-    "title": "getLoanAccountPartPrepaymentDetails — seed PENDING + bpd_amount",
+    "title": "getLoanAccountPartPrepaymentDetails \u2014 seed PENDING + bpd_amount",
     "cmd": "bash scripts/dpic/run_dpi_part_prepayment_details_flow.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -454,7 +454,7 @@
       "dpi",
       "part-prepayment"
     ],
-    "title": "loanAccountPartPrepayment TRIAL — postTransaction + DPI GL legs",
+    "title": "loanAccountPartPrepayment TRIAL \u2014 postTransaction + DPI GL legs",
     "cmd": "bash scripts/dpic/run_dpi_part_prepayment_write_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -475,7 +475,7 @@
       "dpi",
       "foreclosure"
     ],
-    "title": "individualChildLoanForeclosure APPROVE — DPI GL partition legs",
+    "title": "individualChildLoanForeclosure APPROVE \u2014 DPI GL partition legs",
     "cmd": "bash scripts/dpic/run_dpi_foreclosure_write_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -499,7 +499,7 @@
       "repayment",
       "jlg"
     ],
-    "title": "childLoanRepayment — JLG child billed DPI appropriation",
+    "title": "childLoanRepayment \u2014 JLG child billed DPI appropriation",
     "cmd": "bash scripts/dpic/run_dpi_child_repayment_e2e.sh",
     "env": {
       "CHILD_LOAN_ACCOUNT_ID": "8048470",
@@ -526,7 +526,7 @@
       "dpi",
       "npa"
     ],
-    "title": "loanAccountAssetCriteriaJob — REGULAR_TO_NPA DPI GL movement",
+    "title": "loanAccountAssetCriteriaJob \u2014 REGULAR_TO_NPA DPI GL movement",
     "cmd": "bash scripts/dpic/run_dpi_npa_movement_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -538,7 +538,7 @@
   "actor.user_basic": {
     "type": "api",
     "quick": true,
-    "title": "getUserBasicDetails — user + office",
+    "title": "getUserBasicDetails \u2014 user + office",
     "service": "actor",
     "api": "getUserBasicDetails",
     "request": {
@@ -567,7 +567,7 @@
   },
   "accounting.loan_basic": {
     "type": "api",
-    "title": "getLoanAccountBasicDetails — LAN basic loan fields",
+    "title": "getLoanAccountBasicDetails \u2014 LAN basic loan fields",
     "service": "accounting",
     "api": "getLoanAccountBasicDetails",
     "request": {
@@ -594,7 +594,7 @@
   },
   "actor.office_by_ids": {
     "type": "api",
-    "title": "getOfficeCodeAndNameByIds — office lookup by id",
+    "title": "getOfficeCodeAndNameByIds \u2014 office lookup by id",
     "service": "actor",
     "api": "getOfficeCodeAndNameByIds",
     "request": {
@@ -627,7 +627,7 @@
       "dpi",
       "restructuring"
     ],
-    "title": "DPI restructuring API smoke — overview + BPI + Loan 360",
+    "title": "DPI restructuring API smoke \u2014 overview + BPI + Loan 360",
     "cmd": "bash scripts/dpic/run_restructuring_api_smoke.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -640,7 +640,7 @@
       "dpi",
       "batch"
     ],
-    "title": "DPI grace period E2E — accrual starts after grace gate",
+    "title": "DPI grace period E2E \u2014 accrual starts after grace gate",
     "cmd": "bash scripts/dpic/run_grace_dpi_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8057160",
@@ -656,7 +656,7 @@
       "batch",
       "grace"
     ],
-    "title": "DPI grace overlap — EMI2 owns accrual during EMI2 grace; EMI1 sealed",
+    "title": "DPI grace overlap \u2014 EMI2 owns accrual during EMI2 grace; EMI1 sealed",
     "cmd": "bash scripts/dpic/run_grace_overlap_dpi_e2e.sh",
     "note": "Isolates shared LAN 8057160 (hard purge + restore schedule). Purges batch job_time before each fire. Full column audit hides EMI3+ so sealed_unbilled matches billing calendar; open EMI2-grace window may stay unposted. Do not treat COLUMN_AUDIT_FAIL as product bug until isolated re-run.",
     "env": {
@@ -672,7 +672,7 @@
       "dpi",
       "batch"
     ],
-    "title": "DPI multi-EMI overdue — accrual rows stamp latest overdue INT installment_id",
+    "title": "DPI multi-EMI overdue \u2014 accrual rows stamp latest overdue INT installment_id",
     "cmd": "bash scripts/dpic/run_multi_emi_installment_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8057160",
@@ -691,7 +691,7 @@
       "batch",
       "regression"
     ],
-    "title": "DPI two-EMI full chain — daily calc/booking + billing + slice integrity",
+    "title": "DPI two-EMI full chain \u2014 daily calc/booking + billing + slice integrity",
     "cmd": "bash scripts/dpic/run_dpi_two_emi_full_chain.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8057160",
@@ -735,7 +735,7 @@
       "dpi",
       "integration"
     ],
-    "title": "DPI integration — overview/BPI/Loan360 + foreclosure + cross-EOD replay",
+    "title": "DPI integration \u2014 overview/BPI/Loan360 + foreclosure + cross-EOD replay",
     "cmd": "bash scripts/dpic/run_dpi_integration_smoke.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -749,7 +749,7 @@
       "batch",
       "perf"
     ],
-    "title": "DPI batch perf — 10k synthetic LANs, calc (+ optional full EOD)",
+    "title": "DPI batch perf \u2014 10k synthetic LANs, calc (+ optional full EOD)",
     "cmd": "bash scripts/dpic/run_dpi_batch_perf_e2e.sh",
     "env": {
       "SCENARIO": "chunk10000",
@@ -762,13 +762,13 @@
   },
   "dpic.dpi_regression": {
     "type": "flow",
-    "title": "Full DPI regression — restructuring APIs + foreclosure sim + EOD + grace",
+    "title": "Full DPI regression \u2014 restructuring APIs + foreclosure sim + EOD + grace",
     "cmd": "bash scripts/dpic/run_dpi_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
       "JOB_TIME": "1781699400000"
     },
-    "note": "DEPRECATED — prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)"
+    "note": "DEPRECATED \u2014 prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)"
   },
   "dpic.dpi_max_regression": {
     "type": "flow",
@@ -778,7 +778,7 @@
       "batch",
       "regression"
     ],
-    "title": "DPI max regression — multi-EMI + grace + EOD + post-EOD SQL + APIs + idempotent replay",
+    "title": "DPI max regression \u2014 multi-EMI + grace + EOD + post-EOD SQL + APIs + idempotent replay",
     "cmd": "bash scripts/dpic/run_dpi_max_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -786,7 +786,7 @@
       "MULTI_EMI_JOB_TIME": "1782563400000",
       "GRACE_JOB_TIME": "1779280200000"
     },
-    "note": "DEPRECATED — prefer dpic.full_regression (DPI_REGRESSION_PROFILE=full)",
+    "note": "DEPRECATED \u2014 prefer dpic.full_regression (DPI_REGRESSION_PROFILE=full)",
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
@@ -794,12 +794,12 @@
   },
   "dpic.demo.status": {
     "type": "flow",
-    "title": "DPIC demo — show LAN + phase readiness",
+    "title": "DPIC demo \u2014 show LAN + phase readiness",
     "cmd": "bash scripts/dpic/demo/run_demo.sh status"
   },
   "dpic.preflight": {
     "type": "flow",
-    "title": "DPIC preflight — DB + product EMI + services",
+    "title": "DPIC preflight \u2014 DB + product EMI + services",
     "cmd": "bash scripts/dpic/run_preflight.sh"
   },
   "dpic.setup": {
@@ -809,32 +809,32 @@
   },
   "dpic.demo.phase1": {
     "type": "flow",
-    "title": "DPIC demo phase 1 — disburse + fast EOD jobs",
+    "title": "DPIC demo phase 1 \u2014 disburse + fast EOD jobs",
     "cmd": "bash scripts/dpic/demo/run_demo.sh phase1"
   },
   "dpic.demo.phase2": {
     "type": "flow",
-    "title": "DPIC demo phase 2 — GET APIs (DPI response keys)",
+    "title": "DPIC demo phase 2 \u2014 GET APIs (DPI response keys)",
     "cmd": "bash scripts/dpic/demo/run_demo.sh phase2"
   },
   "dpic.demo.phase3": {
     "type": "flow",
-    "title": "DPIC demo phase 3 — loanRepayment",
+    "title": "DPIC demo phase 3 \u2014 loanRepayment",
     "cmd": "bash scripts/dpic/demo/run_demo.sh phase3"
   },
   "dpic.demo.phase4": {
     "type": "flow",
-    "title": "DPIC demo phase 4 — loan transaction reversal (INITIATE + APPROVE)",
+    "title": "DPIC demo phase 4 \u2014 loan transaction reversal (INITIATE + APPROVE)",
     "cmd": "bash scripts/dpic/demo/run_demo.sh phase4"
   },
   "dpic.demo.all": {
     "type": "flow",
-    "title": "DPIC demo — all 4 phases (automation only, not live presentation)",
+    "title": "DPIC demo \u2014 all 4 phases (automation only, not live presentation)",
     "cmd": "bash scripts/dpic/demo/run_demo.sh all"
   },
   "dpic.demo_verify": {
     "type": "flow",
-    "title": "DPIC — ntest API verify (uses scripts/scratch/dpic_demo_state.env)",
+    "title": "DPIC \u2014 ntest API verify (uses scripts/scratch/dpic_demo_state.env)",
     "cmd": "bash scripts/dpic/run_demo_api_verify.sh"
   },
   "dpic.full_gate": {
@@ -846,7 +846,7 @@
       "batch",
       "gate"
     ],
-    "title": "DPI full gate — fresh LAN + dual billing + fixture + certify",
+    "title": "DPI full gate \u2014 fresh LAN + dual billing + fixture + certify",
     "cmd": "bash scripts/dpic/run_dpi_full_gate.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -863,7 +863,7 @@
       "regression"
     ],
     "ship_scope": "manual",
-    "title": "DPI full regression — profile-scoped QA battery (quick|standard|full|maturity)",
+    "title": "DPI full regression \u2014 profile-scoped QA battery (quick|standard|full|maturity)",
     "cmd": "bash scripts/dpic/run_dpi_full_regression.sh",
     "env": {
       "DPI_REGRESSION_PROFILE": "standard",
@@ -892,7 +892,7 @@
       "ud",
       "regression"
     ],
-    "title": "DPI UD compliance — full profile (manual verify-dpi / release only)",
+    "title": "DPI UD compliance \u2014 full profile (manual verify-dpi / release only)",
     "cmd": "bash scripts/dpic/run_dpi_ud_compliance.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -961,7 +961,7 @@
       "batch",
       "regression"
     ],
-    "title": "DPI booking anchor — next-EMI due seal must post (77921d275f)",
+    "title": "DPI booking anchor \u2014 next-EMI due seal must post (77921d275f)",
     "cmd": "bash scripts/dpic/run_dpi_booking_anchor_e2e.sh",
     "env": {
       "END_DATE": "2026-06-15",
@@ -1076,7 +1076,7 @@
       "ud",
       "regression"
     ],
-    "title": "DPI EMI due on 1st — Jun-30 month-end accrual not dropped (anchor segStart)",
+    "title": "DPI EMI due on 1st \u2014 Jun-30 month-end accrual not dropped (anchor segStart)",
     "cmd": "bash scripts/dpic/run_dpi_emi_first_anchor_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -1100,14 +1100,14 @@
       "ud",
       "regression"
     ],
-    "title": "DPI EOD txn regression — regular 1327/1330 + NPA 1328/1329, month-end job_time, partitions",
+    "title": "DPI EOD txn regression \u2014 regular 1327/1330 + NPA 1328/1329, month-end job_time, partitions",
     "cmd": "bash scripts/dpic/run_dpi_eod_txn_regression.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
       "MONTH_END_JOB_TIME": "1782844200000",
       "NEXT_EMI_JOB_TIME": "1782930600000"
     },
-    "note": "Ship guard for dpiAccrualBooking/dpiBilling — QA1-class Jul-1 job_time + txn_master + partition chain",
+    "note": "Ship guard for dpiAccrualBooking/dpiBilling \u2014 QA1-class Jul-1 job_time + txn_master + partition chain",
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
@@ -1124,7 +1124,7 @@
       "ud",
       "billing"
     ],
-    "title": "DPI billing UD §5.4 — due on next EMI, aggregated txn",
+    "title": "DPI billing UD \u00a75.4 \u2014 due on next EMI, aggregated txn",
     "cmd": "bash scripts/dpic/run_dpi_billing_ud_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -1149,7 +1149,7 @@
       "billing",
       "post_maturity"
     ],
-    "title": "DPI post-maturity billing — maturity monthly anchor after last EMI",
+    "title": "DPI post-maturity billing \u2014 maturity monthly anchor after last EMI",
     "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -1175,7 +1175,7 @@
       "post_maturity",
       "catchup"
     ],
-    "title": "DPI post-maturity catch-up — late billing run bills passed monthly anchors",
+    "title": "DPI post-maturity catch-up \u2014 late billing run bills passed monthly anchors",
     "cmd": "bash scripts/dpic/run_dpi_post_maturity_billing_catchup_e2e.sh",
     "env": {
       "LOAN_ACCOUNT_ID": "8060160",
@@ -1216,7 +1216,7 @@
       "batch",
       "release"
     ],
-    "title": "DPI pre-release gate — fresh LAN + dual billing + schema contract + certify",
+    "title": "DPI pre-release gate \u2014 fresh LAN + dual billing + schema contract + certify",
     "cmd": "bash scripts/dpic/run_dpi_release_gate.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -1231,7 +1231,7 @@
       "dpi",
       "verify"
     ],
-    "title": "DPI QA verify — schema + pipeline + posting checklist on fixture LAN",
+    "title": "DPI QA verify \u2014 schema + pipeline + posting checklist on fixture LAN",
     "cmd": "bash scripts/dpic/lib/run_dpi_qa_verify.sh 8060160 2026-07-19",
     "verify_mode": "runtime",
     "acceptance": {
@@ -1246,7 +1246,7 @@
       "dpi",
       "batch"
     ],
-    "title": "DPI dual billing — two due rows + two GL billing txns via schedule date jumps",
+    "title": "DPI dual billing \u2014 two due rows + two GL billing txns via schedule date jumps",
     "cmd": "bash scripts/dpic/run_dpi_dual_billing_e2e.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -1263,7 +1263,7 @@
       "ship",
       "release"
     ],
-    "title": "DPI push release — fresh disburse + column contract on proof LAN",
+    "title": "DPI push release \u2014 fresh disburse + column contract on proof LAN",
     "cmd": "bash scripts/dpic/run_dpi_fresh_disburse_e2e.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -1277,7 +1277,7 @@
     "tags": [
       "dpi"
     ],
-    "title": "DPI sanity — full UD profile (not ship-loop default)",
+    "title": "DPI sanity \u2014 full UD profile (not ship-loop default)",
     "cmd": "bash scripts/dpic/run_dpi_ud_compliance.sh",
     "env": {
       "JOB_TIME": "1781699400000",
@@ -1314,7 +1314,7 @@
       "certify",
       "disburse"
     ],
-    "title": "DPI certification — fixture mode (pre_emi fresh LAN; overdue on demo 8060160)",
+    "title": "DPI certification \u2014 fixture mode (pre_emi fresh LAN; overdue on demo 8060160)",
     "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh",
     "env": {
       "ANCHOR_DATE": "2026-06-23"
@@ -1346,7 +1346,7 @@
       "regression",
       "134497"
     ],
-    "title": "DPI cross-EOD replay guard — no duplicate client_ref (134497)",
+    "title": "DPI cross-EOD replay guard \u2014 no duplicate client_ref (134497)",
     "cmd": "bash scripts/dpic/run_dpi_cross_eod_replay_guard.sh",
     "env": {
       "JOB_TIME": "1784464200000",
@@ -1406,7 +1406,7 @@
       "verify_mode": "processor_mirror_sim",
       "note": "Writer-order principal split matrix; not a substitute for last-child e2e acceptance."
     },
-    "note": "S07/S11/S12/S13 matrix — writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
+    "note": "S07/S11/S12/S13 matrix \u2014 writer order model; QA3 LAN 6005077725 fixture when DCF_SIM_QA3=1"
   },
   "dcf.force_bill_crn_sim": {
     "type": "flow",
@@ -1430,7 +1430,7 @@
       "verify_mode": "processor_mirror_sim",
       "note": "Mirrors Writer CRN formula; full sequential parent FB e2e remains dcf.group_parent_last_child_e2e (GAP-078)."
     },
-    "note": "GAP-078 @935c52743 — buildForceBillClientReference appends deathForeclosureDetailsId. Blocker for RUNTIME: /tmp/dcf_e2e.lock when sibling harness owns the fixture."
+    "note": "GAP-078 @935c52743 \u2014 buildForceBillClientReference appends deathForeclosureDetailsId. Blocker for RUNTIME: /tmp/dcf_e2e.lock when sibling harness owns the fixture."
   },
   "ntest.dcf_e2e_fail_exit": {
     "type": "flow",
@@ -1451,7 +1451,7 @@
         "dirty_state"
       ],
       "verify_mode": "processor_mirror_sim",
-      "note": "Promoted from draft.ntest.dcf_e2e_fail_exit — printed FAIL must exit ≠0; registry defaults must reach e2e env."
+      "note": "Promoted from draft.ntest.dcf_e2e_fail_exit \u2014 printed FAIL must exit \u22600; registry defaults must reach e2e env."
     },
     "note": "Harness pin for TDPQA-72 close-out. Does not exercise product money path."
   },
@@ -1466,7 +1466,7 @@
       "tdpqa-72",
       "product_decision"
     ],
-    "title": "Non-last RSCH amount==principal — Out-of-scope pending product",
+    "title": "Non-last RSCH amount==principal \u2014 Out-of-scope pending product",
     "cmd": "DCF_PRODUCT_PIN=non_last_rsch_amount_eq_principal python3 scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
     "acceptance": {
       "dimensions": [
@@ -1474,7 +1474,7 @@
       ],
       "verify_mode": "runtime",
       "na": {
-        "amount_eq_principal_non_last": "PENDING product decision — last-child Obs2 remains fail-closed in dcf.group_parent_last_child_e2e; non-last currently allows lapd.amount≠principal (tm parity only)."
+        "amount_eq_principal_non_last": "PENDING product decision \u2014 last-child Obs2 remains fail-closed in dcf.group_parent_last_child_e2e; non-last currently allows lapd.amount\u2260principal (tm parity only)."
       },
       "note": "Promoted from draft.dcf.non_last_rsch_amount_eq_principal as Out-of-scope-documented. Not a QA Pass for enforcing non-last amount==principal."
     },
@@ -1520,7 +1520,7 @@
       "tdpqa-72",
       "product_decision"
     ],
-    "title": "Parent vs member future INT ₹1 — Out-of-scope pending product",
+    "title": "Parent vs member future INT \u20b91 \u2014 Out-of-scope pending product",
     "cmd": "DCF_PRODUCT_PIN=parent_member_future_int_parity python3 scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
     "acceptance": {
       "dimensions": [
@@ -1528,9 +1528,9 @@
       ],
       "verify_mode": "runtime",
       "na": {
-        "future_int_parity_rupee": "PENDING product decision (Vikram 07-22 ₹1 schedule INT). No value assert until fix vs tolerance chosen."
+        "future_int_parity_rupee": "PENDING product decision (Vikram 07-22 \u20b91 schedule INT). No value assert until fix vs tolerance chosen."
       },
-      "note": "Promoted from draft.dcf.parent_member_future_int_parity as Out-of-scope-documented. Not a QA Pass for ₹1 drift."
+      "note": "Promoted from draft.dcf.parent_member_future_int_parity as Out-of-scope-documented. Not a QA Pass for \u20b91 drift."
     },
     "note": "Do not invent product fix. Options: fix drift OR tolerance-document with sign-off."
   },
@@ -1547,7 +1547,7 @@
       "perf",
       "death_foreclosure"
     ],
-    "title": "DCF insurance RE_UPLOAD — index coverage + EXPLAIN audit (read-only DB)",
+    "title": "DCF insurance RE_UPLOAD \u2014 index coverage + EXPLAIN audit (read-only DB)",
     "cmd": "bash scripts/dcf_sanity/run_dcf_insurance_reupload_index_audit.sh",
     "env": {
       "DCF_INDEX_AUDIT_DB": "qa4"
@@ -1646,9 +1646,61 @@
       "na": {
         "replay_idempotency": "Full job replay on same claim not in this e2e; force-bill labd path is idempotent in writer (same numeric client_ref no-op). Blocker: no second insurance-job fire harness without claim reset."
       },
-      "note": "ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 (default): Obs1–3 + RSTCRE fail-closed; GAP-074 INT/DPI Out-of-scope. Scope=full FAILS on parent INT pending. Last-child amount: Obs2 amount==principal excess=0 (NOT child==parent). Non-last: tm parity. Dirty: DCF_SEED_EMI_LABD=1. Pin DEATH_DATE=2025-08-02."
+      "note": "ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 (default): Obs1\u20133 + RSTCRE fail-closed; GAP-074 INT/DPI Out-of-scope. Scope=full FAILS on parent INT pending. Last-child amount: Obs2 amount==principal excess=0 (NOT child==parent). Non-last: tm parity. Dirty: DCF_SEED_EMI_LABD=1. Pin DEATH_DATE=2025-08-02."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE → childLoanEventProcessingBatchJob → childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
+    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE \u2192 childLoanEventProcessingBatchJob \u2192 childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
+  },
+  "flowtest.rstcre_spine": {
+    "type": "flow",
+    "api": "childLoanEventProcessingBatchJob",
+    "apis": [
+      "childLoanEventProcessingBatchJob",
+      "childLoanRestructuring"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "rstcre",
+      "restructuring",
+      "f1"
+    ],
+    "title": "RSTCRE spine drain (F1 flowtest pilot)",
+    "cmd": "bash scripts/testing/flowtest/run_rstcre_spine.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "CHILD2_LAN": "6000137441",
+      "DEATH_DATE": "2025-08-02",
+      "SEED_EXTRA": "0",
+      "DCF_SEED_EMI_LABD": "0",
+      "ACCEPTANCE_STRICT": "1",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "dimensions": [
+        "happy_path",
+        "adjacent_sibling"
+      ],
+      "verify_mode": "runtime",
+      "db_asserts": [
+        {
+          "table": "loan_account_events_queue",
+          "assert": "RSTCRE rows for parent after non-last child DFC reach event_status=C with filler_1 NULL",
+          "checked_by": "RSTCRE drain PASS rows=\u2026 in flowtest.rstcre_spine"
+        },
+        {
+          "table": "loan_account",
+          "assert": "parent remains ACTIVE after RSTCRE drain; remaining child ACTIVE; non-last child CLOSED",
+          "checked_by": "loan_status PASS lines"
+        }
+      ],
+      "note": "F1 pilot \u2014 proves flowtest core extraction. Uses DCF fixture restore + one non-last DFC seed then childLoanEventProcessingBatchJob."
+    },
+    "note": "Pilot for scripts/testing/flowtest/. Shared lock/fixture/asserts. Does not replace dcf.group_parent_last_child_e2e."
   },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
     "type": "flow",
@@ -1663,7 +1715,7 @@
       "tdpqa-72",
       "vikram"
     ],
-    "title": "Vikram QA path: child1 loanPrepayment FC → RSTCRE → child2 last DFC (TDPQA-72)",
+    "title": "Vikram QA path: child1 loanPrepayment FC \u2192 RSTCRE \u2192 child2 last DFC (TDPQA-72)",
     "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
     "defaults": {
       "DCF_FRESH_GROUP": "1",
@@ -1713,16 +1765,16 @@
         },
         {
           "table": "interest_accrual_details",
-          "assert": "Obs3 Accrued<=Original (+₹1) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
+          "assert": "Obs3 Accrued<=Original (+\u20b91) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
           "checked_by": "assert_accrued_le_original + assert_no_accrued_on_deleted_installments"
         }
       ],
       "na": {
-        "non_last_rsch_death_foreclosure": "Vikram child1 uses loanPrepayment part-prepayment/RSTCRE — not RSCH_DEATH_FORECLOSURE until child2 last DFC"
+        "non_last_rsch_death_foreclosure": "Vikram child1 uses loanPrepayment part-prepayment/RSTCRE \u2014 not RSCH_DEATH_FORECLOSURE until child2 last DFC"
       },
-      "note": "VIKRAM_PATH=1: child1 regular FC (loanPrepayment DEFAULT→APPROVE_TASK→APPROVE) at death_date midnight IST; child2 last DFC unchanged Obs1–3. SEED_EXTRA=0 clean path. foreclosure_date=_eod_ms_ist(DEATH_DATE)."
+      "note": "VIKRAM_PATH=1: child1 regular FC (loanPrepayment DEFAULT\u2192APPROVE_TASK\u2192APPROVE) at death_date midnight IST; child2 last DFC unchanged Obs1\u20133. SEED_EXTRA=0 clean path. foreclosure_date=_eod_ms_ist(DEATH_DATE)."
     },
-    "note": "TDPQA-72 Vikram QA path (Sim B). Defaults DCF_FRESH_GROUP=1 — pinned 6000137433 overdue settle needs product-70 LOAN_REPAYMENT PTC/IAD (local 134207). Pinned path quarantined as dcf.vikram_fc_rstcre_dfc_e2e_pinned_fixture.",
+    "note": "TDPQA-72 Vikram QA path (Sim B). Defaults DCF_FRESH_GROUP=1 \u2014 pinned 6000137433 overdue settle needs product-70 LOAN_REPAYMENT PTC/IAD (local 134207). Pinned path quarantined as dcf.vikram_fc_rstcre_dfc_e2e_pinned_fixture.",
     "ship_auto": true
   },
   "dcf.group_parent_last_child_e2e_clean": {
@@ -1765,12 +1817,12 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape — never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
           "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ]
     },
-    "note": "Matrix S1 — clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
+    "note": "Matrix S1 \u2014 clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
   },
   "dcf.group_parent_last_child_e2e_full": {
     "type": "flow",
@@ -1808,13 +1860,13 @@
       "db_asserts": [
         {
           "table": "loan_due_details",
-          "assert": "parent INT pending=0 AND DPI pending=0 after last-child DFC under ACCEPTANCE_SCOPE=full (fail-closed code path). Observed PASS on 6000137433@2025-09-15 with int_pending=0 does NOT close GAP-074 — tip 935c52743 still uses child INT_AMT (INT-180 parked @61278d5f8). Residual-exposing fixture still required for honest FAIL; never claim QA Pass for GAP-074.",
+          "assert": "parent INT pending=0 AND DPI pending=0 after last-child DFC under ACCEPTANCE_SCOPE=full (fail-closed code path). Observed PASS on 6000137433@2025-09-15 with int_pending=0 does NOT close GAP-074 \u2014 tip 935c52743 still uses child INT_AMT (INT-180 parked @61278d5f8). Residual-exposing fixture still required for honest FAIL; never claim QA Pass for GAP-074.",
           "checked_by": "assert_parent_last_child INT/DPI pending under ACCEPTANCE_SCOPE=full"
         }
       ],
       "note": "S_full_gap074: gate is live. Product GAP-074 remains OPEN (Out-of-scope for QA Pass claims) until INT-180 merges or a residual-INT fixture FAILS this case. See feedback_int180_deferred_unpushed.md / ASK-057 DEFERRED."
     },
-    "note": "ACCEPTANCE_SCOPE=full fail-closed on parent INT/DPI. DEATH_DATE aligned to 2025-08-02 (same as obs123) — prior 2025-09-15 window on pinned 6000137433 caused FIXTURE parent POS sync Fail (10482≠11699 overdue drift), not a tip product bug. GAP-074 residual still needs a dedicated residual-exposing fixture; tip mfi_integration_v3.4.2.4 — GAP-074 OPEN."
+    "note": "ACCEPTANCE_SCOPE=full fail-closed on parent INT/DPI. DEATH_DATE aligned to 2025-08-02 (same as obs123) \u2014 prior 2025-09-15 window on pinned 6000137433 caused FIXTURE parent POS sync Fail (10482\u226011699 overdue drift), not a tip product bug. GAP-074 residual still needs a dedicated residual-exposing fixture; tip mfi_integration_v3.4.2.4 \u2014 GAP-074 OPEN."
   },
   "dcf.group_parent_last_child_e2e_full_overdue_window": {
     "type": "flow",
@@ -1823,7 +1875,7 @@
     "verify_mode": "runtime",
     "quarantine": {
       "label": "FIXTURE",
-      "reason": "Pinned 6000137433 @ DEATH_DATE=2025-09-15 fails parent POS sync (overdue PRIN drift parent≠Σ children). Not a tip product regression; use e2e_full @ 2025-08-02 or DCF_FRESH_GROUP=1 for honest full-scope.",
+      "reason": "Pinned 6000137433 @ DEATH_DATE=2025-09-15 fails parent POS sync (overdue PRIN drift parent\u2260\u03a3 children). Not a tip product regression; use e2e_full @ 2025-08-02 or DCF_FRESH_GROUP=1 for honest full-scope.",
       "since": "2026-07-25"
     },
     "tags": [
@@ -1833,7 +1885,7 @@
       "quarantine",
       "gap-074"
     ],
-    "title": "QUARANTINE FIXTURE — full scope overdue death window (POS drift on pin)",
+    "title": "QUARANTINE FIXTURE \u2014 full scope overdue death window (POS drift on pin)",
     "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
     "defaults": {
       "PARENT_LAN": "6000137433",
@@ -1848,7 +1900,7 @@
     "expect": {
       "status": "PASS"
     },
-    "note": "Quarantined FIXTURE — do not ship-gate on this case. Prefer dcf.group_parent_last_child_e2e_full or fresh group."
+    "note": "Quarantined FIXTURE \u2014 do not ship-gate on this case. Prefer dcf.group_parent_last_child_e2e_full or fresh group."
   },
   "dcf.group_parent_last_child_fresh_e2e": {
     "type": "flow",
@@ -1896,13 +1948,13 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape — never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names); ACCEPTANCE_STRICT: TM with 0 partitions FAIL (no soft Out-of-scope)",
           "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ],
-      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (fast spine). SEED_EXTRA=1 PASS with unique receipt CRNs + DCF_FRESH_EMI_MONTHS_BACK=2 (past advance EMI; future dues→EXCESS). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
+      "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (fast spine). SEED_EXTRA=1 PASS with unique receipt CRNs + DCF_FRESH_EMI_MONTHS_BACK=2 (past advance EMI; future dues\u2192EXCESS). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
     },
-    "note": "S09_fresh_group — one-shot LANs; PASS SEED_EXTRA=0 (e.g. 6004092625) and SEED_EXTRA=1 (e.g. 6004093925 EXTRA≈509) @2026-07-22."
+    "note": "S09_fresh_group \u2014 one-shot LANs; PASS SEED_EXTRA=0 (e.g. 6004092625) and SEED_EXTRA=1 (e.g. 6004093925 EXTRA\u2248509) @2026-07-22."
   },
   "disbursement.quick": {
     "type": "flow",
@@ -1913,7 +1965,7 @@
     "tags": [
       "disburse"
     ],
-    "title": "JLG disburseLoan — minimal + column audit",
+    "title": "JLG disburseLoan \u2014 minimal + column audit",
     "cmd": "bash scripts/bin/disburse-quick.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -1957,7 +2009,7 @@
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage.",
       "verify_mode": "runtime"
     },
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values — never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
   },
   "disbursement.redis_inflight_lock_sim": {
     "type": "flow",
@@ -1971,7 +2023,7 @@
       "idempotency",
       "simulation"
     ],
-    "title": "TDPQA-54 — atomic Redis producer and consumer in-flight locks",
+    "title": "TDPQA-54 \u2014 atomic Redis producer and consumer in-flight locks",
     "cmd": "python3 scripts/testing/disbursement/tdpqa54_redis_inflight_lock_sim.py",
     "note": "PROCESSOR_MIRROR_SIM + LOCAL_REDIS_RUNTIME. Reads platform-lib/LOS/Accounting source and proves SET NX PX has one winner under 32 concurrent attempts, TTL is positive, orphaned locks auto-expire, Lua release is owner-safe, duplicate producer/consumer paths do not publish/orchestrate, and ambiguous DEFAULT intermediate replays fail closed. Full multi-pod process-kill E2E remains an environment test.",
     "acceptance": {
@@ -1982,7 +2034,7 @@
       ],
       "na": {
         "happy_path": "Covered by disbursement.any runtime",
-        "downstream_ui": "Lock sim is Redis/idempotency only — UI Out-of-scope-documented"
+        "downstream_ui": "Lock sim is Redis/idempotency only \u2014 UI Out-of-scope-documented"
       }
     }
   },
@@ -2037,7 +2089,7 @@
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage.",
       "verify_mode": "runtime"
     },
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values — never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
   },
   "disbursement.shg": {
     "type": "flow",
@@ -2046,9 +2098,9 @@
     "tags": [
       "disburse"
     ],
-    "title": "SHG disburseLoan — member REP_ACCT + CLB/CLMT batch + column audit",
+    "title": "SHG disburseLoan \u2014 member REP_ACCT + CLB/CLMT batch + column audit",
     "cmd": "bash scripts/bin/disburse-shg-quick.sh",
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values — never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim. SHG: member REP_ACCT required; suite fires childLoanEventProcessingBatchJob; schedule asserted on children.",
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim. SHG: member REP_ACCT required; suite fires childLoanEventProcessingBatchJob; schedule asserted on children.",
     "api": "disburseLoan",
     "verify_mode": "runtime",
     "acceptance": {
@@ -2107,7 +2159,7 @@
       "dpi",
       "simulation"
     ],
-    "title": "TDPFR-547 — DPI due/overdue from per-LAN amountMap (no chunk EC leak)",
+    "title": "TDPFR-547 \u2014 DPI due/overdue from per-LAN amountMap (no chunk EC leak)",
     "cmd": "python3 scripts/testing/collections/tdpfr547_dpi_amountmap_sim.py",
     "note": "PROCESSOR_MIRROR_SIM (not live recurring chunk E2E). Proves LoanRecurringPaymentBatchProcessor builds dpi_due/dpi_overdue from amountMap.getOrDefault(..., ZERO), not shared ExecutionContext. Full E2E needs chunk [hasDPI,noDPI] + Kafka/collection assert. Existing poison collection rows need batch re-run / LMS refresh.",
     "acceptance": {
@@ -2129,9 +2181,9 @@
       "shg",
       "simulation"
     ],
-    "title": "SDCP-11085 — SHG child sanction_date copy on CLB populator",
+    "title": "SDCP-11085 \u2014 SHG child sanction_date copy on CLB populator",
     "cmd": "python3 scripts/testing/disbursement/sdcp11085_child_sanction_date_sim.py",
-    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator puts sanction_date member-first then parent EC; CreateLoanAccountProcessor persists millis; flatten reaches EC. Existing null children need ops re-book/replay. INDL missing stamp is LOS-side — not invented here.",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves ChildLoanBookingEventsQueueDataPopulator puts sanction_date member-first then parent EC; CreateLoanAccountProcessor persists millis; flatten reaches EC. Existing null children need ops re-book/replay. INDL missing stamp is LOS-side \u2014 not invented here.",
     "acceptance": {
       "verify_mode": "processor_mirror_sim",
       "dimensions": [
@@ -2158,7 +2210,7 @@
     ],
     "title": "Parent disburse rejects multi REP_ACCT members; CLB no silent trim",
     "cmd": "python3 scripts/testing/disbursement/clb_rep_acct_dedupe_sim.py",
-    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves CustomValidateDisbursementRepaymentAccountDetailsProcessor.validateMemberRepAcctUniqueness → 134126 when any member has >1 REP_ACCT (before CLB enqueue); populator keeps hasRepAcct skip-append and has NO keepAtMostOneRepAcct. Poison CLB rows still hit createOrUpdate 134126; ops scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql.",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). Proves CustomValidateDisbursementRepaymentAccountDetailsProcessor.validateMemberRepAcctUniqueness \u2192 134126 when any member has >1 REP_ACCT (before CLB enqueue); populator keeps hasRepAcct skip-append and has NO keepAtMostOneRepAcct. Poison CLB rows still hit createOrUpdate 134126; ops scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql.",
     "acceptance": {
       "verify_mode": "processor_mirror_sim",
       "dimensions": [
@@ -2184,9 +2236,9 @@
       "mandate",
       "simulation"
     ],
-    "title": "CLB / createOrUpdateLoanAccount — REP_ACCT must match mandate CASA",
+    "title": "CLB / createOrUpdateLoanAccount \u2014 REP_ACCT must match mandate CASA",
     "cmd": "python3 scripts/testing/disbursement/clb_mandate_match_sim.py",
-    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). After ≤1 REP_ACCT (134126), DIRDR/ACH require ACTIVE/REGISTRATION_PENDING mandate (loan_app then group_id then parent_account_id LAN mandate) and REP_ACCT account_number == mandate CASA; CASH skips. Errors 134382 / 134348. CLB threads loan_application_id + group_id; child create falls back to parent LAN mandate.",
+    "note": "PROCESSOR_MIRROR_SIM (not live SHG CLB E2E). After \u22641 REP_ACCT (134126), DIRDR/ACH require ACTIVE/REGISTRATION_PENDING mandate (loan_app then group_id then parent_account_id LAN mandate) and REP_ACCT account_number == mandate CASA; CASH skips. Errors 134382 / 134348. CLB threads loan_application_id + group_id; child create falls back to parent LAN mandate.",
     "acceptance": {
       "verify_mode": "processor_mirror_sim"
     }
@@ -2236,9 +2288,9 @@
       "mandate",
       "idempotency"
     ],
-    "title": "INDL disburseLoan — minimal + column audit",
+    "title": "INDL disburseLoan \u2014 minimal + column audit",
     "cmd": "bash scripts/bin/disburse-indl-quick.sh",
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values — never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim.",
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim.",
     "acceptance": {
       "db_asserts": [
         {
@@ -2525,7 +2577,7 @@
       "standing-instructions",
       "si"
     ],
-    "title": "fetchFailedSIPresentationList — failed SI presentation list (actor user 21)",
+    "title": "fetchFailedSIPresentationList \u2014 failed SI presentation list (actor user 21)",
     "service": "accounting",
     "api": "fetchFailedSIPresentationList",
     "request": {
@@ -2624,12 +2676,12 @@
   },
   "foreclosure.setup": {
     "type": "flow",
-    "title": "Foreclosure local setup — schema align + accounting/payments services",
+    "title": "Foreclosure local setup \u2014 schema align + accounting/payments services",
     "cmd": "bash scripts/bin/foreclosure-local-setup.sh --restart"
   },
   "foreclosure.cancel_collections": {
     "type": "api",
-    "title": "cancelCollections — payments closure hook for foreclosure LAN",
+    "title": "cancelCollections \u2014 payments closure hook for foreclosure LAN",
     "service": "payments",
     "api": "cancelCollections",
     "request": {
@@ -2643,13 +2695,13 @@
   },
   "foreclosure.loan_prepayment_real": {
     "type": "flow",
-    "title": "loanPrepayment APPROVE REAL — use foreclosure.sdcp10255_e2e (needs setup + headers)",
+    "title": "loanPrepayment APPROVE REAL \u2014 use foreclosure.sdcp10255_e2e (needs setup + headers)",
     "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh",
     "note": "Alias for full E2E; standalone ntest auto loanPrepayment lacks APPROVE/REAL headers"
   },
   "foreclosure.sdcp10255_e2e": {
     "type": "flow",
-    "title": "SDCP-10255 full local E2E — duplicate pending, fix, REAL, payments sync",
+    "title": "SDCP-10255 full local E2E \u2014 duplicate pending, fix, REAL, payments sync",
     "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh"
   },
   "foreclosure.individual_child": {
@@ -2661,7 +2713,7 @@
       "foreclosure",
       "dpi"
     ],
-    "title": "individualChildLoanForeclosure APPROVE REAL — simulation-built payload (UpdateDueDetails DPI path)",
+    "title": "individualChildLoanForeclosure APPROVE REAL \u2014 simulation-built payload (UpdateDueDetails DPI path)",
     "cmd": "bash scripts/testing/foreclosure/individual-child-foreclosure-e2e.sh",
     "verify_mode": "runtime",
     "acceptance": {
@@ -2716,7 +2768,7 @@
           "checked_by": "individual_child foreclosure e2e due readback"
         }
       ],
-      "note": "U7 acceptance — individual child foreclosure money bar"
+      "note": "U7 acceptance \u2014 individual child foreclosure money bar"
     }
   },
   "foreclosure.shg_bpi_parity": {
@@ -2729,7 +2781,7 @@
       "shg",
       "bpi"
     ],
-    "title": "SDCP-11058 SHG parent FC BPI parity — sum(child.bpi)==parent.bpi for any N",
+    "title": "SDCP-11058 SHG parent FC BPI parity \u2014 sum(child.bpi)==parent.bpi for any N",
     "cmd": "UNIT_ONLY=1 bash scripts/testing/foreclosure/sdcp-11058-shg-bpi-parity.sh",
     "note": "Unit: getDistributedAmountEqually mirror for N=1..20 (incl N=3). Full FC: omit UNIT_ONLY; REQUIRE_FULL_E2E=1 to hard-fail. Assert is sum(child.bpi)==parent.bpi for any N (not 39+39).",
     "verify_mode": "runtime",
@@ -2755,7 +2807,7 @@
       "shg",
       "simulation"
     ],
-    "title": "TDPQA-102 — child reopen orch/processor parity for loan payment components",
+    "title": "TDPQA-102 \u2014 child reopen orch/processor parity for loan payment components",
     "cmd": "python3 scripts/testing/reopening/tdpqa102_child_reopen_payments_sim.py",
     "note": "Code-backed ORCH_SIBLING_SIM + PROCESSOR_MIRROR_SIM (not live SHG reopen E2E). Upgrade to reopening.child_e2e when foreclosed parent+child + events batch fixture exists. Proves childLoanReopening includes loanAccountPaymentsDetailsReversalProcessor parity with parent approve path.",
     "acceptance": {
@@ -2764,17 +2816,17 @@
   },
   "workspace.doctor": {
     "type": "flow",
-    "title": "Workspace doctor — KG + DB + registry (quick)",
+    "title": "Workspace doctor \u2014 KG + DB + registry (quick)",
     "cmd": "bash scripts/bin/workspace-doctor.sh --quick"
   },
   "workspace.doctor.full": {
     "type": "flow",
-    "title": "Workspace doctor — full smoke (KG CLI + hooks)",
+    "title": "Workspace doctor \u2014 full smoke (KG CLI + hooks)",
     "cmd": "bash scripts/bin/workspace-doctor.sh --full"
   },
   "workspace.doctor.services": {
     "type": "flow",
-    "title": "Workspace doctor — quick + service HTTP checks",
+    "title": "Workspace doctor \u2014 quick + service HTTP checks",
     "cmd": "bash scripts/bin/workspace-doctor.sh --services"
   },
   "dpic.foreclosure_bpd_day_window_sim": {
@@ -2790,7 +2842,7 @@
       "dpi",
       "foreclosure"
     ],
-    "title": "DPI foreclosure BPD day-window (business start + HALF_UP → ₹29)",
+    "title": "DPI foreclosure BPD day-window (business start + HALF_UP \u2192 \u20b929)",
     "cmd": "python3 scripts/testing/dpi/foreclosure_bpd_day_window_sim.py",
     "note": "PROCESSOR_MIRROR_SIM for DpiForeclosureBrokenPeriodService. Local schema is aligned (dpi_suspense_amount present); runtime dpic.foreclosure_sim currently reaches business validation and fails 134389 because fixture LAN 6004055825 is not ACTIVE.",
     "acceptance": {
@@ -2807,9 +2859,9 @@
       "disburse",
       "unified"
     ],
-    "title": "Unified disburseLoan — PRODUCT_TYPE=INDL|JLG|SHG + column audit",
+    "title": "Unified disburseLoan \u2014 PRODUCT_TYPE=INDL|JLG|SHG + column audit",
     "cmd": "PRODUCT_TYPE=${PRODUCT_TYPE:-JLG} bash scripts/bin/disburse-any-quick.sh",
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values — never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim. Set PRODUCT_TYPE=INDL|JLG|SHG.",
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim. Set PRODUCT_TYPE=INDL|JLG|SHG.",
     "acceptance": {
       "db_asserts": [
         {
@@ -2878,7 +2930,7 @@
       "batch",
       "sp-308"
     ],
-    "title": "loanInstallmentDueNotificationJob — COMPLETED (SP-308 L1 cache path)",
+    "title": "loanInstallmentDueNotificationJob \u2014 COMPLETED (SP-308 L1 cache path)",
     "service": "accounting",
     "api": "loanInstallmentDueNotificationJob",
     "batch_job_name": "loanInstallmentDueNotificationJob",
@@ -2901,7 +2953,7 @@
       "batch",
       "sp-308"
     ],
-    "title": "loanInstallmentBounceNotificationJob — COMPLETED (sibling writer cache)",
+    "title": "loanInstallmentBounceNotificationJob \u2014 COMPLETED (sibling writer cache)",
     "service": "accounting",
     "api": "loanInstallmentBounceNotificationJob",
     "batch_job_name": "loanInstallmentBounceNotificationJob",
@@ -2932,7 +2984,7 @@
     "verify_mode": "runtime",
     "quarantine": {
       "label": "FIXTURE",
-      "reason": "Pinned 6000137433 Vikram overdue settle via loanRepayment AUTO hits 134207 (product 70 LOAN_REPAYMENT PTC/placeholder→IAD missing locally). Not tip product bug. Use dcf.vikram_fc_rstcre_dfc_e2e (fresh) for Sim B.",
+      "reason": "Pinned 6000137433 Vikram overdue settle via loanRepayment AUTO hits 134207 (product 70 LOAN_REPAYMENT PTC/placeholder\u2192IAD missing locally). Not tip product bug. Use dcf.vikram_fc_rstcre_dfc_e2e (fresh) for Sim B.",
       "since": "2026-07-25"
     },
     "tags": [
@@ -2941,7 +2993,7 @@
       "fixture",
       "quarantine"
     ],
-    "title": "QUARANTINE FIXTURE — Vikram on pinned 6000137433 (134207 PTC)",
+    "title": "QUARANTINE FIXTURE \u2014 Vikram on pinned 6000137433 (134207 PTC)",
     "cmd": "bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
     "defaults": {
       "PARENT_LAN": "6000137433",
@@ -2957,6 +3009,6 @@
     "expect": {
       "status": "PASS"
     },
-    "note": "Quarantined FIXTURE/ENV — local product-70 LOAN_REPAYMENT PTC gap."
+    "note": "Quarantined FIXTURE/ENV \u2014 local product-70 LOAN_REPAYMENT PTC gap."
   }
 }

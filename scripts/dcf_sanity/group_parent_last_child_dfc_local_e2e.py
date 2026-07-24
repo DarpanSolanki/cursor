@@ -26,7 +26,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DCF_E2E_LOCK = "/tmp/dcf_e2e.lock"
+sys.path.insert(0, str(ROOT / "scripts/testing"))
+from flowtest.lock import (  # noqa: E402
+    FLOWTEST_E2E_LOCK as DCF_E2E_LOCK,
+    acquire_flowtest_lock as _acquire_flowtest_lock,
+    mark_lock_held,
+)
+from flowtest import asserts as _ft_asserts  # noqa: E402
 
 # --- QA acceptance gate (feedback_qa_acceptance_not_subset_verify.md) ---
 # Default STRICT: a test must FAIL on the exact QA fail mode, never print "OK …" and pass.
@@ -111,16 +117,10 @@ def psql(sql: str) -> str:
 
 
 def acquire_dcf_e2e_lock() -> int:
-    if os.environ.get("DCF_E2E_LOCK_HELD") == "1":
-        return -1
-    lock_fd = os.open(DCF_E2E_LOCK, os.O_CREAT | os.O_RDWR, 0o664)
-    try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError as exc:
-        os.close(lock_fd)
-        raise RuntimeError("another DCF E2E owns /tmp/dcf_e2e.lock; refusing concurrent run") from exc
-    atexit.register(os.close, lock_fd)
-    return lock_fd
+    """Delegate to flowtest.lock (shared /tmp/flowtest_e2e.lock)."""
+    fd = _acquire_flowtest_lock()
+    mark_lock_held()
+    return fd
 
 
 def psql_multi(sql: str) -> None:
@@ -139,30 +139,8 @@ def fire_batch(api: str, job_time: str) -> None:
 
 
 def snapshot_dues(lan: str, label: str) -> dict:
-    row = psql(f"""
-SELECT COALESCE(SUM(CASE WHEN ldd.component_type='PRIN' THEN ldd.paid_amount ELSE 0 END),0),
-       COALESCE(SUM(CASE WHEN ldd.component_type='PRIN' THEN ldd.waived_amount ELSE 0 END),0),
-       COALESCE(SUM(CASE WHEN ldd.component_type='PRIN' THEN ldd.due_amount-ldd.paid_amount-ldd.waived_amount ELSE 0 END),0),
-       COALESCE(SUM(CASE WHEN ldd.component_type='INT' THEN ldd.waived_amount ELSE 0 END),0),
-       la.loan_status
-FROM mfi_accounting.loan_due_details ldd
-JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
-WHERE la.la_account_number='{lan}' AND ldd.is_deleted=false
-GROUP BY la.loan_status;
-""")
-    parts = row.split("|") if row else ["0", "0", "0", "0", ""]
-    snap = {
-        "label": label,
-        "lan": lan,
-        "prin_paid": Decimal(parts[0] or "0"),
-        "prin_waived": Decimal(parts[1] or "0"),
-        "prin_pending": Decimal(parts[2] or "0"),
-        "int_waived": Decimal(parts[3] or "0"),
-        "loan_status": parts[4] if len(parts) > 4 else "",
-    }
-    print(f"  [{label}] {lan} status={snap['loan_status']} prin_paid={snap['prin_paid']} "
-          f"prin_waived={snap['prin_waived']} prin_pending={snap['prin_pending']} int_waived={snap['int_waived']}")
-    return snap
+    """Delegate to flowtest.asserts (shared dues snapshot)."""
+    return _ft_asserts.snapshot_dues(lan, label)
 
 
 def latest_txn(lan: str, txn_type: str, *, match_amount: str | None = None) -> tuple[str, str]:
@@ -265,52 +243,26 @@ ORDER BY tm.id;
 
 
 def assert_gl_balanced_txn(ref: str, label: str) -> None:
-    """Per-txn partition debit == credit (fail-closed)."""
+    """Per-txn debit==credit via flowtest.asserts; DFC LOCAL_DFC_PTC_GAP OOS retained here."""
     if not ref:
         raise AssertionError(f"GL balance FAIL {label}: empty reference_number")
-    row = psql(f"""
-SELECT COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('D','DEBIT')
-    THEN tpd.amount ELSE 0 END),0)::text,
-       COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('C','CREDIT')
-    THEN tpd.amount ELSE 0 END),0)::text,
-       COUNT(*)::text
+    if LOCAL_DFC_PTC_GAP and ("DEATH_FORECLOSURE" in label or "RSCH" in label):
+        row = psql(f"""
+SELECT COUNT(*)::text
 FROM mfi_accounting.transaction_partition_details tpd
 JOIN mfi_accounting.transaction_master tm ON tm.id = tpd.transaction_id
 WHERE tm.reference_number = '{ref}';
 """)
-    parts = (row or "0|0|0").split("|")
-    debit = Decimal(parts[0] or "0")
-    credit = Decimal(parts[1] or "0")
-    part_count = int(parts[2] or "0")
-    if part_count == 0:
-        # Local tip often has SUCCESS DEATH_FORECLOSURE / RSCH_DEATH_FORECLOSURE TM with
-        # 0 partitions when local transaction_accounting_rule is still pre-Sheet15 while tip
-        # writer emits Sheet15 codes (QA4 already Sheet15 + Debit=Credit). Harness-only OOS.
-        if LOCAL_DFC_PTC_GAP and ("DEATH_FORECLOSURE" in label or "RSCH" in label):
+        if (row or "0") == "0":
             print(
                 f"  GL balance LOCAL_DFC_PTC_GAP Out-of-scope: {label} ref={ref} "
                 f"0 partition rows (local pre-Sheet15 rules vs tip Sheet15 codes; "
                 f"QA4 evidence: Sheet15 rules + Debit=Credit)"
             )
             return
-        if ACCEPTANCE_STRICT:
-            raise AssertionError(
-                f"GL balance FAIL {label} ref={ref}: SUCCESS tm exists but 0 partition rows "
-                f"(local DFC/RSCH often miss legs; set LOCAL_DFC_PTC_GAP=1 only when proven "
-                f"pre-Sheet15 local rules). Soft Out-of-scope removed for force-bill/GL proof."
-            )
-        print(
-            f"  GL balance Out-of-scope: {label} ref={ref} has 0 partition rows locally "
-            f"(tm exists; GL legs not materialized in local stack)"
-        )
-        return
-    if ACCEPTANCE_STRICT and debit != credit:
-        codes = partition_codes(ref)
-        raise AssertionError(
-            f"GL balance FAIL {label} ref={ref}: debit={debit} credit={credit} "
-            f"partitions={codes}"
-        )
-    print(f"  GL balance PASS: {label} ref={ref} debit={debit} credit={credit} parts={part_count}")
+    # Sync STRICT flag into shared module for this process
+    _ft_asserts.ACCEPTANCE_STRICT = ACCEPTANCE_STRICT
+    _ft_asserts.assert_gl_balanced_txn(ref, label)
 
 
 def assert_force_bill_gl_shape(ref: str, label: str, *, expect_child_cg: bool) -> None:
@@ -3175,7 +3127,7 @@ def main() -> int:
     # Fresh-disbursed groups are one-shot (loans close) — never snapshot/restore.
     backup_py = str(ROOT / "scripts/dcf_sanity/dcf_fixture_backup.py")
     # Nested restore/snapshot must skip flock — we already hold /tmp/dcf_e2e.lock.
-    backup_env = {**PG_ENV, "DCF_E2E_LOCK_HELD": "1"}
+    backup_env = {**PG_ENV, "DCF_E2E_LOCK_HELD": "1", "FLOWTEST_E2E_LOCK_HELD": "1"}
     snapshot_enabled = os.environ.get("DCF_E2E_NO_SNAPSHOT") != "1" and not DCF_FRESH_GROUP
     if snapshot_enabled:
         has_snapshot = psql(

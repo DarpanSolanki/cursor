@@ -192,6 +192,18 @@ def generate_self_report() -> Path:
     except Exception as e:
         map_line = f"error: {e}"
 
+    # flow-coverage % (F1 ratchet — scripts/testing/flow_coverage.json)
+    flow_cov = "n/a"
+    try:
+        import json as _json
+
+        fc = _json.loads((ROOT / "scripts/testing/flow_coverage.json").read_text(encoding="utf-8"))
+        rows = fc.get("flows") or []
+        yes = sum(1 for r in rows if (r.get("harness_ready") or "").upper() == "YES")
+        flow_cov = f"{yes}/{len(rows)} ({(100.0 * yes / len(rows)) if rows else 0:.1f}%)"
+    except Exception as e:
+        flow_cov = f"error: {e}"
+
     lines += [
         "",
         "## KG",
@@ -202,12 +214,14 @@ def generate_self_report() -> Path:
         "## QA bar",
         f"- enforced acceptance domains: **{len(enforced)}/21** — {', '.join(enforced)}",
         f"- money verify_mode coverage: **{vm}/{len(money)}**",
+        f"- flow-coverage (live harness YES): **{flow_cov}**",
         f"- proposals: total={len(proposals)} drafts={drafts} gap_stubs={stubs}",
         f"- flaky: {flaky}",
         "",
         "## Env / ratchets",
         "- env-smoke: see `.cursor/workspace-ops-state.md` § Env smoke",
         "- money-cell process ratchet + acceptance enforced_domains ratchet: active",
+        "- flow_coverage.json ratchet: harness_ready YES count must not decrease",
         "",
         "## Red flags",
     ]

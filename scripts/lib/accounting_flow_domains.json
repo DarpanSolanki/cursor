@@ -193,20 +193,27 @@
       "path_hints": [
         "restruct",
         "resched",
-        "rebook"
+        "rebook",
+        "rstcre",
+        "childloanevent",
+        "flowtest/scenarios/rstcre",
+        "grouploan/restructuring"
       ],
       "api_hints": [
         "childLoanRestructuring",
-        "loanAccountReschedule"
+        "loanAccountReschedule",
+        "childLoanEventProcessingBatchJob"
       ],
       "impact_cases": [
+        "flowtest.rstcre_spine",
         "dpic.overview_api",
         "dpic.summary_api"
       ],
       "deep_cases": [],
       "release_cases": [
         "dpic.overview_api"
-      ]
+      ],
+      "proof": "ntest run flowtest.rstcre_spine"
     },
     "reopening": {
       "label": "Loan account reopening (parent + child events)",

@@ -487,7 +487,8 @@ def domain_mandatory_cases(
     # pull the full DCF/FC mandatory suite (lms_service_domains covers health.los).
     acct_path_touch = any(
         any(tok in p.replace("\\", "/").lower() for tok in (
-            "accounting", "scripts/dpic/", "scripts/dcf_", "scripts/foreclosure"
+            "accounting", "scripts/dpic/", "scripts/dcf_", "scripts/foreclosure",
+            "scripts/testing/flowtest",
         ))
         for p in changed
     )

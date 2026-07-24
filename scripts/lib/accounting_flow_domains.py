@@ -46,6 +46,7 @@ def accounting_path_blob(paths: list[str] | None) -> str:
         if "accounting" in p.replace("\\", "/").lower()
         or "scripts/dpic/" in p.replace("\\", "/").lower()
         or "scripts/dcf_" in p.replace("\\", "/").lower()
+        or "scripts/testing/flowtest" in p.replace("\\", "/").lower()
     ]
     return path_blob(acct)
 
