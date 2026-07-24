@@ -288,11 +288,15 @@
       ],
       "impact_cases": [
         "batch.interest_accrual_calc",
-        "batch.interest_accrual_posting"
+        "batch.interest_accrual_posting",
+        "flowtest.accrual_billing"
       ],
-      "deep_cases": [],
+      "deep_cases": [
+        "flowtest.accrual_billing"
+      ],
       "release_cases": [
-        "batch.interest_accrual_calc"
+        "batch.interest_accrual_calc",
+        "flowtest.accrual_billing"
       ]
     },
     "penal_interest": {
@@ -309,11 +313,15 @@
       ],
       "impact_cases": [
         "batch.penal_interest_accrual_calc",
-        "batch.penal_interest_accrual_booking"
+        "batch.penal_interest_accrual_booking",
+        "flowtest.penal_accrual"
       ],
-      "deep_cases": [],
+      "deep_cases": [
+        "flowtest.penal_accrual"
+      ],
       "release_cases": [
-        "batch.penal_interest_accrual_calc"
+        "batch.penal_interest_accrual_calc",
+        "flowtest.penal_accrual"
       ]
     },
     "loan_advance_repayment": {
@@ -365,11 +373,15 @@
         "loanAccountBillingJob"
       ],
       "impact_cases": [
-        "batch.loan_account_billing"
+        "batch.loan_account_billing",
+        "flowtest.accrual_billing"
       ],
-      "deep_cases": [],
+      "deep_cases": [
+        "flowtest.accrual_billing"
+      ],
       "release_cases": [
-        "batch.loan_account_billing"
+        "batch.loan_account_billing",
+        "flowtest.accrual_billing"
       ]
     },
     "npa_dpd": {
@@ -387,13 +399,16 @@
         "loanAccountAssetClassificationJob"
       ],
       "impact_cases": [
-        "batch.dpd_calc"
+        "batch.dpd_calc",
+        "flowtest.dpd_npa"
       ],
       "deep_cases": [
-        "dpic.npa_dpi_movement_e2e"
+        "dpic.npa_dpi_movement_e2e",
+        "flowtest.dpd_npa"
       ],
       "release_cases": [
-        "batch.dpd_calc"
+        "batch.dpd_calc",
+        "flowtest.dpd_npa"
       ]
     },
     "eod_bod": {

@@ -1,7 +1,7 @@
 """Fixture profiles — table-sets for snapshot/restore."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,7 @@ DCF_GROUP = FixtureProfile(
         "waiver_details",
         "prepayment_details",
         "loan_account_part_prepayment_details",
+        "penal_interest_accrual_details",  # F3 date-roll / penal dirt
     ),
     scoped_by_account_id=(
         "loan_account_billing_details",
@@ -42,7 +43,7 @@ DCF_GROUP = FixtureProfile(
         "death_foreclosure_insurance_staging_details",
     ),
     purge_numeric_billing_crn=True,
-    notes="SHG/JLG group DFC; restore undoes Obs1 labd dirt + account.status",
+    notes="SHG/JLG group DFC; restore undoes labd/IAD/penal dirt + account.status",
 )
 
 # RSTCRE pilot reuses the same group fixture / bak schema (restore-reuse, no re-disburse).

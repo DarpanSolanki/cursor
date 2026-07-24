@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-07-25",
-  "source": "FLOWTEST F1 + F2",
+  "source": "FLOWTEST F1 + F2 + F3",
   "notes": "harness_ready is fail-closed: YES only when a registry runtime case exists and has been live-run locally. Never mark ready by aspiration.",
   "flows": [
     {
@@ -180,59 +180,67 @@
     },
     {
       "flow": "interestAccrualCalculation",
-      "verify_mode": "none",
-      "harness_ready": "PARTIAL",
-      "blocker": "batch-date",
-      "registry": "batch.interest_accrual_calc"
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.accrual_billing",
+      "note": "F3 FLOW A \u2014 REAL jobs + IAD formula /360"
     },
     {
       "flow": "interestAccrualPosting",
-      "verify_mode": "none",
-      "harness_ready": "PARTIAL",
-      "blocker": "batch-date",
-      "registry": "batch.interest_accrual_posting"
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.accrual_billing",
+      "note": "F3 FLOW A"
     },
     {
       "flow": "penalInterestAccrualCalculation",
       "verify_mode": "none",
       "harness_ready": "NO",
-      "blocker": "batch-date",
-      "registry": "batch.penal_interest_accrual_calc"
+      "blocker": "penal-reader-elig",
+      "registry": "flowtest.penal_accrual",
+      "note": "SU-FLOW-PENAL-READER-ELIG"
     },
     {
       "flow": "penalInterestAccrualBooking",
       "verify_mode": "none",
       "harness_ready": "NO",
-      "blocker": "batch-date",
-      "registry": "batch.penal_interest_accrual_booking"
+      "blocker": "penal-reader-elig",
+      "registry": "flowtest.penal_accrual",
+      "note": "blocked with calc"
     },
     {
       "flow": "loanAccountBillingJob",
-      "verify_mode": "none",
-      "harness_ready": "PARTIAL",
-      "blocker": "batch-date",
-      "registry": "batch.loan_account_billing"
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.accrual_billing",
+      "note": "F3 FLOW A \u2014 labd gap SEEDED, billing REAL"
     },
     {
       "flow": "loanAccountDpdCalcJob",
-      "verify_mode": "none",
-      "harness_ready": "NO",
-      "blocker": "batch-date",
-      "registry": "batch.dpd_calc"
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.dpd_npa",
+      "note": "F3 FLOW C \u2014 aging SEEDED, DpdCalc REAL"
     },
     {
       "flow": "loanAccountAssetCriteriaJob",
       "verify_mode": "none",
-      "harness_ready": "NO",
-      "blocker": "batch-date",
-      "registry": null
+      "harness_ready": "PARTIAL",
+      "blocker": "criteria-failed-soft",
+      "registry": "flowtest.dpd_npa",
+      "note": "job FAILED soft; NPA slab not flipped"
     },
     {
       "flow": "loanAccountAssetClassificationJob",
       "verify_mode": "none",
-      "harness_ready": "NO",
-      "blocker": "batch-date",
-      "registry": null
+      "harness_ready": "PARTIAL",
+      "blocker": "npa-slab-unchanged",
+      "registry": "flowtest.dpd_npa",
+      "note": "ran COMPLETED; is_npa still false"
     },
     {
       "flow": "dpiAccrualCalculation",
@@ -256,5 +264,5 @@
       "registry": "dpic.two_emi_full_chain"
     }
   ],
-  "self_report": "FLOWTEST coverage YES 10/35 = 28.6%"
+  "self_report": "FLOWTEST coverage YES 14/35 = 40.0%"
 }

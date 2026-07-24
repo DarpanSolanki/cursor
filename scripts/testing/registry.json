@@ -1845,6 +1845,120 @@
       "note": "F2 green: WITHOUT_MAKER_CHECKER repay + reversal DEFAULT/APPROVE; NPA\u2192regular slab hygiene."
     }
   },
+  "flowtest.accrual_billing": {
+    "type": "flow",
+    "api": "loanAccountBillingJob",
+    "apis": [
+      "interestAccrualCalculation",
+      "interestAccrualPosting",
+      "loanAccountBillingJob"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f3", "accrual", "billing", "dateroll"],
+    "title": "Accrual+billing across billing boundary (F3 FLOW A)",
+    "cmd": "bash scripts/testing/flowtest/run_accrual_billing.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "PASS"},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "loan_account_billing_details",
+          "assert": "labd created for first unbilled installment after due+1 EOD roll",
+          "checked_by": "labd PASS count for lid"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "total_accrued ≈ base*rate/100/365*days (±₹2)",
+          "checked_by": "IAD formula PASS"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "new BILLING (and INTEREST if any) GL debit==credit",
+          "checked_by": "assert_gl_balanced_txn"
+        }
+      ],
+      "note": "dateroll CHAIN_ACCRUAL_BILLING; quarantine portfolio; layers jobs=REAL"
+    }
+  },
+  "flowtest.penal_accrual": {
+    "type": "flow",
+    "api": "penalInterestAccrualCalculation",
+    "apis": [
+      "penalInterestAccrualCalculation",
+      "penalInterestAccrualBooking"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f3", "penal", "dateroll"],
+    "title": "Penal accrual calc+booking on overdue (F3 FLOW B)",
+    "cmd": "bash scripts/testing/flowtest/run_penal_accrual.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "BLOCKED", "exit_code": 2},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path"],
+      "db_asserts": [
+        {
+          "table": "penal_interest_accrual_details",
+          "assert": "blocked — reader does not select DCF child (see SU-FLOW-PENAL-READER-ELIG)",
+          "checked_by": "scenario exits 2 before assert"
+        }
+      ],
+      "note": "F3 cut: CHAIN_PENAL in dateroll.py ready; fixture/reader eligibility blocked."
+    }
+  },
+  "flowtest.dpd_npa": {
+    "type": "flow",
+    "api": "loanAccountDpdCalcJob",
+    "apis": [
+      "loanAccountDpdCalcJob",
+      "loanAccountAssetCriteriaJob",
+      "loanAccountAssetClassificationJob"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": ["flowtest", "f3", "dpd", "npa", "dateroll"],
+    "title": "DPD+asset criteria+classification lazy age (F3 FLOW C)",
+    "cmd": "bash scripts/testing/flowtest/run_dpd_npa.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "FLOWTEST_MIN_DPD": "90",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {"status": "PASS"},
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": ["happy_path", "dirty_fixture"],
+      "db_asserts": [
+        {
+          "table": "loan_account",
+          "assert": "past_due_days ≥ 90 after DpdCalc",
+          "checked_by": "DPD PASS"
+        },
+        {
+          "table": "transaction_partition_details",
+          "assert": "any new movement/provision txns GL-balanced (or none)",
+          "checked_by": "GL PASS / no new postings OK"
+        }
+      ],
+      "note": "Lazy path: dues aged SEEDED; jobs REAL. Shared force_regular_asset_slab from loan_state."
+    }
+  },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
     "type": "flow",
     "api": "deathForeclosureInsuranceJob",

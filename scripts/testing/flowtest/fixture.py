@@ -148,6 +148,10 @@ def restore(parent_lan: str, profile: FixtureProfile = DCF_GROUP) -> None:
     stmts.append(f"DELETE FROM {SCH}.loan_account WHERE account_id IN ({id_list});")
     stmts.append(f"INSERT INTO {SCH}.loan_account SELECT * FROM {bak}.loan_account;")
     for t in profile.scoped_by_loan_account_id:
+        if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{bak}' AND table_name='{t}';") != "1":
+            # Older bak schemas (pre-F3) may lack newly profiled tables — skip, do not leak.
+            print(f"  skip restore {t}: not in {bak} (re-snapshot to include)")
+            continue
         stmts.append(f"DELETE FROM {SCH}.{t} WHERE loan_account_id IN ({id_list});")
         stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
     for t in profile.scoped_by_account_id:
@@ -156,6 +160,8 @@ def restore(parent_lan: str, profile: FixtureProfile = DCF_GROUP) -> None:
         stmts.append(f"DELETE FROM {SCH}.{t} WHERE account_id IN ({id_list});")
         stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
     for t in profile.scoped_by_account_number:
+        if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{bak}' AND table_name='{t}';") != "1":
+            continue
         stmts.append(f"DELETE FROM {SCH}.{t} WHERE account_number IN ({lan_list});")
         stmts.append(f"INSERT INTO {SCH}.{t} SELECT * FROM {bak}.{t};")
     stmts.append("SET session_replication_role = origin;")
@@ -209,12 +215,39 @@ def has_snapshot(parent_lan: str, profile: FixtureProfile = DCF_GROUP) -> bool:
     return q1(f"SELECT 1 FROM information_schema.schemata WHERE schema_name='{bak}';") == "1"
 
 
+def extend_bak_missing_tables(parent_lan: str, profile: FixtureProfile = DCF_GROUP) -> None:
+    """Backfill newly profiled tables into an existing bak schema (F3 date-roll).
+
+    Creates empty structural copies (LIKE … INCLUDING ALL) so restore can wipe
+    live dirt without freezing pre-extend portfolio noise into the snapshot.
+    """
+    if not has_snapshot(parent_lan, profile):
+        return
+    bak = bak_schema(parent_lan, profile)
+    stmts: list[str] = []
+    for t in (
+        *profile.scoped_by_loan_account_id,
+        *profile.scoped_by_account_id,
+        *profile.scoped_by_account_number,
+    ):
+        if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{bak}' AND table_name='{t}';") == "1":
+            continue
+        if q1(f"SELECT 1 FROM information_schema.tables WHERE table_schema='{SCH}' AND table_name='{t}';") != "1":
+            continue
+        stmts.append(f"CREATE TABLE {bak}.{t} (LIKE {SCH}.{t} INCLUDING ALL);")
+        print(f"  extend bak: {bak}.{t} (empty LIKE — wipe-on-restore)")
+    if stmts:
+        run("\n".join(stmts))
+
+
 def ensure_snapshot_or_restore(
     parent_lan: str, profile: FixtureProfile = DCF_GROUP, *, force_restore: bool = True
 ) -> None:
     """First run snapshots; later runs restore (default)."""
     if has_snapshot(parent_lan, profile):
         if force_restore:
+            # Ensure new profile tables exist in bak before restore so DELETE/INSERT runs.
+            extend_bak_missing_tables(parent_lan, profile)
             restore(parent_lan, profile)
             time.sleep(3)
     else:

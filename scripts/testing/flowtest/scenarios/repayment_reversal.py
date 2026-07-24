@@ -84,37 +84,14 @@ def main() -> int:
 
     assert_loan_status(CHILD, "ACTIVE")
     before = snapshot_dues(CHILD, "before-repay")
-    # DCF EXTRA seed: force regular (non-NPA) slab so LOAN_REPAYMENT/CASH posts without
-    # NPA subtype 134207 (INT_SUS / NPA PTC gap on product-70 local).
+    # Shared F2/F3 hygiene: force regular slab so CASH repay avoids NPA 134207.
+    from flowtest.loan_state import force_regular_asset_slab  # noqa: WPS433
+
     account_id = psql(
         f"SELECT account_id::text FROM mfi_accounting.loan_account WHERE la_account_number='{CHILD}' AND is_deleted=false;"
     ).strip()
     if account_id:
-        psql(
-            f"""
-UPDATE mfi_accounting.loan_account la
-SET asset_criteria_slabs_id = sub.regular_slab,
-    npa_tagging_date = NULL,
-    npa_ageing_start_date = NULL,
-    sec_npa_tagging_date = NULL,
-    is_sec_npa = false,
-    updated_on = NOW(),
-    updated_by = 'FLOWTEST_F2_REPAY'
-FROM (
-  SELECT acs.id AS regular_slab
-  FROM mfi_accounting.loan_account la2
-  JOIN mfi_accounting.asset_criteria_slabs acs
-    ON acs.asset_criteria_group_id = la2.asset_criteria_group_id
-   AND acs.is_deleted = false
-   AND acs.is_npa = false
-  WHERE la2.account_id = {account_id}
-  ORDER BY acs.past_due_days_from
-  LIMIT 1
-) sub
-WHERE la.account_id = {account_id};
-"""
-        )
-        print(f"  NPA→regular slab hygiene loan_id={account_id}")
+        force_regular_asset_slab([account_id])
     overdue = Decimal(
         psql(
             f"""
