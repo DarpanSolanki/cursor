@@ -1,3 +1,8 @@
+## 2026-07-24 | kb | Child CG* vs parent named GL display SoT (TDPQA-72)
+- Never strip `CG` / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored
+- Memory `feedback_child_cg_gl_vs_parent_named.md` + brain `08-gl-posting-engine.md` display rule; harness `assert_force_bill_gl_shape`
+- Evidence: `ExecuteTransactionRulesProcessor` + `ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX`; fresh Vikram FB child CG13336/CG13578 vs parent 13336/13578
+
 ## 2026-07-24 | kb | Job-owned tables — never hand-mutate Accrued/IAD
 - Standing map: `.cursor/skills/accounting-knowledge/job-owned-tables.md` (+ critical-lessons / MEMORY)
 - Rejected: writer `reconcileAccruedInterestToBilledOriginal` (IAD only via accrual jobs / forceful booking)

@@ -87,8 +87,19 @@ For each `TransactionRuleDTO` whose `calculatedAmount != 0`:
     - Three `part_info_*` fields with placeholder substitution against the ExecutionContext
     - `narration` (template substituted)
     - `entity_id` and `entity_type` (e.g. loan_account_id + "LOANS")
-    - **For child loan transactions** (`is_child_account = true` in the ExecutionContext): `gl_code = "CG" + gl_code` so the row hits `child_general_ledger` instead of `general_ledger` ([line 391-393](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393)).
+    - **For child loan transactions** (`is_child_account = true` in the ExecutionContext): `gl_code = "CG" + gl_code` so the row hits `child_general_ledger` instead of `general_ledger` ([line 391-393](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393)). Prefix constant: `ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX = "CG"`.
 3. The full list goes into the ExecutionContext as `transaction_partition_details_list`. `createTransactionPartitionDetailsProcessor` (next in the pipeline) is what bulk-INSERTs these into `transaction_partition_details`.
+
+### Display / proof rule (force-bill + any child postTransaction)
+
+| Loan | Stored `tpd.gl_code` | `is_child_gl_code` | OK to show `general_ledger.name`? |
+|------|----------------------|-------------------|-----------------------------------|
+| Child (member) | `CG` + numeric (e.g. `CG13336`, `CG13578`) | `true` | **No** — quote the CG code as stored |
+| Parent (group) | bare numeric (e.g. `13336`, `13578`) | `false` | Yes — e.g. `REG EMI-JLGDL- BI` / `INT ACC NOT DUE-JLGDL-AIR` |
+
+**Never** strip `CG` and join parent GL names for child legs in JIRA/handoffs/reports. Partition `account_number` may still be the bare IA/GL numeric even on child rows — that is not the stored `gl_code`. Memory: `feedback_child_cg_gl_vs_parent_named.md`.
+
+Force-bill BILLING example (TDPQA-72 fresh Vikram 2026-07-24): child Dr `CG13336` / Cr `CG13578`; parent Dr `13336` / Cr `13578`; debit=credit = billed interest.
 
 ---
 

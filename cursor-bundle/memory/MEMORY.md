@@ -1,6 +1,7 @@
 - Ship-test autonomy (change→impact on push): `feedback_ship_test_autonomy_change_map.md` + `scripts/lib/change_test_map.json`.
 
 # Memory Index
+- [Child CG* vs parent named GL](feedback_child_cg_gl_vs_parent_named.md) — never strip CG / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored (CG13336…). (TDPQA-72 2026-07-24)
 - [TDPQA-72 EXCESS GL vs LAPD](feedback_tdpqa72_excess_gl_vs_lapd.md) — restore Sheet15 EXCESS_* on child+parent; keep lapd.excess=0 for 390372 ₹54 UI; Darpan `9b6454df6` was that UI fix. (2026-07-24)
 - [No harness-driven money hacks](feedback_no_harness_driven_money_hacks.md) — never patch due/IAD/labd to green e2e Obs3/adversarial; understand product path; QA/fixture can be wrong. Reverted absorb-into-INT-due. (Darpan 2026-07-24)
 - [Job-owned tables no hand-mutate](feedback_job_owned_tables_no_hand_mutate.md) — IAD/penal/DPI accrual + billing staging owned by jobs; never writer Accrued trim hacks. Map: accounting-knowledge `job-owned-tables.md`. (TDPQA-72 2026-07-24)

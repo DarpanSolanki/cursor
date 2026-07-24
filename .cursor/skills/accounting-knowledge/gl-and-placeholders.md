@@ -1,5 +1,14 @@
 <!-- Relocated verbatim from .cursor/rules/accounting.mdc / accounting-module-knowledge.mdc. Edit these skill topic files; thin accounting.mdc only routes here. -->
 
+## Child vs parent `gl_code` shape (postTransaction / force-bill)
+
+| Account | Stored `transaction_partition_details.gl_code` | Notes |
+|---------|-----------------------------------------------|-------|
+| Child loan | `CG` + base code (e.g. `CG13336`) | `is_child_account` → `ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX`; never display as parent GL name |
+| Parent loan | base code only (e.g. `13336`) | May resolve `general_ledger.name` (e.g. REG EMI / AIR) |
+
+SoT: `ExecuteTransactionRulesProcessor` + brain `08-gl-posting-engine.md` display rule. Memory: `feedback_child_cg_gl_vs_parent_named.md`.
+
 ## GL posting reference codes (additional_amount_details)
 
 | Code | Context key source | Meaning |

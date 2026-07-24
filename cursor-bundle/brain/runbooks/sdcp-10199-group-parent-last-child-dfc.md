@@ -14,6 +14,7 @@
 |-----|--------------|--------------------------|--------|
 | **Obs1** | EMI labd `txn_ref` overwritten while amounts stay EMI | INSERT dedicated force-bill labd; leave EMI row untouched | `assert_force_bill_labd` + EMI_LABD_FIXTURE preserved + **statement** shows force-bill `client_ref` |
 | **Obs1b** | Parent missing force-bill in billing table | Parent `forceBillPartialCycleInterest` via `computeParentForceBillSlice` (max Accrued−Original, reportingAccrual) | dedicated parent FB labd prin=0 + GL BILLING legs + statement |
+| **GL shape** | Child FB shown with parent GL names | N/A (display SoT) | Child `tpd.gl_code` = `CG*`; parent = named bare codes — `assert_force_bill_gl_shape` |
 | **Obs2** | `tm.original_amount` ≠ `lapd.principal_amount` | Before save: principal=A2-netted POS; **Product:** `excess_amount=0`, interest=0 | amount==principal; excess=0 under `ACCEPTANCE_STRICT` |
 | **Obs3** | Parent Accrued > Original on summary | `reconcileAccruedInterestToBilledOriginal` | SQL + webapp summary `interest_details` |
 | Overview excess | Parent overview shows leftover excess | Parent RSCH zero EXCESS_* upserts + lapd.excess=0 | overview `amount_details.excess_amount=0` |

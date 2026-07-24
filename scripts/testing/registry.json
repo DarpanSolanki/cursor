@@ -1715,7 +1715,7 @@
         },
         {
           "table": "interest_accrual_details",
-          "assert": "Obs3 Accrued<=Original (+₹1) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
+          "assert": "Obs3 Accrued<=Original (+\u20b91) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
           "checked_by": "assert_accrued_le_original + assert_no_accrued_on_deleted_installments"
         }
       ],
@@ -1766,8 +1766,8 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn",
-          "checked_by": "assert_gl_balance_for_loan"
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING txn; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names)",
+          "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ]
     },
@@ -1863,8 +1863,8 @@
         },
         {
           "table": "transaction_partition_details",
-          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING",
-          "checked_by": "assert_gl_balance_for_loan"
+          "assert": "debit==credit per DEATH_FORECLOSURE RSCH_DEATH_FORECLOSURE BILLING; force-bill BILLING: child gl_code CG* / parent bare named codes (assert_force_bill_gl_shape \u2014 never strip CG to parent GL names)",
+          "checked_by": "assert_gl_balance_for_loan + assert_force_bill_gl_shape"
         }
       ],
       "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (fast spine). SEED_EXTRA=1 PASS with unique receipt CRNs + DCF_FRESH_EMI_MONTHS_BACK=2 (past advance EMI; future dues\u2192EXCESS). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."

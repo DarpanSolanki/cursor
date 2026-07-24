@@ -1,7 +1,12 @@
+## 2026-07-24 | workspace kb + dcf harness | Child CG* vs parent named GL (TDPQA-72)
+- Root cause of wrong handoff: agents stripped CG and joined parent `general_ledger.name`; child force-bill stores `CG13336`/`CG13578`.
+- Docs: memory `feedback_child_cg_gl_vs_parent_named.md`, brain `08-gl-posting-engine.md` display rule, `gl-and-placeholders.md`, SDCP-10199 runbook GL shape row, registry BILLING assert.
+- Harness: `assert_force_bill_gl_shape` on child/parent force-bill (CG* vs bare). JIRA handoff comment **391531**.
+
 ## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Accrued follows schedule + FC/DFC force-bill EMI align
 - RSTCRE: after soft-delete+recreate future EMIs, repoint Accrued off deleted lids onto replacement lids (same date).
 - FC/DFC force-bill labd attaches to newest Accrued EMI (same as bill amount); stops Accrued>Original by FB amount after member exit.
-- Local Vikram `dcf.vikram_fc_rstcre_dfc_e2e` PASS (Obs3 + Accrued_on_deleted=0). Product confirm asked on TDPQA-72 (comment 391450) for Accrued-after-rebuild + ₹1 parent vs members.
+- Local Vikram `dcf.vikram_fc_rstcre_dfc_e2e` PASS (Obs3 + Accrued_on_deleted=0). Product: Accrued-after-rebuild = approval of shipped behaviour; only open product item = ₹1 parent vs members (handoff 391531).
 
 ## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 restore Sheet15 EXCESS_* on child+parent RSCH
 - L1: child DEATH and parent last-child RSCH both push EXCESS_* again (same catalogues; undo SHG child zero + parent GL zero from `5f4661b03`/`9b6454df6` GL half).

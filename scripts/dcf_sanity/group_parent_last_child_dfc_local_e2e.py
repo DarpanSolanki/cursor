@@ -283,6 +283,57 @@ WHERE tm.reference_number = '{ref}';
     print(f"  GL balance PASS: {label} ref={ref} debit={debit} credit={credit} parts={part_count}")
 
 
+def assert_force_bill_gl_shape(ref: str, label: str, *, expect_child_cg: bool) -> None:
+    """Force-bill BILLING: print raw gl_code; child must be CG*, parent must not.
+
+    Do not strip CG and join parent general_ledger.name for child legs
+    (feedback_child_cg_gl_vs_parent_named.md). Soft-skip when 0 partitions.
+    """
+    if not ref:
+        return
+    rows = subprocess.check_output(
+        [
+            *PG,
+            "-c",
+            f"""
+SELECT COALESCE(tpd.gl_code,'')||'|'||COALESCE(tpd.cr_dr_indicator,'')
+       ||'|'||COALESCE(tpd.amount,0)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id = tpd.transaction_id
+WHERE tm.reference_number = '{ref}'
+ORDER BY tpd.cr_dr_indicator, tpd.gl_code;
+""",
+        ],
+        env=PG_ENV,
+        text=True,
+    ).strip()
+    if not rows:
+        print(f"  Force-bill GL shape Out-of-scope: {label} ref={ref} has 0 partition rows")
+        return
+    legs = []
+    for line in rows.split("\n"):
+        if not line.strip():
+            continue
+        gl_code, drcr, amt = line.split("|", 2)
+        legs.append((gl_code, drcr, amt))
+        is_cg = gl_code.startswith("CG")
+        if ACCEPTANCE_STRICT and expect_child_cg and not is_cg:
+            raise AssertionError(
+                f"Force-bill GL shape FAIL {label} ref={ref}: child leg gl_code={gl_code!r} "
+                f"must start with CG (stored child_general_ledger code)"
+            )
+        if ACCEPTANCE_STRICT and (not expect_child_cg) and is_cg:
+            raise AssertionError(
+                f"Force-bill GL shape FAIL {label} ref={ref}: parent leg gl_code={gl_code!r} "
+                f"must NOT use CG prefix"
+            )
+    shape = "CG*" if expect_child_cg else "named/bare"
+    print(
+        f"  Force-bill GL shape PASS: {label} ref={ref} expect={shape} "
+        f"legs={[':'.join(x) for x in legs]}"
+    )
+
+
 def assert_gl_balance_for_loan(lan: str, reference_codes: list[str]) -> None:
     """Debit=credit per transaction for each catalogue type on LAN (S6 matrix)."""
     for txn_type in reference_codes:
@@ -1855,6 +1906,7 @@ LIMIT 1;
             f"Obs1b FAIL: parent {parent_lan} force-bill txn ref={ref} lacks dedicated interest-only labd"
         )
     print(f"  Obs1b PASS: parent {parent_lan} force-bill ref={ref} client_ref={client_ref} amt={amt_s} labd={labd}")
+    assert_force_bill_gl_shape(ref, f"{parent_lan}/force-bill", expect_child_cg=False)
 
 
 def _force_bill_interest_total(lan: str) -> Decimal:
@@ -2195,6 +2247,8 @@ ORDER BY labd.id DESC LIMIT 1;
         )
     print(f"  Issue B PASS: labd_id={labd_id} txn_ref={txn_ref} client_ref={client_ref} "
           f"interest={int_amt} force_bill_txn_amt={fb_amt}")
+    if fb_ref:
+        assert_force_bill_gl_shape(fb_ref, f"{child_lan}/force-bill", expect_child_cg=True)
 
     emi_left = int(psql(f"""
 SELECT COUNT(*)::text
