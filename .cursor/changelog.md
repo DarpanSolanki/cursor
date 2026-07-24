@@ -1,3 +1,7 @@
+## 2026-07-24 | dcf harness | TDPQA-72 default child FC = loanPrepayment (ICF_USE_LOAN_PREPAYMENT=1)
+
+Vikram non-last child FC path defaults to webapp loanPrepayment (parent PPP + RSTCRE). Opt-in Sim A: ICF_USE_LOAN_PREPAYMENT=0 for individualChildLoanForeclosure only. Parent POS≠remaining after ICF was harness-only — not an Accounting product bug.
+
 ## 2026-07-24 | workspace | CG prevention harden + DFC 0-partition fail-closed
 - Harness: `ACCEPTANCE_STRICT` → FAIL when TM exists with 0 partitions (force-bill shape + DFC/RSCH GL); no soft Out-of-scope.
 - JIRA: `jira-fix-adf` hit `child_gl_renamed_to_parent_name`; jira-fix-update skill note.

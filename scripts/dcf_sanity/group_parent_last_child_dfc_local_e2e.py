@@ -52,8 +52,14 @@ DCF_FIXTURE_BLOCKLIST = frozenset(
     for lan in os.environ.get("DCF_FIXTURE_BLOCKLIST", "6003896527,6003973025").split(",")
     if lan.strip()
 )
-# Vikram QA path (TDPQA-72): child1 regular FC via loanPrepayment → RSTCRE → child2 last DFC.
+# Vikram QA path (TDPQA-72): child1 regular FC → RSTCRE → child2 last DFC.
 VIKRAM_PATH = os.environ.get("VIKRAM_PATH", "0") == "1"
+# Non-last child FC entry (HARNESS-ONLY — do not “fix” Accounting POS via ICF orch):
+#   Sim B (default): loanPrepayment — prod path; enqueues RSTCRE + parent PPP; POS assert ON
+#   Sim A (opt-in):  ICF_USE_LOAN_PREPAYMENT=0 → individualChildLoanForeclosure —
+#                    does NOT enqueue RSTCRE / parent PPP; POS assert Out-of-scope
+# Env name kept for compatibility; default is "1" (Sim B / loanPrepayment).
+VIKRAM_USE_LOAN_PREPAYMENT = os.environ.get("ICF_USE_LOAN_PREPAYMENT", "1") == "1"
 ACCOUNTING_URL = os.environ.get("ACCOUNTING_URL", "http://localhost:8002/accounting/api/v1")
 ICF_USER_ID = os.environ.get("ICF_USER_ID", "103")
 ICF_OFFICE_ID = os.environ.get("ICF_OFFICE_ID", "2")
@@ -1173,10 +1179,10 @@ def ensure_rstcre_pending_after_vikram_fc(
     closed_child_lan: str,
     remaining_child_lan: str,
 ) -> bool:
-    """ICF does not run childLoanForeclosureEventGenerationProcessor (loanPrepayment does).
+    """After Sim B loanPrepayment, RSTCRE should already be PENDING (event-gen).
 
-    Seed RSTCRE PENDING in the same JSON shape as that processor so the existing
-    childLoanEventProcessingBatchJob drain path runs.
+    Sim A (ICF) does NOT enqueue RSTCRE — seed the same JSON shape as
+    ChildLoanForeclosureEventGenerationProcessor so cascade drain still runs.
     Returns True when a drain is needed; False when already completed for this FC.
     """
     pending = int(psql(f"""
@@ -1185,7 +1191,11 @@ WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
   AND event_status NOT IN ('C','COMPLETED');
 """) or "0")
     if pending > 0:
-        print(f"  Vikram RSTCRE: already PENDING count={pending} (loanPrepayment path) — skip seed")
+        src = "loanPrepayment event-gen" if VIKRAM_USE_LOAN_PREPAYMENT else "prior/seed"
+        print(
+            f"  Vikram RSTCRE: already PENDING count={pending} "
+            f"({src}) — skip seed"
+        )
         return True
 
     prep = psql(f"""
@@ -1254,7 +1264,8 @@ INSERT INTO mfi_accounting.loan_account_events_queue (
 """)
     print(
         f"  Vikram RSTCRE seed PASS: parent={parent_lan} remaining={remaining_child_lan} "
-        f"event_id(prepayment)={prep_id} fc_ms={fc_ms} (ICF path — mirrors event-gen processor)"
+        f"event_id(prepayment)={prep_id} fc_ms={fc_ms} "
+        f"(Sim A ICF — seed mirrors event-gen; ICF does not enqueue RSTCRE)"
     )
     return True
 
@@ -1262,17 +1273,21 @@ INSERT INTO mfi_accounting.loan_account_events_queue (
 def run_child_loan_prepayment_fc(child_lan: str, death_date: str) -> None:
     """Vikram path: child regular foreclosure.
 
-    Prefer individualChildLoanForeclosure (same force-bill orch hook; no createTask/BRE).
-    Falls back to loanPrepayment DEFAULT→APPROVE only if ICF_USE_LOAN_PREPAYMENT=1.
+    Default (Sim B): loanPrepayment DEFAULT→APPROVE_TASK→APPROVE — prod path
+    (parent PPP + RSTCRE enqueue). Opt-in Sim A: ICF_USE_LOAN_PREPAYMENT=0 →
+    individualChildLoanForeclosure (cascade/force-bill only; no RSTCRE enqueue).
     """
-    if os.environ.get("ICF_USE_LOAN_PREPAYMENT", "0") == "1":
+    if VIKRAM_USE_LOAN_PREPAYMENT:
         _run_child_loan_prepayment_via_loan_prepayment(child_lan, death_date)
         return
     _run_child_fc_via_individual_child(child_lan, death_date)
 
 
 def _run_child_fc_via_individual_child(child_lan: str, death_date: str) -> None:
-    """individualChildLoanForeclosure — proves FC force-bill write path (Obs H)."""
+    """Sim A opt-in: individualChildLoanForeclosure (force-bill / cascade only).
+
+    Does NOT enqueue RSTCRE or run parent PPP — POS assert is Out-of-scope on this path.
+    """
     fc_date = _vikram_fc_date(death_date)
     fd_ms = _eod_ms_ist(fc_date)
     print(
@@ -1304,7 +1319,7 @@ def _run_child_fc_via_individual_child(child_lan: str, death_date: str) -> None:
 
 
 def _run_child_loan_prepayment_via_loan_prepayment(child_lan: str, death_date: str) -> None:
-    """loanPrepayment DEFAULT → APPROVE_TASK → APPROVE (needs task/BRE; generates RSTCRE)."""
+    """Sim B (default): loanPrepayment DEFAULT → APPROVE_TASK → APPROVE (parent PPP + RSTCRE)."""
     fc_date = _vikram_fc_date(death_date)
     fd_ms = _eod_ms_ist(fc_date)
     print(
@@ -2585,6 +2600,27 @@ def assert_remaining_child_schedule_changed(
     )
 
 
+def assert_parent_pos_equals_remaining_children(
+    parent_lan: str, remaining_lans: list[str], *, tol: Decimal = Decimal("0"),
+) -> None:
+    """After non-last FC + parent PPP + RSTCRE: parent PRIN pending == Σ remaining children."""
+    parent_snap = snapshot_dues(parent_lan, "pos-check-parent")
+    rem_total = Decimal("0")
+    for lan in remaining_lans:
+        rem_total += snapshot_dues(lan, f"pos-check-{lan}")["prin_pending"]
+    parent_pending = parent_snap["prin_pending"]
+    diff = abs(parent_pending - rem_total)
+    if diff > tol:
+        raise AssertionError(
+            f"parent POS sync FAIL: parent {parent_lan} prin_pending={parent_pending} "
+            f"!= Σ remaining {remaining_lans}={rem_total} (diff={diff})"
+        )
+    print(
+        f"  parent POS sync PASS: parent={parent_lan} prin_pending={parent_pending} "
+        f"== Σ remaining {remaining_lans}={rem_total}"
+    )
+
+
 def _child_pending_dues(child_lan: str) -> Decimal:
     return Decimal(psql(f"""
 SELECT COALESCE(SUM(due_amount-paid_amount-waived_amount),0)
@@ -3037,10 +3073,15 @@ def main() -> int:
                 assert_no_legacy_force_bill_crn_collision(parent, death_date)
 
             if vikram_fc_child:
-                print(f"\n--- CHILD {idx} {child}: Vikram regular FC (loanPrepayment) ---")
+                fc_label = (
+                    "loanPrepayment (Sim B / prod)"
+                    if VIKRAM_USE_LOAN_PREPAYMENT
+                    else "individualChildLoanForeclosure (Sim A / ICF opt-in)"
+                )
+                print(f"\n--- CHILD {idx} {child}: Vikram regular FC via {fc_label} ---")
                 remaining = children_in_order[idx]
                 if child_already_closed_from_fc(child):
-                    print(f"  skip loanPrepayment — {child} already CLOSED with LOAN_PREPAYMENT (prior run)")
+                    print(f"  skip FC — {child} already CLOSED with LOAN_PREPAYMENT (prior run)")
                     assert_child_closed_fc(child)
                     assert_loan_prepayment_force_bill(child)
                 else:
@@ -3065,7 +3106,7 @@ def main() -> int:
                     run_child_loan_prepayment_fc(child, death_date)
                     assert_child_closed_fc(child)
                     assert_loan_prepayment_force_bill(child)
-                # Always ensure RSTCRE + drain after FC (ICF does not enqueue; resume-safe)
+                # Sim B loanPrepayment enqueues RSTCRE; Sim A ICF does not — seed only if missing
                 if remaining not in remaining_child_schedule_before:
                     remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
                         remaining, death_date,
@@ -3120,6 +3161,17 @@ def main() -> int:
                         )
             snapshot_dues(parent, f"parent-after-child{idx}")
             if not is_last:
+                remaining_after = [c for c in children_in_order if c != child]
+                # Parent POS == Σ remaining children requires parent PPP (loanPrepayment /
+                # DFC writer). Sim A ICF intentionally skips parent PPP — Out-of-scope.
+                if vikram_fc_child and not VIKRAM_USE_LOAN_PREPAYMENT:
+                    print(
+                        "\n--- Parent POS assert SKIP (Out-of-scope): Sim A ICF — "
+                        "no parent PPP; use default Sim B (loanPrepayment) for POS ---"
+                    )
+                else:
+                    print("\n--- Parent POS == Σ remaining children (after FC + RSTCRE) ---")
+                    assert_parent_pos_equals_remaining_children(parent, remaining_after)
                 if vikram_fc_child:
                     print("\n--- Vikram non-last FC asserts (LOAN_PREPAYMENT + force-bill Obs H) ---")
                     assert_loan_prepayment_force_bill(child)
