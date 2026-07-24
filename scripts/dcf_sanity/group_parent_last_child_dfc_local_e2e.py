@@ -60,7 +60,9 @@ VIKRAM_PATH = os.environ.get("VIKRAM_PATH", "0") == "1"
 #                    does NOT enqueue RSTCRE / parent PPP; POS assert Out-of-scope
 # Env name kept for compatibility; default is "1" (Sim B / loanPrepayment).
 VIKRAM_USE_LOAN_PREPAYMENT = os.environ.get("ICF_USE_LOAN_PREPAYMENT", "1") == "1"
-# Harness-only: when Sim B BRE is down, document Parent POS as Blocked (do not invent prod PPP HTTP).
+# Harness-only: when Sim B BRE is down AND local_bre_stub is not used, document Parent POS as
+# Blocked (do not invent prod PPP HTTP). Prefer: bash scripts/dcf_sanity/local_bre_stub.sh ensure
+# (wired in ensure_dcf_local_stack.sh) so getForeclosureRoles returns SUCCESS and Sim B runs.
 # parentLoanAccountPartPrepayment is internal from loanPrepayment (needs loan_account_entity in EC).
 DOCUMENT_PARENT_POS_BRE_BLOCK = os.environ.get("DOCUMENT_PARENT_POS_BRE_BLOCK", "0") == "1"
 # Harness-only: local DB still on pre-Sheet15 DFC rules (QA4 already Sheet15) → empty partitions.
@@ -1117,10 +1119,16 @@ def _vikram_fc_date(death_date: str) -> str:
     return death_date if death_date >= today else today
 
 
-def settle_parent_overdue_before_vikram_fc(parent_lan: str) -> None:
+def settle_parent_overdue_before_vikram_fc(parent_lan: str, parent_id: int) -> None:
     """Product rule 433: cannot foreclose member while parent has overdue.
 
-    Real loanRepayment on parent for open overdue pending (not SQL wipe).
+    Prod SHG group collection: loanRepayment on parent with function_sub_code=AUTO
+    (AutoPopulateChildLoansForRepaymentProcessor) → childLoanRepaymentEventGenerationProcessor
+    enqueues REP → childLoanEventProcessingBatchJob → childLoanRepayment.
+
+    Do NOT use WITHOUT_MAKER_CHECKER alone: that skips AUTO child populate and leaves
+    parent/children POS desynced (not a real webapp group-collection path).
+    Do NOT invent per-child HTTP repay; do not fake parentLoanAccountPartPrepayment HTTP.
     """
     import sys
     sys.path.insert(0, str(ROOT / "scripts/testing"))
@@ -1157,19 +1165,56 @@ WHERE la.la_account_number = '{parent_lan}'
         }
     }
     env = build_envelope("accounting", body, stan=fresh_stan("loanRepayment"))
-    env["headers"]["function_sub_code"] = "WITHOUT_MAKER_CHECKER"
+    # AUTO = prod SHG cascade (see AutoPopulateChildLoansForRepaymentProcessor).
+    env["headers"]["function_sub_code"] = "AUTO"
     env["headers"]["operation_mode"] = "SELF"
     env["headers"]["actor_type"] = "CUSTOMER"
+    env["headers"]["run_mode"] = "REAL"
     print(
         f"  Vikram prep: settle parent overdue via loanRepayment "
-        f"parent={parent_lan} pending={pending} repay={repay_amt} crn={crn}"
+        f"function_sub_code=AUTO parent={parent_lan} pending={pending} "
+        f"repay={repay_amt} crn={crn}"
     )
     result = fire_api("loanRepayment", env, timeout_s=180)
     code, status = result.response_status()
-    if status and status.upper() != "SUCCESS":
+    # 30266 = submitted for maker-checker; complete with APPROVE (same API, prod task path).
+    if code == "30266" or (status and status.upper() == "SUCCESS" and "approval" in (result.body or "").lower()):
+        print(f"  Vikram prep: loanRepayment submitted ({code}) — APPROVE")
+        env_ap = build_envelope("accounting", body, stan=fresh_stan("loanRepayment"))
+        env_ap["headers"]["function_code"] = "APPROVE"
+        env_ap["headers"]["function_sub_code"] = "AUTO"
+        env_ap["headers"]["operation_mode"] = "SELF"
+        env_ap["headers"]["actor_type"] = "CUSTOMER"
+        env_ap["headers"]["run_mode"] = "REAL"
+        result = fire_api("loanRepayment", env_ap, timeout_s=180)
+        code, status = result.response_status()
+    if status and status.upper() != "SUCCESS" and code not in ("30265", "30273", "000"):
         raise RuntimeError(
             f"Vikram prep loanRepayment FAIL parent={parent_lan} code={code} body={result.body[:600]}"
         )
+    # Drain REP events (prod: childLoanEventProcessingBatchJob → childLoanRepayment).
+    rep_pending = psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='REP' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""") or "0"
+    if int(rep_pending) > 0:
+        print(f"  Vikram prep: draining {rep_pending} PENDING REP (child repay cascade)")
+        fire_and_wait_child_events_batch(parent_id, 0)
+        still = psql(f"""
+SELECT COUNT(*)::text FROM mfi_accounting.loan_account_events_queue
+WHERE parent_account_id={parent_id} AND event_type='REP' AND is_deleted=false
+  AND event_status NOT IN ('C', 'COMPLETED');
+""") or "0"
+        if int(still) > 0:
+            raise RuntimeError(
+                f"Vikram prep FAIL: {still} PENDING REP after childLoanEventProcessingBatchJob "
+                f"parent_id={parent_id}"
+            )
+        print("  Vikram prep PASS: REP events drained")
+    else:
+        print("  Vikram prep: no PENDING REP after parent repay (check AUTO cascade)")
+
     left = Decimal(psql(f"""
 SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - COALESCE(ldd.waived_amount,0)),0)::text
 FROM mfi_accounting.loan_due_details ldd
@@ -1183,7 +1228,7 @@ WHERE la.la_account_number = '{parent_lan}'
         raise RuntimeError(
             f"Vikram prep FAIL: parent {parent_lan} still overdue pending={left} after repay={repay_amt}"
         )
-    print(f"  Vikram prep PASS: parent {parent_lan} overdue cleared")
+    print(f"  Vikram prep PASS: parent {parent_lan} overdue cleared (AUTO + REP drain)")
 
 
 def ensure_rstcre_pending_after_vikram_fc(
@@ -2508,7 +2553,7 @@ SELECT q.id::text, q.event_type, q.event_status,
        COALESCE(q.filler_2, '')
 FROM mfi_accounting.loan_account_events_queue q
 WHERE q.parent_account_id = {parent_id}
-  AND q.id > {baseline_queue_id}
+  AND q.id >= {baseline_queue_id}
   AND q.is_deleted = false
   AND q.event_type = 'RSTCRE'
 ORDER BY q.id;
@@ -3097,6 +3142,9 @@ def main() -> int:
                 )
                 print(f"\n--- CHILD {idx} {child}: Vikram regular FC via {fc_label} ---")
                 remaining = children_in_order[idx]
+                # Baseline BEFORE FC so Sim B loanPrepayment-enqueued RSTCRE is included
+                # (assert uses id >= baseline; capturing after FC made baseline == PENDING id).
+                prior_event_id = latest_parent_event_id(parent)
                 if child_already_closed_from_fc(child):
                     print(f"  skip FC — {child} already CLOSED with LOAN_PREPAYMENT (prior run)")
                     assert_child_closed_fc(child)
@@ -3116,7 +3164,7 @@ def main() -> int:
                         )
                         sync_billing_for_group(parent, children_in_order, fc_bill_through)
                         vikram_billed_through_fc = True
-                    settle_parent_overdue_before_vikram_fc(parent)
+                    settle_parent_overdue_before_vikram_fc(parent, parent_id)
                     remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
                         remaining, death_date,
                     )
@@ -3128,7 +3176,6 @@ def main() -> int:
                     remaining_child_schedule_before[remaining] = snapshot_future_emi_dates(
                         remaining, death_date,
                     )
-                prior_event_id = latest_parent_event_id(parent)
                 need_drain = ensure_rstcre_pending_after_vikram_fc(parent, parent_id, child, remaining)
                 if need_drain:
                     rstcre_proof = drain_rstcre_with_retry(

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SDCP-10199 — local deps for deathForeclosureInsuranceJob e2e (real postings).
-# Kafka :9092; masterdata :8014; payments stub :8594; actor + accounting (MessageBroker.xml).
+# Kafka :9092; masterdata :8014; payments stub :8594; BRE stub :8025;
+# actor + accounting (MessageBroker.xml). BRE stub = harness-only (other team).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -23,6 +24,8 @@ dpi_ensure_masterdata
 dpi_ensure_actor
 bash "$ROOT/scripts/dcf_sanity/local_payments_stub.sh" ensure
 bash "$ROOT/scripts/dcf_sanity/local_notifications_stub.sh" ensure
+# Harness-only: treat getForeclosureRoles as SUCCESS so Sim B loanPrepayment CREATE works.
+bash "$ROOT/scripts/dcf_sanity/local_bre_stub.sh" ensure
 
 PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" \
   -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -v ON_ERROR_STOP=1 \
@@ -33,6 +36,16 @@ PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PO
   -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -v ON_ERROR_STOP=1 \
   -f "$ROOT/scripts/sql/setup/local_setup_dcf_insurance_ptc_placeholders.sql" >/dev/null
 echo "  sql: DCF DPI placeholder IAD applied"
+
+# Harness-only: LOAN_PREPAYMENT DPI placeholders (existing) + RSCH_LOAN_PREPAYMENT DPI for parent PPP
+PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" \
+  -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -v ON_ERROR_STOP=1 \
+  -f "$ROOT/scripts/sql/setup/local_setup_loan_prepayment_dpi_ptc_placeholders.sql" >/dev/null
+echo "  sql: LOAN_PREPAYMENT DPI PTC placeholders applied"
+PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" \
+  -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -v ON_ERROR_STOP=1 \
+  -f "$ROOT/scripts/sql/setup/local_setup_rsch_loan_prepayment_dpi_ptc_placeholders.sql" >/dev/null
+echo "  sql: RSCH_LOAN_PREPAYMENT DPI PTC placeholders applied"
 
 if [[ "${DCF_STACK_SKIP_ACCOUNTING_RESTART:-}" != "1" ]]; then
   bash "$ROOT/scripts/bin/novopay-service.sh" restart accounting --compile
