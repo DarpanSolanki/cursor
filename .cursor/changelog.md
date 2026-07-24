@@ -1,11 +1,13 @@
+## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 trim Accrued/force-bill comment noise
+- After live-schedule Accrued query: shortened verbose Javadoc/inline comments on DaoService RSTCRE repoint, force-bill resolvers/services, ChildLoanRestructuringProcessor. No logic change; live-join SUM kept. Processor rewrite already reverted earlier.
+
 ## 2026-07-24 | accounting `mfi_integration_v3.4.2.4` | TDPQA-72 Summary Accrued live-schedule query
 - Reverted oversized L1a processor rewrite (`94eddfd8e` → `d5f61e19c`).
 - Minimal: `getAccruedAmountByLoanAccountId` SUM joins `loan_installment_details` `is_deleted=false` (sole Summary caller). Proof: Accrued-all 2707 → live 2681 = Original 2681; Summary API Accrued=Original=2681 with orphan IAD still present. No IAD.is_deleted (column absent). Write-path Accrued clear not shipped.
-- Tip `6f500ff8e`.
+- Tip was `6f500ff8e` (live join); comment-trim tip follows.
 
-## 2026-07-24 | accounting | TDPQA-72 L1a Summary Accrued on live schedule only
-
-`GetInterestAccrualDetailsProcessor` (getLoanAccountSummaryDetails only) sums Accrued on live installment lines; excludes Accrued still linked to soft-deleted schedule rows. Shared money-path Accrued totals unchanged. Local proof parent 6004134925: Accrued-all 2707 → live 2681 = Original 2681.
+## 2026-07-24 | accounting | TDPQA-72 L1a Summary Accrued (superseded)
+L1a processor rewrite was reverted; Accrued fix is repository live-join only (`getAccruedAmountByLoanAccountId`).
 
 ## 2026-07-24 | dcf harness | TDPQA-72 default child FC = loanPrepayment (ICF_USE_LOAN_PREPAYMENT=1)
 
