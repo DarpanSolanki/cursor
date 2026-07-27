@@ -520,8 +520,18 @@ SELECT to_char(GREATEST(DATE '{death_date}', (
   ) AND lid.is_deleted = false
 ))::date, 'YYYY-MM-DD');
 """)
-    # EXTRA seed needs a *past* advance EMI billed; extend through today (and second EMI+1).
-    if os.environ.get("SEED_EXTRA", "0") != "0":
+    # Do NOT extend group billing_through to CURRENT_DATE for SEED_EXTRA.
+    # That left sticky billed PRIN past death/reporting on *all* children before any DCF.
+    # Non-last DCF then sees inflated getUnpaidBilledPrincipalForDeathForeClosure and
+    # DeathForeclosureInsuranceWriter.doParentPartPrePayment appropriates
+    # pendingInstallment+unpaidBilled → parent prin_paid > child principal (S_C Δ1532).
+    # EXTRA seed bills the *last* child's advance EMI only via
+    # seed_extra_via_loan_repayment → _ensure_advance_installment_billed (after non-last).
+    # Opt-in repro of the poison: SEED_EXTRA_EXTEND_GROUP_BILLING=1.
+    if (
+        os.environ.get("SEED_EXTRA", "0") != "0"
+        and os.environ.get("SEED_EXTRA_EXTEND_GROUP_BILLING", "0") != "0"
+    ):
         billing_through = psql(f"""
 SELECT to_char(GREATEST(
   DATE '{billing_through}',
@@ -538,7 +548,7 @@ SELECT to_char(GREATEST(
   )
 )::date, 'YYYY-MM-DD');
 """)
-        print(f"  SEED_EXTRA billing_through extended → {billing_through}")
+        print(f"  SEED_EXTRA_EXTEND_GROUP_BILLING billing_through → {billing_through}")
     sync_billing_for_group(parent_lan, children, billing_through)
 
     child1, child2 = children[0], children[1]

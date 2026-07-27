@@ -1,3 +1,8 @@
+## 2026-07-27 — DCF S_C harness: stop SEED_EXTRA group billing extend
+
+- Root cause: fixture billed whole group through CURRENT_DATE before non-last DCF → sticky BLD_PRIN → parent POS desync (Δ=extra billed PRIN). Product Writer not at fault for this fail mode.
+- Fix: gate extend behind `SEED_EXTRA_EXTEND_GROUP_BILLING=1` (default off); EXTRA still seeds last-child via loanRepayment path. S_C re-verified PASS.
+
 ## 2026-07-27 | workspace | DCF full-matrix harness + schema column audit (QA4-aligned)
 - S9 `assert_full_money_column_audit` + `dcf_full_schema_audit.py` + `run_dfc_scenario_matrix.sh`; registry S9 db_asserts on Vikram/clean/main DCF cases.
 - QA4-aligned OS/UNBLD/dual-DFC Obs2 scope; learnings for EXTRA POS open (S_C) and repay-close BLOCKED (S_D). No product Java.

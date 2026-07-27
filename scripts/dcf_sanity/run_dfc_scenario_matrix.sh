@@ -67,7 +67,8 @@ run_case S_B_dual_dfc \
   env DCF_FRESH_GROUP=1 VIKRAM_PATH=0 SEED_EXTRA=0 DCF_SEED_EMI_LABD=0 ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 DCF_E2E_NO_SNAPSHOT=1 \
   bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh || true
 
-# S-C: Adversarial EXTRA + EMI labd (dirty)
+# S-C: Adversarial EXTRA + EMI labd (dirty). Group billing must NOT extend to today
+# (that poisoned non-last POS); EXTRA bills last-child only after non-last DCF.
 run_case S_C_adversarial_extra \
   env DCF_FRESH_GROUP=1 VIKRAM_PATH=0 SEED_EXTRA=1 DCF_SEED_EMI_LABD=1 ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 DCF_E2E_NO_SNAPSHOT=1 \
   bash scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh || true
