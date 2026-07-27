@@ -1,3 +1,7 @@
+## 2026-07-27 | workspace | DCF full-matrix harness + schema column audit (QA4-aligned)
+- S9 `assert_full_money_column_audit` + `dcf_full_schema_audit.py` + `run_dfc_scenario_matrix.sh`; registry S9 db_asserts on Vikram/clean/main DCF cases.
+- QA4-aligned OS/UNBLD/dual-DFC Obs2 scope; learnings for EXTRA POS open (S_C) and repay-close BLOCKED (S_D). No product Java.
+
 ## 2026-07-25 | workspace | FLOWTEST F1 — extract flow-agnostic harness core + RSTCRE pilot
 Shared `scripts/testing/flowtest/` (lock/fixture profiles/asserts/runner); DFC wraps same core; registry `flowtest.rstcre_spine` + domains restructuring impact; `flow_coverage.json` ratchet + SELF-REPORT %. Pilot 54s PASS; DFC parity 187s S1-S8 PASS.
 
