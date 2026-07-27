@@ -7,48 +7,48 @@ Every item below has **description + file path + line evidence + risk level**. S
 | Gap | Risk level | Evidence (file:lines) | What can go wrong |
 |-----|-----------|------------------------|-------------------|
 | **RESOLVED (2026-07-20) — CLB / group disburse duplicate member `REP_ACCT`** | **Resolved (was Medium)** | Root: LOS multi-REP on member and/or parent-append onto member that already had REP. Forward (`7e1642a57e`): `CustomValidate…validateMemberRepAcctUniqueness` → **134126** on parent `disburseLoan` when any member has `>1` REP_ACCT (before CLB); populator `hasRepAcct` skip-append only (no silent trim); createOrUpdate 134126 backstop. Ops: `scripts/sql/adhoc/clb_dedupe_rep_acct_events_queue.sql`. Harness: `disbursement.clb_rep_acct_dedupe_sim`. | Bad multi-REP never lands in new CLB rows; poison queue still fails createOrUpdate. |
-| **LOS disbursement sync no-ops if `entity_type` missing** | **High** | `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java` L33-L37 | Producer can send failure but LOS skips DB update (failure_reason not updated). |
+| **LOS disbursement sync no-ops if `entity_type` missing** | **High** | `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java` L33-L37 | Producer can send failure but LOS skips DB update (failure_reason not updated). |
 | **FIXED-STALE → RESOLVED (2026-07-23 truth audit) — Accounting sync payload key `entity_type`** | **Resolved (was High)** | Was: payload omitted `entity_type`. Now: `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java` `sendResultMessageToKafka` L311 `payload.put("entity_type", …)`. **Residual (still High via LOS row):** blank `entityType` from Kafka key parse still serializes `""` and LOS early-returns. | Key absence fixed; empty-value / key-parse miss still no-ops LOS failure_reason update. |
 | **FIX VERIFIED (2026-07-20, TDPQA-54; pushed to origin) — Disbursement Redis in-flight key had no TTL (LOS producer)** | **Resolved in branch (was High)** | `trustt-platform-los/.../DisburseLoanAPIUtil.java` (`0e4a0be2bd`) uses atomic `setIfAbsent` with owner UUID + configurable 600000 ms TTL; exception cleanup uses compare-and-delete. `ntest run disbursement.redis_inflight_lock_sim`. | One producer lock winner gates one Kafka publish; an orphan expires instead of permanently blocking replay. QA/deployment remains pending. |
 | **FIX VERIFIED (2026-07-20, TDPQA-54; pushed to origin) — Disbursement Redis in-flight key had no TTL (Accounting consumer)** | **Resolved in branch (was High)** | `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java` (`f9d803c4e`) acquires `dl{originalKey}` atomically with owner UUID + configurable 600000 ms TTL and owner-safe release; ambiguous intermediate `DEFAULT` replay fails closed. `ntest run disbursement.redis_inflight_lock_sim`. | One consumer lock winner gates orchestration; lock-contention skips do not clear either key. QA/deployment remains pending. |
-| **RESOLVED — Child MFT CRR response now aligns with callback payload source** | **Resolved (was High)** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java` L98-L105 (`setResponse` from callback `apiResponse`/null-envelope, status from `apiResponse`) | Eliminates stale `ExecutionContext.response` mismatch in child MFT CRR rows on null-callback transport errors. |
-| **Lock recovery on CRR save failure locks loan but doesn’t set `disbursement_status`** | **Medium** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java` L50-L65 | Recovery makes loan `LOCK`; stage routing relying on disbursement_status may stall or require ops reset. |
+| **RESOLVED — Child MFT CRR response now aligns with callback payload source** | **Resolved (was High)** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java` L98-L105 (`setResponse` from callback `apiResponse`/null-envelope, status from `apiResponse`) | Eliminates stale `ExecutionContext.response` mismatch in child MFT CRR rows on null-callback transport errors. |
+| **Lock recovery on CRR save failure locks loan but doesn’t set `disbursement_status`** | **Medium** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java` L50-L65 | Recovery makes loan `LOCK`; stage routing relying on disbursement_status may stall or require ops reset. |
 | **Broad Redis `flushDb()` helper exists** | **High** | `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java` L164 (`connection.flushDb()`) — citation drifted from old L109-L118 | Wrong/over-broad invocation can wipe an entire redis DB index for a service/tenant scope. |
-| **RESOLVED — Parent NEFT v2 ST_NEI idempotency vs child (stage-1 success lag)** | **Resolved (was Medium)** | `novopay-platform-accounting-v2/.../CallBankAPIForDisbursementProcessor.java` — `shouldSkipNeftStage2Initiation(loanAccountNumber, disbursementStatus, neiTransactionType)` skips when SUCCESS CRR exists for orchestration-scoped `…_NEFT_NEI` for **both** `NEFT_STAGE_1_SUCCESS` and `NEFT_STAGE_2_PENDING`; `doNEFTTransaction` repeats check before `neftPaymentV2Stage2` (2026-04-16) | Eliminates duplicate ST_NEI API risk when loan/queue still shows stage-1 success but NEI CRR already SUCCESS (parent–child parity). |
-| **Interest accrual posting uses time-based `client_reference_number`** | **High** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java` L251-L259 | Retry/replay can bypass client-ref dedupe and double-post if partial commits occur. |
+| **RESOLVED — Parent NEFT v2 ST_NEI idempotency vs child (stage-1 success lag)** | **Resolved (was Medium)** | `trustt-platform-accounting/.../CallBankAPIForDisbursementProcessor.java` — `shouldSkipNeftStage2Initiation(loanAccountNumber, disbursementStatus, neiTransactionType)` skips when SUCCESS CRR exists for orchestration-scoped `…_NEFT_NEI` for **both** `NEFT_STAGE_1_SUCCESS` and `NEFT_STAGE_2_PENDING`; `doNEFTTransaction` repeats check before `neftPaymentV2Stage2` (2026-04-16) | Eliminates duplicate ST_NEI API risk when loan/queue still shows stage-1 success but NEI CRR already SUCCESS (parent–child parity). |
+| **Interest accrual posting uses time-based `client_reference_number`** | **High** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java` L251-L259 | Retry/replay can bypass client-ref dedupe and double-post if partial commits occur. |
 | **Batch posting uses time-based `client_reference_number` in multiple flows (replay/double-post risk)** | **High** | Billing: `.../loanaccountbilling/LoanAccountBillingBatchService.java` L168; Asset criteria: `.../batchnew/npa/primary/loanaccountassetcriteriajob/LoanAccountAssetCriteriaBatchProcessor.java` L296 (`accountNumber + new Date().getTime()`); DCF writer: `.../DeathForeclosureInsuranceWriter.java` L530-L532 (`System.currentTimeMillis()`) — path/line citations refreshed 2026-07-23; plus `system_brain/edge_cases/batch_time_based_client_reference_number_replay_risk.md` | Re-run/retry generates a new client ref, bypasses `ClientReferenceNumberDedupProcessor`, and can double-post on partial progress unless additional idempotency markers exist. |
 | **RESOLVED (2026-06-25) — DPI go-live base included pre-go-live EMIs (QA1 UD §5.4)** | **Resolved (was High)** | `DpiAccrualCalculationBatchService.java` — filter `overdueBase` by `computeOverdueDate < goLive`; harness `dpic.ud_compliance` / `verify_go_live_ud_e2e.sql`; edge: `system_brain/edge_cases/dpi_go_live_ud_qa1.md` | Loan 5934060: base = full overdue stack instead of post-go-live EMIs only. |
 | **RESOLVED (2026-06-25) — DPI accrual on maturity before go-live** | **Resolved (was High)** | `DpiAccrualCalculationItemReader` + batch skip when `maturity_date < goLiveDate`; `run_dpi_go_live_ud_e2e.sh` | Loan 750461: matured before go-live still accrued. |
 | **RESOLVED (2026-06-25) — DPI accrual booking posting gaps (exclusive end_date)** | **Resolved (was High)** | `DpiAccrualBookingBatchService.java` — `isAccrualPostingDate` mirrors interest accrual (`dayBefore(endDate)`); `verify_dpi_posting_calendar.sql` | Unposted slices on EMI due / month-end (e.g. Apr 30–May 7). |
 | **RESOLVED (2026-06-23) — DPI billing used installment-only alphabetic `client_reference_number` (QA 134497)** | **Resolved (was High)** | Was `DpiBillingBatchService.java` `{loanId}_DPI_BILL_{installmentId}`; fixed `346d9efe6` → numeric `loanAccountId+installmentId+millis` (parity `LoanAccountBillingBatchService` L168). Edge: `system_brain/edge_cases/dpi_billing_client_ref_134497_qa.md` | Cross-EOD / second accrual slice on same installment collided with morning `transaction_master` row → batch FAILED with `writeSkipCount`. |
 | **GAP-076 — 3.7.1 initial-setup omits `loan_account.dpi_suspense_amount`** | **High** (3.7.1 / DPI train only) | On watermark `trustt-platform-accounting@mfi_integration_v3.4.2.5`: **no** `dpiSuspenseAmount` field (N/A this train). On 3.7.1: entity maps `dpiSuspenseAmount`; fresh `trustt-platform-initial-setup@mfi_integration_v3.7.1` tip `e4ade8c3f8` has no `flyway/**/*.sql` hit for `dpi_suspense_amount`; local-only guard `scripts/sql/setup/local_setup_dpi_suspense_amount.sql` | Fresh QA/prod schemas on **3.7.1 DPI train** can start accounting without a required entity column. Do not treat as open defect on 3.4.2.5 accounting checkout. |
-| **GAP-077 — 3.7.1 initial-setup duplicate Flyway migration versions (masterdata + notifications)** | **High** | `trustt-platform-initial-setup@mfi_integration_v3.7.1` tip `e4ade8c3f8`: masterdata `V000119` (`__add_global_audit_fallback_config.sql` + `__add_code_masters_for_dpic.sql`) and `V000120` (`__add_service_wise_audit_fallback_config.sql` + `__dpi_presentation_configuration.sql`) each have two files; notifications `V9000423` likewise. Flyway 5.2.4 aborts at scan: "Found more than one migration with version …". | Fresh `sh localhost.sh masterdata` / `notifications` fails entirely on any env (local/QA/prod) → bootstrap blocked. Workspace wrapper `scripts/bin/initial-setup-local.sh` detects and skips the affected service while continuing independent dependencies; it does not modify initial-setup. **Durable fix must renumber one file of each colliding pair on upstream 3.7.1** (release-owned). Runbook: brain `services/novopay-platform-initial-setup.md`. |
+| **GAP-077 — 3.7.1 initial-setup duplicate Flyway migration versions (masterdata + notifications)** | **High** | `trustt-platform-initial-setup@mfi_integration_v3.7.1` tip `e4ade8c3f8`: masterdata `V000119` (`__add_global_audit_fallback_config.sql` + `__add_code_masters_for_dpic.sql`) and `V000120` (`__add_service_wise_audit_fallback_config.sql` + `__dpi_presentation_configuration.sql`) each have two files; notifications `V9000423` likewise. Flyway 5.2.4 aborts at scan: "Found more than one migration with version …". | Fresh `sh localhost.sh masterdata` / `notifications` fails entirely on any env (local/QA/prod) → bootstrap blocked. Workspace wrapper `scripts/bin/initial-setup-local.sh` detects and skips the affected service while continuing independent dependencies; it does not modify initial-setup. **Durable fix must renumber one file of each colliding pair on upstream 3.7.1** (release-owned). Runbook: brain `services/trustt-platform-initial-setup.md`. |
 | **RESOLVED (2026-07-10) — SHG parent foreclosure BPI ≠ sum(child BPI) (SDCP-11058)** | **Resolved (was High)** | `ChildLoanForeclosureProcessor.java` — BPI due now uses `groupLoanUtility.getDistributedAmountEqually(parentDue, childLoanBookingDTOList)` like `foreclosure_fee` (any N≥1); was independent child sim `bpi_amount` HALF_UP; harness `foreclosure.shg_bpi_parity`; SQL `scripts/sql/helpers/verify_shg_foreclosure_bpi_parity.sql`; runbook `cursor-bundle/brain/runbooks/shg-foreclosure-bpi-parent-child-parity.md` | Parent quote 79 vs children 39+39=78 (or any N round-twice drift). Product: children sum to parent BPI. |
 | **RESOLVED (2026-07-08) — SHG parent DPI ≠ sum(child DPI) (SDCP-11012)** | **Resolved (was High)** | `DpiGroupLoanAccrualAdjustService.java` + `DpiGroupLoanAccrualAdjustTasklet` after `dpiAccrualCalculation` (mirrors `InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual`); verify `scripts/dpic/sql/helpers/verify_dpi_shg_parent_child_parity.sql`; QA1 L0 `scripts/sql/setup/qa1_repair_sdcp_11012_shg_dpi_accrual.sql` | Per-loan HALF_UP rounding on parent vs children drifted (e.g. parent 2912 vs children 2910 on LAN 6000196157). |
 | **RESOLVED (2026-07-08) — DPI grace admit without overdue-date seals** | **Resolved (was High)** | `DpiAccrualCalculationBatchService` admits base/anchor after `computeOverdueDate`; seals stay EMI due + month-end only; mid-slice grace changes day-walked into one row (`a66900048`, supersedes overdue-boundary approach in `46f115199`); harness `dpic.grace_overlap_e2e` / `multi_emi` on LAN 8057160 | EMI still in grace must not enter base; older EMI past grace continues; no extra `dpi_accrual_details` rows at overdue dates (UD = interest-parity seals). |
 | **RESOLVED (2026-06-23) — Local `disburse-quick` slow/failing (OTHBACCT+NEFT without simulator)** | **Resolved (was Medium)** | Was canonical JLG OTHBACCT payload + script bank mode only mocking NEFT; fixed suite: JLG MFT payload, `_ensure_acctwb_disbursement_account`, MFT script SQL completion, intermediate wait (~11s). Edge: `system_brain/edge_cases/disburse_quick_script_mode_acctwb.md` | Smoke hung 60–90s at `LOAN_BOOKED` or async-failed on missing DSBR_ACCT `account_number`; blocked post-accounting regression loops. |
-| **Proactive excess refund writer swallows exceptions** | **High** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefund/ProactiveExcessAmountRefundItemWriter.java` L156-L158 | Silent failure can leave staging in inconsistent state; reruns may re-pick items. |
+| **Proactive excess refund writer swallows exceptions** | **High** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefund/ProactiveExcessAmountRefundItemWriter.java` L156-L158 | Silent failure can leave staging in inconsistent state; reruns may re-pick items. |
 | **Proactive excess refund uses time-based `client_reference_number`** | **Medium** | `.../ProactiveExcessAmountRefundItemWriter.java` L209-L211 | Same dedupe-risk pattern if a rerun happens after partial progress. |
-| **LoanAccountAutoClosureItemWriter logs and continues on unexpected exceptions** | **High** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/loanaccountclosure/LoanAccountAutoClosureItemWriter.java` L114-L118 | Step can partially apply updates for some loans then silently skip remaining failures, leaving “looks successful” runs with inconsistent closure state unless downstream reconciliation exists. |
+| **LoanAccountAutoClosureItemWriter logs and continues on unexpected exceptions** | **High** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/loanaccountclosure/LoanAccountAutoClosureItemWriter.java` L114-L118 | Step can partially apply updates for some loans then silently skip remaining failures, leaving “looks successful” runs with inconsistent closure state unless downstream reconciliation exists. |
 | **HTTP internal client has no retry/circuit breaker** | **High** | `trustt-platform-lib/infra-http-client/.../NovopayHttpAPIClient.java` `callAPI` L54+ — still no retry/circuit (verified 2026-07-23; old L94-L142 span drifted) | Transient failure can cause cross-service partial progress (caller commits, callee doesn’t) → **data inconsistency**, not only availability loss. |
 | **Death-foreclosure insurance reverse-feed `Pending for FR` can partially progress and block the whole batch** | **High** | Cross-service path now in `.../deathforeclosure/service/DeathForeclosureInsuranceReUploadService.java` L92-L93 (`updateTaskWorkflow`) + `DeathForeclosureInsuranceReUploadCommitService` (`claim_status=REJECTED`); staging still selected via `claim_status='Pending for FR'` + `INBOUND_SUCCESS` (repository). Writer L247-L283 citation **stale**. Edge: `system_brain/edge_cases/death_foreclosure_insurance_pending_fr_partial_progress_blocks_batch.md` | Task update commits in separate service txn; if accounting chunk fails/rolls back after the call, staging stays eligible (`Pending for FR` + `INBOUND_SUCCESS`) and poison rows can repeatedly fail the job, blocking unrelated loans from progressing/closing. |
-| **Gradle Novopay plugin classpath `3.2.6.6-1` vs dependency-mgmt published `3.2.6.6.2-1`** | **High** | `novopay-platform-accounting-v2/build.gradle` L14 (`accounting.dependency.gradle.plugin:3.2.6.6-1`) vs `novopay-platform-dependency-mgmt/build.gradle` (e.g. accounting plugin `version = "3.2.6.6.2-1"`) | Resolved `novopay-platform-lib` / platform artifacts may **not** match the BOM developers believe they use — subtle cross-service binary drift at runtime. |
+| **Gradle Novopay plugin classpath `3.2.6.6-1` vs dependency-mgmt published `3.2.6.6.2-1`** | **High** | `trustt-platform-accounting/build.gradle` L14 (`accounting.dependency.gradle.plugin:3.2.6.6-1`) vs `trustt-platform-dependency-mgmt/build.gradle` (e.g. accounting plugin `version = "3.2.6.6.2-1"`) | Resolved `trustt-platform-lib` / platform artifacts may **not** match the BOM developers believe they use — subtle cross-service binary drift at runtime. |
 | **No `src/test` coverage for `LmsMessageBrokerConsumer` async disburse path** | **High** | Workspace `grep` `LmsMessageBrokerConsumer` in `**/src/test/**/*.java` → **no hits** (2026-04-07); see `.cursor/test-coverage-map.md` | Redis skip / Kafka result publish / orchestration regressions reach production without CI signal. |
 | **No `src/test` coverage for `glBalanceZeroisation` / `reverseTransaction` / `postManualJournalEntry`** | **High** | Workspace `grep` those strings in `**/src/test/**/*.java` → **no hits** (2026-04-07); `.cursor/test-coverage-map.md` | Year-end GL and finance correction flows lack automated guard — misposting risk at close. |
-| **No `src/test` coverage for DCF / insurance inbound batch posting** | **High** (mitigated locally) | `grep` `DeathForeclosure` in `**/novopay-platform-accounting-v2/src/test/**/*.java` → **no hits**; **local money e2e:** `ntest run dcf.group_parent_last_child_e2e` + `scripts/dcf_sanity/*` on `mfi_integration_v3.7.1` | Unit tests still missing in CI; group last-child path covered by registry flow (SDCP-10199). |
+| **No `src/test` coverage for DCF / insurance inbound batch posting** | **High** (mitigated locally) | `grep` `DeathForeclosure` in `**/trustt-platform-accounting/src/test/**/*.java` → **no hits**; **local money e2e:** `ntest run dcf.group_parent_last_child_e2e` + `scripts/dcf_sanity/*` on `mfi_integration_v3.7.1` | Unit tests still missing in CI; group last-child path covered by registry flow (SDCP-10199). |
 | **RESOLVED (2026-07-10) — SDCP-10199 workspace/train drift (3.4.2.x vs 3.7.1)** | **Resolved** | Forward merge `f45dbe3bd` on `mfi_integration_v3.7.1`; runbook `sdcp-10199-group-parent-last-child-dfc.md`; removed dead `waiveFutureParentPendingDuesOnLastChildDfc` | Agents analyzing DFC on stale branch / waiving parent PRIN caused wrong fixes. 3.4.2.1/2/3 tips are ancestors of 3.7.1. |
 | **GAP-074 — SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)** | **High** (open; parked) | `DeathForeclosureInsuranceWriter.doParentPartPrePayment` (released trains / `mfi_integration_v3.7.1@f45dbe3bd` still use child `INT_AMT`); fix parked on `fix/sdcp-10199-parent-int-dpi-last-child-dfc` @ `61278d5f8` — **do not merge/push to `mfi_integration_v3.7.1` until QA/prod discuss**; runbook `cursor-bundle/brain/runbooks/sdcp-10199-group-parent-last-child-dfc.md`; ASK-057 **DEFERRED** | SHG/JLG parent can CLOSE after last-child DFC with residual pending INT (latent 3.4.2.1+); DPI residual risk on 3.7.1. Missed via lucky INT=0 e2e / UI-focused QA. |
 | **REOPENED then RESOLVED (2026-07-17) — GAP-075 TDPQA-72 QA acceptance (Obs1 EMI-labd hijack + Obs2 amount≠principal + Obs3 Accrued>Original + webapp)** | **Resolved (was High)** | Writer @ `feature/tdpqa72-dfc-acceptance-labd-lapd`: dedicated force-bill labd; lapd EXTRA-net; `reconcileAccruedInterestToBilledOriginal`; e2e `assert_webapp_bound_apis` + `ACCEPTANCE_STRICT=1` + `DCF_SEED_EMI_LABD=1`. Gate: `acceptance_coverage.py` WEBAPP_UI_FIELD_MARKERS. | QA4: force-bill not visible; amount 11550 vs principal 11605; parent Accrued>Original; webapp summary/statement. |
 | **RESOLVED (2026-07-22) — GAP-078 DCF parent force-bill CRN collision (134497)** | **Resolved (was High)** | Was `DeathForeclosureInsuranceWriter.buildForceBillClientReference(accountId, valueDate)` only; fixed `935c52743` on `mfi_integration_v3.4.2.4` — append `deathForeclosureDetailsId`. Distinct from GAP-074 INT-180. Harness mid-run: non-last parent FB posted then last-child job failed 134497. | Sequential child DFCs sharing `dateOfReporting` reused parent CRN → `ClientReferenceNumberDedupProcessor` fatal **134497**, blocking last-child parent force-bill. |
-| **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
-| **Multi-node batch dependency tracking is in-memory only** | **Medium** | `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
+| **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `trustt-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
+| **Multi-node batch dependency tracking is in-memory only** | **Medium** | `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
 | **No `src/test` coverage for API Gateway `RequestForward*` (`RequestForwardProcessor`, controller)** | **High** | Workspace `grep` `RequestForward` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-055** | `/forward/*` ingress (documented as filter-bypass + payload logging risk) has no automated regression tests. |
 | **`loanWriteoff` orchestration vs `PrepaymentApproppriationProcessor` ExecutionContext contract mismatch** | **High** | `loans_orc.xml` `loanWriteoff` passes `prepayment_amount` (not `total_foreclosure_amount`); `ValidateLoanWriteOffDataProcessor` sets `penalty_amount` but processor reads `penal_amount`; write-off uses `value_date`, processor reads `foreclosure_date`; `fee_amount` not set pre-processor — **GAP-062** | Appropriation/posting branch can **NPE** or apply **wrong component splits** for final write-off ledger and dues updates. |
-| **`postTransaction` — `PopulateAndValidateAccountDetailsProcessor` assumes non-null `account_details` array** | **Medium** | `novopay-platform-accounting-v2/.../PopulateAndValidateAccountDetailsProcessor.java` L60-L61 — direct cast/iterate without null check | Malformed request, partial internal-api merge, or bypassed validation → **NPE** before business validation messages. |
-| **`CreateOrUpdateBulkCollectionConsumer` — `collection_list` null before `size()`** | **Medium** | `novopay-platform-payments/.../CreateOrUpdateBulkCollectionConsumer.java` L81-L83 — `collection_list` cast without null check | Valid JSON envelope with missing `collection_list` → **NPE**; offsets stuck / poison message behaviour depends on broker config — **GAP-064**. |
-| **Accounting money-path Kafka consumers omit explicit `maxPollRecords` in MessageBroker.xml** | **Medium** | `novopay-platform-accounting-v2/deploy/application/messagebroker/MessageBroker.xml` L15-L28 — only `pollTime` / threads; no `maxPollRecords` (cf. payments bulk consumer) | Broker/framework defaults apply; backpressure/lag tuning and “financial topic SLO” not codified in-repo — **GAP-065**. |
-| **REOPENED (2026-04-22) — `los_lms_disbursement_sync` still omits `stan`** | **Medium** | `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java` L229-L247 (payload fields do not include `stan`), LOS request header sets `stan` in `DisburseLoanAPIUtil.java` L111 | Async disbursement failures lose correlation between LOS request logs and accounting sync-back record, slowing RCA and replay forensics. |
+| **`postTransaction` — `PopulateAndValidateAccountDetailsProcessor` assumes non-null `account_details` array** | **Medium** | `trustt-platform-accounting/.../PopulateAndValidateAccountDetailsProcessor.java` L60-L61 — direct cast/iterate without null check | Malformed request, partial internal-api merge, or bypassed validation → **NPE** before business validation messages. |
+| **`CreateOrUpdateBulkCollectionConsumer` — `collection_list` null before `size()`** | **Medium** | `trustt-platform-payments/.../CreateOrUpdateBulkCollectionConsumer.java` L81-L83 — `collection_list` cast without null check | Valid JSON envelope with missing `collection_list` → **NPE**; offsets stuck / poison message behaviour depends on broker config — **GAP-064**. |
+| **Accounting money-path Kafka consumers omit explicit `maxPollRecords` in MessageBroker.xml** | **Medium** | `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml` L15-L28 — only `pollTime` / threads; no `maxPollRecords` (cf. payments bulk consumer) | Broker/framework defaults apply; backpressure/lag tuning and “financial topic SLO” not codified in-repo — **GAP-065**. |
+| **REOPENED (2026-04-22) — `los_lms_disbursement_sync` still omits `stan`** | **Medium** | `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java` L229-L247 (payload fields do not include `stan`), LOS request header sets `stan` in `DisburseLoanAPIUtil.java` L111 | Async disbursement failures lose correlation between LOS request logs and accounting sync-back record, slowing RCA and replay forensics. |
 | **LOS→ACC disburse pipe delimiter contract (`api\|json\|cacheKey`) is implicit cross-service** | **Medium** | `DisburseLoanAPIUtil.java` L66-L69; `LmsMessageBrokerConsumer` L160-L162, L79-86 | Deploy skew if either side changes separator or cacheKey shape → parse failures or wrong `externRefNumber` — **GAP-067**. |
 | **Payments `collectionLoanRepayment` retry loop over nested `loanRepayment` (dedupe reliance)** | **Medium** | `MfiCollectionsDAOService.callPushLMSUpdateAPI` L1038-L1084; `CollectionRepaymentProcessor` L68-L74 (`client_reference_number` = receipt) | Retries re-drive full processor; **usually** guarded by accounting CRR dedupe — residual double-post if dedupe bypassed, partial multi-item failure, or receipt semantics change — **GAP-068**. |
 | **RESOLVED (2026-07-02) — `force_async=TRUE` write-skip `ClassCastException` (Future vs writer type O)** | **Resolved (was High)** | `GenericListenerV3.java` L136-L155 + `BatchWriterSkipItemSupport.java`; was `(FutureTask)` cast in `SkipListener<I,O>` before `fromWriter`; audit `scripts/bin/audit-batch-skip-mappers.sh` | Write-skip on async batch steps crashed skip listener → no `batch_failure_audit` row, job exit misleading; DPI booking surfaced first in matrix. |
@@ -64,13 +64,13 @@ Every item below has **description + file path + line evidence + risk level**. S
 
 **Wave 1 mining (2026-04-10):** +7 additional documented items — **GAP-031..037** — **High: 4**, **Medium: 2**, **Low: 1** (see section *Wave 1 gap mining* below; excludes duplicates of GAP-018..030 / table rows).
 
-**Wave 2 mining (2026-04-10):** +8 additional documented items — **GAP-038..045** — **High: 5**, **Medium: 3**, **Low: 0** (`novopay-mfi-los` + `novopay-platform-payments`, Java + orchestration XML; excludes table-row duplicates for disburse Redis TTL, `entity_type` sync, platform `NovopayKafkaProducer` swallow — cite those where relevant).
+**Wave 2 mining (2026-04-10):** +8 additional documented items — **GAP-038..045** — **High: 5**, **Medium: 3**, **Low: 0** (`trustt-platform-los` + `trustt-platform-payments`, Java + orchestration XML; excludes table-row duplicates for disburse Redis TTL, `entity_type` sync, platform `NovopayKafkaProducer` swallow — cite those where relevant).
 
-**Wave 3 mining (2026-04-10):** +8 additional documented items — **GAP-046..053** — **High: 5**, **Medium: 3**, **Low: 0** (`novopay-platform-task`, `novopay-platform-actor` lens pass, `novopay-platform-batch`; excludes **table-row** duplicates for multi-node scheduler race + in-memory dependency map — see rows above; cross-ref `.cursor/multinode-batch.md`).
+**Wave 3 mining (2026-04-10):** +8 additional documented items — **GAP-046..053** — **High: 5**, **Medium: 3**, **Low: 0** (`trustt-platform-task`, `trustt-platform-actor` lens pass, `trustt-platform-batch`; excludes **table-row** duplicates for multi-node scheduler race + in-memory dependency map — see rows above; cross-ref `.cursor/multinode-batch.md`).
 
-**Wave 4 mining (2026-04-10):** +5 additional documented items — **GAP-054..058** — **High: 2**, **Medium: 3**, **Low: 0** (`novopay-platform-masterdata-management`, `novopay-platform-authorization`, `novopay-platform-approval`, `novopay-platform-audit`, `novopay-platform-notifications`, `novopay-platform-api-gateway`, `novopay-platform-dms` — Java `src/main/java`; authorization service has **no** “default allow” in `CheckPermissionProcessor` when usecase resolves; gateway **skips** permission call when mapping row missing).
+**Wave 4 mining (2026-04-10):** +5 additional documented items — **GAP-054..058** — **High: 2**, **Medium: 3**, **Low: 0** (`trustt-platform-masterdata-management`, `trustt-platform-authorization`, `trustt-platform-approval`, `trustt-platform-audit`, `trustt-platform-notifications`, `trustt-platform-api-gateway`, `trustt-platform-dms` — Java `src/main/java`; authorization service has **no** “default allow” in `CheckPermissionProcessor` when usecase resolves; gateway **skips** permission call when mapping row missing).
 
-**Flow Sync Wave 4 (2026-04-17):** Batch → accounting mapping (`novopay-platform-batch` scheduler + **71** accounting `*BatchConfigService` entry points), Actor/Masterdata contract pass from accounting `callInternalAPI` grep, **cross-service transaction synthesis** — **NEW** file `.cursor/cross-service-transactions.md`. **No new High/Medium gap IDs** beyond existing summary table: mapped flows consolidate known rows (multi-node batch, time-based `client_reference_number`, Kafka swallow, disburse sync, auto-closure writer swallow, DCF insurance, collections recon).
+**Flow Sync Wave 4 (2026-04-17):** Batch → accounting mapping (`trustt-platform-batch` scheduler + **71** accounting `*BatchConfigService` entry points), Actor/Masterdata contract pass from accounting `callInternalAPI` grep, **cross-service transaction synthesis** — **NEW** file `.cursor/cross-service-transactions.md`. **No new High/Medium gap IDs** beyond existing summary table: mapped flows consolidate known rows (multi-node batch, time-based `client_reference_number`, Kafka swallow, disburse sync, auto-closure writer swallow, DCF insurance, collections recon).
 
 **Flow Sync Wave 5 (2026-04-17):** **API catalogue** — `.cursor/api-catalogue.md` (**1797** unique orchestration `Request name` across 14 service repos; **146** Kafka topic headings from `event-registry.md`; batch + scheduler sections). **Knowledge graph** — `.cursor/knowledge-graph.md` + `.cursor/knowledge-graph.mmd` (accounting-centered, money paths, SPOFs, representative **16** edges with ALIGNED/DRIFT/MISMATCH). **No new gap IDs** from this wave.
 
@@ -123,17 +123,17 @@ Fix (done for key): include `entity_type` in accounting sync payload. Remaining:
 
 ## GAP-071: Accounting consumer skip paths do not always publish LOS sync result
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Lens: 5 (cross-service consistency), 11 (observability)  
 Risk: 🔴 High  
-File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
 
 Description: on skip reasons `LOCK_LOAN_STATUS` and `LOCK_CACHE_IN_PROGRESS`, consumer returns without publishing `los_lms_disbursement_sync`; only `ALREADY_ACTIVE` emits success sync.
 
 Failure scenario: LOS has a queued disbursement but gets no terminal signal for skip cases, creating “in-progress forever” / delayed manual recovery states.
 
 Evidence:
-```93:104:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
+```93:104:trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
         DisburseSkipReason skipReason = getDisburseSkipReason(...);
         if (skipReason != DisburseSkipReason.NONE) {
             if (skipReason == DisburseSkipReason.ALREADY_ACTIVE) {
@@ -148,17 +148,17 @@ Fix: publish deterministic sync status for all skip reasons with explicit reason
 
 ## GAP-072: Consumer payload parsing happens before try/finally lock cleanup block
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Lens: 2 (idempotency), 3 (lock safety), 7 (error handling)  
 Risk: 🔴 High  
-File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
 
 Description: raw message parsing (`substring/split/index`) is executed before entering the guarded `try/finally` block; malformed payloads can throw early and skip normal cleanup/send flow.
 
 Failure scenario: poison message or contract drift can crash consumer path before safe result publication and before consistent cache cleanup semantics.
 
 Evidence:
-```80:92:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
+```80:92:trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
     private void processConsumerRecord(ConsumerRecord<String, String> consumerRec, PlatformTenant tenant) {
         String raw = consumerRec.value();
         String originalCacheKey = raw.substring(raw.lastIndexOf("|") + 1);
@@ -173,23 +173,23 @@ Fix: move parsing into guarded block with explicit format validation and dead-le
 
 ## GAP-073: NEFT callback UTR map key mismatch in array branch
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Lens: 2 (state correctness), 11 (traceability)  
 Risk: 🟠 Medium  
-File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java`
+File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java`
 
 Description: NEF callback array branch stores UTR map entry keyed by `referenceno`; callback processing later looks up by external reference (`paymentrefno`), leading to null UTR propagation.
 
 Failure scenario: ST_NEF callback succeeds but UTR is not persisted on loan/queue rows for array payloads.
 
 Evidence:
-```174:177:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java
+```174:177:trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java
                 if (String.valueOf(errorCode).equalsIgnoreCase("0") && ...) {
                     externalReferenceNumbers.add(paymentObject.get(PAYMENTREFNO).toString());
                     String utrNumber = String.valueOf(paymentObject.get(REFERENCENO));
                     utrMap.put(paymentObject.get(REFERENCENO).toString(), utrNumber);
 ```
-```201:205:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java
+```201:205:trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java
     private void processSingleCallback(String callbackType, String externalReferenceNumber, Map<String, String> utrMap) {
         ...
         processLoanAccount(callbackType, clientRequestResponseLogEntity, utrMap.get(externalReferenceNumber));
@@ -199,16 +199,16 @@ Fix: key `utrMap` by `paymentrefno` consistently in both object and array branch
 
 ## GAP-018: Platform-lib crypto utilities swallow exceptions and hardcode secrets
 
-Service: novopay-platform-lib  
+Service: trustt-platform-lib  
 Lens: 1 (Exception swallowing), 10 (Security & data leakage)  
 Risk: 🔴 High  
-File: `novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java`  
+File: `trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java`  
 Line: `EncryptionUtil#HMAC_SHA256`, `EncryptionUtil#getEncryptedTextForRefNumber`, `EncryptionUtil#getRequestTokenForFiller2`  
 Description: Multiple crypto helpers have empty `catch` blocks and/or print stack traces; one method hardcodes an AES key string in source and uses it for encryption.  
 Failure scenario: Crypto failures are silently converted to empty/trimmed outputs → downstream request signing/encryption can proceed with invalid data; hardcoded key exposure enables offline decryption/forgery if code leaks.  
 Financial impact: Potential request integrity failure in bank/payment legs; compliance incident due to embedded secret and weak error handling.  
 Evidence:
-```97:106:novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java
+```97:106:trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java
 		try {
 			Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
 			SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
@@ -218,7 +218,7 @@ Evidence:
 		}
 		return hash.trim();
 ```
-```109:126:novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java
+```109:126:trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/EncryptionUtil.java
 			String key = "HDFCBANK!@#987MOBAPP";
 			byte[] b = key.getBytes("UTF-8");
 			// ...
@@ -234,16 +234,16 @@ Date found: 2026-04-09
 
 ## GAP-019: Kafka producer wrapper swallows send failures (no signal to caller)
 
-Service: novopay-platform-lib  
+Service: trustt-platform-lib  
 Lens: 1 (Exception swallowing), 4 (Retry & circuit breaker), 11 (Observability gaps)  
 Risk: 🔴 High  
-File: `novopay-platform-lib/infra-message-broker/src/main/java/in/novopay/infra/message/broker/producer/NovopayKafkaProducer.java`  
+File: `trustt-platform-lib/infra-message-broker/src/main/java/in/novopay/infra/message/broker/producer/NovopayKafkaProducer.java`  
 Line: `NovopayKafkaProducer#sendMessage`  
 Description: `sendMessage` wraps producer send in a broad `try/catch` and only logs on failure; there’s no rethrow, no returned future, and no persistence fallback (outbox).  
 Failure scenario: Producer send fails (broker outage, auth, serialization) → caller assumes event is emitted; downstream consumers never act; cross-service state diverges.  
 Financial impact: Loss of financial sync events or audit events; silent data loss in money-moving flows that use Kafka for side effects or reconciliation.  
 Evidence:
-```107:140:novopay-platform-lib/infra-message-broker/src/main/java/in/novopay/infra/message/broker/producer/NovopayKafkaProducer.java
+```107:140:trustt-platform-lib/infra-message-broker/src/main/java/in/novopay/infra/message/broker/producer/NovopayKafkaProducer.java
 	public void sendMessage(String topic, String key, String message, Map<String, String> headers, Callback callback) {
 		try {
 			// ...
@@ -261,16 +261,16 @@ Date found: 2026-04-09
 
 ## GAP-020: Async orchestration execution is fire-and-forget (no completion/error contract)
 
-Service: novopay-platform-lib  
+Service: trustt-platform-lib  
 Lens: 6 (Transaction boundaries), 7 (Async & thread safety), 11 (Observability gaps)  
 Risk: 🔴 High  
-File: `novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java`  
+File: `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java`  
 Line: `ServiceOrchestrator#processAsyncRequest`  
 Description: Async request processing uses `CompletableFuture.runAsync` without capturing completion/failure, and without persisting async job state; failures can only be seen in logs and are not surfaced to the triggering flow.  
 Failure scenario: Async processor chain throws (validation, DB, downstream API) → request is lost with no durable status; retries may re-run without idempotency guard or may never occur depending on caller.  
 Financial impact: Money-moving async requests can fail silently, leading to stuck workflows and reconciliation gaps.  
 Evidence:
-```56:64:novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java
+```56:64:trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java
 	public void processAsyncRequest(ExecutionContext executionContext, Request orcRequest) {
 		PlatformTenant tenant = ThreadLocalContext.getTenant();
 		CompletableFuture.runAsync(() -> {
@@ -298,19 +298,19 @@ Description: Multiple services commit plaintext credentials (Nexus repo creds; S
 Failure scenario: Credential exfiltration → repo compromise, email takeover, ES access, push-notification spoofing; audit/compliance incident.  
 Financial impact: Platform compromise can enable data theft and fraudulent notifications/flows.  
 Evidence:
-```4:15:novopay-platform-task/build.gradle
+```4:15:trustt-platform-task/build.gradle
     credentials {
         username "novopay"
         password "novopay#25"
     }
 ```
-```26:30:novopay-platform-task/src/main/resources/application.properties
+```26:30:trustt-platform-task/src/main/resources/application.properties
 actor.email.password=novopay#123
 ```
-```18:28:novopay-platform-audit/src/main/resources/application.properties
+```18:28:trustt-platform-audit/src/main/resources/application.properties
 novopay.platform.es.password=Novopay#25
 ```
-```1:13:novopay-platform-notifications/deploy/application/service-account.json
+```1:13:trustt-platform-notifications/deploy/application/service-account.json
   "private_key": "-----BEGIN PRIVATE KEY-----\nMIIE...
 ```
 Fix: Remove secrets from repo, rotate all exposed credentials, enforce `${ENV_VAR}`/secret manager usage, add secret-scanning CI gate.  
@@ -321,19 +321,19 @@ Date found: 2026-04-09
 
 ## GAP-022: Notifications OTP/SMS/email flows ignore errors at orchestration level (silent delivery failure)
 
-Service: novopay-platform-notifications  
+Service: trustt-platform-notifications  
 Lens: 1 (Exception swallowing), 11 (Observability gaps)  
 Risk: 🔴 High  
-File: `novopay-platform-notifications/deploy/application/orchestration/product_otp.xml`, `custom_mfi.xml`  
+File: `trustt-platform-notifications/deploy/application/orchestration/product_otp.xml`, `custom_mfi.xml`  
 Line: `ignoreErrorCodes="ALL"`  
 Description: Notification send processors are configured to ignore all errors, so OTP/SMS/email send can fail silently while upstream flow continues as success.  
 Failure scenario: OTP not delivered but auth flow proceeds; users locked out or (worse) flows assume verification happened.  
 Financial impact: Authentication failures, support load; potential security bypass if caller assumes OTP delivered.  
 Evidence:
-```6:20:novopay-platform-notifications/deploy/application/orchestration/product_otp.xml
+```6:20:trustt-platform-notifications/deploy/application/orchestration/product_otp.xml
 <Processor bean="sendSMSNotificationProcessor" ignoreErrorCodes="ALL">
 ```
-```3:7:novopay-platform-notifications/deploy/application/orchestration/custom_mfi.xml
+```3:7:trustt-platform-notifications/deploy/application/orchestration/custom_mfi.xml
 <Processor bean="sendSMSProcessor" ignoreErrorCodes="ALL">
 ```
 Fix: Remove blanket ignore; convert to explicit retry/DLQ or fail-fast depending on flow; emit metrics for delivery failures.  
@@ -344,7 +344,7 @@ Date found: 2026-04-09
 
 ## GAP-023: Notifications service logs sensitive payloads and access tokens (PII + secret leakage)
 
-Service: novopay-platform-notifications  
+Service: trustt-platform-notifications  
 Lens: 10 (Security & data leakage), 11 (Observability gaps)  
 Risk: 🔴 High  
 File: multiple (see evidence)  
@@ -353,11 +353,11 @@ Description: Service logs raw notification payloads and FCM access token at info
 Failure scenario: Logs expose phone numbers, message content (OTP), tokens enabling push spoofing.  
 Financial impact: Account takeover vectors; compliance breach.  
 Evidence:
-```94:106:novopay-platform-notifications/src/main/java/in/novopay/notifications/fcm/service/FcmPushNotificationService.java
+```94:106:trustt-platform-notifications/src/main/java/in/novopay/notifications/fcm/service/FcmPushNotificationService.java
 String accessToken = getAccessToken();
 LOG.info("Access Token: {}", accessToken);
 ```
-```83:88:novopay-platform-notifications/src/main/java/in/novopay/notifications/sms/processor/SendSMSNotificationProcessor.java
+```83:88:trustt-platform-notifications/src/main/java/in/novopay/notifications/sms/processor/SendSMSNotificationProcessor.java
 LOG.info("Before Notification message ::: {}", message);
 LOG.info("Notification sharedMap ::: {}", map);
 ```
@@ -369,21 +369,21 @@ Date found: 2026-04-09
 
 ## GAP-024: DMS download endpoint is query-param based and uses caller-supplied tenant_code (IDOR/tenant-hop risk)
 
-Service: novopay-platform-dms  
+Service: trustt-platform-dms  
 Lens: 10 (Security & data leakage), 5 (Contract drift / context integrity)  
 Risk: 🔴 High  
-File: `novopay-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java`  
+File: `trustt-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java`  
 Line: `serveFile(...)`  
 Description: Download endpoint accepts `tenant_code` as request param and builds file path using it; no auth headers are consumed in the controller method signature.  
 Failure scenario: If perimeter/gateway validation is misconfigured, attacker can fetch cross-tenant documents by changing tenant_code and guessing document_code.  
 Financial impact: PII/document exfiltration (KYC docs), regulatory incident.  
 Evidence:
-```73:85:novopay-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java
+```73:85:trustt-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java
 @GetMapping(value = "/{apiVersion}/downloadDocument")
 public ResponseEntity<Object> serveFile(...,
         @RequestParam(TENANT) String tenantCode, @RequestParam(DOCUMENT_CODE) String documentCode,
 ```
-```107:113:novopay-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java
+```107:113:trustt-platform-dms/src/main/java/in/novopay/dms/controller/DownloadDocumentController.java
 String fileLocation = this.documentUtils.getFileStorageLocation() + File.separator + tenantCode;
 ```
 Fix: Bind tenant from authenticated context (MDC/headers) not query param; enforce authorization before serving bytes; use signed URLs or tokenized access.  
@@ -394,20 +394,20 @@ Date found: 2026-04-09
 
 ## GAP-025: DMS S3 util writes temp files using `urn` directly (path traversal arbitrary write/delete risk)
 
-Service: novopay-platform-dms  
+Service: trustt-platform-dms  
 Lens: 10 (Security), 6 (Transaction boundaries/side effects)  
 Risk: 🔴 High  
-File: `novopay-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java`  
+File: `trustt-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java`  
 Line: `uploadToBucket`, `downloadFromBucket`  
 Description: Uses `new File(urn)` and deletes `Path.of(urn)` in finally; if `urn` can contain path separators, it can write/delete arbitrary files.  
 Failure scenario: Crafted `urn` → overwrite/delete server files; potential RCE pivot depending on file locations.  
 Financial impact: Service compromise, data loss.  
 Evidence:
-```56:67:novopay-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java
+```56:67:trustt-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java
 file = new File(urn);
 FileUtils.writeByteArrayToFile(file, content);
 ```
-```88:94:novopay-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java
+```88:94:trustt-platform-dms/src/main/java/in/novopay/dms/aws/S3ServiceUtil.java
 Files.delete(Path.of(urn));
 ```
 Fix: Write temp files to a fixed safe directory using generated filenames; validate `urn` against strict regex; never use user-influenced paths directly.  
@@ -418,7 +418,7 @@ Date found: 2026-04-09
 
 ## GAP-026: API Gateway logs decrypted secret keys and full request/response payloads (PII/secret leakage)
 
-Service: novopay-platform-api-gateway  
+Service: trustt-platform-api-gateway  
 Lens: 10 (Security & data leakage), 11 (Observability gaps)  
 Risk: 🔴 High  
 File: `.../SecureRequestAuthenticatorV2.java`, `.../MfiRequestResponseLogFilter.java`  
@@ -427,11 +427,11 @@ Description: Gateway logs encrypted/decrypted keys and full request/response for
 Failure scenario: Logs become a trove of secrets + customer payloads; insider or log access compromise leads to mass data leakage and potential forging of requests.  
 Financial impact: Account takeover, fraud, compliance breach.  
 Evidence:
-```108:123:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/authentication/SecureRequestAuthenticatorV2.java
+```108:123:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/authentication/SecureRequestAuthenticatorV2.java
 LOG.debug("Encrypted Secret Key: {}", encryptedClientKey);
 LOG.debug("Decrypted Secret Key: {}", secretKey);
 ```
-```88:90:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/MfiRequestResponseLogFilter.java
+```88:90:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/MfiRequestResponseLogFilter.java
 LOG.debug("API request: {}", requestData);
 ```
 Fix: Remove secret logging entirely; redact payload logs; gate with strict secure-debug toggle and masking utility.  
@@ -442,16 +442,16 @@ Date found: 2026-04-09
 
 ## GAP-027: API Gateway outbound HttpClient trusts all certificates and disables hostname verification
 
-Service: novopay-platform-api-gateway  
+Service: trustt-platform-api-gateway  
 Lens: 10 (Security), 4 (Retry/circuit posture for outbound calls)  
 Risk: 🔴 High  
-File: `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/HttpClientUtil.java`  
+File: `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/HttpClientUtil.java`  
 Line: SSL trust strategy  
 Description: Request-forward client disables TLS verification (trust-all + NoopHostnameVerifier).  
 Failure scenario: MITM interception of upstream calls; data tampering.  
 Financial impact: Fraud and data compromise across forwarded requests.  
 Evidence:
-```189:206:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/HttpClientUtil.java
+```189:206:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/HttpClientUtil.java
 SSLContext sslContext = SSLContexts.custom().loadTrustMaterial(null, new TrustStrategy() {
   public boolean isTrusted(X509Certificate[] chain, String authType) { return true; }
 }).build();
@@ -465,7 +465,7 @@ Date found: 2026-04-09
 
 ## GAP-028: Authorization service logs access tokens and has doc-vs-config drift for Kafka usage
 
-Service: novopay-platform-authorization  
+Service: trustt-platform-authorization  
 Lens: 10 (Security), 12 (Dead code/ghost infra), 11 (Observability)  
 Risk: 🔴 High  
 File: `GetMapMyIndiaAccessTokenProcessor.java`, `deploy/application/messagebroker/MessageBroker.xml`, `CLAUDE.md`  
@@ -474,10 +474,10 @@ Description: Service logs MapMyIndia access token; MessageBroker.xml enables pro
 Failure scenario: Token leakage + Kafka SSL secret exposure; operators assume Kafka unused but it is configured/enabled leading to unmanaged event behavior.  
 Financial impact: Secret leakage; operational misconfiguration risk.  
 Evidence:
-```28:33:novopay-platform-authorization/src/main/java/in/novopay/authorization/processor/GetMapMyIndiaAccessTokenProcessor.java
+```28:33:trustt-platform-authorization/src/main/java/in/novopay/authorization/processor/GetMapMyIndiaAccessTokenProcessor.java
 LOG.info("Access token: {}", accessToken);
 ```
-```3:19:novopay-platform-authorization/deploy/application/messagebroker/MessageBroker.xml
+```3:19:trustt-platform-authorization/deploy/application/messagebroker/MessageBroker.xml
 <ssl.truststore.password>novopay</ssl.truststore.password>
 <ssl.enabled.protocols>TLSv1.2,TLSv1.1,TLSv1</ssl.enabled.protocols>
 ```
@@ -489,7 +489,7 @@ Date found: 2026-04-09
 
 ## GAP-029: Masterdata business-date cache invalidation failures are non-fatal (platform-wide business-date drift risk)
 
-Service: novopay-platform-masterdata-management  
+Service: trustt-platform-masterdata-management  
 Lens: 1 (Exception swallowing), 5 (Contract/state drift), 11 (Observability gaps)  
 Risk: 🔴 High  
 File: `BusinessDateItemWriter.java`  
@@ -498,7 +498,7 @@ Description: Writer persists business date to DB but cache invalidation is best-
 Failure scenario: DB business date changes but Redis cache still serves old date; downstream services compute `job_time` and cutoffs incorrectly until cache is refreshed.  
 Financial impact: Wrong cutoff dates → incorrect accrual/posting/batch behavior (money/state correctness).  
 Evidence:
-```35:46:novopay-platform-masterdata-management/src/main/java/in/novopay/masterdata/batch/writer/BusinessDateItemWriter.java
+```35:46:trustt-platform-masterdata-management/src/main/java/in/novopay/masterdata/batch/writer/BusinessDateItemWriter.java
 try {
     cacheClient.remove(...);
     cacheClient.set(...);
@@ -515,7 +515,7 @@ Date found: 2026-04-09
 
 ## GAP-030: Task service has multiple replay/consistency risks (no TTL cache writes + async fire-and-forget + likely bug on taskId == 'null')
 
-Service: novopay-platform-task  
+Service: trustt-platform-task  
 Lens: 2 (Idempotency), 3 (Locks/TTL), 7 (Async/thread safety), 10 (Security)  
 Risk: 🔴 High  
 File: multiple (see evidence)  
@@ -524,11 +524,11 @@ Description: Task service writes cache keys without expiry, uses fire-and-forget
 Failure scenario: stale cache causes wrong routing/permissions; Kafka replays can re-close/delete tasks; `"null"` taskId path can skip completion updates or throw parsing errors.  
 Financial impact: Workflow correctness issues: missed task closures, duplicate task side effects, operational debt; potential indirect money impact through collections workflows.  
 Evidence:
-```143:147:novopay-platform-task/src/main/java/in/novopay/task/mgmt/datamodel/dao/TaskDao.java
+```143:147:trustt-platform-task/src/main/java/in/novopay/task/mgmt/datamodel/dao/TaskDao.java
 // expire for cache key will be -1
 cacheClient.set(tenantCode, key, value, dbIndex);
 ```
-```89:92:novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
+```89:92:trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
 if (StringUtils.isNotEmpty(taskId) && "null".equalsIgnoreCase(taskId)) {
     Optional<TaskEntity> taskEntity = taskDao.findOneById(Long.valueOf(taskId));
 ```
@@ -540,22 +540,22 @@ Date found: 2026-04-09
 
 ---
 
-## Wave 1 gap mining — 2026-04-10 (`novopay-platform-lib` + `novopay-platform-accounting-v2`)
+## Wave 1 gap mining — 2026-04-10 (`trustt-platform-lib` + `trustt-platform-accounting`)
 
 **Method:** Exhaustive lens-oriented scan over all `src/main/java` sources (pattern grep for the 12 lenses + targeted file reads on hits). **Additive count:** +7 (GAP-031..037): **High 4**, **Medium 2**, **Low 1**. Does not re-open items already captured above (e.g. GAP-018..020, EncryptionUtil, Kafka swallow, async orchestration, disburse Redis TTL, time-based `client_reference_number` batch class, proactive refund / auto-closure writers).
 
 ### GAP-031: Redis cache `set` without TTL is a first-class API (unbounded key lifetime)
 
-- Service: novopay-platform-lib  
+- Service: trustt-platform-lib  
 - Lens: 3 (Distributed locks & TTL), 11 (Observability / stale state)  
 - Risk: High  
-- File: `novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`  
+- File: `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`  
 - Line/Method: `RedisCacheClient#set(String tenantCode, String key, Object value, String dbIndex)` (and delegating `NovopayCacheClient#set` / `CacheDataService`)  
 - Description: The 4-arg overload calls Spring `opsForValue().set(key, value)` with **no expiry**. Any caller using this overload (vs the 5-arg TTL overload) creates keys that live until explicit delete or manual flush.  
 - Failure scenario: Memory growth, stale authoritative cache entries, and “stuck” behaviour if a key was meant as a short-lived marker but no TTL was passed (distinct from known disbursement-specific keys but same primitive risk).  
 - Financial impact: Wrong cached master/product/accounting rules served; operational incidents requiring Redis surgery; indirect money-flow risk if cache drives decisions.  
 - Evidence:
-```64:67:novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java
+```64:67:trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java
 	@Override
 	public void set(String tenantCode, String key, Object value, String dbIndex) {
 		getRedisTemplate(dbIndex).opsForValue().set(getTenantSpecificKey(tenantCode,key), value);
@@ -568,16 +568,16 @@ Date found: 2026-04-09
 
 ### GAP-032: Paytm remittance client logs bearer token and full API response at INFO
 
-- Service: novopay-platform-lib  
+- Service: trustt-platform-lib  
 - Lens: 10 (Security & data leakage), 11 (Observability)  
 - Risk: High  
-- File: `novopay-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java`  
+- File: `trustt-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java`  
 - Line/Method: `invokeApi`  
 - Description: Logs `Authorization` token and raw Paytm HTTP response at INFO.  
 - Failure scenario: Log aggregation exposes live credentials and transaction payloads; insider or log-store breach enables API abuse and PII leakage.  
 - Financial impact: Fraudulent transfers / status inquiries; regulatory breach.  
 - Evidence:
-```68:86:novopay-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java
+```68:86:trustt-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java
 		String authToken = getAuhtorizationToken(agentId);
 		LOG.info("Authorization Token: {}", authToken);
 		// ...
@@ -591,16 +591,16 @@ Date found: 2026-04-09
 
 ### GAP-033: Shared `HttpClientUtil` logs keystore password and builds trust-all-style TLS tunnel
 
-- Service: novopay-platform-lib  
+- Service: trustt-platform-lib  
 - Lens: 10 (Security), 4 (Outbound HTTP hardening)  
 - Risk: High  
-- File: `novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java`  
+- File: `trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java`  
 - Line/Method: `enableHttpsTunnelWithCertificate`  
 - Description: Logs certificate path **and password** at INFO; uses `TrustSelfSignedStrategy` and `NoopHostnameVerifier` for the constructed client.  
 - Failure scenario: Keystore password in logs; MITM or hostile cert acceptance if this client is used against non-trusted endpoints.  
 - Financial impact: Credential leak; possible interception of bank/partner traffic depending on deployment.  
 - Evidence:
-```167:179:novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java
+```167:179:trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java
 	public static CloseableHttpClient enableHttpsTunnelWithCertificate(String certificatePath, String certificatePassword) {
 		LOG.info("Inside Enable HTTPS Tunnel with certificate With Path :{} AND certificate Password: {}"+ certificatePath +" "+certificatePassword);
 		// ...
@@ -613,16 +613,16 @@ Date found: 2026-04-09
 
 ### GAP-034: Same-service internal API path logs full request JSON when callee returns FAIL
 
-- Service: novopay-platform-lib  
+- Service: trustt-platform-lib  
 - Lens: 10 (Security & data leakage), 11 (Observability)  
 - Risk: High  
-- File: `novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java`  
+- File: `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java`  
 - Line/Method: `doSameServiceCall`  
 - Description: On `status == FAIL`, logs entire `requestString` built from the outgoing internal API map at INFO.  
 - Failure scenario: Failed money/servicing calls write full payloads (PII, amounts, account identifiers) into centralized logs.  
 - Financial impact: Compliance incident; easier lateral abuse if logs are compromised.  
 - Evidence:
-```88:92:novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java
+```88:92:trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java
 		if ("FAIL".equalsIgnoreCase(responseStatus)) {
 			LOG.info("Internal API Call Failed for API: {}, Request: {}", apiName, requestString);
 			NovopayFatalException e = new NovopayFatalException((String) newExecutionContext.get("code"),(String) newExecutionContext.get("message"));
@@ -634,16 +634,16 @@ Date found: 2026-04-09
 
 ### GAP-035: Loan installment SMS notification batch writers swallow all exceptions per row
 
-- Service: novopay-platform-accounting-v2  
+- Service: trustt-platform-accounting  
 - Lens: 1 (Exception swallowing), 11 (Observability), 8 (Batch job safety)  
 - Risk: Medium  
-- File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/notifications/loaninstallmentduenotificationjob/LoanInstallmentDueNotificationWriter.java`, `.../loaninstallmentbouncenotificationjob/LoanInstallmentBounceNotificationWriter.java`  
+- File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/notifications/loaninstallmentduenotificationjob/LoanInstallmentDueNotificationWriter.java`, `.../loaninstallmentbouncenotificationjob/LoanInstallmentBounceNotificationWriter.java`  
 - Line/Method: `write`  
 - Description: Per-row `try/catch (Exception)` logs and continues; chunk/step can still complete successfully.  
 - Failure scenario: Kafka publish or upstream customer fetch fails silently for some loans → no SMS; operations assume job success.  
 - Financial impact: Collections communication gap; repayment behaviour risk; SLA/support load (not direct double-post).  
 - Evidence:
-```96:113:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/notifications/loaninstallmentduenotificationjob/LoanInstallmentDueNotificationWriter.java
+```96:113:trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/notifications/loaninstallmentduenotificationjob/LoanInstallmentDueNotificationWriter.java
 				try {
 					// ... build SMS payload, pushDataToKafkaQueue
 				} catch (Exception e) {
@@ -657,16 +657,16 @@ Date found: 2026-04-09
 
 ### GAP-036: Bulk collection failed-record Kafka consumer has no validation, dedupe, or error handling
 
-- Service: novopay-platform-accounting-v2  
+- Service: trustt-platform-accounting  
 - Lens: 2 (Idempotency), 11 (Observability), 5 (Contract)  
 - Risk: Medium  
-- File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/recurring/entity/BulkCollectionFailedRecordConsumer.java`  
+- File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/recurring/entity/BulkCollectionFailedRecordConsumer.java`  
 - Line/Method: `computeRecords`  
 - Description: Blindly persists `consumerRec.value()` to `BulkCollectionLog` with no try/catch, no idempotency key, no schema validation.  
 - Failure scenario: Poison message fails the poll loop; or replay creates duplicate log rows; malformed payload breaks save and retries indefinitely.  
 - Financial impact: Operational noise; obscured collection failure analysis; possible consumer stall.  
 - Evidence:
-```20:28:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/recurring/entity/BulkCollectionFailedRecordConsumer.java
+```20:28:trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/recurring/entity/BulkCollectionFailedRecordConsumer.java
 	public void computeRecords(ConsumerRecords<String, String> records, PlatformTenant tenant) {
 		for (ConsumerRecord<String, String> consumerRec : records) {
 			String consumerRecords = consumerRec.value();
@@ -684,16 +684,16 @@ Date found: 2026-04-09
 
 ### GAP-037: NOC file job swallows customer pincode lookup failures and continues with blank pincode
 
-- Service: novopay-platform-accounting-v2  
+- Service: trustt-platform-accounting  
 - Lens: 1 (Exception swallowing), 8 (Batch job safety)  
 - Risk: Low  
-- File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/bulknoc/dispatch/generatenocfilejob/GenerateNocFileItemWriter.java`  
+- File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/bulknoc/dispatch/generatenocfilejob/GenerateNocFileItemWriter.java`  
 - Line/Method: `getPincode`  
 - Description: Catches broad `Exception`, logs a generic INFO message, returns `pincode` unchanged (may be blank) → directory path may omit pincode segment.  
 - Failure scenario: NOC files land in wrong folder or collide; harder to retrieve by expected path.  
 - Financial impact: Operational/doc retrieval issues; low direct money risk.  
 - Evidence:
-```107:113:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/bulknoc/dispatch/generatenocfilejob/GenerateNocFileItemWriter.java
+```107:113:trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/bulknoc/dispatch/generatenocfilejob/GenerateNocFileItemWriter.java
 		try {
 			pincode = getCustomerPincodeFromCustomerId(loanAccountEntity.getCustomerId(), localExecutionContext);
 		}catch (Exception e){
@@ -708,22 +708,22 @@ Date found: 2026-04-09
 
 ---
 
-## Wave 2 gap mining — 2026-04-10 (`novopay-mfi-los` + `novopay-platform-payments`)
+## Wave 2 gap mining — 2026-04-10 (`trustt-platform-los` + `trustt-platform-payments`)
 
 **Method:** Enumerated all `src/main/java` sources + orchestration XML under `deploy/application/orchestration/`; grep for 12 lenses; deep read on disburse → accounting, `bulk_collection_data`, collection repayment/LMS push, Kafka producers/consumers.
 
 ### GAP-038: LOS Kafka producer uses null message key for `disburse_loan_api_` (and other LOS topics)
 
-- Service: novopay-mfi-los  
+- Service: trustt-platform-los  
 - Lens: 5 (Contract / ordering), 7 (Async), 2 (Idempotency coupling)  
 - Risk: High  
-- File: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`  
+- File: `trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`  
 - Line/Method: `pushDataToKafkaQueue(String tenantCode, String message, String topicPrefix, Map<String, String> headers)`  
 - Description: Calls `novopayKafkaProducer.sendMessage(..., null, message, headers, null)` — **record key is always null**, so partition assignment is not stable per `external_ref_number` / loan.  
 - Failure scenario: Messages for the same disbursement can land on different partitions → ordering not guaranteed across retries; harder to reason about replay and consumer side effects.  
 - Financial impact: Contributes to race/reordering risk on async disburse path (pairs with consumer idempotency — see table rows on Redis + accounting consumer).  
 - Evidence:
-```51:62:novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java
+```51:62:trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java
     public void pushDataToKafkaQueue(String tenantCode, String message, String topicPrefix,
         Map<String, String> headers) {
         NovopayKafkaProducer novopayKafkaProducer = (NovopayKafkaProducer) context.getBean("NovopayKafkaProducer");
@@ -745,16 +745,16 @@ Date found: 2026-04-09
 
 ### GAP-039: LOS disbursement sync consumer logs full Kafka payload map at INFO
 
-- Service: novopay-mfi-los  
+- Service: trustt-platform-los  
 - Lens: 10 (Security & data leakage), 11 (Observability)  
 - Risk: High  
-- File: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`  
+- File: `trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`  
 - Line/Method: `computeRecords`  
 - Description: After JSON parse, logs entire `clientMap` at INFO — includes status, errors, and any other fields present on the sync message.  
 - Failure scenario: Central logs accumulate PII/financial sync payloads at default log level.  
 - Financial impact: Compliance / breach risk; easier reconstruction of customer/loan identifiers from logs.  
 - Evidence:
-```40:43:novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java
+```40:43:trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java
                 Map<String, Object> clientMap = objectMapper.readValue(consumerRec.value(), Map.class);
                 executionContext.putAll(clientMap);
                 LOG.info("Disbursement Sync Consumer Record: {}", clientMap);
@@ -767,16 +767,16 @@ Date found: 2026-04-09
 
 ### GAP-040: LOS Kafka “wakeup” posts dummy `{}` to `disburse_loan_api_mfi_*` on startup
 
-- Service: novopay-mfi-los  
+- Service: trustt-platform-los  
 - Lens: 7 (Async & side effects), 12 (Ghost / surprising infra), 11 (Observability)  
 - Risk: Medium  
-- File: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`  
+- File: `trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`  
 - Line/Method: `wakeupKafkaProducer` (`@PostConstruct`)  
 - Description: `CompletableFuture.runAsync` builds topic `disburse_loan_api_` + hardcoded tenant `mfi` + env suffix and sends `"{}"` with **null** key to “wake” the producer.  
 - Failure scenario: Accounting consumer may process/no-op junk messages; metrics/alerts noise; misleading load on disburse topic; wrong tenant if multi-tenant differs from `mfi`.  
 - Financial impact: Low direct money risk if consumer rejects empty payload; operational and monitoring confusion.  
 - Evidence:
-```90:98:novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java
+```90:98:trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java
             LOG.info("Wakeup Kafka: producer obtained, {}", System.currentTimeMillis());
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("disburse_loan_api_");
@@ -794,16 +794,16 @@ Date found: 2026-04-09
 
 ### GAP-041: LOS `DisburseLoanAPIUtil` logs full pipe-delimited disburse request at DEBUG
 
-- Service: novopay-mfi-los  
+- Service: trustt-platform-los  
 - Lens: 10 (Security & data leakage)  
 - Risk: Medium  
-- File: `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`  
+- File: `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`  
 - Line/Method: `callDisburseLoanAPI`  
 - Description: `LOG.debug("Disburse Loan Request: {}", request)` where `request` is `apiName|full_json|cacheKey`.  
 - Failure scenario: DEBUG enabled in prod → full disburse payloads in logs.  
 - Financial impact: PII / financial data leakage.  
 - Evidence:
-```69:70:novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java
+```69:70:trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java
             request = apiName+"|" + request +"|"+cacheKey;
             LOG.debug("Disburse Loan Request: {}", request);
 ```
@@ -814,16 +814,16 @@ Date found: 2026-04-09
 
 ### GAP-042: Payments `PaymentsKafkaProducer` always sends null Kafka record key
 
-- Service: novopay-platform-payments  
+- Service: trustt-platform-payments  
 - Lens: 5 (Contract / ordering), 2 (Replay semantics)  
 - Risk: High  
-- File: `novopay-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`  
+- File: `trustt-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`  
 - Line/Method: `pushDataToKafkaQueue`  
 - Description: `sendMessage(stringBuilder.toString(), null, message, null)` — key always null for **collection_primary_allocation_**, **collection_secondary_allocation_**, **collection_task_processing_**, etc.  
 - Failure scenario: No per-collection or per-group ordering guarantee; duplicate/reordered messages harder to diagnose; amplifies at-least-once consumer quirks.  
 - Financial impact: Indirect collections/allocation correctness and operational risk; pairs with consumer idempotency design.  
 - Evidence:
-```19:27:novopay-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java
+```19:27:trustt-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java
     public void pushDataToKafkaQueue(String message, String topic) {
         String tenantCode = ThreadLocalContext.getTenant().getTenantCode();
         NovopayKafkaProducer novopayKafkaProducer = (NovopayKafkaProducer) context.getBean("NovopayKafkaProducer");
@@ -842,16 +842,16 @@ Date found: 2026-04-09
 
 ### GAP-043: Bulk collection consumer declares success/failure trackers that are never populated
 
-- Service: novopay-platform-payments  
+- Service: trustt-platform-payments  
 - Lens: 11 (Observability), 1 (Misleading control flow)  
 - Risk: Medium  
-- File: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
+- File: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
 - Line/Method: `computeRecords`  
 - Description: Local `failedRecords` / `successCollectionRefs` at top of loop are **never passed** into `processCollectionData` (which uses its own maps). INFO logs reporting “successful collections processed” / “failed collections” use the **outer** lists and misstate reality (typically always zero).  
 - Failure scenario: Ops and SRE cannot trust logs for bulk ingestion health; incidents mis-triaged.  
 - Financial impact: Delayed detection of LCS–LMS collection pipeline issues.  
 - Evidence:
-```73:99:novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
+```73:99:trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
                 Map<String, JSONObject> failedRecords = new HashMap<>();
                 List<String> successCollectionRefs = new ArrayList<>();
                 // ...
@@ -870,16 +870,16 @@ Date found: 2026-04-09
 
 ### GAP-044: Bulk collection consumer drops poison/invalid JSON messages without failing the poll
 
-- Service: novopay-platform-payments  
+- Service: trustt-platform-payments  
 - Lens: 1 (Exception handling), 11 (Observability), 2 (Data loss)  
 - Risk: High  
-- File: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
+- File: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
 - Line/Method: `parseData`, `computeRecords`  
 - Description: `parseData` catches parse exceptions, logs, returns **null**; caller skips processing when `bulkCollectionDetails == null` but does **not** rethrow — consumer completes normally → offset can commit with **no** DLQ / failed-record publish for that message.  
 - Failure scenario: Permanent silent loss of bulk collection payload on bad JSON or schema drift.  
 - Financial impact: Missing collection rows in LCS vs accounting expectation; reconciliation gaps.  
 - Evidence:
-```128:138:novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
+```128:138:trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
     private JSONObject parseData(String dataString) {
         JSONParser parser = new JSONParser();
         JSONObject collectionData = null;
@@ -900,16 +900,16 @@ Date found: 2026-04-09
 
 ### GAP-064: Bulk collection consumer NPE when `collection_list` is absent
 
-- Service: novopay-platform-payments  
+- Service: trustt-platform-payments  
 - Lens: 1 (Exception handling), 2 (Data loss / stuck consumer)  
 - Risk: Medium  
-- File: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
+- File: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`  
 - Line/Method: `computeRecords` after successful `parseData`  
 - Description: When `bulkCollectionDetails != null` but **`collection_list` key is missing or null**, `(JSONArray) bulkCollectionDetails.get("collection_list")` yields null and **`collectionList.size()`** throws **NPE**. Related to **GAP-044** (parse returns null) but distinct: **valid JSON**, wrong shape.  
 - Failure scenario: Consumer thread fails; behaviour depends on framework — possible stuck partition / retry storm until message skipped.  
 - Financial impact: Bulk collection batch not applied in payments LCS for that offset; divergence vs accounting until replay or manual fix.  
 - Evidence:
-```81:83:novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
+```81:83:trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java
                     String requestTimeStamp = consumerUtility.getStringValue(bulkCollectionDetails, "timestamp");
                     collectionList = (JSONArray) bulkCollectionDetails.get("collection_list");
                     LOGGER.info("Total number of collections to be processed : {}", collectionList.size());
@@ -921,16 +921,16 @@ Date found: 2026-04-09
 
 ### GAP-045: Field collection path suppresses SMS / leader notification after collection rows are persisted
 
-- Service: novopay-platform-payments  
+- Service: trustt-platform-payments  
 - Lens: 1 (Exception swallowing), 11 (Observability), 6 (Ordering vs side effects)  
 - Risk: High  
-- File: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`  
+- File: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`  
 - Line/Method: block after `collectionsRepository.saveAll` in collection completion path  
 - Description: `sendSms` + `sendNotificationToLeader` wrapped in `try/catch` that logs **“Suppressing execption”** and swallows all exceptions **after** DB saves for the collection transaction.  
 - Failure scenario: Money/collection state is committed in LCS but customer/group notifications never fire; no fatal to caller.  
 - Financial impact: Customer unaware of payment; group leader not notified; support churn — **not** double-charge, but **paired inconsistency** between money trail and comms.  
 - Evidence:
-```501:508:novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java
+```501:508:trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java
        try {
            sendSms( sendSMSList);
            sendNotificationToLeader(executionContext, groupId, clientCode, collectionsRefNumber, loanAccountNumbers);
@@ -945,22 +945,22 @@ Date found: 2026-04-09
 
 ---
 
-## Wave 3 gap mining — 2026-04-10 (`novopay-platform-task` + `novopay-platform-actor` + `novopay-platform-batch`)
+## Wave 3 gap mining — 2026-04-10 (`trustt-platform-task` + `trustt-platform-actor` + `trustt-platform-batch`)
 
 **Method:** Enumerated Java under `src/main/java` (task ~307, actor ~2133, batch ~99); grep for 12 lenses; deep read on batch scheduler (`AutoScheduler`, `SchedulingGroupProcessor`, `SchedulerCommonService`, `ScheduleBatchGroupExecutor`), task Kafka consumers + expiry batch writer, actor `ActorKafkaProducer` (null key cited in edge doc only — same pattern as GAP-042).
 
 ### GAP-046: Batch `AutoScheduler` loads schedules only for the first tenant in `getAllTenants()`
 
-- Service: novopay-platform-batch  
+- Service: trustt-platform-batch  
 - Lens: 3 (Multi-tenant), 12 (Operational surprise), 11 (Observability)  
 - Risk: High  
-- File: `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`  
+- File: `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`  
 - Line/Method: `onLoadScheduleGroups` (`@PostConstruct`)  
 - Description: `platformTenantList.get(0)` is used as the sole tenant for `batchScheduleService.autoSchedule(context)` on startup. Order is whatever `getAllTenants()` returns; **other tenants never get this bootstrap path** on this JVM.  
 - Failure scenario: In multi-tenant deployments, schedules for non-first tenants may not register until a separate API/manual path runs; missed EOD windows for those tenants.  
 - Financial impact: Missed batch triggers (e.g. accounting-adjacent jobs) for affected tenants → stale data, SLA breaches.  
 - Evidence:
-```30:37:novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java
+```30:37:trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java
     public void onLoadScheduleGroups(){
        try {
            List<PlatformTenant> platformTenantList = tenantDetailsDAOService.getAllTenants();
@@ -977,16 +977,16 @@ Date found: 2026-04-09
 
 ### GAP-047: `TriggerNotificationsProcessor` swallows all exceptions (escalation path)
 
-- Service: novopay-platform-task  
+- Service: trustt-platform-task  
 - Lens: 1 (Exception swallowing), 11 (Observability)  
 - Risk: Medium  
-- File: `novopay-platform-task/src/main/java/in/novopay/task/mgmt/processor/TriggerNotificationsProcessor.java`  
+- File: `trustt-platform-task/src/main/java/in/novopay/task/mgmt/processor/TriggerNotificationsProcessor.java`  
 - Line/Method: `process`  
 - Description: Outer `try/catch (Exception e)` only logs — no `NovopayFatalException` / rethrow — so upstream orchestration can succeed while **no notifications** were sent.  
 - Failure scenario: TAT / escalation notifications silently skipped; ops discovers only via user complaints.  
 - Financial impact: SLA and compliance exposure on task workflows (not direct money movement).  
 - Evidence:
-```32:48:novopay-platform-task/src/main/java/in/novopay/task/mgmt/processor/TriggerNotificationsProcessor.java
+```32:48:trustt-platform-task/src/main/java/in/novopay/task/mgmt/processor/TriggerNotificationsProcessor.java
     protected void process(ExecutionContext executionContext) throws NovopayFatalException, NovopayNonFatalException {
         try {
             // ...
@@ -1002,16 +1002,16 @@ Date found: 2026-04-09
 
 ### GAP-048: Reject-expired task batch writer uses hardcoded `user_id` = `"2"` for workflow API callback
 
-- Service: novopay-platform-task  
+- Service: trustt-platform-task  
 - Lens: 10 (Audit / identity), 8 (Compliance)  
 - Risk: High  
-- File: `novopay-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java`  
+- File: `trustt-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java`  
 - Line/Method: `write`  
 - Description: `executionContext.putLocal("user_id", "2");` before `taskWorkflowAPIExecutionService.callAPI` — all auto-rejects appear as user **2**, not a system service account or configurable actor.  
 - Failure scenario: Audit trail and maker-checker attribution wrong; investigations misattribute automated expiry rejects.  
 - Financial impact: Compliance / forensic traceability weakness on task-driven approvals tied to loans/collections.  
 - Evidence:
-```99:105:novopay-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java
+```99:105:trustt-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java
                 try {
                     executionContext.putLocal("run_mode", "REAL");
                     executionContext.putLocal("task_id", Long.toString(task.getId()));
@@ -1027,16 +1027,16 @@ Date found: 2026-04-09
 
 ### GAP-049: Batch scheduler runnables set `ThreadLocalContext` tenant but do not clear it (pool threads)
 
-- Service: novopay-platform-batch  
+- Service: trustt-platform-batch  
 - Lens: 3 (Multi-tenant / thread safety), 7 (Async)  
 - Risk: High  
-- File: `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java` (and related: `DirectGroupJobExecutor`, `DirectJobExecutor` — `setTenant` in `run()` without `ThreadLocalContext.clear()` in `finally`)  
+- File: `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java` (and related: `DirectGroupJobExecutor`, `DirectJobExecutor` — `setTenant` in `run()` without `ThreadLocalContext.clear()` in `finally`)  
 - Line/Method: `ScheduleBatchGroupExecutor#run`  
 - Description: `ThreadLocalContext.setTenant(platformTenant)` then work; **only** `MDC.clear()` at end — **tenant ThreadLocal can remain** on the scheduler thread when it is returned to `ThreadPoolTaskScheduler`’s pool. Next task on that thread can inherit wrong tenant.  
 - Failure scenario: Cross-tenant batch actions, wrong `job_time`/cache key clears (`setJobTime` uses tenant), or wrong internal API routing.  
 - Financial impact: Wrong-tenant job triggers or metadata — severity depends on downstream job (potential accounting invocation).  
 - Evidence:
-```62:89:novopay-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java
+```62:89:trustt-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java
     public void run(){
         ThreadLocalContext.setTenant(platformTenant);
         MDC.put("tenant",platformTenant.getTenantCode());
@@ -1051,7 +1051,7 @@ Date found: 2026-04-09
         MDC.clear();
     }
 ```
-```47:73:novopay-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java
+```47:73:trustt-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java
     public void run(){
         ThreadLocalContext.setTenant(platformTenant);
         MDC.put("tenant",platformTenant.getTenantCode());
@@ -1066,16 +1066,16 @@ Date found: 2026-04-09
 
 ### GAP-050: Scheduler marks job dependency satisfied when target job is “already running”
 
-- Service: novopay-platform-batch  
+- Service: trustt-platform-batch  
 - Lens: 2 (Idempotency / lifecycle), 11 (Observability)  
 - Risk: Medium  
-- File: `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`  
+- File: `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`  
 - Line/Method: `setCompletionStatus`  
 - Description: If `isJobRunning` is true, branch still does `jobCompletionStatus.put(job.getPriority(), true)` — dependent jobs proceed **without verifying** this run belongs to the current schedule or completed successfully.  
 - Failure scenario: Stale RUNNING execution or another schedule’s run unblocks dependents incorrectly (pairs with multi-instance race in table row).  
 - Financial impact: Out-of-order job groups if dependency graph is trusted cluster-wide.  
 - Evidence:
-```198:235:novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java
+```198:235:trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java
             boolean isRunning = batchScheduleService.isJobRunning(job.getJobName());
             if (!isRunning) {
                 // ... start job, wait, update status ...
@@ -1092,16 +1092,16 @@ Date found: 2026-04-09
 
 ### GAP-051: `FinnoneCollectionTaskCreationConsumer#processForCreatePtp` guard is logically broken
 
-- Service: novopay-platform-task  
+- Service: trustt-platform-task  
 - Lens: 1 (Control flow / defects), 2 (Data loss)  
 - Risk: High  
-- File: `novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`  
+- File: `trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`  
 - Line/Method: `processForCreatePtp`  
 - Description: Condition `StringUtils.isNotEmpty(taskId) && "null".equalsIgnoreCase(taskId)` requires `taskId` to be the literal `"null"`; real numeric ids never enter the block. If entered, `Long.valueOf("null")` throws. Intended logic was almost certainly **empty/null check** (inverted or wrong predicate).  
 - Failure scenario: PTP / task completion updates never run for normal messages; or NPE/NFE if bad data hits the branch.  
 - Financial impact: Wrong task state vs Finnone/collections expectations; operational rework.  
 - Evidence:
-```87:101:novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
+```87:101:trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
     private void processForCreatePtp(DefaultExecutionContext executionContext, Map<String, Object> data)
             throws NovopayFatalException, NovopayNonFatalException {
         String taskId = (String) data.get(CollectionTaskConstants.TASK_ID);
@@ -1124,14 +1124,14 @@ Date found: 2026-04-09
 
 ### GAP-052: `FinnoneCollectionTaskCreationConsumer` logs entire `ConsumerRecords` on parse error
 
-- Service: novopay-platform-task  
+- Service: trustt-platform-task  
 - Lens: 11 (Observability / noise), 10 (PII in logs — if record bodies echo)  
 - Risk: Medium  
-- File: `novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`  
+- File: `trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`  
 - Line/Method: `computeRecords`  
 - Description: On exception, logs `records` (full batch) not just `consumerRec` — large log lines and possible payload duplication.  
 - Evidence:
-```81:83:novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
+```81:83:trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java
             } catch(Exception e) {
                 LOGGER.error("Error while parsing the consumer record {}", records, e);
             }
@@ -1143,16 +1143,16 @@ Date found: 2026-04-09
 
 ### GAP-053: `rejectExpiredBatchJob` bean config sets `chunk` to `Integer.MAX_VALUE`
 
-- Service: novopay-platform-task  
+- Service: trustt-platform-task  
 - Lens: 9 (Performance / memory), 6 (Transaction boundaries)  
 - Risk: High  
-- File: `novopay-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java`  
+- File: `trustt-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java`  
 - Line/Method: `getJobBeanConfigParameters`  
 - Description: `jobSetupParameters.put("chunk", Integer.MAX_VALUE)` is passed into `parallelBatchJobV2.setUpJobAdvanceV2(getJobBeanConfigParameters(), ...)` — can force **single-chunk** semantics with absurd upper bound vs `Constants.WORKER_CHUNK_SIZE` used only in `buildJobForTenant`’s step config. Risk of huge transaction, memory pressure, or framework misconfiguration depending on which path runs in prod.  
 - Failure scenario: OOM, long DB locks, or rollback blast radius on reject-expired job.  
 - Financial impact: Task expiry processing stalls or fails mid-flight; approval tasks left inconsistent.  
 - Evidence:
-```75:101:novopay-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java
+```75:101:trustt-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java
     public  Map<String, Object> getJobBeanConfigParameters() {
         Map<String, Object> jobSetupParameters = new HashMap<>();
         jobSetupParameters.put("name", JOB_NAME);
@@ -1176,16 +1176,16 @@ Date found: 2026-04-09
 
 ### GAP-054: API Gateway `AuthorizationCheckFilter` skips permission check when `api_usecase_mapping` row is missing
 
-- Service: novopay-platform-api-gateway  
+- Service: trustt-platform-api-gateway  
 - Lens: 10 (AuthZ bypass), 5 (Contract)  
 - Risk: High  
-- File: `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`  
+- File: `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`  
 - Line/Method: `doFilter`  
 - Description: Permission is enforced only when `findOneByApiNameAndFunctionCodeAndFunctionSubCode` returns non-null. If the row is **absent** (migration gap, typo, new API), the filter **falls through** to `chain.doFilter` with **no** `checkPermissionByUsecase` call — **default-allow** for that combination.  
 - Failure scenario: Sensitive API reachable with valid session + client auth but **without** mapped usecase / role check.  
 - Financial impact: Unauthorized operations if mapping table is incomplete.  
 - Evidence:
-```74:100:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java
+```74:100:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java
 		String apiName = (String) wrappedRequest.getAttribute(API_NAME);
 		Map<String, Object> bodyHeaderMap = (Map<String, Object>) wrappedRequest.getAttribute(BODY_HEADER_NAME);
 		String functionCode = (String) bodyHeaderMap.get(FUNCTION_CODE_HEADER_TAG);
@@ -1203,28 +1203,28 @@ Date found: 2026-04-09
 
 ### GAP-055: `/forward/*` endpoints bypass gateway security filters and log full forwarded payloads at INFO
 
-- Service: novopay-platform-api-gateway  
+- Service: trustt-platform-api-gateway  
 - Lens: 10 (Auth bypass / trust boundary), 11 (Logging / PII)  
 - Risk: High  
-- File: `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java` (URL patterns); `.../requestforward/RequestForwardController.java`; `.../requestforward/RequestForwardProcessor.java`  
+- File: `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java` (URL patterns); `.../requestforward/RequestForwardController.java`; `.../requestforward/RequestForwardProcessor.java`  
 - Line/Method: filter `addUrlPatterns` vs `@RequestMapping("/forward")`; `RequestForwardProcessor#execute` / `forwardRequest`  
 - Description: Registered filters target `/api/*`, `/api/novopay/*`, `/mfi/*`, document paths — **not** `/forward/*`. `RequestForwardController` accepts POST `/forward/json|xml/{tenantCode}/{requestName}` and forwards to URLs from config/cache with **no** session validation, client authentication, STAN dedupe, rate limit, or permission filter from the main gateway chain. `forwardRequest` logs **URL, all headers, and full request body** at INFO.  
 - Failure scenario: Anyone who can reach the gateway host and guess `tenantCode` + `requestName` may trigger downstream HTTP calls subject only to `RequestForwardProcessor` header forwarding and target URL ACLs. Log stores receive full payloads.  
 - Financial impact: Severe if `request_forward` table points to privileged internal URLs; compliance exposure from body logging.  
 - Evidence:
-```51:55:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java
+```51:55:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java
     private static final String DMS_APIS ="/document/*";
     private static final String NOVOPAY_DMS_APIS ="/api/novopay/document/*";
     private static final String ALL_APIS = "/api/*";
     private static final String NOVOPAY_APIS = "/api/novopay/*";
     private static final String MFI_APIS = "/mfi/*";
 ```
-```19:21:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardController.java
+```19:21:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardController.java
 @RestController
 @RequestMapping("/forward")
 public class RequestForwardController {
 ```
-```68:71:novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java
+```68:71:trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java
 	private HttpClientUtil.StringResponse forwardRequest(String url, HashMap<String, String> header, String requestBody) throws NovopayNonFatalException {
 		log.info("request url for forward : {}", url);
 		log.info("request headers : {}", header);
@@ -1237,15 +1237,15 @@ public class RequestForwardController {
 
 ### GAP-056: Masterdata bulk code-master cache read errors return empty list (masquerades as “no data”)
 
-- Service: novopay-platform-masterdata-management  
+- Service: trustt-platform-masterdata-management  
 - Lens: 1 (Error handling), 11 (Observability)  
 - Risk: Medium  
-- File: `novopay-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemaster/processor/GetBulkDatatypeMasterProcessor.java`  
+- File: `trustt-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemaster/processor/GetBulkDatatypeMasterProcessor.java`  
 - Line/Method: `getCachedData`  
 - Description: On **any** exception from `cacheClient.get`, logs warn and returns `Collections.emptyList()` — caller may treat as valid empty masterdata instead of **degraded/failed** cache.  
 - Failure scenario: Redis outage → UI/API sees empty dropdowns and validation passes/fails incorrectly.  
 - Evidence:
-```88:97:novopay-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemaster/processor/GetBulkDatatypeMasterProcessor.java
+```88:97:trustt-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemaster/processor/GetBulkDatatypeMasterProcessor.java
 	private List<CodeValue> getCachedData(String dataType, String datasubtype, String locale) {
 		try {
 			String cacheKey = dataType + "_" + datasubtype + "_" + locale;
@@ -1265,14 +1265,14 @@ public class RequestForwardController {
 
 ### GAP-057: Audit ES consumer silently drops malformed JSON audit payloads
 
-- Service: novopay-platform-audit  
+- Service: trustt-platform-audit  
 - Lens: 2 (Data loss), 11 (Observability)  
 - Risk: Medium  
-- File: `novopay-platform-audit/src/main/java/in/novopay/audit/consumer/AuditMessageBrokerConsumer.java`  
+- File: `trustt-platform-audit/src/main/java/in/novopay/audit/consumer/AuditMessageBrokerConsumer.java`  
 - Line/Method: `parseData`  
 - Description: `ParseException` → log error, return **empty** `JSONObject`; `computeRecords` then skips ES index for empty object — **no** DLQ, offset may commit → **lost audit event**.  
 - Evidence:
-```49:56:novopay-platform-audit/src/main/java/in/novopay/audit/consumer/AuditMessageBrokerConsumer.java
+```49:56:trustt-platform-audit/src/main/java/in/novopay/audit/consumer/AuditMessageBrokerConsumer.java
 	private JSONObject parseData(String auditData) {
 		try {
 			return (JSONObject) parser.parse(auditData);
@@ -1289,14 +1289,14 @@ public class RequestForwardController {
 
 ### GAP-058: Notifications response-code message cache uses `set` without explicit TTL
 
-- Service: novopay-platform-notifications  
+- Service: trustt-platform-notifications  
 - Lens: 12 (Stale cache / ops), 3 (Consistency)  
 - Risk: Medium  
-- File: `novopay-platform-notifications/src/main/java/in/novopay/notifications/dao/NotificationDAOService.java`  
+- File: `trustt-platform-notifications/src/main/java/in/novopay/notifications/dao/NotificationDAOService.java`  
 - Line/Method: `findNotificationMessageByResponseCodeAndLocale`  
 - Description: After DB load, `cacheClient.set(tenant, cacheKey, message, NOTIFICATION db)` — **no TTL parameter** → relies on platform default expiry; template text updates in DB can remain **stale** until key eviction or manual clear.  
 - Evidence:
-```49:56:novopay-platform-notifications/src/main/java/in/novopay/notifications/dao/NotificationDAOService.java
+```49:56:trustt-platform-notifications/src/main/java/in/novopay/notifications/dao/NotificationDAOService.java
 	public String findNotificationMessageByResponseCodeAndLocale(String responseCode, String locale) throws NovopayFatalException {
 		String cacheKey = responseCode + "_" + locale;
 		String message = cacheClient.get(ThreadLocalContext.getTenantCode(), cacheKey, String.class, RedisDBConfig.NOTIFICATION.getDbIndex());
@@ -1312,10 +1312,10 @@ public class RequestForwardController {
 
 ### GAP-059: No automated tests for API Gateway `AuthorizationCheckFilter`
 
-- Service: novopay-platform-api-gateway  
+- Service: trustt-platform-api-gateway  
 - Lens: 11 (Observability / quality gates), 10 (Security — pairs GAP-054)  
 - Risk: High  
-- File: `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`  
+- File: `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`  
 - Line/Method: (filter `doFilter` / registration in `FilterConfig`)  
 - Description: **GAP-054** documents runtime behaviour when `api_usecase_mapping` is missing (permission call skipped). There are **no** `src/test` references to `AuthorizationCheckFilter` workspace-wide → mapping-miss, ignore-list, and internal `checkPermissionByUsecase` integration paths can regress silently.  
 - Evidence (test absence):
@@ -1329,10 +1329,10 @@ grep -r "AuthorizationCheckFilter" --include="*.java" **/src/test → no matches
 
 ### GAP-060: No automated tests for API Gateway request-forward path
 
-- Service: novopay-platform-api-gateway  
+- Service: trustt-platform-api-gateway  
 - Lens: 10 (Security / data leakage — pairs GAP-055), 11 (Quality gates)  
 - Risk: High  
-- File: `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java`, `RequestForwardController.java`  
+- File: `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java`, `RequestForwardController.java`  
 - Line/Method: forward handling / controller entry  
 - Description: **GAP-055** notes `/forward/*` bypasses normal gateway filters and logs forwarded payloads at INFO. No `RequestForward*` symbols appear under any service’s `src/test` → config resolution, error handling, and logging level changes are unguarded.  
 - Evidence (test absence):
@@ -1346,7 +1346,7 @@ grep -r "RequestForward" --include="*.java" **/src/test → no matches (2026-04-
 
 ### RESOLVED-2026-04-13-A: Child NEFT duplicate ST_NEF re-trigger guard
 
-- Service: `novopay-platform-accounting-v2`
+- Service: `trustt-platform-accounting`
 - Risk: High (duplicate bank trigger risk on child NEFT stage-1)
 - Files: `DoGenericSyncSTPBankNeftCallBackProcessor.java`
 - Resolution: In child failed callback handling, duplicate ST_NEF failures (`*0004`) no longer regress CLMT queue `disbursement_status` to `DTFC_SUCCESS`; it is preserved as `NEFT_STAGE_1_SUCCESS`, preventing repeated ST_NEF re-initiation by `childLoanEventProcessingBatchJob`. L1 extension also hardens ST_NEI duplicate-like failed callbacks with evidence-gated completion (queue/CRR) so stage-2 is not regressed without proven success.
@@ -1355,7 +1355,7 @@ grep -r "RequestForward" --include="*.java" **/src/test → no matches (2026-04-
 
 ### RESOLVED-2026-04-13-B: Payment reinitiation lane isolation in parent disbursement
 
-- Service: `novopay-platform-accounting-v2`
+- Service: `trustt-platform-accounting`
 - Risk: High (reinit idempotency collision with normal disbursement lane)
 - Files: `CallBankAPIForDisbursementProcessor.java`, `mfi_orc.xml`
 - Resolution: Parent payment reinitiation now uses dedicated CRR transaction identifiers (`*_REINIT`) for MFT/NEFT paths, NEFT inquiry stage alignment for reinit lane, and prevents loan `disbursement_status` regression during reinit progression; `REINITIATE_BANK` path disables child bank calls (`do_child_bank_transactions=false`).
@@ -1364,7 +1364,7 @@ grep -r "RequestForward" --include="*.java" **/src/test → no matches (2026-04-
 
 ### RESOLVED-2026-04-22-D: Parent payment reinitiation execution-path validation
 
-- Service: `novopay-platform-accounting-v2`
+- Service: `trustt-platform-accounting`
 - Risk: High (flow stitched in code but not proven by scenario evidence)
 - Files: `CallBankAPIForDisbursementProcessor.java`, `CallBankAPIForIndividualChildLoanDisbursementProcessor.java`, `DisbursementBankCallTypeUtil.java`, `ExternalReferenceNoUtil.java`
 - Resolution: Parent reinit scenarios were revalidated on dev execution path for both MFT and NEFT lanes; observed behavior confirms `DISBURSEMENT_MFT_REINIT` / `DISBURSEMENT_NEFT_REINIT` lane creation, forward reference progression per attempt, and successful explicit second reinit after fresh mode update.
@@ -1373,7 +1373,7 @@ grep -r "RequestForward" --include="*.java" **/src/test → no matches (2026-04-
 
 ### RESOLVED-2026-04-15-C: Child NEFT retry skipped inquiry when CLMT stayed `DTFC_SUCCESS`
 
-- Service: `novopay-platform-accounting-v2`
+- Service: `trustt-platform-accounting`
 - Risk: High (stuck child-lane progression on retry with repeated `PARENT_SUCCESS`)
 - Files: `CallBankAPIForIndividualChildLoanDisbursementProcessor.java`
 - Resolution: `performNEFTTransactionInquiry` now runs stage-1 inquiry (`ST_NEF`) when `disbursement_status=DTFC_SUCCESS` and prior child-scoped NEF CRR is non-success (`FAIL`/`UNKNOWN`/blank), instead of hard-skipping with `DO_TRANSACTION=false`. This preserves duplicate-NEF protection while enabling inquiry-led reconciliation for stuck child lanes.
@@ -1382,15 +1382,15 @@ grep -r "RequestForward" --include="*.java" **/src/test → no matches (2026-04-
 
 ## GAP-061: Child MFT post-processor CRR response can diverge from callback decision payload
 
-Service: `novopay-platform-accounting-v2` (+ `novopay-platform-lib` callback path)  
+Service: `trustt-platform-accounting` (+ `trustt-platform-lib` callback path)  
 Lens: 5 (Contract/state integrity), 11 (Observability), 1 (Error-path correctness)  
 Risk: 🔴 High  
-File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java`  
+File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java`  
 Line: `logClientRequestResponse`  
 Description: Historical gap where child MFT callback path could persist CRR `response` from `ExecutionContext.response` while deciding CRR `status` from callback `apiResponse`.  
 Resolution: `PostMFTChildLoanBankDisbursementProcessor` now uses callback payload for both CRR decision and persisted body (`entity.setResponse(apiResponse != null ? apiResponse.toString() : NULL_BANK_API_RESPONSE_ENVELOPE)`) with null-safe request capture.  
 Evidence (resolved state):
-```98:105:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java
+```98:105:trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java
         Object requestPayload = executionContext.get(REQUEST);
         entity.setRequest(requestPayload != null ? requestPayload.toString() : "{}");
         entity.setResponse(apiResponse != null ? apiResponse.toString() : NULL_BANK_API_RESPONSE_ENVELOPE);
@@ -1407,14 +1407,14 @@ Resolved in branch: `mfi_integration_v3.2.8.4.1` (commit `1a789b6c7`)
 
 ## GAP-062: `loanWriteoff` posting branch — ExecutionContext keys do not match `PrepaymentApproppriationProcessor`
 
-Service: `novopay-platform-accounting-v2`  
+Service: `trustt-platform-accounting`  
 Lens: 5 (Contract/state integrity), 1 (Money correctness), 7 (Idempotency / partial failure on wrong splits)  
 Risk: High  
 
 **Evidence**
 
 - Orchestration (`loanWriteoff`, posting branch) passes **`prepayment_amount`** (local) = `${writeoff_amount}` into `prepaymentApproppriationProcessor`, not **`total_foreclosure_amount`**:  
-  `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` ~L1440-L1442.
+  `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` ~L1440-L1442.
 - `ValidateLoanWriteOffDataProcessor` sets **`penalty_amount`**, not **`penal_amount`**:  
   `.../loan/writeoff/processor/ValidateLoanWriteOffDataProcessor.java` ~L92-L94.
 - `PrepaymentApproppriationProcessor` reads **`total_foreclosure_amount`**, **`penal_amount`**, **`fee_amount`**, **`foreclosure_date`**:  
@@ -1440,7 +1440,7 @@ Risk: High
 
 ## GAP-063: `PopulateAndValidateAccountDetailsProcessor` — no null guard on `account_details`
 
-Service: `novopay-platform-accounting-v2`  
+Service: `trustt-platform-accounting`  
 Lens: 1 (Fail-fast / error-path correctness), 5 (Contract robustness)  
 Risk: Medium  
 
@@ -1456,15 +1456,15 @@ Risk: Medium
 
 ## GAP-065: Accounting MessageBroker consumers — no explicit `maxPollRecords` for money-critical topics
 
-Service: `novopay-platform-accounting-v2`  
+Service: `trustt-platform-accounting`  
 Lens: 11 (Observability / ops), 4 (Backpressure)  
 Risk: **Medium**  
-File: `novopay-platform-accounting-v2/deploy/application/messagebroker/MessageBroker.xml`  
+File: `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml`  
 Line: L15-L28 (`bulk_collection_data_failed_`, `disburse_loan_api_` consumers)  
-Description: Consumer blocks declare `pollTime` and `numberOfThreads` only — **no** `<maxPollRecords>` (unlike e.g. `novopay-platform-payments` `bulk_collection_data_` consumer in `event-registry.md`). Behaviour falls back to framework/Kafka defaults → lag handling not explicitly sized for financial throughput.  
+Description: Consumer blocks declare `pollTime` and `numberOfThreads` only — **no** `<maxPollRecords>` (unlike e.g. `trustt-platform-payments` `bulk_collection_data_` consumer in `event-registry.md`). Behaviour falls back to framework/Kafka defaults → lag handling not explicitly sized for financial throughput.  
 Failure scenario: Broker lag grows under burst; tuning is implicit; incident playbooks lack in-repo declared poll batch size for these groups.  
 Evidence:
-```15:28:novopay-platform-accounting-v2/deploy/application/messagebroker/MessageBroker.xml
+```15:28:trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml
 	<Consumer>
 		<consumersGroupIdPrefix>bulk_collection_failed_record_consumer</consumersGroupIdPrefix>
 		<topicPrefix>bulk_collection_data_failed_</topicPrefix>
@@ -1486,15 +1486,15 @@ Date found: 2026-04-17
 
 ## GAP-066: Disburse sync Kafka message lacks correlation IDs (`stan` / trace)
 
-Service: `novopay-platform-accounting-v2`  
+Service: `trustt-platform-accounting`  
 Lens: 11 (Observability), 8 (Cross-service trace)  
 Risk: **Medium** (resolved)  
-File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
+File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
 Line: `sendResultMessageToKafka` L271-L278; processing log L131; success/fail publish logs L297-L308  
 Description (historical): Result payload omitted `stan` though LOS sends it in disburse headers via `DisburseLoanAPIUtil.getHeaders`.  
 Resolution (2026-04-17): `stan` and `entity_type` are copied from `ExecutionContext` into the `los_lms_disbursement_sync` JSON when non-blank; consumer logs include tenant, `external_ref_number`, `stan`, `entity_type`, topic/partition/offset. Trace-id propagation (if distinct from `stan`) remains optional/future.  
 Evidence:
-```271:278:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
+```271:278:trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
             String stan = stringFromExecutionContext(executionContext, JSON_KEY_STAN);
             if (StringUtils.isNotBlank(stan)) {
                 payload.put(JSON_KEY_STAN, stan);
@@ -1509,19 +1509,19 @@ Date found: 2026-04-17
 
 ## GAP-067: LOS → Accounting disburse Kafka message — implicit pipe-delimited contract / deploy order
 
-Service: `novopay-mfi-los` + `novopay-platform-accounting-v2`  
+Service: `trustt-platform-los` + `trustt-platform-accounting`  
 Lens: 5 (Contract), 12 (Deploy order)  
 Risk: **Medium**  
-File: `novopay-mfi-los/.../DisburseLoanAPIUtil.java` L66-L69; `novopay-platform-accounting-v2/.../LmsMessageBrokerConsumer.java` L160-L162  
+File: `trustt-platform-los/.../DisburseLoanAPIUtil.java` L66-L69; `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java` L160-L162  
 Description: Producer builds `apiName + "|" + request + "|" + cacheKey`; consumer splits with `indexOf("|")` / `lastIndexOf("|")`. Any change to delimiter ordering or cacheKey format on one side only → malformed parse or wrong `externRefNumber`.  
 Failure scenario: Partial deploy or hotfix on one service breaks async disburse consumption silently.  
 Evidence:
-```66:69:novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java
+```66:69:trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java
             String request = jsonHelper.formatAPIRequestAsJSONString(apiName, requestMap);
             cacheKey = buildCacheKey(apiName, executionContext);
             request = apiName+"|" + request +"|"+cacheKey;
 ```
-```160:162:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
+```160:162:trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java
         String api = data.substring(0, data.indexOf("|"));
         String requestBody = data.substring(data.indexOf("|") + 1, data.lastIndexOf("|"));
 ```
@@ -1531,21 +1531,21 @@ Date found: 2026-04-17
 
 ## GAP-068: `collectionLoanRepayment` retry loop — nested `loanRepayment` idempotency reliance
 
-Service: `novopay-platform-payments` (+ accounting `loanRepayment`)  
+Service: `trustt-platform-payments` (+ accounting `loanRepayment`)  
 Lens: 3 (Retry + idempotency), 6 (Transaction boundaries)  
 Risk: **Medium**  
-File: `novopay-platform-payments/.../MfiCollectionsDAOService.java` L1038-L1084; `.../CollectionRepaymentProcessor.java` L68-L74  
+File: `trustt-platform-payments/.../MfiCollectionsDAOService.java` L1038-L1084; `.../CollectionRepaymentProcessor.java` L68-L74  
 Description: Outer method retries `callInternalAPI(..., "collectionLoanRepayment", ...)` on non-SUCCESS; processor calls accounting `loanRepayment` with `client_reference_number` set from `receipt_number`. Double-post is **usually** prevented by accounting dedupe — not proven here for all edge modes (multi-item loop, SHG `group_receipt_number` L110-L114).  
 Failure scenario: Timeout / ambiguous response after accounting committed → retry duplicates allocation if dedupe fails.  
 Evidence:
-```1038:1042:novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java
+```1038:1042:trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             try {
                 executionContext.putLocal(FUNCTION_CODE, DEFAULT);
                 executionContext.putLocal(FUNCTION_SUB_CODE, DEFAULT);
                 novopayInternalAPIClient.callInternalAPI(executionContext, "collectionLoanRepayment", "v1", "collectionLoanRepayment_response", -1, -1, false);
 ```
-```68:74:novopay-platform-payments/src/main/java/in/novopay/payments/recurringinterface/CollectionRepaymentProcessor.java
+```68:74:trustt-platform-payments/src/main/java/in/novopay/payments/recurringinterface/CollectionRepaymentProcessor.java
 			executionContext.put("client_reference_number", receiptNumber);
 			executionContext.put("receipt_number", receiptNumber);
 			novopayInternalAPIClient.callInternalAPI(executionContext, LOAN_REPAYMENT,
@@ -1578,7 +1578,7 @@ Date found: 2026-04-17
 
 ## GAP-074: SDCP-10199 last-child parent INT/DPI under-settlement (INT-180)
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Risk: **High**  
 Status: **OPEN** — parked off `mfi_integration_v3.7.1` 2026-07-10 (wait for QA/production case; discuss before merge)  
 Date found: 2026-07-10
@@ -1597,7 +1597,7 @@ Date found: 2026-07-10
 
 ## GAP-075: SDCP-10199 / TDPQA-72 last-child A2 EXTRA-net + B force-bill labd (QA acceptance)
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Risk: **High** (was)  
 Status: **RESOLVED** 2026-07-17 — `mfi_integration_v3.4.2.4` / `feature/tdpqa72-dfc-acceptance-labd-lapd` @ `cae54fd9d6` (builds on `5b1b928ed`)  
 Date found: 2026-07-15 (Vikram/Srikant); **reopened** 2026-07-17 after TDPQA-72 QA embarrassment (subset Pass)
@@ -1629,7 +1629,7 @@ Date found: 2026-07-15 (Vikram/Srikant); **reopened** 2026-07-17 after TDPQA-72 
 
 ## GAP-078: DCF parent force-bill CRN collision on sequential same-date claims (134497)
 
-Service: novopay-platform-accounting-v2  
+Service: trustt-platform-accounting  
 Risk: **High** (was)  
 Status: **RESOLVED** 2026-07-22 — `mfi_integration_v3.4.2.4` @ `935c52743`  
 Date found: 2026-07-22 (harness mid-run during Obs1–3 hardening)

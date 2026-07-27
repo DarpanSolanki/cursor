@@ -1,7 +1,7 @@
 # GL Balance Zeroisation (accounting-v2; non-`postTransaction` entry)
 
 ## Entry point
-- Orchestration request: `glBalanceZeroisation` in `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml`
+- Orchestration request: `glBalanceZeroisation` in `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml`
 - It does NOT call the `postTransaction` orchestration request. Instead it directly creates `transaction_master` + `transaction_partition_details` + `transaction_details` via the GL zeroisation processor chain.
 
 ## Routing (code-verified write path)

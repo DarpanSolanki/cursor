@@ -18,7 +18,7 @@ Mirrors `general_ledger` plus:
 
 ## JPA entity
 
-[`generalledger/entity/ChildGeneralLedgerEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java) — defines `CHILD_GL_CODE_PREFIX = "CG"` and a static `mapToChild(GeneralLedgerEntity)` factory.
+[`generalledger/entity/ChildGeneralLedgerEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java) — defines `CHILD_GL_CODE_PREFIX = "CG"` and a static `mapToChild(GeneralLedgerEntity)` factory.
 
 ## Writers
 
@@ -27,7 +27,7 @@ Mirrors `general_ledger` plus:
 
 ## Readers
 
-- [`ExecuteTransactionRulesProcessor.createPartitionDetails` lines 391-393](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393) — when `is_child_account=true` in EC, prepends `CG` to `gl_code` on every leg
+- [`ExecuteTransactionRulesProcessor.createPartitionDetails` lines 391-393](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393) — when `is_child_account=true` in EC, prepends `CG` to `gl_code` on every leg
 - TB calculation reads it for child-side aggregation
 
 ## Related Requests

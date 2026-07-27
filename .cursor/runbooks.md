@@ -9,7 +9,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   LOS consumes `los_lms_disbursement_sync`, but `DisbursementSyncService` short-circuits when `entity_type` is absent → LOS does not persist `failure_reason` / state update even though Accounting already published a terminal status.  
-  - File: `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
+  - File: `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Symptom: Accounting logs show SUCCESS/FAILED publish, but LOS row does not change.  
@@ -28,9 +28,9 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **2–3 days** + cross-module QA.
 
 - **Files to check (exact paths)**  
-  - `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`  
-  - `novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`  
-  - `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
+  - `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`  
+  - `trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`  
+  - `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
   - `system_brain/edge_cases/disbursement_sync_entity_type_missing.md`
 
 - **Related accounting flows impacted**  
@@ -45,7 +45,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Accounting publishes `los_lms_disbursement_sync` JSON without `entity_type`; LOS expects it for certain update branches → consumer can skip update → LOS and Accounting diverge.  
-  - File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java` (payload build in `sendResultMessageToKafka`)
+  - File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java` (payload build in `sendResultMessageToKafka`)
 
 - **Early warning signs (logs/metrics to watch)**  
   - Accounting log lines indicating publish success (and for failures: error_code / error_message) but LOS DB unchanged.  
@@ -63,8 +63,8 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **1–2 days** engineering + **1 day** QA.
 
 - **Files to check (exact paths)**  
-  - `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
-  - `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
+  - `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
+  - `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
 
 - **Related accounting flows impacted**  
   - Disbursement async completion → LOS mirror sync
@@ -78,7 +78,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   LOS sets an in-flight Redis key and relies on cleanup; if the JVM crashes between set/remove, the key persists forever → subsequent disburse requests are skipped.  
-  - File: `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
+  - File: `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Disburse attempts that immediately “skip” / “already in progress” without producing new Kafka messages.  
@@ -95,7 +95,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **2 days** + chaos/replay test.
 
 - **Files to check (exact paths)**  
-  - `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`  
+  - `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`  
   - Redis config for LOS DB index
 
 - **Related accounting flows impacted**  
@@ -110,7 +110,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Accounting consumer sets `dl...` key in Redis accounting DB index and uses it as in-flight lock; crash mid-orchestration leaves key without TTL → consumer skips forever.  
-  - File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+  - File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Exact log message: `Request is already in processing, skipping this record with cacheKey: {}`  
@@ -128,8 +128,8 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **2 days**.
 
 - **Files to check (exact paths)**  
-  - `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
-  - `novopay-platform-lib/infra-cache/.../NovopayCacheClient` implementations
+  - `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`  
+  - `trustt-platform-lib/infra-cache/.../NovopayCacheClient` implementations
 
 - **Related accounting flows impacted**  
   - Async disbursement consumer path (`disburse_loan_api_`)
@@ -143,7 +143,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   A call to `RedisCacheClient.flushDb()` can wipe an entire Redis DB index used for locks/dedupe/sessions → mass idempotency failures and inconsistent system behavior.  
-  - File: `novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`
+  - File: `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Sudden drop in Redis key count; sudden spike in duplicate processing / STAN dedupe failures.  
@@ -160,7 +160,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **1–2 days** + repo-wide cleanup.
 
 - **Files to check (exact paths)**  
-  - `novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`  
+  - `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`  
   - All call sites of `flushDb(`
 
 - **Related accounting flows impacted**  
@@ -175,7 +175,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Interest accrual batch derives `client_reference_number` from time; on partial failure/retry it can generate a different CREF → dedupe may not fire → double-posting.  
-  - File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java`
+  - File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Duplicate `transaction_master` for same loan/value_date/txn_type with different CREFs.  
@@ -193,7 +193,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **Files to check (exact paths)**  
   - `.../InterestAccrualBookingBatchService.java`  
-  - `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml` (`clientReferenceNumberDedupProcessor`)
+  - `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml` (`clientReferenceNumberDedupProcessor`)
 
 - **Related accounting flows impacted**  
   - EOD interest accrual posting → `postTransaction`
@@ -207,7 +207,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Writer catches and swallows exceptions → batch step can appear successful while data is partially updated; rerun can duplicate.  
-  - File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefund/ProactiveExcessAmountRefundItemWriter.java`
+  - File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefund/ProactiveExcessAmountRefundItemWriter.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Batch job status SUCCESS with suspiciously low processed counts; missing ERROR logs per failed item.  
@@ -238,7 +238,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Internal HTTP calls have no platform retry/backoff/circuit breaker; in a multi-service financial flow this can create **partial progress** (one service commits, downstream call fails) → inconsistency.  
-  - File: `novopay-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayHttpAPIClient.java`
+  - File: `trustt-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayHttpAPIClient.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Spike in downstream `5xx` + upstream fatal exceptions without retries.  
@@ -257,7 +257,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **5–10 days** (platform-lib + service validation).
 
 - **Files to check (exact paths)**  
-  - `novopay-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayHttpAPIClient.java`  
+  - `trustt-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayHttpAPIClient.java`  
   - Call sites across services (see `.cursor/service-contracts.md`)
 
 - **Related accounting flows impacted**  
@@ -272,7 +272,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Services pin one plugin patch, but dependency-mgmt publishes another → resolved artifacts drift across CI/prod → binary incompatibility and runtime surprises.  
-  - Files: `novopay-platform-accounting-v2/build.gradle`, `novopay-platform-dependency-mgmt/build.gradle`
+  - Files: `trustt-platform-accounting/build.gradle`, `trustt-platform-dependency-mgmt/build.gradle`
 
 - **Early warning signs (logs/metrics to watch)**  
   - NoSuchMethodError / ClassNotFound in prod after “minor” release.  
@@ -289,7 +289,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **Files to check (exact paths)**  
   - All `*/build.gradle` buildscript blocks  
-  - `novopay-platform-dependency-mgmt/build.gradle`
+  - `trustt-platform-dependency-mgmt/build.gradle`
 
 - **Related accounting flows impacted**  
   - All (platform-wide)
@@ -303,7 +303,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   No CI coverage for consumer idempotency, Redis lock cleanup, and publish-back contract → regressions ship to prod.  
-  - File: `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+  - File: `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - Post-deploy spike in: `Request is already in processing, skipping this record with cacheKey:`  
@@ -333,7 +333,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 - **What breaks (failure mode + file path)**  
   Finance close and correction flows lack automated guardrails → misposting risk at statutory close.  
-  - ORC: `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml`
+  - ORC: `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml`
 
 - **Early warning signs (logs/metrics to watch)**  
   - TB mismatch caught late; manual UAT only once/year.
@@ -378,7 +378,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **~1 week**.
 
 - **Files to check (exact paths)**  
-  - Insurance inbound writers under `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/`  
+  - Insurance inbound writers under `trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/`  
   - `system_brain/flows/insurance_inbound_posting.md`
 
 - **Related accounting flows impacted**  
@@ -392,10 +392,10 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 ## Multi-node batch scheduler has no distributed leader/lock (race across batch instances)
 
 - **What breaks (failure mode + file path)**  
-  Two `novopay-platform-batch` instances can both read “not running” from DB and start the same scheduled group/job in parallel, because coordination is based on **read-checks** (`isJobRunning`) and in-JVM `synchronized` methods rather than a distributed lock/leader election.  
+  Two `trustt-platform-batch` instances can both read “not running” from DB and start the same scheduled group/job in parallel, because coordination is based on **read-checks** (`isJobRunning`) and in-JVM `synchronized` methods rather than a distributed lock/leader election.  
   - Files:  
-    - `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (status checks)  
-    - `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (starts jobs)
+    - `trustt-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (status checks)  
+    - `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (starts jobs)
 
 - **Early warning signs (logs/metrics to watch)**  
   - Duplicate “Starting job …” logs for the same `jobName` close together.  
@@ -415,9 +415,9 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Effort: **3–6 days** (design + implementation + multi-instance QA).
 
 - **Files to check (exact paths)**  
-  - `novopay-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java`  
-  - `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`  
-  - `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java`
+  - `trustt-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java`  
+  - `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`  
+  - `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java`
 
 - **Related accounting flows impacted**  
   - Any batch job that triggers accounting internal APIs (EOD jobs, interest accrual, posting, insurance inbound) — duplicate runs are a direct money/state risk.
@@ -442,7 +442,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Require TTL on new writes; deprecate non-TTL overload; audit call sites. See `GAP-031` in `.cursor/gaps-and-risks.md`.
 
 - **Files**  
-  `novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`, `NovopayCacheClient.java`, `CacheDataService.java`
+  `trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/RedisCacheClient.java`, `NovopayCacheClient.java`, `CacheDataService.java`
 
 ---
 
@@ -461,7 +461,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Redact logging; correlation-id-only diagnostics. See `GAP-032`.
 
 - **Files**  
-  `novopay-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java`
+  `trustt-platform-lib/infra-transaction-paytm/src/main/java/in/novopay/infra/transaction/paytm/common/PaytmApiClient.java`
 
 ---
 
@@ -480,7 +480,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Never log secrets; use standard CA trust + hostname verification for production paths. See `GAP-033`.
 
 - **Files**  
-  `novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java`
+  `trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/util/HttpClientUtil.java`
 
 ---
 
@@ -499,7 +499,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Log codes, `stan`, tenant, apiName only; redact body. See `GAP-034`.
 
 - **Files**  
-  `novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java`
+  `trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/api/client/NovopayInternalAPIClient.java`
 
 ---
 
@@ -518,7 +518,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Set a stable business key on produce; align with accounting consumer partition strategy. See `GAP-038`.
 
 - **Files**  
-  `novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
+  `trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
 
 ---
 
@@ -537,7 +537,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Log correlation fields only; redact body. See `GAP-039`.
 
 - **Files**  
-  `novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
+  `trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
 
 ---
 
@@ -556,7 +556,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Stable key per topic contract + regression on replay. See `GAP-042`.
 
 - **Files**  
-  `novopay-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`
+  `trustt-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`
 
 ---
 
@@ -575,7 +575,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   DLQ or fail-fast with capped retry; never commit without explicit policy. See `GAP-044`.
 
 - **Files**  
-  `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
+  `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
 
 ---
 
@@ -594,7 +594,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Durable outbox or retry queue for notifications; metrics on failure; avoid blanket swallow. See `GAP-045`.
 
 - **Files**  
-  `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`
+  `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`
 
 ---
 
@@ -613,7 +613,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Loop tenants (or config allowlist) on startup; add integration test for 2+ tenants. See `GAP-046`.
 
 - **Files**  
-  `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`
+  `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`
 
 ---
 
@@ -632,7 +632,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Configurable system user per tenant; verify orchestration/audit processors. See `GAP-048`.
 
 - **Files**  
-  `novopay-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java`
+  `trustt-platform-task/src/main/java/in/novopay/batch/writer/RejectExpiredBatchJobItemWriter.java`
 
 ---
 
@@ -651,10 +651,10 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   `try/finally { ThreadLocalContext.clear(); MDC.clear(); }` on all scheduler runnables and async job workers. See `GAP-049`.
 
 - **Files**  
-  `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java`  
-  `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/DirectGroupJobExecutor.java`  
-  `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java`  
-  `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`setCompletionStatus`)
+  `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java`  
+  `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/DirectGroupJobExecutor.java`  
+  `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java`  
+  `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`setCompletionStatus`)
 
 ---
 
@@ -673,7 +673,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Correct null/blank logic; unit tests for CREATE_PTP payloads. See `GAP-051`.
 
 - **Files**  
-  `novopay-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`
+  `trustt-platform-task/src/main/java/in/novopay/task/mfi/consumer/FinnoneCollectionTaskCreationConsumer.java`
 
 ---
 
@@ -692,7 +692,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Align chunk with platform constants; confirm production code path (`buildJobForTenant` vs advance setup). See `GAP-053`.
 
 - **Files**  
-  `novopay-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java`
+  `trustt-platform-task/src/main/java/in/novopay/batch/config/RejectExpiredTasksBatchJobConfig.java`
 
 ---
 
@@ -711,7 +711,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Fail closed when mapping absent (except explicit public list); CI validation of mapping coverage. See `GAP-054`.
 
 - **Files**  
-  `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`
+  `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java`
 
 ---
 
@@ -736,8 +736,8 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 - **What breaks (failure mode + file path)**  
   Child MFT post-processor decides CRR status from callback `apiResponse` but stores CRR `response` from shared `ExecutionContext.response`. On transport failures (`Connection reset`, timeout), decorator calls `execute(..., null)` and CRR can carry stale body from earlier call.  
   - Files:  
-    - `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java`  
-    - `novopay-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/decorator/WebClientServiceExecutorDecorator.java`
+    - `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java`  
+    - `trustt-platform-lib/infra-transaction-interface/src/main/java/in/novopay/infra/decorator/WebClientServiceExecutorDecorator.java`
 
 - **Early warning signs (logs/metrics to watch)**  
   - CRR row has `status=FAIL` but response body contains success-like `replyCode=0` with mismatched `client_reference_number` / template shape.  
@@ -757,9 +757,9 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   - Wrong RCA path and delayed incident recovery; operators may take unsafe replay decisions based on misleading CRR evidence.
 
 - **Files**  
-  `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java`  
-  `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardController.java`  
-  `novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java`
+  `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/config/FilterConfig.java`  
+  `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardController.java`  
+  `trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/requestforward/RequestForwardProcessor.java`
 
 ---
 
@@ -799,10 +799,10 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
   Align orchestration `IParam` / processor reads (see **GAP-062** in `.cursor/gaps-and-risks.md`): supply `total_foreclosure_amount` (or change processor), map `penalty_amount` ↔ `penal_amount`, map `value_date` → `foreclosure_date`, set `fee_amount`; add regression test for `loanWriteoff` REAL posting.
 
 - **Files**  
-  - `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (`loanWriteoff`)  
+  - `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (`loanWriteoff`)  
   - `.../ValidateLoanWriteOffDataProcessor.java`  
   - `.../PrepaymentApproppriationProcessor.java`  
-  - `novopay-platform-lib/.../DefaultExecutionContext.java` (`get` local-then-shared)
+  - `trustt-platform-lib/.../DefaultExecutionContext.java` (`get` local-then-shared)
 
 - **Business impact**  
   Write-off is a **terminal credit event**; wrong splits or failed completion blocks portfolio cleanup and statutory reporting accuracy.

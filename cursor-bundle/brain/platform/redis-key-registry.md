@@ -21,7 +21,7 @@
 | `superset_user_session_token_*`, `superset_user_id_*` | Y | guest/session aligned | Superset guest token mapping | **Medium** |
 | Rate limiting (Bucket4j) | Y / varies | `redisApiRateLimitTemplate` + proxy config | API throttling | **Low** — availability |
 
-*Source:* `novopay-platform-api-gateway/CLAUDE.md`, `APIRateLimiterFilter`, `SessionDAOService`, `RequestForwardProcessor#urlFinder`.
+*Source:* `trustt-platform-api-gateway/CLAUDE.md`, `APIRateLimiterFilter`, `SessionDAOService`, `RequestForwardProcessor#urlFinder`.
 
 ---
 

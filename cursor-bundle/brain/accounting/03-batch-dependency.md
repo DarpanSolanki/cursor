@@ -2,12 +2,12 @@
 
 ## TL;DR
 
-- `novopay-platform-batch` does **not** contain accounting business logic. It is a **scheduler + bulk-upload registry**.
+- `trustt-platform-batch` does **not** contain accounting business logic. It is a **scheduler + bulk-upload registry**.
 - It owns three master entities: `BatchSchedule`, `BatchGroup`, `BatchJob`. Each `BatchJob.name` is the **API name** of an orchestration `<Request>` in some other service — almost always accounting.
 - When a schedule fires, `DirectJobExecutor` (or `DirectGroupJobExecutor`) makes a **synchronous internal HTTP call** via `NovopayInternalAPIClient.callInternalAPI(executionContext, jobName, version, jobName, …)`. The gateway routes the call to whichever service owns that Request name (accounting for the vast majority).
 - Accounting therefore **doesn't import the batch service**. The dependency is one-way: `batch → accounting` (HTTP/gateway), and the contract is the orchestration Request name.
 
-## Batch service surface (from `novopay-platform-batch/deploy/.../ServiceOrchestrationXML.xml`)
+## Batch service surface (from `trustt-platform-batch/deploy/.../ServiceOrchestrationXML.xml`)
 
 ```
 createOrUpdateBatchSchedule           getBatchScheduleDetails        getBatchScheduleList    deleteBatchSchedule
@@ -87,7 +87,7 @@ Grouped by `batchnew/*` package and orchestration source.
 | `runBODJobs` | Beginning-of-day: clock advance, holiday roll-forward, mandate reset, eNACH presentation file |
 | `generatePostEODReports` | Trigger reporting service to render EOD report set (independent cron) |
 
-> **Correction (2026-05-08, verified on 3.3.1.0.1):** `runEODJobs` previously documented as a master EOD aggregator. The actual orchestration ([`MfiRunEODJobsProcessor.java:23–28`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java#L23)) only sequentially invokes 5 child Requests via `novopayInternalAPIClient.callInternalAPI(...)`:
+> **Correction (2026-05-08, verified on 3.3.1.0.1):** `runEODJobs` previously documented as a master EOD aggregator. The actual orchestration ([`MfiRunEODJobsProcessor.java:23–28`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java#L23)) only sequentially invokes 5 child Requests via `novopayInternalAPIClient.callInternalAPI(...)`:
 > 1. `loanAccountDpdCalcJob`
 > 2. `loanAccountAssetCriteriaJob`
 > 3. `loanAccountAssetClassificationJob`
@@ -183,7 +183,7 @@ outboundDisbursementCancellationHdfcErgoHealthInsuranceJob    inboundDisbursemen
 2. **Scheduler.** `AutoScheduler` reads schedules at startup (and on schedule-CRUD events) and registers them with a Spring `ThreadPoolTaskScheduler`.
 3. **Fire.** At the cron time, the scheduler hands a `BatchExecutionContextHelper`-built `ExecutionContext` to a new `DirectJobExecutor` instance.
 4. **Internal call.** `DirectJobExecutor.startNormalJob()` calls `NovopayInternalAPIClient.callInternalAPI(ctx, "interestAccrualCalculation", "v1", …)`.
-5. **Routing.** The internal API client uses the platform service registry to resolve `interestAccrualCalculation` → `novopay-platform-accounting-v2`. It posts to that service's gateway endpoint.
+5. **Routing.** The internal API client uses the platform service registry to resolve `interestAccrualCalculation` → `trustt-platform-accounting`. It posts to that service's gateway endpoint.
 6. **Accounting orchestration.** `OrchestrationXMLParser.getRequestFromOrcXML(tenant, "interestAccrualCalculation")` returns the Request from `loans_orc.xml`. `ServiceOrchestrator.executeProcessors(...)` fires the processor list, which kicks the Spring Batch `Job`.
 7. **Spring Batch.** `InterestAccrualCalculationBatchConfigService` builds a partitioned `Step` (grid 10) wired with the `ItemReader/Processor/Writer` from `batchnew/interest/interestaccrualcalculation/*`.
 8. **Status feedback.** Job progress + last-run status are queryable via batch service Requests `getBatchJobStatus`, `getBatchJobLastInstance`, `getBatchJobStatusByRefNo`. The accounting side does not push status; the batch service polls `BATCH_JOB_INSTANCE`/`BATCH_JOB_EXECUTION` (Spring Batch's own meta tables, owned by accounting's data source).
@@ -204,13 +204,13 @@ When an orchestration aborts mid-flight, recovery happens via one of three doors
 
 | Scheduled job | Source table | SQL filter | Effect |
 |---|---|---|---|
-| **`accountingBankServiceRetryJob`** ([reader file:25-27](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/bankservicecallretry/AccountingBankServiceRetryJobIReader.java#L25)) | `client_request_response_log` (CRR) | `status = 'FAIL' AND eligible_for_retry = TRUE AND uri IS NOT NULL` | Re-POSTs the original outbound HTTP request. **Does NOT touch `loan_account_events_queue`.** |
-| **`childLoanEventProcessingBatchJob`** ([reader file:24](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/childloaneventprocessingbatchjob/ChildLoanEventProcessingItemReader.java#L24), [filter file:60](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/childloaneventprocessingbatchjob/ChildLoanEventProcessingItemProcessor.java#L60)) | `loan_account_events_queue` | `event_status = 'P' AND is_deleted = false` — then **filters out** `EVENT_TYPE_IGNORE_API_MAP` ⇒ `[CLMT]` | Re-fires the child-event Request mapped via `EVENT_TYPE_ORC_API_MAP`. |
-| **`ChildLoanEventsProcessingProcessor`** ([orchestration-time, file:41](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L41)) | `loan_account_events_queue` | (caller-supplied parent_account_id) — **same** `EVENT_TYPE_IGNORE_API_MAP` skip ⇒ `[CLMT]` | Same effect as the batch job, just driven from a parent-loan orchestration. |
+| **`accountingBankServiceRetryJob`** ([reader file:25-27](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/bankservicecallretry/AccountingBankServiceRetryJobIReader.java#L25)) | `client_request_response_log` (CRR) | `status = 'FAIL' AND eligible_for_retry = TRUE AND uri IS NOT NULL` | Re-POSTs the original outbound HTTP request. **Does NOT touch `loan_account_events_queue`.** |
+| **`childLoanEventProcessingBatchJob`** ([reader file:24](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/childloaneventprocessingbatchjob/ChildLoanEventProcessingItemReader.java#L24), [filter file:60](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/childloaneventprocessingbatchjob/ChildLoanEventProcessingItemProcessor.java#L60)) | `loan_account_events_queue` | `event_status = 'P' AND is_deleted = false` — then **filters out** `EVENT_TYPE_IGNORE_API_MAP` ⇒ `[CLMT]` | Re-fires the child-event Request mapped via `EVENT_TYPE_ORC_API_MAP`. |
+| **`ChildLoanEventsProcessingProcessor`** ([orchestration-time, file:41](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L41)) | `loan_account_events_queue` | (caller-supplied parent_account_id) — **same** `EVENT_TYPE_IGNORE_API_MAP` skip ⇒ `[CLMT]` | Same effect as the batch job, just driven from a parent-loan orchestration. |
 
 ### Coverage by `event_type` (`loan_account_events_queue`)
 
-[`LoanAccountEventsQueueEntity.java:50-67`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L67) defines the only two maps that govern queue processing:
+[`LoanAccountEventsQueueEntity.java:50-67`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L67) defines the only two maps that govern queue processing:
 
 ```java
 public static final List<String>        EVENT_TYPE_IGNORE_API_MAP = [ CLMT ];
@@ -251,7 +251,7 @@ CLMT rows are state for an **in-flight bank call** (their lifecycle: `DTFC_SUCCE
 Consequence: an orphan PENDING CLMT row (created by the new `a6fdc1c88` prep block, then orchestration aborts before the bank-call block fires) has **no automatic recovery**. The existing flow's only door is:
 
 1. Operator (or upstream re-attempt) re-fires `disburseLoan` for the same parent.
-2. `PerformChildLoanBankDisbursementProcessor` short-circuits to the lazy-create branch at [file:74-78](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java#L74) — it **finds the existing CLMT row** and reuses it instead of inserting a new one.
+2. `PerformChildLoanBankDisbursementProcessor` short-circuits to the lazy-create branch at [file:74-78](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java#L74) — it **finds the existing CLMT row** and reuses it instead of inserting a new one.
 
 This is documented in [`../platform/async-patterns.md`](../platform/async-patterns.md) under "Things that still don't have automatic recovery" and is the explicit safety story behind why `a6fdc1c88` (the structural CLMT-prep-block split) is safe even though no scheduled poller heals abandoned rows.
 

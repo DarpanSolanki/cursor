@@ -3,7 +3,7 @@
 **Branch verified:** `mfi_integration_v3.3.1.0.1` (head `149009993`, audited 2026-05-08).
 **3.3.1.0.1 delta:** dedup error code changed from `134497 (3.3.1.0.1+) / 134067 (3.2.8.4.1)` → `134497` in commit `d358a9034` (`SDCP | Return friendly error for duplicate client_reference_number on loanRepayment`). Both codes appear below — `134497` is the current canonical value; `134497 (3.3.1.0.1+) / 134067 (3.2.8.4.1)` only on `3.2.8.4.1` and earlier.
 **Authoritative paths:**
-- ORC: [product_transaction_orc.xml](../novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml)
+- ORC: [product_transaction_orc.xml](../trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml)
 - Java root: [src/main/java/in/novopay/accounting/transaction/](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/)
 
 This file is the single deep reference for the ledger spine. `accounting-flows.md` summarizes; this file shows every processor's I/O contract so a fix can be designed without re-reading code.
@@ -31,7 +31,7 @@ This file is the single deep reference for the ledger spine. `accounting-flows.m
 
 ## 2. `postTransaction` chain — verbatim verified
 
-```3:34:novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml
+```3:34:trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml
 <Request name="postTransaction">
     <Processors>
         <Processor bean="validateTransactionDataProcessor" />
@@ -68,7 +68,7 @@ This file is the single deep reference for the ledger spine. `accounting-flows.m
 | 2 | `populateAdditionalInformationProcessor` | `additional_information_details[]` | unpacks array → context kv pairs | — | — |
 | 3 | `populateAndValidateAccountDetailsProcessor` | `account_details[]`, placeholder codes | per-placeholder `AccountDTO`; placeholder→code map | `AccountDAOService`, `InternalAccountDAOService`, `PlaceholderMasterDAOService` | 134065 (duplicate placeholder); ⚠ no null check on `account_details` (GAP-063 risk) |
 | 4 | `populateAdditionalAmountProcessor` | `additional_amount_details[]` | `reference_code`→amount map | — | 134094 (reserved key collision) |
-| 5 | `clientReferenceNumberDedupProcessor` | `client_code`, `client_reference_number` | (dedupe gate) | `TransactionMasterDAOService.findOneByClientCodeAndClientReferenceNumber` | **134497** on `3.3.1.0.1+` / `134497 (3.3.1.0.1+) / 134067 (3.2.8.4.1)` on `3.2.8.4.1` — the canonical idempotency gate ([`ClientReferenceNumberDedupProcessor.java:34`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java#L34)) |
+| 5 | `clientReferenceNumberDedupProcessor` | `client_code`, `client_reference_number` | (dedupe gate) | `TransactionMasterDAOService.findOneByClientCodeAndClientReferenceNumber` | **134497** on `3.3.1.0.1+` / `134497 (3.3.1.0.1+) / 134067 (3.2.8.4.1)` on `3.2.8.4.1` — the canonical idempotency gate ([`ClientReferenceNumberDedupProcessor.java:34`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java#L34)) |
 | 6 | `getTransactionCatalogueIdProcessor` | `transaction_type`, `transaction_sub_type` | `transaction_catalogue_id`, `transaction_category_list` | `TransactionCatalogueDAOService.findByTypeAndSubType` | — |
 | 7 | `getTransactionRuleListProcessor` | `transaction_catalogue_id` | `transaction_rule_list` | `TransactionAccountingRuleDAOService.findByTransactionCatalogueId` | — |
 | 8 | `executeTransactionRulesProcessor` | `transaction_rule_list`, `transaction_catalogue_id`, account/placeholder map, metadata | **`accounting_map`** (`LinkedHashMap<account, AccountingSummaryDTO>` with `netAmount`, `balanceAfterTransaction`, `CrDrIndicator`); `transaction_partition_details_list` | `ComputeEngine`, `PriceEngine`, `TaxEngine`, `PlaceholderMasterDAOService`, `ProductTransactionCatalogueDAOService`, `InternalAccountDefinitionDAOService`, `ChildGeneralLedgerEntity` | SpEL evaluation errors |
@@ -93,7 +93,7 @@ This file is the single deep reference for the ledger spine. `accounting-flows.m
 
 ## 3. `reverseTransaction` chain
 
-```80:91:novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml
+```80:91:trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml
 <Request name="reverseTransaction">
     <Processors>
         <Processor bean="reverseTransactionProcessor" />
@@ -122,7 +122,7 @@ Throws:
 
 ## 4. `glBalanceZeroisation` — bypass route
 
-```569:600:novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml
+```569:600:trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml
 ```
 
 Chain (intentionally **not** going through `clientReferenceNumberDedupProcessor` / rules / engines):

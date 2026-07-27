@@ -37,7 +37,7 @@ If `last_run_on` is older than expected → scheduler didn't fire.
 ### A. Scheduler didn't fire at all
 
 1. **Batch service alive?** Check process / health endpoint.
-2. **`AutoScheduler` initialised?** It runs `@PostConstruct` on the batch service startup ([`AutoScheduler.java:30-44`](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java#L30-L44)). Check startup logs for "Loading schedules for tenant…".
+2. **`AutoScheduler` initialised?** It runs `@PostConstruct` on the batch service startup ([`AutoScheduler.java:30-44`](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java#L30-L44)). Check startup logs for "Loading schedules for tenant…".
 3. **Multi-instance race?** If two batch service instances are deployed, one may have suppressed the schedule (no leader election; documented in [`../platform/multinode-batch.md`](../platform/multinode-batch.md)). Fix: deploy one batch instance per tenant, or implement leader election.
 4. **Tenant resolution failed?** `BatchExecutionContextHelper` populates tenant; if null, the job can't fire.
 
@@ -92,7 +92,7 @@ Each step is restartable. The pattern:
 - EOD aggregator: `mfi_orc.xml::runEODJobs`
 - BOD aggregator: `mfi_orc.xml::runBODJobs`
 - Job package roots: `batchnew/*` in accounting
-- Scheduler: [`AutoScheduler.java`](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java), [`SchedulingGroupProcessor.java`](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java)
+- Scheduler: [`AutoScheduler.java`](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java), [`SchedulingGroupProcessor.java`](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java)
 
 ## Related
 

@@ -1,7 +1,7 @@
 # Repayment Flow Intelligence (accounting-v2; non-batch)
 
 ## Entry point
-- Orchestration request: `loanRepayment` (`novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` + `mfi_orc.xml` variants)
+- Orchestration request: `loanRepayment` (`trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` + `mfi_orc.xml` variants)
 - Group (child) entry: `childLoanRepayment` (`group_mfi_orc.xml`)
 
 ## Ledger posting call (code-verified from ORC XML)

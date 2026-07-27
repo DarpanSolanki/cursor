@@ -1,4 +1,4 @@
-# Accounting service (`novopay-platform-accounting-v2`) — flow maps
+# Accounting service (`trustt-platform-accounting`) — flow maps
 
 **Deep reference**: `.cursor/rules/accounting.mdc` (Module reference section: transaction types, column semantics, NEFT/MFT/CLMT). **Curated money-path runbooks**: `system_brain/flows/*.md` (indexed in `.cursor/architecture.md` §12). **Posting engine notes**: `system_brain/accounting/posting_engine.md`.
 
@@ -21,13 +21,13 @@
 
 ### 1. HTTP (synchronous)
 
-- **Controller**: **`ServiceGatewayController`** in `novopay-platform-lib/infra-service-gateway` — `POST /api/{apiVersion}/{apiName}` (not re-declared in accounting-v2).
+- **Controller**: **`ServiceGatewayController`** in `trustt-platform-lib/infra-service-gateway` — `POST /api/{apiVersion}/{apiName}` (not re-declared in accounting-v2).
 - **Dispatch**: `RequestProcessorImpl` → `ServiceOrchestrator` for the tenant’s orchestration XML.
 - **Spring scan**: `Application.java` uses `@ComponentScan("in.novopay")` so accounting processors under `in.novopay.accounting.*` and infra beans under `in.novopay.infra.*` load together.
 
 ### 2. Kafka (asynchronous) — beans wired in `MessageBroker.xml`
 
-Only **two** `NovopayMessageBrokerConsumer` implementations exist under `novopay-platform-accounting-v2/src/main/java` (repo grep):
+Only **two** `NovopayMessageBrokerConsumer` implementations exist under `trustt-platform-accounting/src/main/java` (repo grep):
 
 | Class | Topic prefix (XML) | Bean name in XML |
 |-------|-------------------|------------------|
@@ -62,7 +62,7 @@ Under `deploy/application/orchestration/`:
 
 Source: `deploy/application/orchestration/product_transaction_orc.xml` — Request opens at **line 3**.
 
-```3:34:novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml
+```3:34:trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml
 	<Request name="postTransaction">
 		<Processors>
 			<Processor bean="validateTransactionDataProcessor" />
@@ -149,9 +149,9 @@ Trace the full chain with:
 **Datasource discovery (local defaults used by services):**
 
 - Accounting-v2 points the **platform master registry** to Yugabyte YSQL on `127.0.0.1:5433`, db `yugabyte` (used by `ServiceRegistry` / api_master lookups):  
-  `novopay-platform-accounting-v2/src/main/resources/application.properties` L22-L28.
+  `trustt-platform-accounting/src/main/resources/application.properties` L22-L28.
 - The accounting domain schema is **`mfi_accounting`** (table definitions captured in codegen artifact dump):  
-  `trustt-platform-ai-codegen-artifacts/sli/schema_structure/schema_structure_dump/mfi_accounting_structure.sql` L25.
+  `trustt-platform-ai-codegen-artifacts-java/sli/schema_structure/schema_structure_dump/mfi_accounting_structure.sql` L25.
 
 **Constraints (codegen schema dump; representative “hard” invariants):**
 
@@ -208,17 +208,17 @@ Trace the full chain with:
 
 ## ENTRY POINT REGISTRY [2026-04-17]
 
-**Scope note (Wave 1):** HTTP `apiName` values are the `<Request name="…">` identifiers in tenant orchestration XML. Entry is **`ServiceGatewayController`** → **`RequestProcessorImpl`** → **`ServiceOrchestrator`** (platform-lib); accounting-v2 contributes processors + XML only. **No `@KafkaListener`** in accounting-v2 — consumers implement **`NovopayMessageBrokerConsumer`** (`computeRecords`). **No `@Scheduled`** in accounting-v2 `src/main/java`; schedules live in **novopay-platform-batch** (cron in batch job metadata / internal API with `function_sub_code=BATCH`). **Batch:** real `Job` wiring uses **`ParallelCommonBatchJob`** in `in.novopay.accounting.batchnew.*`; **`BatchJobPlaceholderConfig`** supplies `@Bean(name="…")` placeholders when the concrete config is absent.
+**Scope note (Wave 1):** HTTP `apiName` values are the `<Request name="…">` identifiers in tenant orchestration XML. Entry is **`ServiceGatewayController`** → **`RequestProcessorImpl`** → **`ServiceOrchestrator`** (platform-lib); accounting-v2 contributes processors + XML only. **No `@KafkaListener`** in accounting-v2 — consumers implement **`NovopayMessageBrokerConsumer`** (`computeRecords`). **No `@Scheduled`** in accounting-v2 `src/main/java`; schedules live in **trustt-platform-batch** (cron in batch job metadata / internal API with `function_sub_code=BATCH`). **Batch:** real `Job` wiring uses **`ParallelCommonBatchJob`** in `in.novopay.accounting.batchnew.*`; **`BatchJobPlaceholderConfig`** supplies `@Bean(name="…")` placeholders when the concrete config is absent.
 
 | Type | Trigger | Class | Method | File | Already documented? |
 |------|---------|-------|--------|------|---------------------|
-| HTTP | `POST /api/{version}/{apiName}` | `ServiceGatewayController` | (Spring MVC handler) | `novopay-platform-lib/infra-service-gateway/.../ServiceGatewayController.java` | Yes (Runtime entry points) |
-| HTTP | Orchestration dispatch | `RequestProcessorImpl` | `processRequest` (typical) | `novopay-platform-lib/infra-navigation/.../RequestProcessorImpl.java` | Yes |
-| Kafka | Topic prefix `disburse_loan_api_` | `LmsMessageBrokerConsumer` | `computeRecords` → `processConsumerRecord` | `novopay-platform-accounting-v2/.../consumers/LmsMessageBrokerConsumer.java` | Yes |
-| Kafka | Topic prefix `bulk_collection_data_failed_` | `BulkCollectionFailedRecordConsumer` | `computeRecords` | `novopay-platform-accounting-v2/.../BulkCollectionFailedRecordConsumer.java` | Yes (table + **GAP-036**) |
+| HTTP | `POST /api/{version}/{apiName}` | `ServiceGatewayController` | (Spring MVC handler) | `trustt-platform-lib/infra-service-gateway/.../ServiceGatewayController.java` | Yes (Runtime entry points) |
+| HTTP | Orchestration dispatch | `RequestProcessorImpl` | `processRequest` (typical) | `trustt-platform-lib/infra-navigation/.../RequestProcessorImpl.java` | Yes |
+| Kafka | Topic prefix `disburse_loan_api_` | `LmsMessageBrokerConsumer` | `computeRecords` → `processConsumerRecord` | `trustt-platform-accounting/.../consumers/LmsMessageBrokerConsumer.java` | Yes |
+| Kafka | Topic prefix `bulk_collection_data_failed_` | `BulkCollectionFailedRecordConsumer` | `computeRecords` | `trustt-platform-accounting/.../BulkCollectionFailedRecordConsumer.java` | Yes (table + **GAP-036**) |
 | Scheduled | *(none in accounting-v2)* | — | — | — | N/A |
-| Batch | Scheduler → internal API / job name | Various `*BatchConfigService` + `ParallelCommonBatchJob` | `setUpJobAdvanceV2` (pattern) | `novopay-platform-accounting-v2/.../batchnew/**` | Partial (`system_brain/batch_jobs/batch_inventory.md`) |
-| Batch | Placeholder beans | `BatchJobPlaceholderConfig` | `*Placeholder()` factory methods | `novopay-platform-accounting-v2/.../config/BatchJobPlaceholderConfig.java` | New (this registry) |
+| Batch | Scheduler → internal API / job name | Various `*BatchConfigService` + `ParallelCommonBatchJob` | `setUpJobAdvanceV2` (pattern) | `trustt-platform-accounting/.../batchnew/**` | Partial (`system_brain/batch_jobs/batch_inventory.md`) |
+| Batch | Placeholder beans | `BatchJobPlaceholderConfig` | `*Placeholder()` factory methods | `trustt-platform-accounting/.../config/BatchJobPlaceholderConfig.java` | New (this registry) |
 
 **Orchestration XML → HTTP `apiName`:** Every `<Request name="X">` is invokable as `apiName=X` when that XML is on the tenant orchestration classpath. **362** `<Request>` nodes across **9** files; **348** unique names. **14** names appear in **more than one** XML (always verify **which** XML the tenant uses — e.g. `disburseLoan` in `loans_orc.xml` vs `mfi_orc.xml`).
 
@@ -268,17 +268,17 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 ## COMPLETE FLOW REGISTRY [2026-04-17]
 
-**Wave 1 methodology:** A full per-processor matrix (every `get`/`put`, DB, HTTP, Kafka, Redis) for all **362** requests requires automated extraction or dedicated tranches; this registry adds **verified deep detail** where gaps were found and **pointers** for the rest. **`postTransaction`** chain is already captured above (XML snippet). **`DefaultExecutionContext.get`** resolves **`localMap` first**, then **`sharedMap`** (`novopay-platform-lib/.../DefaultExecutionContext.java`), so orchestration `scope="local"` `IParam` values are visible to `getValue` if `putLocal` was used for that key.
+**Wave 1 methodology:** A full per-processor matrix (every `get`/`put`, DB, HTTP, Kafka, Redis) for all **362** requests requires automated extraction or dedicated tranches; this registry adds **verified deep detail** where gaps were found and **pointers** for the rest. **`postTransaction`** chain is already captured above (XML snippet). **`DefaultExecutionContext.get`** resolves **`localMap` first**, then **`sharedMap`** (`trustt-platform-lib/.../DefaultExecutionContext.java`), so orchestration `scope="local"` `IParam` values are visible to `getValue` if `putLocal` was used for that key.
 
 ### FLOW: `loanWriteoff` (posting branch — `post_transaction=true`)
 
 **Entry:** HTTP `apiName=loanWriteoff` → `loans_orc.xml`  
 **Trigger:** HTTP  
-**Orchestration XML:** `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml` (`<Request name="loanWriteoff">`, ~L1382)
+**Orchestration XML:** `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (`<Request name="loanWriteoff">`, ~L1382)
 
 **Processor chain (subset — branch where ledger posts):**
 
-1. **`validateLoanWriteOffDataProcessor`** — `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/writeoff/processor/ValidateLoanWriteOffDataProcessor.java`  
+1. **`validateLoanWriteOffDataProcessor`** — `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/writeoff/processor/ValidateLoanWriteOffDataProcessor.java`  
    - **EC reads:** `value_date`, `account_number`, `writeoff_amount`, `loan_account_id` (after set)  
    - **EC writes:** `loan_account_entity`, `product_id`, `loan_account_id`, `principal_amount`, `interest_amount`, `penalty_amount`, `field_name` (on errors)  
    - **DB:** `loan_account` — SELECT by account number; `loan_due_details` — aggregates (principal outstanding, interest due, penal due via DAO)  
@@ -289,7 +289,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 3. **Maker/checker controls** — `getMakerCheckerEnabledForUseCaseProcessor` / `dummyProcessor` set `post_transaction`, `responseCode`, etc.  
 
-4. **`prepaymentApproppriationProcessor`** — `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/PrepaymentApproppriationProcessor.java`  
+4. **`prepaymentApproppriationProcessor`** — `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/PrepaymentApproppriationProcessor.java`  
    - **EC reads:** `total_foreclosure_amount` (String), `principal_amount`, `interest_amount`, **`penal_amount`**, **`fee_amount`**, **`foreclosure_date`** (millis String), `loan_account_entity`  
    - **EC writes:** `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount`, `excess_amount`, `loan_due_details_list`, `product_id`  
    - **DB:** `loan_due_details` (via `LoanDueDetailsSuperListUtil.getDueDetails`); `loan_product` / asset criteria slab lookups  
@@ -336,7 +336,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 ## LOS ↔ Accounting Complete Contract [2026-04-17]
 
-**Scope honesty:** This pass is **grep- and file-evidence-based** across `novopay-mfi-los` and accounting touchpoints — not a human line-by-line read of every LOS source file. Orchestration **inside** accounting `disburseLoan` after the consumer hands off to `ServiceOrchestrator` follows `loans_orc.xml` / Wave 1; this section focuses on **transport, EC/Kafka shape, and LOS-side behaviour**.
+**Scope honesty:** This pass is **grep- and file-evidence-based** across `trustt-platform-los` and accounting touchpoints — not a human line-by-line read of every LOS source file. Orchestration **inside** accounting `disburseLoan` after the consumer hands off to `ServiceOrchestrator` follows `loans_orc.xml` / Wave 1; this section focuses on **transport, EC/Kafka shape, and LOS-side behaviour**.
 
 ### MAP 1 — LOS → Accounting (HTTP via `NovopayInternalAPIClient`)
 
@@ -369,7 +369,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 ### MAP 2 — Accounting → LOS (HTTP)
 
-**Code-verified:** No `NovopayInternalAPIClient.callInternalAPI` usage was found in `novopay-platform-accounting-v2` whose `apiName` targets the LOS module (accounting outbound calls are actor, masterdata, task, payments patterns, nested `postTransaction`, etc.). **Cross-boundary return path to LOS is Kafka-first** for disburse outcomes and loan closure (see MAP 4 and closure topic in `event-registry.md`).
+**Code-verified:** No `NovopayInternalAPIClient.callInternalAPI` usage was found in `trustt-platform-accounting` whose `apiName` targets the LOS module (accounting outbound calls are actor, masterdata, task, payments patterns, nested `postTransaction`, etc.). **Cross-boundary return path to LOS is Kafka-first** for disburse outcomes and loan closure (see MAP 4 and closure topic in `event-registry.md`).
 
 ### MAP 3 — LOS → Accounting (Kafka)
 
@@ -447,7 +447,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 ### MAP 3 — NEFT (payments involvement)
 
-**Code-verified:** **No** `NEFT` / `neft` string matches under `novopay-platform-payments/src` (Java). **NEFT disburse legs live in accounting** (`CallBankAPIForDisbursementProcessor`, child NEFT processors, etc.). **Payments touchpoint:** only via **repayment / collection** APIs above, not NEFT file exchange.
+**Code-verified:** **No** `NEFT` / `neft` string matches under `trustt-platform-payments/src` (Java). **NEFT disburse legs live in accounting** (`CallBankAPIForDisbursementProcessor`, child NEFT processors, etc.). **Payments touchpoint:** only via **repayment / collection** APIs above, not NEFT file exchange.
 
 ### MAP 4 — Failure / reconciliation posture
 
@@ -470,9 +470,9 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 
 ## Batch → Accounting Complete Contract [2026-04-17]
 
-**Critical architecture note:** `novopay-platform-batch` (**99** Java files) is the **scheduler / orchestration shell** — it does **not** host Spring Batch `ItemReader`/`ItemWriter` for LMS ledger jobs. It triggers work via **`NovopayInternalAPIClient.callInternalAPI(executionContext, jobName, version, jobName, …)`** (`SchedulerCommonService.callJobAPi` L276-L286, `DirectJobExecutor`). **`job_time`** is set from **`PlatformDateUtil.getBusinessDateInLong()`** after **invalidating** masterdata cache key `current.business.date` (`SchedulerCommonService.setJobTime` L291-L297).
+**Critical architecture note:** `trustt-platform-batch` (**99** Java files) is the **scheduler / orchestration shell** — it does **not** host Spring Batch `ItemReader`/`ItemWriter` for LMS ledger jobs. It triggers work via **`NovopayInternalAPIClient.callInternalAPI(executionContext, jobName, version, jobName, …)`** (`SchedulerCommonService.callJobAPi` L276-L286, `DirectJobExecutor`). **`job_time`** is set from **`PlatformDateUtil.getBusinessDateInLong()`** after **invalidating** masterdata cache key `current.business.date` (`SchedulerCommonService.setJobTime` L291-L297).
 
-**Accounting batch implementations** live under **`novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/`** (and related packages). **Inventory:** **71** `*BatchConfigService.java` files (glob count). Detailed money-path inventory: `system_brain/batch_jobs/batch_inventory.md`.
+**Accounting batch implementations** live under **`trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/`** (and related packages). **Inventory:** **71** `*BatchConfigService.java` files (glob count). Detailed money-path inventory: `system_brain/batch_jobs/batch_inventory.md`.
 
 **Distributed lock (batch platform):** **N** (no leader election / Redis lock on schedule tick) — see `.cursor/multinode-batch.md` + gaps table **multi-node batch scheduler**.
 
@@ -483,13 +483,13 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 | **Entry** | `*BatchConfigService` wires Spring Batch job + steps; remote start = HTTP internal API with same name as `jobName` from batch DB. |
 | **Trigger** | **Scheduled** via batch service cron (`batch_schedule.cron_expression`) → `callJobAPi`; **manual** replay via same API with `op_code=RESTART` paths (`SchedulerCommonService.reTryForFailed`). |
 | **Accounting HTTP from batch module** | **N** — batch only **invokes** accounting job endpoint; accounting job may call nested `postTransaction` / `loanRepayment` internally. |
-| **Kafka** | Some writers publish (e.g. `bulk_collection_data_`); consumers are in accounting/payments, not in `novopay-platform-batch`. |
+| **Kafka** | Some writers publish (e.g. `bulk_collection_data_`); consumers are in accounting/payments, not in `trustt-platform-batch`. |
 
 ### BATCH JOB: `interestAccrualPosting` (interest accrual **booking** / ledger post)
 
 | Field | Value |
 |-------|--------|
-| **Entry class** | `InterestAccrualBookingBatchConfigService` — `novopay-platform-accounting-v2/.../interestaccrualbooking/InterestAccrualBookingBatchConfigService.java` |
+| **Entry class** | `InterestAccrualBookingBatchConfigService` — `trustt-platform-accounting/.../interestaccrualbooking/InterestAccrualBookingBatchConfigService.java` |
 | **Trigger** | Scheduled (group **LMS-EOD-BOD**, cron `0 0 18 * * ?` per `batch_inventory.md`) |
 | **Service invoked** | `InterestAccrualBookingBatchService` → internal **`postTransaction`** |
 | **Accounting tables** | Reads **`loan_account`**, **`interest_accrual_details`**, due/installment joins (reader SQL); writer updates accrual posted amounts / posting dates |

@@ -6,7 +6,7 @@ Cross-reference: `.cursor/gaps-and-risks.md`. **Related diagrams:** `.cursor/arc
 
 ## LOS disbursement sync no-ops if `entity_type` missing
 
-- **What breaks:** LOS consumes `los_lms_disbursement_sync` but `DisbursementSyncService` exits early when `entity_type` absent — DB fields like failure/sync reason may **not** update even though accounting published SUCCESS/FAILED. **Files:** `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java` (L33-L37 per gaps table).
+- **What breaks:** LOS consumes `los_lms_disbursement_sync` but `DisbursementSyncService` exits early when `entity_type` absent — DB fields like failure/sync reason may **not** update even though accounting published SUCCESS/FAILED. **Files:** `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java` (L33-L37 per gaps table).
 - **Early warning signs:** Kafka message on `los_lms_disbursement_sync` with status FAILED but LOS UI still “in progress”; `LOG` at WARN/INFO showing guard return; mismatch between accounting `loan_account.disbursement_status` and LOS disbursement record.
 - **Immediate mitigation (2am):** (1) Identify `external_ref_number` + tenant from Kafka payload or accounting DB. (2) Manually patch LOS disbursement row / retry sync from ops tool if available. (3) If stuck mid-flight, verify accounting side truth first (`loan_account`, CRR) before forcing LOS state. (4) Short-term: ensure producer payload includes required keys (coordinate hotfix branch).
 - **Permanent fix:** Add contract tests LOS↔accounting JSON samples; **either** default `entity_type` safely **or** make LOS path tolerant when key missing but status present; align with `LmsMessageBrokerConsumer.sendResultMessageToKafka` keys. **Effort:** ~2–3 days including QA + regression on multi-product LOS.
@@ -90,11 +90,11 @@ Cross-reference: `.cursor/gaps-and-risks.md`. **Related diagrams:** `.cursor/arc
 
 ## Gradle Novopay plugin classpath vs published dependency-mgmt version mismatch
 
-- **What breaks:** Services pin `*.gradle.plugin:3.2.6.6-1` while `novopay-platform-dependency-mgmt` publishes `3.2.6.6.2-1` for the same logical artifact family — developers assume patch X while CI/release may resolve Y → **unexpected transitive `novopay-platform-lib` revisions**. **Files:** `novopay-platform-accounting-v2/build.gradle` L14; `novopay-platform-dependency-mgmt/build.gradle` (multiple `version = "3.2.6.6.2-1"`).
+- **What breaks:** Services pin `*.gradle.plugin:3.2.6.6-1` while `novopay-platform-dependency-mgmt` publishes `3.2.6.6.2-1` for the same logical artifact family — developers assume patch X while CI/release may resolve Y → **unexpected transitive `novopay-platform-lib` revisions**. **Files:** `trustt-platform-accounting/build.gradle` L14; `trustt-platform-dependency-mgmt/build.gradle` (multiple `version = "3.2.6.6.2-1"`).
 - **Early warning signs:** “Works locally” after partial publish; NoSuchMethodError at runtime across services; differing bytecode for same class between accounting and LOS.
 - **Immediate mitigation:** Freeze promotions; diff resolved dependency trees (`./gradlew :novopay-platform-accounting-v2:dependencies`) between good/bad build; align all service `buildscript` lines to **one** approved plugin version from dependency-mgmt.
 - **Permanent fix:** Single BOM source — services **do not** hardcode classpath versions; use `plugins { id ... version from catalog }`. **Effort:** ~3–5 days platform engineering.
-- **Files to check:** Every service `build.gradle` buildscript block; `novopay-platform-dependency-mgmt/build.gradle`.
+- **Files to check:** Every service `build.gradle` buildscript block; `trustt-platform-dependency-mgmt/build.gradle`.
 - **Related flows:** All JVM services.
 - **Risk if unresolved:** Cross-service runtime incompatibility; incident during release windows.
 

@@ -22,7 +22,7 @@
 
 ## The Kafka-consumer entry path (disburseLoan)
 
-[`LmsMessageBrokerConsumer`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) consumes `disburse_loan_api_<tenant>` topic, deduplicates via Redis key `dl<productId>_<extRef>`, then calls:
+[`LmsMessageBrokerConsumer`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) consumes `disburse_loan_api_<tenant>` topic, deduplicates via Redis key `dl<productId>_<extRef>`, then calls:
 
 ```java
 getServiceOrchestrator().executeProcessors(
@@ -76,11 +76,11 @@ The race we fixed: the queue lookup `findOneByFiller2` could not see CLMT rows t
 | Two reactor threads writing the same queue row (concurrent siblings) | Only one updater per child row in normal flow; child queue rows are 1:1 with bank legs | Not racy |
 | Orchestration thread vs reactor thread on stale CLMT row state | EC entity shared across thread boundary; outer Hibernate persistence context can auto-flush a reactor-thread mutation back to DB with stale `updated_on` | **Fixed** by atomic CAS redesign (PR #260, `e3d84a53b` … `f6e83c9fe`) + post-CAS in-memory mutation removal (`4c339282f`, `09295c377`). State changes go through `ChildClmtStateMachineService.transition`; advisory writes through `patchJsonFields`. Reactor handlers no longer call setters on the shared entity. See `engines/disbursement-engine.md` §4.8. |
 | Cross-pod duplicate child bank-leg execution | Pre-fix: JVM-local set; cross-pod was unprotected | **Fixed** by atomic Redis SETNX (`ede4aa325` + `4cb437b28`) |
-| Late callback after row already terminal | Row at COMPLETED; callback tries to demote | Guard at [`DoGenericSyncSTPBankNeftCallBackProcessor.java:367`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L367) drops the FAIL with a log line. Intentional asymmetry. |
+| Late callback after row already terminal | Row at COMPLETED; callback tries to demote | Guard at [`DoGenericSyncSTPBankNeftCallBackProcessor.java:367`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L367) drops the FAIL with a log line. Intentional asymmetry. |
 
 ## Things that still don't have automatic recovery
 
-- **Orphan PENDING CLMT rows**: if the disburseLoan orchestration aborts after CLMT rows commit (via the `a6fdc1c88` prep block) but before any bank call fires, those rows persist. **No scheduled job recovers them.** Recovery requires re-invoking disburseLoan for that parent — at which point [`PerformChildLoanBankDisbursementProcessor.java:74-78`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java#L74) reuses the existing rows.
+- **Orphan PENDING CLMT rows**: if the disburseLoan orchestration aborts after CLMT rows commit (via the `a6fdc1c88` prep block) but before any bank call fires, those rows persist. **No scheduled job recovers them.** Recovery requires re-invoking disburseLoan for that parent — at which point [`PerformChildLoanBankDisbursementProcessor.java:74-78`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java#L74) reuses the existing rows.
 - **Bank never sends an async callback** for a fired NEFT call: queue stays at `NEFT_STAGE_1_PENDING`. Recovery is the `NEFT_TRANSACTION_INQUIRY` path inside `ChildDisbursementNeftV2BankCall`, but it requires the loan to be re-touched by a disburseLoan call.
 
 These are documented operationally; no scheduled poller exists. Tests should run real bank scenarios; mocks miss this entirely.

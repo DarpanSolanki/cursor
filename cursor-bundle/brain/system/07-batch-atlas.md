@@ -13,7 +13,7 @@
 
 ## Daily — the EOD/BOD core (accounting)
 
-> ⚠ **Important — `runEODJobs` is NOT an aggregator of every EOD job.** Verified on 3.3.1.0.1 by reading [`MfiRunEODJobsProcessor.java`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java) (~L23–L28): the orchestration only invokes **5 child Requests** sequentially via `novopayInternalAPIClient.callInternalAPI(...)`. **Billing, interest accrual + posting, derived-fields refresh, trial balance, and the post-EOD report job all run on their own independent cron schedules**, not from `runEODJobs`. This was previously documented as one big aggregator — the corrected layout is below.
+> ⚠ **Important — `runEODJobs` is NOT an aggregator of every EOD job.** Verified on 3.3.1.0.1 by reading [`MfiRunEODJobsProcessor.java`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java) (~L23–L28): the orchestration only invokes **5 child Requests** sequentially via `novopayInternalAPIClient.callInternalAPI(...)`. **Billing, interest accrual + posting, derived-fields refresh, trial balance, and the post-EOD report job all run on their own independent cron schedules**, not from `runEODJobs`. This was previously documented as one big aggregator — the corrected layout is below.
 
 ### `runBODJobs` (BOD aggregator, ~04:00 IST)
 

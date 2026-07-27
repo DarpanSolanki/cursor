@@ -17,8 +17,8 @@
 | XML files | 60 |
 | `<Request>` nodes (parseable) | 1915 |
 
-## `novopay-mfi-los/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-mfi-los` 
+## `trustt-platform-los/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-los` 
 **Root element:** `los`  
 **Requests:** 485
 
@@ -512,8 +512,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 138
 
@@ -660,8 +660,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 19
 
@@ -689,8 +689,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/insurance_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/insurance_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 12
 
@@ -711,8 +711,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/loans_insurance_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/loans_insurance_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 26
 
@@ -747,8 +747,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/loans_notification.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/loans_notification.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 2
 
@@ -759,8 +759,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 82
 
@@ -851,8 +851,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 59
 
@@ -920,8 +920,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_accounting_definition_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/product_transaction_accounting_definition_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 12
 
@@ -942,8 +942,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml`
-**Owner service:** `novopay-platform-accounting-v2` 
+## `trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml`
+**Owner service:** `trustt-platform-accounting` 
 **Root element:** `Accounting`  
 **Requests:** 12
 
@@ -964,8 +964,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 80
 
@@ -1054,8 +1054,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/ServiceOrchestrationXML_idfc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/ServiceOrchestrationXML_idfc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 1
 
@@ -1065,8 +1065,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/bp_card_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/bp_card_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 7
 
@@ -1082,8 +1082,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/bp_corporate_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/bp_corporate_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1095,8 +1095,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/bp_customer_batch_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/bp_customer_batch_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 2
 
@@ -1107,8 +1107,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/bp_customer_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/bp_customer_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1121,8 +1121,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/bp_login_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/bp_login_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 7
 
@@ -1138,8 +1138,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/fk_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/fk_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 5
 
@@ -1153,8 +1153,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/idfcp_agent_employee_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/idfcp_agent_employee_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1166,8 +1166,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/idfcp_agent_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/idfcp_agent_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1179,8 +1179,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/idfcp_corporate_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/idfcp_corporate_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1192,8 +1192,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/idfcp_employee_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/idfcp_employee_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1205,8 +1205,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/insurance_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/insurance_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 5
 
@@ -1220,8 +1220,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/nl_agent_lending.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/nl_agent_lending.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1233,8 +1233,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/orc_bp.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/orc_bp.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 2
 
@@ -1245,8 +1245,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/orc_collections.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/orc_collections.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 62
 
@@ -1317,8 +1317,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/orc_mfi.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/orc_mfi.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 154
 
@@ -1481,8 +1481,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/orc_mfi2.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/orc_mfi2.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 81
 
@@ -1572,8 +1572,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/product_agent_employee_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/product_agent_employee_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1586,8 +1586,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/product_agent_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/product_agent_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1600,8 +1600,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/product_corporate_employee_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/product_corporate_employee_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1614,8 +1614,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/product_corporate_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/product_corporate_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1628,8 +1628,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/product_customer_orc_xml.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/product_customer_orc_xml.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1641,8 +1641,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_card_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_card_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 10
 
@@ -1661,8 +1661,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_corporate.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_corporate.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 1
 
@@ -1672,8 +1672,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_customer_faq.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_customer_faq.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 4
 
@@ -1686,8 +1686,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_customer_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_customer_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 6
 
@@ -1702,8 +1702,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_ekyc_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_ekyc_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 25
 
@@ -1737,8 +1737,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-actor/deploy/application/orchestration/waas_login_orc.xml`
-**Owner service:** `novopay-platform-actor` 
+## `trustt-platform-actor/deploy/application/orchestration/waas_login_orc.xml`
+**Owner service:** `trustt-platform-actor` 
 **Root element:** `Actor`  
 **Requests:** 3
 
@@ -1750,8 +1750,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-api-gateway/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-api-gateway` 
+## `trustt-platform-api-gateway/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-api-gateway` 
 **Root element:** `Actor`  
 **Requests:** 11
 
@@ -1771,8 +1771,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-approval` 
+## `trustt-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-approval` 
 **Root element:** `Approval`  
 **Requests:** 9
 
@@ -1790,8 +1790,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-approval/deploy/application/orchestration/orc_mfi.xml`
-**Owner service:** `novopay-platform-approval` 
+## `trustt-platform-approval/deploy/application/orchestration/orc_mfi.xml`
+**Owner service:** `trustt-platform-approval` 
 **Root element:** `Approval`  
 **Requests:** 7
 
@@ -1807,8 +1807,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-audit/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-audit` 
+## `trustt-platform-audit/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-audit` 
 **Root element:** `Audit`  
 **Requests:** 7
 
@@ -1824,8 +1824,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-authorization/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-authorization` 
+## `trustt-platform-authorization/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-authorization` 
 **Root element:** `Authorization`  
 **Requests:** 20
 
@@ -1854,8 +1854,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-authorization/deploy/application/orchestration/orc_mfi.xml`
-**Owner service:** `novopay-platform-authorization` 
+## `trustt-platform-authorization/deploy/application/orchestration/orc_mfi.xml`
+**Owner service:** `trustt-platform-authorization` 
 **Root element:** `Authorization`  
 **Requests:** 8
 
@@ -1872,8 +1872,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-batch/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-batch` 
+## `trustt-platform-batch/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-batch` 
 **Root element:** `Batch`  
 **Requests:** 22
 
@@ -1904,8 +1904,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-dms/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-dms` 
+## `trustt-platform-dms/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-dms` 
 **Root element:** `DMS`  
 **Requests:** 6
 
@@ -1920,8 +1920,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-masterdata-management/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-masterdata-management` 
+## `trustt-platform-masterdata-management/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-masterdata-management` 
 **Root element:** `MasterData`  
 **Requests:** 34
 
@@ -1964,8 +1964,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-notifications/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-notifications` 
+## `trustt-platform-notifications/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-notifications` 
 **Root element:** `Notifications`  
 **Requests:** 17
 
@@ -1991,8 +1991,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-notifications/deploy/application/orchestration/custom_mfi.xml`
-**Owner service:** `novopay-platform-notifications` 
+## `trustt-platform-notifications/deploy/application/orchestration/custom_mfi.xml`
+**Owner service:** `trustt-platform-notifications` 
 **Root element:** `Request`  
 **Requests:** 1
 
@@ -2002,8 +2002,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-notifications/deploy/application/orchestration/idfcp_otp.xml`
-**Owner service:** `novopay-platform-notifications` 
+## `trustt-platform-notifications/deploy/application/orchestration/idfcp_otp.xml`
+**Owner service:** `trustt-platform-notifications` 
 **Root element:** `Notifications`  
 **Requests:** 2
 
@@ -2014,8 +2014,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-notifications/deploy/application/orchestration/product_otp.xml`
-**Owner service:** `novopay-platform-notifications` 
+## `trustt-platform-notifications/deploy/application/orchestration/product_otp.xml`
+**Owner service:** `trustt-platform-notifications` 
 **Root element:** `Notifications`  
 **Requests:** 3
 
@@ -2027,8 +2027,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-payments/deploy/application/orchestration/orc_collections.xml`
-**Owner service:** `novopay-platform-payments` 
+## `trustt-platform-payments/deploy/application/orchestration/orc_collections.xml`
+**Owner service:** `trustt-platform-payments` 
 **Root element:** `Payments`  
 **Requests:** 71
 
@@ -2108,8 +2108,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-payments/deploy/application/orchestration/orc_mfi.xml`
-**Owner service:** `novopay-platform-payments` 
+## `trustt-platform-payments/deploy/application/orchestration/orc_mfi.xml`
+**Owner service:** `trustt-platform-payments` 
 **Root element:** `Payments`  
 **Requests:** 178
 
@@ -2296,8 +2296,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-payments/deploy/application/orchestration/orc_mfi_cross_schema.xml`
-**Owner service:** `novopay-platform-payments` 
+## `trustt-platform-payments/deploy/application/orchestration/orc_mfi_cross_schema.xml`
+**Owner service:** `trustt-platform-payments` 
 **Root element:** `Payments`  
 **Requests:** 7
 
@@ -2313,8 +2313,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-payments/deploy/application/orchestration/product_accounting.xml`
-**Owner service:** `novopay-platform-payments` 
+## `trustt-platform-payments/deploy/application/orchestration/product_accounting.xml`
+**Owner service:** `trustt-platform-payments` 
 **Root element:** `Payments`  
 **Requests:** 2
 
@@ -2325,8 +2325,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-task/deploy/application/orchestration/ServiceOrchestrationXML.xml`
-**Owner service:** `novopay-platform-task` 
+## `trustt-platform-task/deploy/application/orchestration/ServiceOrchestrationXML.xml`
+**Owner service:** `trustt-platform-task` 
 **Root element:** `Task`  
 **Requests:** 22
 
@@ -2357,8 +2357,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-task/deploy/application/orchestration/mfi_orchestration.xml`
-**Owner service:** `novopay-platform-task` 
+## `trustt-platform-task/deploy/application/orchestration/mfi_orchestration.xml`
+**Owner service:** `trustt-platform-task` 
 **Root element:** `Task`  
 **Requests:** 24
 
@@ -2391,8 +2391,8 @@
 
 **Flow description:** Requests execute validators (not expanded in table) → processors/APIs top-to-bottom; `Control` gates nest validators and processor chains. Undo processors and explicit transactions are defined in XML outside this summary — open the source XML for full fidelity.
 
-## `novopay-platform-task/deploy/application/orchestration/orc_collection.xml`
-**Owner service:** `novopay-platform-task` 
+## `trustt-platform-task/deploy/application/orchestration/orc_collection.xml`
+**Owner service:** `trustt-platform-task` 
 **Root element:** `Task`  
 **Requests:** 5
 

@@ -25,7 +25,7 @@ This is the central mechanism for SHG/JLG. Misbehaviour here = silently broken g
 
 ## JPA entity
 
-[`account/loans/entity/LoanAccountEventsQueueEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java)
+[`account/loans/entity/LoanAccountEventsQueueEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java)
 
 Defines two enums + two static maps:
 
@@ -36,22 +36,22 @@ Defines two enums + two static maps:
 
 ## DAO
 
-[`account/loans/repository/LoanAccountEventsQueueDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountEventsQueueDAOService.java)
+[`account/loans/repository/LoanAccountEventsQueueDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountEventsQueueDAOService.java)
 
 ## Writers (per event type)
 
 | Event type | Writer | Triggered by Request |
 |---|---|---|
-| `CLB` | [`CreateLoanAccountEventsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/CreateLoanAccountEventsProcessor.java) and [`CreateClmtLoanAccountEventsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/CreateClmtLoanAccountEventsProcessor.java) | `disburseLoan` PARENT_SUCCESS stage |
+| `CLB` | [`CreateLoanAccountEventsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/CreateLoanAccountEventsProcessor.java) and [`CreateClmtLoanAccountEventsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/CreateClmtLoanAccountEventsProcessor.java) | `disburseLoan` PARENT_SUCCESS stage |
 | `REP` | `loan/grouploan/repayment/...EventGenerationProcessor` | parent-level repayment that needs per-child reflection |
 | `FCL` | `loan/grouploan/foreclosure/...` | parent-level foreclosure |
 | `WAIVER` | `loan/grouploan/waiver/...` | |
 | `RSTCRE` | `loan/grouploan/restructuring/...` | |
 | `REOPN` | `loan/grouploan/reopening/...` | |
-| `TXNREV` | [`ChildLoanTxnReversalEventGenerationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java) | `loanAccountTransactionReversal` |
-| `PRTPRE` | [`ChildLoanPartPrepaymentEventGenerationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildLoanPartPrepaymentEventGenerationProcessor.java) | `parentLoanAccountPartPrepayment` |
-| `REBK` | [`ChildLoanRebookingEventGenerationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/rebooking/processor/ChildLoanRebookingEventGenerationProcessor.java) | `loanAccountRebooking` |
-| `CANCL` | [`ChildLoanCancellationEventGenerationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/cancellation/processor/ChildLoanCancellationEventGenerationProcessor.java) | `loanDisbursementCancellation` |
+| `TXNREV` | [`ChildLoanTxnReversalEventGenerationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java) | `loanAccountTransactionReversal` |
+| `PRTPRE` | [`ChildLoanPartPrepaymentEventGenerationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildLoanPartPrepaymentEventGenerationProcessor.java) | `parentLoanAccountPartPrepayment` |
+| `REBK` | [`ChildLoanRebookingEventGenerationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/rebooking/processor/ChildLoanRebookingEventGenerationProcessor.java) | `loanAccountRebooking` |
+| `CANCL` | [`ChildLoanCancellationEventGenerationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/cancellation/processor/ChildLoanCancellationEventGenerationProcessor.java) | `loanDisbursementCancellation` |
 | `LEAR` | `loan/grouploan/excessamountrefund/...` | parent excess refund |
 | `CLMT` | `loan/grouploan/disbursement/...` | child money transfer (audit trail only — never replayed) |
 | `RSCH` | inline | (no remap; handled inline) |
@@ -60,7 +60,7 @@ Each writer enqueues with `event_status='P'`.
 
 ## The replayer
 
-[`ChildLoanEventsProcessingProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java) (called from `ChildLoanEventProcessingJobProcessor` / `ChildLoanEventProcessingItemProcessor`).
+[`ChildLoanEventsProcessingProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java) (called from `ChildLoanEventProcessingJobProcessor` / `ChildLoanEventProcessingItemProcessor`).
 
 Behaviour:
 1. `findAllByEventStatus("P")` — pulls every pending row.

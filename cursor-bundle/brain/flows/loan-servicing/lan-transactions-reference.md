@@ -309,7 +309,7 @@ Use this when (a) investigating a reported issue, or (b) adding a new transactio
 
 If an XML processor is wired with `<IParam fieldName="X" value="Y" />` but the Java code doesn't `executionContext.getValue("X")`, the value is ignored. The compiler doesn't catch this. Always grep the processor Java file for the IParam field names before trusting the XML — especially when the processor name implies "set X" but the side effect is actually computed.
 
-The historical foreclosure `task_status` bug ([`UpdatePrepaymentTaskDetailsProcessor.populateTaskDetails`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdatePrepaymentTaskDetailsProcessor.java)) was exactly this — the XML said `task_status="APPROVED"` but the processor computed PENDING when `function_code != APPROVE`. Fix: read the explicit IParam after the computation.
+The historical foreclosure `task_status` bug ([`UpdatePrepaymentTaskDetailsProcessor.populateTaskDetails`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdatePrepaymentTaskDetailsProcessor.java)) was exactly this — the XML said `task_status="APPROVED"` but the processor computed PENDING when `function_code != APPROVE`. Fix: read the explicit IParam after the computation.
 
 ### D.2 — `function_code` is global; sub-API calls leak
 

@@ -10,7 +10,7 @@
 | DB schema | `mfi_audit` |
 | Elasticsearch index | tenant-scoped via `novopay.platform.es.audit.index.prefix` |
 | Repo | [`novopay-platform-audit/`](../../novopay-platform-audit/) |
-| Service CLAUDE.md | [`novopay-platform-audit/CLAUDE.md`](../../novopay-platform-audit/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-audit/CLAUDE.md`](../../trustt-platform-audit/CLAUDE.md) |
 
 ## API surface
 

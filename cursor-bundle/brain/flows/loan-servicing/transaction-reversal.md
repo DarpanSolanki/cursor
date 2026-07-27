@@ -168,11 +168,11 @@ Original txn:                          Reversal txn:
 ## Code anchors
 
 - **Orchestration**: `loans_orc.xml::loanAccountTransactionReversal`, `group_mfi_orc.xml:377` (`childLoanTransactionReversal`), `product_transaction_orc.xml::reverseTransaction`
-- **Engine**: [`transaction/reverse/processor/ReverseTransactionProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/reverse/processor/ReverseTransactionProcessor.java)
+- **Engine**: [`transaction/reverse/processor/ReverseTransactionProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/reverse/processor/ReverseTransactionProcessor.java)
 - **Loan-side**: [`loan/transactionreversal/processor/`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/transactionreversal/processor/) — `ExecuteTransactionReversalProcessor`, `ValidateTransactionReversalDataProcessor`
-- **Bulk service**: [`loan/transactionreversal/service/ValidateBulkTransactionReversalBusinessCasesService.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/transactionreversal/service/ValidateBulkTransactionReversalBusinessCasesService.java)
+- **Bulk service**: [`loan/transactionreversal/service/ValidateBulkTransactionReversalBusinessCasesService.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/transactionreversal/service/ValidateBulkTransactionReversalBusinessCasesService.java)
 - **Bulk job**: [`batchnew/bulktransactionreversal/`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/bulktransactionreversal/)
-- **Group event generator**: [`loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java)
+- **Group event generator**: [`loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/txnreversal/processor/ChildLoanTxnReversalEventGenerationProcessor.java)
 - **Tables**: `transaction_reversal_details`, `transaction_reversal__document`, `file_staging_transaction_reversal`. Plus the `transaction_*` family (see [tables/](../../accounting/db-code-map/tables/transaction_master.md))
 
 ## Cross-references

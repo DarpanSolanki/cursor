@@ -25,38 +25,38 @@ Per-component, per-installment expansion of the loan repayment schedule. Each EM
 
 ## JPA entity
 
-[`account/loans/entity/LoanDueDetailsEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanDueDetailsEntity.java)
+[`account/loans/entity/LoanDueDetailsEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanDueDetailsEntity.java)
 
 ## DAO
 
-[`account/loans/repository/LoanDueDetailsDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanDueDetailsDAOService.java)
+[`account/loans/repository/LoanDueDetailsDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanDueDetailsDAOService.java)
 
 ## Writers
 
 | Processor | Action | Triggered by Request |
 |---|---|---|
-| [`CreateInstallmentAndDueDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateInstallmentAndDueDetailsProcessor.java) | INSERT | `disburseLoan` (during repayment-schedule generation) |
-| [`CreateCustomInstallmentAndDueDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/CreateCustomInstallmentAndDueDetailsProcessor.java) | INSERT | tenant-specific disbursement variants |
-| [`UpdateLoanDueDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/UpdateLoanDueDetailsProcessor.java) | UPDATE `paid_amount`, `current_paid_amount` | `loanRepayment` after appropriation |
+| [`CreateInstallmentAndDueDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateInstallmentAndDueDetailsProcessor.java) | INSERT | `disburseLoan` (during repayment-schedule generation) |
+| [`CreateCustomInstallmentAndDueDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/CreateCustomInstallmentAndDueDetailsProcessor.java) | INSERT | tenant-specific disbursement variants |
+| [`UpdateLoanDueDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/UpdateLoanDueDetailsProcessor.java) | UPDATE `paid_amount`, `current_paid_amount` | `loanRepayment` after appropriation |
 | `UpdateLoanDueDetailsForWaiverProcessor` | UPDATE `waived_amount` | `loanWaiver`, `childWaiveLoanAccountCharges` |
 | `UpdateDueDetailsForPrepaymentProcessor` | UPDATE | foreclosure / prepayment |
-| [`UpdateDueDetailsForDisbursementCancellationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/UpdateDueDetailsForDisbursementCancellationProcessor.java) | DELETE / UPDATE | `loanDisbursementCancellation` |
-| [`UpdateCustomLoanDueDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateCustomLoanDueDetailsProcessor.java) | UPDATE | tenant variants |
-| [`UpdateLoanDueDetailsDataProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/cancellation/processor/UpdateLoanDueDetailsDataProcessor.java) | UPDATE (group cancel) | `childLoanDisbursementCancellation` |
-| [`PenalInterestAccrualBookingItemWriter`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/penal/penalaccrualbooking/PenalInterestAccrualBookingItemWriter.java) | INSERT (PINT rows) | EOD `penalInterestAccrualBooking` |
-| [`ChildLoanPenalInterestBookingService`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/lpp/service/ChildLoanPenalInterestBookingService.java) | INSERT | child penal booking |
-| [`CreateChildLoanPartPrepaymentInstallmentProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java) | INSERT (post-prepayment new schedule) | `childLoanPartPrepayment` |
-| [`CreateRepaymentInstallmentDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/CreateRepaymentInstallmentDetailsProcessor.java) | INSERT | post-repayment schedule changes |
-| [`ConsumeSIPresentationFileTasklet`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/standinginstruction/presentation/tasklet/ConsumeSIPresentationFileTasklet.java) | INSERT/UPDATE (SI presentation results) | SI batch |
-| [`ConsumeEnachPresentationFileTasklet`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/enach/presentation/tasklet/ConsumeEnachPresentationFileTasklet.java) | INSERT/UPDATE | eNACH batch |
-| [`ConsumeEnachRepresentationFileTasklet`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/enach/representation/tasklet/ConsumeEnachRepresentationFileTasklet.java) | INSERT/UPDATE | eNACH re-presentation batch |
+| [`UpdateDueDetailsForDisbursementCancellationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/UpdateDueDetailsForDisbursementCancellationProcessor.java) | DELETE / UPDATE | `loanDisbursementCancellation` |
+| [`UpdateCustomLoanDueDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateCustomLoanDueDetailsProcessor.java) | UPDATE | tenant variants |
+| [`UpdateLoanDueDetailsDataProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/cancellation/processor/UpdateLoanDueDetailsDataProcessor.java) | UPDATE (group cancel) | `childLoanDisbursementCancellation` |
+| [`PenalInterestAccrualBookingItemWriter`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/penal/penalaccrualbooking/PenalInterestAccrualBookingItemWriter.java) | INSERT (PINT rows) | EOD `penalInterestAccrualBooking` |
+| [`ChildLoanPenalInterestBookingService`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/lpp/service/ChildLoanPenalInterestBookingService.java) | INSERT | child penal booking |
+| [`CreateChildLoanPartPrepaymentInstallmentProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java) | INSERT (post-prepayment new schedule) | `childLoanPartPrepayment` |
+| [`CreateRepaymentInstallmentDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/CreateRepaymentInstallmentDetailsProcessor.java) | INSERT | post-repayment schedule changes |
+| [`ConsumeSIPresentationFileTasklet`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/standinginstruction/presentation/tasklet/ConsumeSIPresentationFileTasklet.java) | INSERT/UPDATE (SI presentation results) | SI batch |
+| [`ConsumeEnachPresentationFileTasklet`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/enach/presentation/tasklet/ConsumeEnachPresentationFileTasklet.java) | INSERT/UPDATE | eNACH batch |
+| [`ConsumeEnachRepresentationFileTasklet`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/enach/representation/tasklet/ConsumeEnachRepresentationFileTasklet.java) | INSERT/UPDATE | eNACH re-presentation batch |
 
 ## Readers
 
 | Processor | Triggered by Request | Purpose |
 |---|---|---|
-| [`GetLoanDueDetailsProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/GetLoanDueDetailsProcessor.java) | `loanRepayment` | preload due rows for appropriation |
-| [`RepaymentApproppriationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) | `loanRepayment`, `childLoanRepayment` | walks rows in liquidation order, deducts amount from each |
+| [`GetLoanDueDetailsProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/GetLoanDueDetailsProcessor.java) | `loanRepayment` | preload due rows for appropriation |
+| [`RepaymentApproppriationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) | `loanRepayment`, `childLoanRepayment` | walks rows in liquidation order, deducts amount from each |
 | `PrepaymentApproppriationProcessor` | foreclosure / prepayment | similar walk |
 | Billing job reader | EOD `loanAccountBillingJob` | aggregates due rows for billing snapshots |
 

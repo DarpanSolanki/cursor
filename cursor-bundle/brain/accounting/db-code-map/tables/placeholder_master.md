@@ -19,11 +19,11 @@ Decouples accounting rule definitions from physical accounts. A rule says "credi
 
 ## JPA entity
 
-[`placeholdermaster/entity/PlaceholderMasterEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/placeholdermaster/entity/PlaceholderMasterEntity.java)
+[`placeholdermaster/entity/PlaceholderMasterEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/placeholdermaster/entity/PlaceholderMasterEntity.java)
 
 ## DAO
 
-[`placeholdermaster/dao/PlaceholderMasterDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/placeholdermaster/dao/PlaceholderMasterDAOService.java)
+[`placeholdermaster/dao/PlaceholderMasterDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/placeholdermaster/dao/PlaceholderMasterDAOService.java)
 
 ## Writers
 
@@ -33,7 +33,7 @@ Decouples accounting rule definitions from physical accounts. A rule says "credi
 
 ## Readers
 
-- [`ExecuteTransactionRulesProcessor.resolvePlaceholder`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L233) — runtime, the heavy reader
+- [`ExecuteTransactionRulesProcessor.resolvePlaceholder`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L233) — runtime, the heavy reader
 - Admin UI listings via `getPlaceholderMaster*` Requests
 
 ## Related Requests

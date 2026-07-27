@@ -24,15 +24,15 @@ Top-level row for any GL-affecting transaction (disbursement, repayment, accrual
 
 ## JPA entity
 
-[`transaction/entity/TransactionMasterEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/entity/TransactionMasterEntity.java) (path inferred — verify with grep)
+[`transaction/entity/TransactionMasterEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/entity/TransactionMasterEntity.java) (path inferred — verify with grep)
 
 ## Writers
 
 | Processor | Action | Triggered by |
 |---|---|---|
-| [`CreateTransactionMasterProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/CreateTransactionMasterProcessor.java) | INSERT | `postTransaction` REAL mode |
-| [`ReverseTransactionProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/reverse/processor/ReverseTransactionProcessor.java) | INSERT (mirror txn) | `reverseTransaction` |
-| [`DoGLTransferProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/portfoliotransfer/processor/DoGLTransferProcessor.java) | INSERT | `doGLTransfer` (portfolio transfer) |
+| [`CreateTransactionMasterProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/CreateTransactionMasterProcessor.java) | INSERT | `postTransaction` REAL mode |
+| [`ReverseTransactionProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/reverse/processor/ReverseTransactionProcessor.java) | INSERT (mirror txn) | `reverseTransaction` |
+| [`DoGLTransferProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/portfoliotransfer/processor/DoGLTransferProcessor.java) | INSERT | `doGLTransfer` (portfolio transfer) |
 
 ## Readers
 

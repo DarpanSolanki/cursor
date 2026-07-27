@@ -49,7 +49,7 @@ sh localhost.sh <service>
 
 ### D. Schema-history mismatch / Flyway repair needed
 
-Initial-setup runs with `enableRepair=true` ([`README.md:191`](../../novopay-platform-initial-setup/README.md)). If Flyway complains about checksum mismatch or out-of-order versions:
+Initial-setup runs with `enableRepair=true` ([`README.md:191`](../../trustt-platform-initial-setup/README.md)). If Flyway complains about checksum mismatch or out-of-order versions:
 1. Check `flyway_schema_history` table on the affected schema.
 2. Manual repair via the Flyway CLI or re-run initial-setup with `enableRepair=true`.
 3. Never modify `flyway_schema_history` directly.
@@ -85,9 +85,9 @@ For a healthy tenant, expect:
 
 ## Code anchors
 
-- Initial-setup README: [`novopay-platform-initial-setup/README.md`](../../novopay-platform-initial-setup/README.md)
-- API master data: [`flyway/sli/platform_master/sql/V000005__api_master_data.sql`](../../novopay-platform-initial-setup/flyway/sli/platform_master/sql/V000005__api_master_data.sql)
-- Tenant master: [`flyway/sli/platform_master/sql/V000003__tenant_master_data.sql`](../../novopay-platform-initial-setup/flyway/sli/platform_master/sql/V000003__tenant_master_data.sql)
+- Initial-setup README: [`trustt-platform-initial-setup/README.md`](../../trustt-platform-initial-setup/README.md)
+- API master data: [`flyway/sli/platform_master/sql/V000005__api_master_data.sql`](../../trustt-platform-initial-setup/flyway/sli/platform_master/sql/V000005__api_master_data.sql)
+- Tenant master: [`flyway/sli/platform_master/sql/V000003__tenant_master_data.sql`](../../trustt-platform-initial-setup/flyway/sli/platform_master/sql/V000003__tenant_master_data.sql)
 
 ## Related
 

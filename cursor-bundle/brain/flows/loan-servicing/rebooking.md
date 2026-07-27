@@ -93,7 +93,7 @@ DISB_CNCL ──maker──► LOAN_REBKG_FREEZE ──APPROVE──► ACTIVE (
 - **Orchestration**: `loans_orc.xml::loanAccountRebooking`, `individualLoanAccountRebooking`, `groupLoanAccountRebooking`; `group_mfi_orc.xml:620,628`
 - **Code root**: [`loan/rebooking/`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/rebooking/) (with `group/` and `individual/` subpackages)
 - **Group variant**: [`loan/grouploan/rebooking/`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/rebooking/)
-- **Group event generator**: [`ChildLoanRebookingEventGenerationProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/rebooking/processor/ChildLoanRebookingEventGenerationProcessor.java)
+- **Group event generator**: [`ChildLoanRebookingEventGenerationProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/rebooking/processor/ChildLoanRebookingEventGenerationProcessor.java)
 - **Tables**: `loan_account_rebooking_details`, `loan_account_rebooking_details__document`
 
 ## Cross-references

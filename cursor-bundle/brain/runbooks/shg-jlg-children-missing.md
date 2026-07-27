@@ -36,7 +36,7 @@ SELECT id, event_type, event_status, created_on
 
 ### A. CLB row exists with `event_status = 'P'`
 
-The replayer didn't run, or it ran and failed. **Both stay at `P` forever** — the processor catches all exceptions and only logs them ([`ChildLoanEventsProcessingProcessor.java:70-72`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L70-L72)).
+The replayer didn't run, or it ran and failed. **Both stay at `P` forever** — the processor catches all exceptions and only logs them ([`ChildLoanEventsProcessingProcessor.java:70-72`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L70-L72)).
 
 Steps:
 1. Check `mfi_batch.batch_schedule WHERE name = 'childLoanEventProcessingBatchJob'` — `last_run_on`, `last_completion_status`.
@@ -85,9 +85,9 @@ If many parents are affected, the batch service is paused / mis-tenanted / crash
 
 ## Code anchors
 
-- Replayer: [`ChildLoanEventsProcessingProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
-- Event-queue entity + type map: [`LoanAccountEventsQueueEntity.java:50-66`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L66)
-- EMI splitter: [`GroupLoanUtility.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/utility/GroupLoanUtility.java)
+- Replayer: [`ChildLoanEventsProcessingProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
+- Event-queue entity + type map: [`LoanAccountEventsQueueEntity.java:50-66`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L66)
+- EMI splitter: [`GroupLoanUtility.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/utility/GroupLoanUtility.java)
 
 ## Related
 

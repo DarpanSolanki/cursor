@@ -50,7 +50,7 @@ The `loan_product_asset_criteria` row for the loan's (product, slab) defines:
 - 4 component slots: `comp1`–`comp4` (each is one of `APP_LOGIC_PRIN`, `APP_LOGIC_INT`, `APP_LOGIC_PNLT`, `APP_LOGIC_FEES`)
 - `liquidation_order`: `LIQ_INSTL` / `LIQ_COMP` / `LIQ_INSTL_CHRG_COMP`
 
-Walk [`RepaymentApproppriationProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) by hand against the due rows. If actual splits don't match what the algorithm would produce, the bug is one of:
+Walk [`RepaymentApproppriationProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) by hand against the due rows. If actual splits don't match what the algorithm would produce, the bug is one of:
 
 1. **Master data wrong** — `loan_product_asset_criteria` row has the wrong precedence or liquidation order.
 2. **Slab assignment wrong** — `loan_account.asset_criteria_slabs_id` points to the wrong slab. Check NPA jobs (last EOD).
@@ -81,10 +81,10 @@ Child repayment is **per-child only**. Sibling effects (e.g. group-level NPA rec
 
 ## Code anchors
 
-- Eligibility check: [`CheckEligibleForRepaymentAppropriationProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/CheckEligibleForRepaymentAppropriationProcessor.java)
-- Appropriation: [`RepaymentApproppriationProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
-- Component constants: [`AccountingConstants.java:37-45`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L37-L45)
-- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
+- Eligibility check: [`CheckEligibleForRepaymentAppropriationProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/CheckEligibleForRepaymentAppropriationProcessor.java)
+- Appropriation: [`RepaymentApproppriationProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
+- Component constants: [`AccountingConstants.java:37-45`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L37-L45)
+- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
 
 ## Related
 

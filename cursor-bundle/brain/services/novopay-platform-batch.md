@@ -1,4 +1,4 @@
-# `novopay-platform-batch` — Scheduler + bulk-upload registry
+# `trustt-platform-batch` — Scheduler + bulk-upload registry
 
 > **Not where business logic lives.** This service has 22 Requests of its own and one job: when a cron fires, call the orchestration `<Request name>` of *another* service (almost always accounting). The contract between batch and accounting is the **Request name string** — see [`../accounting/03-batch-dependency.md`](../accounting/03-batch-dependency.md) for the full inventory.
 
@@ -8,8 +8,8 @@
 |---|---|
 | Java root package | `in.novopay.batch` |
 | DB schema | `mfi_batch` |
-| Repo | [`novopay-platform-batch/`](../../novopay-platform-batch/) |
-| Service CLAUDE.md | [`novopay-platform-batch/CLAUDE.md`](../../novopay-platform-batch/CLAUDE.md) |
+| Repo | [`trustt-platform-batch/`](../../trustt-platform-batch/) |
+| Service CLAUDE.md | [`(CLAUDE.md removed — use service README / AGENTS.md)`](../../(CLAUDE.md removed — use service README / AGENTS.md)) |
 
 ## API surface — 22 Requests across two concerns
 
@@ -41,17 +41,17 @@ No Kafka. No Spring Batch jobs *of its own*.
 
 ### `AutoScheduler`
 - `@PostConstruct` `onLoadScheduleGroups()` — fetches all tenants, picks the **first**, calls `BatchScheduleService.autoSchedule(context)`. Loads `BatchSchedule` rows with `isScheduled=true`.
-- File: [`AutoScheduler.java:30-44`](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java#L30-L44)
+- File: [`AutoScheduler.java:30-44`](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java#L30-L44)
 
 ### `SchedulingGroupProcessor`
-- Spring `ThreadPoolTaskScheduler`, **fixed 50 threads** ([SchedulingGroupProcessor.java:53](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java#L53)).
+- Spring `ThreadPoolTaskScheduler`, **fixed 50 threads** ([SchedulingGroupProcessor.java:53](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulingGroupProcessor.java#L53)).
 - `schedule(...)` registers a `ScheduleBatchGroupExecutor` (Runnable) on a `GroupCronTrigger`.
 - `cancelGroupSchedule(scheduleId)` cancels via `ScheduledFuture`.
 
 ### `ScheduleBatchGroupExecutor.run()`
 - Calls `BatchScheduleService.canStart(scheduleId)` — non-atomic check against Spring Batch metadata (`status IN STARTING/STARTED`).
 - If true, sets schedule status `RUNNING`, spawns job threads.
-- File: [`ScheduleBatchGroupExecutor.java:61-89`](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java#L61-L89)
+- File: [`ScheduleBatchGroupExecutor.java:61-89`](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/ScheduleBatchGroupExecutor.java#L61-L89)
 
 ### `DirectJobExecutor` — the actual call site
 ```java
@@ -62,7 +62,7 @@ novopayInternalAPIClient.callInternalAPI(
 Forces `function_sub_code = "BATCH"` and `op_code = "RESTART"`.
 
 ### Job dependency tracking (in-process, NOT cluster-safe)
-- `SchedulerCommonService.jobCompletionStatus` is a `ConcurrentHashMap<String, Boolean>` ([line 59](../../novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java#L59)).
+- `SchedulerCommonService.jobCompletionStatus` is a `ConcurrentHashMap<String, Boolean>` ([line 59](../../trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java#L59)).
 - Hierarchical priority parsed (`"1.2.3"` → root `1`, parent `1.2`, this `1.2.3`).
 - `areDependenciesCompleted(priority)` checks the map — pure in-memory.
 - **Multi-instance race**: two scheduler instances both read "not running" and both trigger the same job. Documented HIGH RISK in [`../platform/multinode-batch.md`](../platform/multinode-batch.md).

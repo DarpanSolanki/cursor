@@ -2,7 +2,7 @@
 
 > Read this if you've never touched the disbursement code, or if you have but want one map covering business flow + code structure together. Companion: [`disbursement-engine.md`](disbursement-engine.md) for the full processor chain enumeration, [`platform/state-machine-safety.md`](../platform/state-machine-safety.md) for the CAS contract reference.
 
-All file paths in this doc are relative to `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/`. The few orchestration XMLs sit under `novopay-platform-accounting-v2/deploy/application/orchestration/`.
+All file paths in this doc are relative to `trustt-platform-accounting/src/main/java/in/novopay/accounting/`. The few orchestration XMLs sit under `trustt-platform-accounting/deploy/application/orchestration/`.
 
 ---
 
@@ -40,18 +40,18 @@ We use real examples — **single loan LAN 6009685525** and a **3-member SHG gro
 
 | State | Meaning | Where set (file:line) |
 |---|---|---|
-| `LAN_CREATED` | `loan_account` row exists; nothing posted yet | [`account/loans/processor/CreateLoanAccountProcessor.java:141`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java#L141) — direct `setDisbursementStatus("LAN_CREATED")` at insert time |
-| `LOAN_BOOKED` | Product, schedule, charges, derived fields populated | [`custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java:54`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L54) — default branch; setter+save |
-| `DTFC_SUCCESS` | Internal CASA debit posted (Disbursement-Through-FCC) | [`custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java:54`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L54) — same processor with `disbursement_status="DTFC_SUCCESS"` from EC |
-| `BANK_SUCCESS` | Marker after bank call accepted (legacy MFI custom flow only) | [`UpdateDisbursementStatusProcessor.java:43`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L43) — `case "BANK_SUCCESS"` |
-| `NEFT_STAGE_1_PENDING` | NEFT v2: NEF call accepted, awaiting NEF callback | [`processor/CallBankAPIForDisbursementProcessor.java:344`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) — CAS via `LoanAccountStateMachineService.transition` |
-| `NEFT_STAGE_1_SUCCESS` | NEFT v2: NEF callback confirmed | [`processor/DoGenericSyncSTPBankNeftCallBackProcessor.java:303-310`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L303) — `processNEFCallback` CAS |
-| `NEFT_STAGE_2_PENDING` | NEFT v2: NEI call accepted, awaiting NEI callback | [`CallBankAPIForDisbursementProcessor.java:344`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) — same site as STAGE_1_PENDING; toState varies |
-| `PARENT_SUCCESS` | Group loan: parent CASA debited; children pending | [`CallBankAPIForDisbursementProcessor.java:329-339`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L329) — `!isNeft` (MFT) branch with `member_details` non-empty |
-| `CHILD_SUCCESS` | Group loan: all CLMT done; CLB pending | [`grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java:78`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java#L78) (legacy setter+save), [`grouploan/disbursement/processor/UpdateChildLoanDisbursementStatusProcessor.java:103`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/UpdateChildLoanDisbursementStatusProcessor.java#L103) (legacy setter+save) |
-| `COMPLETED` | Terminal — money is out, loan active | NEFT v2: [`DoGenericSyncSTPBankNeftCallBackProcessor.java:322-333`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L322) (`processNEICallback`) · NEFT v1: [`CallBankAPIForDisbursementProcessor.java:344`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) (CAS, NEFT branch with `NEFT_STAGE_STATUS=COMPLETED`) · MFT: [`CallBankAPIForDisbursementProcessor.java:329-339`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L329) (CAS) · Group sync: `ParentGroupDisbursementStatusSyncService.java:78` (legacy) |
-| `REJECT` | Loan application rejected | Set by orchestration `function_sub_code=REJECT` branch in [`mfi_orc.xml:187-192`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L187) |
-| `REINITIATE_BANK` | Not a stored state — a `function_sub_code` LOS sends to drive reinit | Read by [`util/DisbursementBankCallTypeUtil.java:50`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/util/DisbursementBankCallTypeUtil.java#L50) (`isNeftPaymentReinit`) |
+| `LAN_CREATED` | `loan_account` row exists; nothing posted yet | [`account/loans/processor/CreateLoanAccountProcessor.java:141`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java#L141) — direct `setDisbursementStatus("LAN_CREATED")` at insert time |
+| `LOAN_BOOKED` | Product, schedule, charges, derived fields populated | [`custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java:54`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L54) — default branch; setter+save |
+| `DTFC_SUCCESS` | Internal CASA debit posted (Disbursement-Through-FCC) | [`custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java:54`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L54) — same processor with `disbursement_status="DTFC_SUCCESS"` from EC |
+| `BANK_SUCCESS` | Marker after bank call accepted (legacy MFI custom flow only) | [`UpdateDisbursementStatusProcessor.java:43`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java#L43) — `case "BANK_SUCCESS"` |
+| `NEFT_STAGE_1_PENDING` | NEFT v2: NEF call accepted, awaiting NEF callback | [`processor/CallBankAPIForDisbursementProcessor.java:344`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) — CAS via `LoanAccountStateMachineService.transition` |
+| `NEFT_STAGE_1_SUCCESS` | NEFT v2: NEF callback confirmed | [`processor/DoGenericSyncSTPBankNeftCallBackProcessor.java:303-310`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L303) — `processNEFCallback` CAS |
+| `NEFT_STAGE_2_PENDING` | NEFT v2: NEI call accepted, awaiting NEI callback | [`CallBankAPIForDisbursementProcessor.java:344`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) — same site as STAGE_1_PENDING; toState varies |
+| `PARENT_SUCCESS` | Group loan: parent CASA debited; children pending | [`CallBankAPIForDisbursementProcessor.java:329-339`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L329) — `!isNeft` (MFT) branch with `member_details` non-empty |
+| `CHILD_SUCCESS` | Group loan: all CLMT done; CLB pending | [`grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java:78`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java#L78) (legacy setter+save), [`grouploan/disbursement/processor/UpdateChildLoanDisbursementStatusProcessor.java:103`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/UpdateChildLoanDisbursementStatusProcessor.java#L103) (legacy setter+save) |
+| `COMPLETED` | Terminal — money is out, loan active | NEFT v2: [`DoGenericSyncSTPBankNeftCallBackProcessor.java:322-333`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L322) (`processNEICallback`) · NEFT v1: [`CallBankAPIForDisbursementProcessor.java:344`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L344) (CAS, NEFT branch with `NEFT_STAGE_STATUS=COMPLETED`) · MFT: [`CallBankAPIForDisbursementProcessor.java:329-339`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L329) (CAS) · Group sync: `ParentGroupDisbursementStatusSyncService.java:78` (legacy) |
+| `REJECT` | Loan application rejected | Set by orchestration `function_sub_code=REJECT` branch in [`mfi_orc.xml:187-192`](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L187) |
+| `REINITIATE_BANK` | Not a stored state — a `function_sub_code` LOS sends to drive reinit | Read by [`util/DisbursementBankCallTypeUtil.java:50`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/util/DisbursementBankCallTypeUtil.java#L50) (`isNeftPaymentReinit`) |
 
 The "where set" column shows that not every state moves through the same writer. Part 10 has the full writer map. Part 6 explains why some states skip CAS.
 
@@ -98,27 +98,27 @@ SINGLE LOAN (INDL / JLG per-member)                          GROUP LOAN (SHG onl
 
 ### Code: how this pipeline is wired
 
-The disburseLoan orchestration runs in [`mfi_orc.xml`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml). The `function_sub_code` switch sits at line ~140-185 and routes to the populate / validate / DTFC posting / bank call / post-bank chain.
+The disburseLoan orchestration runs in [`mfi_orc.xml`](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml). The `function_sub_code` switch sits at line ~140-185 and routes to the populate / validate / DTFC posting / bank call / post-bank chain.
 
 The key processors, in order:
 
 | Processor (orchestration `bean`) | Java class | Responsibility |
 |---|---|---|
-| `createLoanAccountProcessor` | [`CreateLoanAccountProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) | Inserts the row; sets `LAN_CREATED` |
-| `updateDisbursementStatusProcessor` | [`UpdateDisbursementStatusProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java) | Stamps `LOAN_BOOKED` / `DTFC_SUCCESS` / `BANK_SUCCESS` based on EC value; legacy setter+save |
-| `callBankAPIForDisbursementProcessor` | [`CallBankAPIForDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java) | Decides MFT vs NEFT v1 vs NEFT v2; runs inquiry path for retry; finally calls `saveBankErrorResponseCode` which CAS-advances state |
-| `prepareClmtRowsForChildDisbursementProcessor` | [`PrepareClmtRowsForChildDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) | **SHG only** (`member_details[]`) — queues one CLMT row per child |
-| `performChildLoanBankDisbursementProcessor` | [`PerformChildLoanBankDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java) | Group only — kicks off processing of CLMT rows |
+| `createLoanAccountProcessor` | [`CreateLoanAccountProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) | Inserts the row; sets `LAN_CREATED` |
+| `updateDisbursementStatusProcessor` | [`UpdateDisbursementStatusProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/disburse/processor/UpdateDisbursementStatusProcessor.java) | Stamps `LOAN_BOOKED` / `DTFC_SUCCESS` / `BANK_SUCCESS` based on EC value; legacy setter+save |
+| `callBankAPIForDisbursementProcessor` | [`CallBankAPIForDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java) | Decides MFT vs NEFT v1 vs NEFT v2; runs inquiry path for retry; finally calls `saveBankErrorResponseCode` which CAS-advances state |
+| `prepareClmtRowsForChildDisbursementProcessor` | [`PrepareClmtRowsForChildDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) | **SHG only** (`member_details[]`) — queues one CLMT row per child |
+| `performChildLoanBankDisbursementProcessor` | [`PerformChildLoanBankDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PerformChildLoanBankDisbursementProcessor.java) | Group only — kicks off processing of CLMT rows |
 
 The bank-call processor delegates lane work to:
 
 | Lane | Bank call class (parent) | Bank call class (child) |
 |---|---|---|
-| MFT | [`bank/parent/ParentDisbursementMftBankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementMftBankCall.java) | [`bank/child/ChildDisbursementMftBankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementMftBankCall.java) |
-| NEFT v1 | [`bank/parent/ParentDisbursementNeftV1BankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV1BankCall.java) | [`bank/child/ChildDisbursementNeftV1BankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV1BankCall.java) |
-| NEFT v2 | [`bank/parent/ParentDisbursementNeftV2BankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java) | [`bank/child/ChildDisbursementNeftV2BankCall`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV2BankCall.java) |
+| MFT | [`bank/parent/ParentDisbursementMftBankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementMftBankCall.java) | [`bank/child/ChildDisbursementMftBankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementMftBankCall.java) |
+| NEFT v1 | [`bank/parent/ParentDisbursementNeftV1BankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV1BankCall.java) | [`bank/child/ChildDisbursementNeftV1BankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV1BankCall.java) |
+| NEFT v2 | [`bank/parent/ParentDisbursementNeftV2BankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java) | [`bank/child/ChildDisbursementNeftV2BankCall`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV2BankCall.java) |
 
-Async callbacks (NEFT v2 only) are handled by [`processor/DoGenericSyncSTPBankNeftCallBackProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java).
+Async callbacks (NEFT v2 only) are handled by [`processor/DoGenericSyncSTPBankNeftCallBackProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java).
 
 ---
 
@@ -139,7 +139,7 @@ loan_account
 └─────────────────────┴──────────────────────┘
 ```
 
-**Code**: [`CreateLoanAccountProcessor.java:141`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java#L141) — `loanAccountEntity.setDisbursementStatus("LAN_CREATED")` then `dao.save(entity)` (insert; safe because no concurrent writer at creation time).
+**Code**: [`CreateLoanAccountProcessor.java:141`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java#L141) — `loanAccountEntity.setDisbursementStatus("LAN_CREATED")` then `dao.save(entity)` (insert; safe because no concurrent writer at creation time).
 
 ### B. Booking complete → LOAN_BOOKED
 
@@ -169,7 +169,7 @@ This is the launch pad for the bank call.
 
 ### D. NEF call accepted → NEFT_STAGE_1_PENDING
 
-`callBankAPIForDisbursementProcessor` runs. It picks the NEFT v2 lane (mode = `OTHBACCT`, `USE_NEFT_V1=false`), calls [`ParentDisbursementNeftV2BankCall.doNEFTTransaction`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L72). Bank replies `replyCode=0`. Back in [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L283) at line ~344, this CAS runs:
+`callBankAPIForDisbursementProcessor` runs. It picks the NEFT v2 lane (mode = `OTHBACCT`, `USE_NEFT_V1=false`), calls [`ParentDisbursementNeftV2BankCall.doNEFTTransaction`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L72). Bank replies `replyCode=0`. Back in [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L283) at line ~344, this CAS runs:
 
 ```sql
 UPDATE loan_account
@@ -181,7 +181,7 @@ UPDATE loan_account
    AND disbursement_status = ANY(string_to_array('DTFC_SUCCESS', ','))
 ```
 
-The actual SQL lives in [`account/loans/repository/LoanAccountRepository.java:790-798`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L790) (`@Modifying @Query`). The `fromStates` CSV is built by [`service/ChildClmtTerminalStateGuard.rankBackwardSafeFromStates`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66). The transition is dispatched by [`service/LoanAccountStateMachineService.transition`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java).
+The actual SQL lives in [`account/loans/repository/LoanAccountRepository.java:790-798`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L790) (`@Modifying @Query`). The `fromStates` CSV is built by [`service/ChildClmtTerminalStateGuard.rankBackwardSafeFromStates`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66). The transition is dispatched by [`service/LoanAccountStateMachineService.transition`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java).
 
 A row also lands in `client_request_response_log` (CRR) for audit:
 
@@ -195,7 +195,7 @@ client_request_response_log
 
 ### E. NEF callback → NEFT_STAGE_1_SUCCESS
 
-The bank's webhook hits us at the orchestrated `doGenericSyncSTPBankNeftCallBack` API. [`DoGenericSyncSTPBankNeftCallBackProcessor.process`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L84) parses the payload, splits into success / failed / in-progress, then for each success calls [`processSingleCallback`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L217) → [`processLoanAccount`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L231) → [`processNEFCallback`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L301):
+The bank's webhook hits us at the orchestrated `doGenericSyncSTPBankNeftCallBack` API. [`DoGenericSyncSTPBankNeftCallBackProcessor.process`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L84) parses the payload, splits into success / failed / in-progress, then for each success calls [`processSingleCallback`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L217) → [`processLoanAccount`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L231) → [`processNEFCallback`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L301):
 
 ```java
 LoanAccountTransitionRequest req = LoanAccountTransitionRequest.builder()
@@ -218,11 +218,11 @@ UTR goes into `loan_disbursement_mode_details.utr_number` (separate table — UT
 
 ### F. NEI call accepted → NEFT_STAGE_2_PENDING
 
-Same `doNEFTTransaction` method, but the inner branch this time is `NEFT_STAGE_1_SUCCESS / NEFT_STAGE_2_PENDING` ([`ParentDisbursementNeftV2BankCall.java:94-98`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L94)) which fires the NEI bank API. CAS to NEFT_STAGE_2_PENDING via the same site as Step D.
+Same `doNEFTTransaction` method, but the inner branch this time is `NEFT_STAGE_1_SUCCESS / NEFT_STAGE_2_PENDING` ([`ParentDisbursementNeftV2BankCall.java:94-98`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L94)) which fires the NEI bank API. CAS to NEFT_STAGE_2_PENDING via the same site as Step D.
 
 ### G. NEI callback → COMPLETED
 
-[`processNEICallback:320`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L320):
+[`processNEICallback:320`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L320):
 
 ```java
 LoanAccountTransitionRequest req = LoanAccountTransitionRequest.builder()
@@ -271,9 +271,9 @@ parent.disbursement_status = DTFC_SUCCESS
 
 ### Step 3: parent fires bank call (MFT lane)
 
-The bank-call processor delegates to [`ParentDisbursementMftBankCall.doMFTTransaction`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementMftBankCall.java) — single internal transfer, `replyCode=0`.
+The bank-call processor delegates to [`ParentDisbursementMftBankCall.doMFTTransaction`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementMftBankCall.java) — single internal transfer, `replyCode=0`.
 
-Back in [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode:325-339`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L325) (the `!isNeft` branch), `member_details` from EC is non-empty → group loan. CAS runs:
+Back in [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode:325-339`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L325) (the `!isNeft` branch), `member_details` from EC is non-empty → group loan. CAS runs:
 
 ```java
 boolean hasChildren = !ListUtils.emptyIfNull(executionContext.getValue("member_details", JSONArray.class)).isEmpty();
@@ -294,7 +294,7 @@ parent.disbursement_status = PARENT_SUCCESS
 
 ### Step 4: CLMT rows queued for each child
 
-[`PrepareClmtRowsForChildDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) inserts one CLMT row per child:
+[`PrepareClmtRowsForChildDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/PrepareClmtRowsForChildDisbursementProcessor.java) inserts one CLMT row per child:
 
 ```
 loan_account_events_queue
@@ -307,11 +307,11 @@ loan_account_events_queue
 └───────┴──────────────────┴───────────┴──────────────┴────────────────────────────────────────┘
 ```
 
-The state machine for each CLMT row uses the **same constants** but writes via [`service/ChildClmtStateMachineService`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java), which CASes the JSON path inside `data` (not the table column). The repository CAS UPDATE is a JSON-aware UPDATE on `loan_account_events_queue.data`.
+The state machine for each CLMT row uses the **same constants** but writes via [`service/ChildClmtStateMachineService`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java), which CASes the JSON path inside `data` (not the table column). The repository CAS UPDATE is a JSON-aware UPDATE on `loan_account_events_queue.data`.
 
 ### Step 5: each child CLMT row processes (via CLMT batch consumer or in-line)
 
-For NEFT v2 SHG, each child fires its own NEFT call (parent CASA → child member's account). The processor for each CLMT row is [`processor/CallBankAPIForIndividualChildLoanDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForIndividualChildLoanDisbursementProcessor.java), which calls into [`bank/child/ChildDisbursementBankCallService`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementBankCallService.java).
+For NEFT v2 SHG, each child fires its own NEFT call (parent CASA → child member's account). The processor for each CLMT row is [`processor/CallBankAPIForIndividualChildLoanDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForIndividualChildLoanDisbursementProcessor.java), which calls into [`bank/child/ChildDisbursementBankCallService`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementBankCallService.java).
 
 Per child, the CLMT row's `data->>'disbursement_status'` walks:
 
@@ -322,11 +322,11 @@ DTFC_SUCCESS → NEFT_STAGE_1_PENDING → NEFT_STAGE_1_SUCCESS
 
 Each transition is a `ChildClmtStateMachineService.transition` CAS on the JSON path. Same forward-only rank semantics as the parent's column.
 
-When a CLMT row reaches COMPLETED, its `event_status` flips from `P` to `C` (completed). Source: [`PostNEFTChildLoanBankDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostNEFTChildLoanBankDisbursementProcessor.java) (NEFT) and [`PostMFTChildLoanBankDisbursementProcessor`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java) (MFT).
+When a CLMT row reaches COMPLETED, its `event_status` flips from `P` to `C` (completed). Source: [`PostNEFTChildLoanBankDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostNEFTChildLoanBankDisbursementProcessor.java) (NEFT) and [`PostMFTChildLoanBankDisbursementProcessor`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/PostMFTChildLoanBankDisbursementProcessor.java) (MFT).
 
 ### Step 6: when all CLMTs done → parent advances
 
-Every successful CLMT advance triggers [`ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java#L40):
+Every successful CLMT advance triggers [`ParentGroupDisbursementStatusSyncService.syncParentAfterChildQueueProgress`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/service/ParentGroupDisbursementStatusSyncService.java#L40):
 
 ```java
 // 1. Read all CLMT rows for the parent
@@ -414,7 +414,7 @@ Same race, every UPDATE has the `WHERE current IN (allowed_previous)` guard:
 
 ### Where the SQL is
 
-Single source of truth: [`account/loans/repository/LoanAccountRepository.java:787-808`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L787) for `loan_account.disbursement_status`:
+Single source of truth: [`account/loans/repository/LoanAccountRepository.java:787-808`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L787) for `loan_account.disbursement_status`:
 
 ```java
 @Modifying
@@ -431,11 +431,11 @@ Single source of truth: [`account/loans/repository/LoanAccountRepository.java:78
 int conditionalUpdateLoanAccountState(...);
 ```
 
-The CSV is built by [`ChildClmtTerminalStateGuard.rankBackwardSafeFromStates`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66) and converted to a comma-joined string in [`LoanAccountStateMachineService.transition`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java#L26).
+The CSV is built by [`ChildClmtTerminalStateGuard.rankBackwardSafeFromStates`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66) and converted to a comma-joined string in [`LoanAccountStateMachineService.transition`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java#L26).
 
-For CLMT row JSON state: [`service/ChildClmtStateMachineService`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) — same CAS shape, but the WHERE clause keys off the JSON path inside `data`.
+For CLMT row JSON state: [`service/ChildClmtStateMachineService`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) — same CAS shape, but the WHERE clause keys off the JSON path inside `data`.
 
-For reinit: [`service/PaymentReinitiationStateService.transition`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/PaymentReinitiationStateService.java) — CASes `loan_account.reinit_disbursement_status` (V000189 column).
+For reinit: [`service/PaymentReinitiationStateService.transition`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/PaymentReinitiationStateService.java) — CASes `loan_account.reinit_disbursement_status` (V000189 column).
 
 ---
 
@@ -586,7 +586,7 @@ No logic. Pure pass-through to the repository. Exists because the rest of the co
 
 ### 6.5 Layer 4 — the repository: the SQL itself
 
-This is the heart of the CAS. The native SQL lives in [`account/loans/repository/LoanAccountRepository.java:787-808`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L787):
+This is the heart of the CAS. The native SQL lives in [`account/loans/repository/LoanAccountRepository.java:787-808`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L787):
 
 ```java
 @Modifying
@@ -635,11 +635,11 @@ The function returns `int` — the number of rows affected by the UPDATE. Which 
 
 #### CLMT-row CAS — the same shape, different table + JSON path
 
-For child loans (CLMT rows in `loan_account_events_queue`), the analogous CAS is in [`ChildClmtStateMachineService`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) → repository. Same `@Modifying @Query`, but the WHERE clause uses `data->>'disbursement_status'` instead of `disbursement_status`, and `SET data = jsonb_set(data, '{disbursement_status}', ...)` instead of a column SET.
+For child loans (CLMT rows in `loan_account_events_queue`), the analogous CAS is in [`ChildClmtStateMachineService`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) → repository. Same `@Modifying @Query`, but the WHERE clause uses `data->>'disbursement_status'` instead of `disbursement_status`, and `SET data = jsonb_set(data, '{disbursement_status}', ...)` instead of a column SET.
 
 ### 6.6 How the `fromStates` set is computed
 
-The caller doesn't usually hardcode `fromStates`. It uses [`ChildClmtTerminalStateGuard.rankBackwardSafeFromStates(toState)`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66):
+The caller doesn't usually hardcode `fromStates`. It uses [`ChildClmtTerminalStateGuard.rankBackwardSafeFromStates(toState)`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L66):
 
 ```java
 private static final Map<String, Integer> DISBURSEMENT_STATUS_RANK = Map.of(
@@ -760,7 +760,7 @@ The state machine has a rank map. Only states in the rank map participate in CAS
 | `CHILD_SUCCESS` | ❌ | – | Setter + save (`ParentGroupDisbursementStatusSyncService:78`, `UpdateChildLoanDisbursementStatusProcessor:103`) |
 | `REJECT` | ❌ | – | Setter + save (REJECT branch in orchestration) |
 
-Rank map source: [`ChildClmtTerminalStateGuard:29-34`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L29).
+Rank map source: [`ChildClmtTerminalStateGuard:29-34`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtTerminalStateGuard.java#L29).
 
 **The origination prefix** writes (`LAN_CREATED`, `LOAN_BOOKED`, `BANK_SUCCESS`) are safe because they happen at insert time / before any concurrent writers can race on the row. **The group sync writes** (`UpdateChildLoanDisbursementStatusProcessor`, `ParentGroupDisbursementStatusSyncService`) **do** have a theoretical auto-flush race window — flagged as a known item in Part 10; not yet refactored.
 
@@ -768,7 +768,7 @@ Rank map source: [`ChildClmtTerminalStateGuard:29-34`](../../novopay-platform-ac
 
 `NEFT_STAGE_1_PENDING → DTFC_SUCCESS`, used only when the bank's inquiry returns "batch not found" (NDF). Implementation uses an explicit `fromStates=[NEFT_STAGE_1_PENDING]` so a callback that already advanced will REJECT the rollback — race-safe.
 
-**For parent loans**: [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode:312-330`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L312) (NEFT branch, when `validFromStates.isEmpty()` and `neftStageStatus=DTFC_SUCCESS`).
+**For parent loans**: [`CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode:312-330`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L312) (NEFT branch, when `validFromStates.isEmpty()` and `neftStageStatus=DTFC_SUCCESS`).
 
 **For child CLMT rows**: same pattern, different file. See Part 7's "Child NDF" subsection.
 
@@ -981,9 +981,9 @@ In all cases, the inquiry-on-next-replay resolves the question "did the bank act
 
 **This is the answer to your question.** Child loan money transfers (CLMT) get the **same NDF-rollback treatment** as parent loans. Two places:
 
-1. **Detection** — when the inquiry parser fails on a CLMT row's bank call: [`ChildDisbursementNeftV2BankCall.performNEFTTransactionInquiry:181-204`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV2BankCall.java#L181). Same `try { neftTransactionStatusInquiryV2(...) } catch (RuntimeException e)` shape, calls into the shared `ParentDisbursementNeftV2BankCall.isBankBatchNotFoundResponse(rawResponse)` helper. On NDF: sets EC `NEFT_STAGE_STATUS=DTFC_SUCCESS`, `IS_BANK_CALL_FAILED=FALSE`, persists CRR.
+1. **Detection** — when the inquiry parser fails on a CLMT row's bank call: [`ChildDisbursementNeftV2BankCall.performNEFTTransactionInquiry:181-204`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementNeftV2BankCall.java#L181). Same `try { neftTransactionStatusInquiryV2(...) } catch (RuntimeException e)` shape, calls into the shared `ParentDisbursementNeftV2BankCall.isBankBatchNotFoundResponse(rawResponse)` helper. On NDF: sets EC `NEFT_STAGE_STATUS=DTFC_SUCCESS`, `IS_BANK_CALL_FAILED=FALSE`, persists CRR.
 
-2. **Rollback CAS on the CLMT row** — at [`ChildDisbursementLoanEventsQueueSync.saveBankErrorResponseCode:55-72`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementLoanEventsQueueSync.java#L55):
+2. **Rollback CAS on the CLMT row** — at [`ChildDisbursementLoanEventsQueueSync.saveBankErrorResponseCode:55-72`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/child/ChildDisbursementLoanEventsQueueSync.java#L55):
 
    ```java
    if (validFromStates.isEmpty()) {
@@ -1054,7 +1054,7 @@ The inquiry path is what makes implicit replay safe: before firing another call,
 
 ##### What `performNeftV2InquiryWhenStage1Pending` actually does
 
-Most of the failure-recovery intelligence lives here. Code: [`ParentDisbursementNeftV2BankCall.java:186-255`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L186).
+Most of the failure-recovery intelligence lives here. Code: [`ParentDisbursementNeftV2BankCall.java:186-255`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/parent/ParentDisbursementNeftV2BankCall.java#L186).
 
 ```
 1. Build inquiry external_ref from prior CRR's clientReferenceNumber + LAN + counter.
@@ -1185,7 +1185,7 @@ Inquiry call → bank reply
 
 **Bank-side dedup**: every NEFT/MFT call carries a `clientReferenceNumber` (a.k.a. external_ref). The bank treats duplicate refs as a re-submission of the same transaction. If we hit the bank with the same ref twice (network retry within a single HTTP call), the bank either replies with the original outcome (idempotent ack) or rejects as duplicate.
 
-**Our-side dedup**: before firing a new call, [`CallBankAPIForDisbursementProcessor.process`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L196) consults `findLatestBankCrrForInquiry` and the inquiry path. If a successful CRR exists with the bank already, we don't fire — we use the inquiry result.
+**Our-side dedup**: before firing a new call, [`CallBankAPIForDisbursementProcessor.process`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/CallBankAPIForDisbursementProcessor.java#L196) consults `findLatestBankCrrForInquiry` and the inquiry path. If a successful CRR exists with the bank already, we don't fire — we use the inquiry result.
 
 **The deterministic ref counter** (in `ExternalReferenceNoUtil.computeDeterministicExternalReferenceNo`) is what lets a *legitimate* retry actually re-attempt. It builds the ref as `<lan>+<txnType>+<counterSuffix>`. The counter increments past failed/successful CRRs of the same type, so:
 
@@ -1252,7 +1252,7 @@ Rewinding `disbursement_status` to `DTFC_SUCCESS` breaks all of these.
 
 ### The fix: a parallel column
 
-V000189 (in `novopay-platform-initial-setup` flyway) added three columns to `loan_account`:
+V000189 (in `trustt-platform-initial-setup` flyway) added three columns to `loan_account`:
 
 ```sql
 reinit_disbursement_status      VARCHAR(40)
@@ -1264,7 +1264,7 @@ Reinit walks the same state machine but on this column. `disbursement_status` st
 
 ### Code: one service rules all three reinit lanes
 
-[`PaymentReinitiationStateService.nextStep(loanAccountId, disbursementMode, useNeftV1)`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/PaymentReinitiationStateService.java) returns one of:
+[`PaymentReinitiationStateService.nextStep(loanAccountId, disbursementMode, useNeftV1)`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/PaymentReinitiationStateService.java) returns one of:
 
 ```java
 public enum NextStep {

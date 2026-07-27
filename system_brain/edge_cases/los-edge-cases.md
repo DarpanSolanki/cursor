@@ -17,7 +17,7 @@
 - **Behavior**: Record key is always `null` → unstable partition for the same business id.
 - **Risk**: Ordering/replay semantics; pairs with consumer idempotency and Redis lock patterns.
 - **Gap**: GAP-038  
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
 
 ## Edge: Full sync payload logged at INFO
 
@@ -25,7 +25,7 @@
 - **Behavior**: `DisbursementSyncConsumer` logs entire `clientMap` at INFO.
 - **Risk**: PII / operational data in centralized logs.
 - **Gap**: GAP-039  
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
 
 ## Edge: PostConstruct “wakeup” publishes `{}` to `disburse_loan_api_mfi_*`
 
@@ -33,7 +33,7 @@
 - **Behavior**: Sends dummy JSON to disburse-style topic with hardcoded tenant `mfi`, null key.
 - **Risk**: Junk traffic on production topic, monitoring noise, wrong tenant assumption in multi-tenant ops.
 - **Gap**: GAP-040  
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/kafka/LosMessageKafkaProducer.java`
 
 ## Edge: DEBUG logs full pipe-delimited disburse request
 
@@ -41,9 +41,9 @@
 - **Behavior**: Logs `apiName|full_json|cacheKey`.
 - **Risk**: Full disburse JSON in logs if DEBUG is on in an environment.
 - **Gap**: GAP-041  
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
 
 ## Cross-links
 
-- Orchestration entry: `novopay-mfi-los/deploy/application/orchestration/ServiceOrchestrationXML.xml` (and related deploy XML).
+- Orchestration entry: `trustt-platform-los/deploy/application/orchestration/ServiceOrchestrationXML.xml` (and related deploy XML).
 - Accounting consumer / sync contract: `system_brain/edge_cases/disbursement_sync_entity_type_missing.md` (if present), `.cursor/event-registry.md`.

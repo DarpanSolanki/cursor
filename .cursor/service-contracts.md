@@ -26,7 +26,7 @@
 
 ## Accounting-v2 Kafka config (verbatim structure from repo)
 
-File: `novopay-platform-accounting-v2/deploy/application/messagebroker/MessageBroker.xml`
+File: `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml`
 
 **Producers** (enabled in file):
 

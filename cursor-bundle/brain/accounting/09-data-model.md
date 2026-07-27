@@ -64,7 +64,7 @@
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-(Comprehensive entity-list reference: the table in `/home/darpan/darpan/novopay-platform-accounting-v2/CLAUDE.md` ships with the service.)
+(Comprehensive entity-list reference: the table in `/home/darpan/Documents/sliProd/trustt-platform-accounting/CLAUDE.md` ships with the service.)
 
 ---
 
@@ -109,7 +109,7 @@ SELECT a.id, a.account_number, a.parent_account_id, la.loan_status, la.loan_prod
 
 ### Derived / computed columns on `loan_account` itself
 
-(See [LoanAccountEntity.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java))
+(See [LoanAccountEntity.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java))
 
 - `past_due_days` — current DPD (refreshed by `loanAccountDpdCalcJob`)
 - `asset_criteria_group_id`, `asset_criteria_slabs_id` — current NPA bucket reference

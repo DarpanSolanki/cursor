@@ -10,7 +10,7 @@
 | DB | PostgreSQL/YugabyteDB at `localhost:5433/yugabyte` (per dev `application.properties`) |
 | Server context path | `/reporting`, port `8888` |
 | Repo | [`trustt-platform-reporting/`](../../trustt-platform-reporting/) |
-| Service CLAUDE.md | [`trustt-platform-reporting/CLAUDE.md`](../../trustt-platform-reporting/CLAUDE.md) |
+| Service CLAUDE.md | [`(CLAUDE.md removed — use service README / AGENTS.md)`](../../(CLAUDE.md removed — use service README / AGENTS.md)) |
 
 ## Scale
 

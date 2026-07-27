@@ -15,7 +15,7 @@
 - Stage progression may happen without UTR persistence on loan/queue rows.
 
 ## Evidence file
-- `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java`
+- `trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java`
 
 ## Risk
 - Medium (traceability + downstream reconciliation quality).

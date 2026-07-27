@@ -8,10 +8,10 @@
 
 A loan account row in the `loan_account` table has **both**:
 
-- `account.status` — the generic [`AccountStatus`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/common/entity/AccountEntity.java#L24): `ACTIVE`, `INACTIVE`, `CLOSED`, `CANCELLED`, `APPROVED`. This is what every Account (savings or loan) carries.
-- `loan_account.loan_status` — the loan-specific [`LoanStatus`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33): a 16-value enum that drives all servicing logic.
+- `account.status` — the generic [`AccountStatus`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/common/entity/AccountEntity.java#L24): `ACTIVE`, `INACTIVE`, `CLOSED`, `CANCELLED`, `APPROVED`. This is what every Account (savings or loan) carries.
+- `loan_account.loan_status` — the loan-specific [`LoanStatus`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33): a 16-value enum that drives all servicing logic.
 
-The two are kept in sync by a static map `LOAN_ACCOUNT_ACCOUNT_STATUS_MAP` in [AssetsConstants.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/AssetsConstants.java) — every `LoanStatus` write goes through `loanAccountEntity.setStatus(LOAN_ACCOUNT_ACCOUNT_STATUS_MAP.get(loanStatus))` so that the parent `account.status` reflects the right generic state.
+The two are kept in sync by a static map `LOAN_ACCOUNT_ACCOUNT_STATUS_MAP` in [AssetsConstants.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AssetsConstants.java) — every `LoanStatus` write goes through `loanAccountEntity.setStatus(LOAN_ACCOUNT_ACCOUNT_STATUS_MAP.get(loanStatus))` so that the parent `account.status` reflects the right generic state.
 
 **Always query `loan_account.loan_status` in SQL — `account.status` alone won't tell you whether a loan is in `FORECLOSURE_FREEZE` vs healthy `ACTIVE`.**
 
@@ -19,7 +19,7 @@ The two are kept in sync by a static map `LOAN_ACCOUNT_ACCOUNT_STATUS_MAP` in [A
 
 ## 2. The full `LoanStatus` enum — every value with meaning
 
-Source: [LoanAccountEntity.java:33-36](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33-L36)
+Source: [LoanAccountEntity.java:33-36](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33-L36)
 
 ```java
 public enum LoanStatus {
@@ -34,7 +34,7 @@ public enum LoanStatus {
 
 | Status | Meaning | Set by | Cleared by |
 |---|---|---|---|
-| `APPROVED` | Loan account row created (LAN assigned) but disbursement not yet posted to GL | [CreateLoanAccountProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) (initial state during `disburseLoan` stage `LAN_CREATED`) | next `disburseLoan` stage when GL posts |
+| `APPROVED` | Loan account row created (LAN assigned) but disbursement not yet posted to GL | [CreateLoanAccountProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) (initial state during `disburseLoan` stage `LAN_CREATED`) | next `disburseLoan` stage when GL posts |
 | `ACTIVE` | Loan booked, GL hit posted, accruing interest, eligible for repayment | end of `disburseLoan` happy path (function_sub_code progression, see §3) | any servicing action that locks it |
 | `LOCK` | Generic short-lived lock used by `LmsMessageBrokerConsumer` to dedup concurrent disbursement attempts | inside the Kafka consumer just before processing | end of `executeServiceOrchestration` (success or failure) |
 | `PART_PREPAYMENT_FREEZE` | Part-prepayment maker submitted, awaiting checker | `loanAccountPartPrepayment` Request (maker) | checker `APPROVE` or rejection |
@@ -53,7 +53,7 @@ public enum LoanStatus {
 
 ### `InactiveLoanStatus` — quick "can I service this?" check
 
-Defined [LoanAccountEntity.java:38-57](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L38-L57). The static helper `InactiveLoanStatus.isInactive(LoanStatus)` returns true if the loan is in any of:
+Defined [LoanAccountEntity.java:38-57](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L38-L57). The static helper `InactiveLoanStatus.isInactive(LoanStatus)` returns true if the loan is in any of:
 
 `FORECLOSURE_FREEZE`, `DISB_CNCL_FREEZE`, `LOAN_RESTR_FREEZE`, `LOAN_REBKG_FREEZE`, `DEATH_FORECLOSURE_FREEZE`, `PART_PREPAYMENT_FREEZE`, `CLOSED`, `DISB_CNCL`, `WRITOFF`.
 
@@ -65,7 +65,7 @@ Several validators (`valdiateLoanAccountNumberAndStatusProcessor`, `checkEligibl
 
 ## 3. The `disburseLoan` state machine — driven by `function_sub_code`
 
-`disburseLoan` is **not** a single end-to-end Request. Inside [mfi_orc.xml:4-200](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) the Request branches on the `function_sub_code` field, and each branch sets a different combination of `IParam`s on a `dummyProcessor` that becomes the master switchboard for the rest of the orchestration. The 9 stages map to the disbursement journey:
+`disburseLoan` is **not** a single end-to-end Request. Inside [mfi_orc.xml:4-200](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L4) the Request branches on the `function_sub_code` field, and each branch sets a different combination of `IParam`s on a `dummyProcessor` that becomes the master switchboard for the rest of the orchestration. The 9 stages map to the disbursement journey:
 
 ```
 DEFAULT  ─→  LAN_CREATED  ─→  LOAN_BOOKED  ─→  DTFC_SUCCESS  ─→
@@ -92,8 +92,8 @@ What each stage does (the IParam matrix in mfi_orc.xml is the source of truth �
 
 ### What advances the stage?
 
-- The Kafka consumer pushes a fresh `disburseLoan` message with `function_sub_code` set per stage. Source-of-truth for the "what to send next" decision is in `accountingBankServiceRetryJob` (for bank stages) and the inline `*BankCallProcessor` flow ([loan/disbursement/bank/](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/bank/)).
-- The `DISBURSEMENT_BLOCK_STATUSES` list in [LoanAccountEntity.java:59-63](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L59-L63) (`BANK_SUCCESS`, `LOAN_BOOKED`, `REINITIATE_BANK`, `NEFT_STAGE_1_PENDING`, `NEFT_STAGE_1_SUCCESS`, `NEFT_STAGE_2_PENDING`, `PARENT_SUCCESS`, `CHILD_SUCCESS`, `COMPLETED`) is the **disbursement_status** column on the loan_account row — it is *not* `LoanStatus`. Both progress in lock-step: `LoanStatus` is set to `ACTIVE` only when `disbursement_status` reaches `COMPLETED`.
+- The Kafka consumer pushes a fresh `disburseLoan` message with `function_sub_code` set per stage. Source-of-truth for the "what to send next" decision is in `accountingBankServiceRetryJob` (for bank stages) and the inline `*BankCallProcessor` flow ([loan/disbursement/bank/](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/bank/)).
+- The `DISBURSEMENT_BLOCK_STATUSES` list in [LoanAccountEntity.java:59-63](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L59-L63) (`BANK_SUCCESS`, `LOAN_BOOKED`, `REINITIATE_BANK`, `NEFT_STAGE_1_PENDING`, `NEFT_STAGE_1_SUCCESS`, `NEFT_STAGE_2_PENDING`, `PARENT_SUCCESS`, `CHILD_SUCCESS`, `COMPLETED`) is the **disbursement_status** column on the loan_account row — it is *not* `LoanStatus`. Both progress in lock-step: `LoanStatus` is set to `ACTIVE` only when `disbursement_status` reaches `COMPLETED`.
 
 ### Practical implication
 
@@ -145,7 +145,7 @@ Each arrow shows the orchestration Request that drives the transition. Maker-che
 
 ### Reopening reverses a closure
 
-`childLoanReopening` (and `loanAccountReopening`) reverses the closure transaction, recomputes DPD/asset criteria, and **flips the status back to ACTIVE**. See [group_mfi_orc.xml:204-247](../../novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml#L204).
+`childLoanReopening` (and `loanAccountReopening`) reverses the closure transaction, recomputes DPD/asset criteria, and **flips the status back to ACTIVE**. See [group_mfi_orc.xml:204-247](../../trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml#L204).
 
 ---
 
@@ -153,13 +153,13 @@ Each arrow shows the orchestration Request that drives the transition. Maker-che
 
 | Status | Processor that writes it | File |
 |---|---|---|
-| `APPROVED` | `CreateLoanAccountProcessor` (initial value when `loan_status` IParam = "APPROVED") | [account/loans/processor/CreateLoanAccountProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) |
+| `APPROVED` | `CreateLoanAccountProcessor` (initial value when `loan_status` IParam = "APPROVED") | [account/loans/processor/CreateLoanAccountProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) |
 | `ACTIVE` | `updateLoanAccountStatusProcessor` (called from `disburseLoan` `PARENT_SUCCESS` branch and from reopening flows) | grep `class UpdateLoanAccountStatusProcessor` |
-| `LOCK` | `LmsMessageBrokerConsumer` (cache flag, not a DB write) | [consumers/LmsMessageBrokerConsumer.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) |
+| `LOCK` | `LmsMessageBrokerConsumer` (cache flag, not a DB write) | [consumers/LmsMessageBrokerConsumer.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) |
 | `*_FREEZE` family | each maker-side processor in `loan/<flow>/processor/` (e.g. `populateChildLoanWaiverDataProcessor`, `populateChildLoanDisbursementCancellationDataProcessor`) | per-flow |
-| `CLOSED` | `loanAccountAutoClosureProcessor` (inline) and `loanAccountClosureService` (batch) | [batchnew/loanaccountclosure/LoanAccountClosureService.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/loanaccountclosure/LoanAccountClosureService.java) |
+| `CLOSED` | `loanAccountAutoClosureProcessor` (inline) and `loanAccountClosureService` (batch) | [batchnew/loanaccountclosure/LoanAccountClosureService.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/loanaccountclosure/LoanAccountClosureService.java) |
 | `WRITOFF` | `loanWriteoff` Request — checker branch | grep `loanWriteoffProcessor` |
-| `FORECLOSED` | inside `individualChildLoanForeclosure` chain — `updateLoanAccountStatusProcessor` with `loan_status=FORECLOSED` IParam | [group_mfi_orc.xml:343-346](../../novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml#L343) |
+| `FORECLOSED` | inside `individualChildLoanForeclosure` chain — `updateLoanAccountStatusProcessor` with `loan_status=FORECLOSED` IParam | [group_mfi_orc.xml:343-346](../../trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml#L343) |
 
 `updateLoanAccountStatusProcessor` is the central writer — it takes `IParam fieldName="loan_status" value="…"` from the orchestration and writes it both to `loan_account.loan_status` and (via `LOAN_ACCOUNT_ACCOUNT_STATUS_MAP`) to `account.status`.
 

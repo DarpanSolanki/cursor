@@ -1,6 +1,6 @@
 # 10 · Accounting / LMS — debugging runbook
 
-> **Purpose:** when a Trustt LMS issue lands ("loan stuck", "GL off", "child events not processing", "EOD didn't run") this is the playbook. Each scenario lists: symptoms → first SQL → likely cause → code/config to check → fix path. All references stay within `/home/darpan/darpan/`.
+> **Purpose:** when a Trustt LMS issue lands ("loan stuck", "GL off", "child events not processing", "EOD didn't run") this is the playbook. Each scenario lists: symptoms → first SQL → likely cause → code/config to check → fix path. All references stay within `/home/darpan/Documents/sliProd/`.
 
 ---
 
@@ -40,8 +40,8 @@ SELECT * FROM mfi_accounting.loan_disbursement_transaction
 3. **`loan_status = APPROVED`, `disbursement_status = COMPLETED`** → impossible per the lock-step rule; suggests a partial commit. Read the most recent `audit_log` row for the loan; manual operator intervention required.
 
 ### Code to check
-- [LmsMessageBrokerConsumer.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) — the `getDisburseSkipReason` method names the four skip reasons.
-- [mfi_orc.xml:4-200](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) — the `function_sub_code` IParam matrix tells you which steps are gated for each stage.
+- [LmsMessageBrokerConsumer.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java) — the `getDisburseSkipReason` method names the four skip reasons.
+- [mfi_orc.xml:4-200](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L4) — the `function_sub_code` IParam matrix tells you which steps are gated for each stage.
 
 ---
 
@@ -66,7 +66,7 @@ SELECT id, event_type, event_status, created_on,
 ### Likely causes
 1. **CLB row exists with `event_status='P'`** → the `childLoanEventProcessingBatchJob` has not run, or it ran and the per-child Request threw. Per [06-shg-jlg-group-loans.md §2](06-shg-jlg-group-loans.md#2-the-event-queue--how-parent-dispatches-to-children), the processor catches all exceptions and only logs them, so the row stays at P forever. **Check the application log for a `ChildLoanEventsProcessingProcessor` ERROR around the relevant timestamp.**
 2. **CLB row exists with `event_status='C'`** but no children → `bookChildLoanProcessor` failed silently, or the JSON `data` was empty. Inspect the JSON.
-3. **No CLB row at all** → the parent disbursement never reached `PARENT_SUCCESS`, so `CreateClmtLoanAccountEventsProcessor` ([disbursement/processor/](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/CreateClmtLoanAccountEventsProcessor.java)) never ran. Treat as Scenario 1 instead.
+3. **No CLB row at all** → the parent disbursement never reached `PARENT_SUCCESS`, so `CreateClmtLoanAccountEventsProcessor` ([disbursement/processor/](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/disbursement/processor/CreateClmtLoanAccountEventsProcessor.java)) never ran. Treat as Scenario 1 instead.
 
 ### Fix path
 - Manually re-fire `childLoanEventProcessingBatchJob` from the batch service (Request name `childLoanEventProcessingBatchJob`).
@@ -152,7 +152,7 @@ SELECT tm.transaction_ref_no, tm.transaction_catalogue_id, tpd.account_number,
 
 ### First check
 - The batch service is **the scheduler** (see [03-batch-dependency.md](03-batch-dependency.md)). Look in `mfi_batch.batch_schedule` for `name = 'runEODJobs'` (or the per-job rows if the deployment uses individual schedules).
-- Confirm the scheduler thread pool is alive — `AutoScheduler` + `ThreadPoolTaskScheduler` in `novopay-platform-batch`.
+- Confirm the scheduler thread pool is alive — `AutoScheduler` + `ThreadPoolTaskScheduler` in `trustt-platform-batch`.
 - `BatchExecutionContextHelper` populates the tenant; if the tenant resolution returned null, the job won't fire.
 
 ### If the schedule exists but nothing happened
@@ -226,7 +226,7 @@ SELECT acs.*  FROM mfi_accounting.asset_criteria_slabs acs
 ## Scenario 8 — "Repayment from Payments service didn't reach LMS"
 
 ### Symptom
-- `novopay-platform-payments` shows the collection processed; `loan_account_payments_details` has no matching row.
+- `trustt-platform-payments` shows the collection processed; `loan_account_payments_details` has no matching row.
 
 ### Likely cause
 Per [04-cross-module-deps.md](04-cross-module-deps.md), Payments calls `loanRepayment` (or `loanRepaymentInquiry` for a preview) over the gateway. Failure modes:
@@ -269,11 +269,11 @@ This is **not** a bug — it's a config-change runbook. Steps (touch only the ri
 
 ## Cross-reference — code anchors used here
 
-- Disbursement state machine: [mfi_orc.xml:4-200](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) + [LoanAccountEntity.java:33-72](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33-L72)
-- Kafka consumer: [LmsMessageBrokerConsumer.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java)
-- Group event queue: [LoanAccountEventsQueueEntity.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java) + [ChildLoanEventsProcessingProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
-- Repayment appropriation: [RepaymentApproppriationProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
-- Posting engine: [ExecuteTransactionRulesProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
-- `postTransaction` Request: [product_transaction_orc.xml:3-37](../../novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml#L3-L37)
-- Group-loan flows: [group_mfi_orc.xml](../../novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml)
-- Status sync: [AssetsConstants.LOAN_ACCOUNT_ACCOUNT_STATUS_MAP](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/AssetsConstants.java)
+- Disbursement state machine: [mfi_orc.xml:4-200](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L4) + [LoanAccountEntity.java:33-72](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33-L72)
+- Kafka consumer: [LmsMessageBrokerConsumer.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java)
+- Group event queue: [LoanAccountEventsQueueEntity.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java) + [ChildLoanEventsProcessingProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
+- Repayment appropriation: [RepaymentApproppriationProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
+- Posting engine: [ExecuteTransactionRulesProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
+- `postTransaction` Request: [product_transaction_orc.xml:3-37](../../trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml#L3-L37)
+- Group-loan flows: [group_mfi_orc.xml](../../trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml)
+- Status sync: [AssetsConstants.LOAN_ACCOUNT_ACCOUNT_STATUS_MAP](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AssetsConstants.java)

@@ -27,7 +27,7 @@ This is the master data behind the entire repayment math.
 
 ## DAO
 
-[`product/loanproductassetcriteria/repository/LoanProductAssetCriteriaDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/product/loanproductassetcriteria/repository/LoanProductAssetCriteriaDAOService.java)
+[`product/loanproductassetcriteria/repository/LoanProductAssetCriteriaDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/product/loanproductassetcriteria/repository/LoanProductAssetCriteriaDAOService.java)
 
 ## Writers
 
@@ -37,7 +37,7 @@ This is the master data behind the entire repayment math.
 ## Readers
 
 THE big one:
-- [`RepaymentApproppriationProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L71-L79) — `loanProductAssetCriteriaDAOService.getAssetCriteriaSlabDetailsByProductAndAssetCriteriaSlabId(productId, slabId)` returns `(comp1, comp2, comp3, comp4, liquidationOrder)` — the entire appropriation algorithm starts here
+- [`RepaymentApproppriationProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L71-L79) — `loanProductAssetCriteriaDAOService.getAssetCriteriaSlabDetailsByProductAndAssetCriteriaSlabId(productId, slabId)` returns `(comp1, comp2, comp3, comp4, liquidationOrder)` — the entire appropriation algorithm starts here
 
 Other readers: `PrepaymentApproppriationProcessor` (foreclosure/prepayment).
 

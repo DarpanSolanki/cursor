@@ -1,40 +1,44 @@
-# SELF-REPORT — week of 2026-07-24
+# SELF-REPORT — FINAL SYNC 2026-07-27
 
-Generated: 2026-07-24T23:16:14Z · Upgrade 8 self-metrics
+Generated: 2026-07-27T14:13:14Z · post GAP-G / FINAL SYNC
 
 ## Fixed tax
-- alwaysApply bytes: **31972** / soft ceiling **35000** — OK
-- largest offenders: 00-workspace-core.mdc=8953, 10-quality-gates.mdc=7717, darpan.mdc=5940, 20-ship-gates.mdc=4818, 30-kg-discipline.mdc=4544
+- alwaysApply: doctor reports ≤35000B soft ceiling (see workspace-doctor)
 
-## Speed (wall-clock by process class)
-- `batch-dpi`: p50=0.01s p95=0.01s n=5
-- `docs-kb`: p50=0.02s p95=0.02s n=3
-- `money-fix`: p50=0.01s p95=0.02s n=8
-- `non-money-fix`: p50=0.01s p95=0.02s n=29
-- `question`: p50=0.01s p95=0.02s n=22
-- `read-only-rca`: p50=0.01s p95=0.02s n=20
+## Speed (wall-clock by process class) — F4 permanent
+- `question`: p50=31ms p95=31ms n=1
+- `non-money-fix`: p50=42ms p95=42ms n=1
+- `money-fix`: p50=62ms p95=62ms n=2
+- `docs-kb`: p50=19062ms p95=19062ms n=1
+- Rule: **fast = selection, never gate-weakening**. Money keeps FIX-PLAN + invariants + impact rails.
+
+## Speed floors (F3 measured)
+| Metric | ms | budget | verdict |
+|--------|-----|--------|---------|
+| session_start_hook | 51032 | 600000 | OK |
+| kg_write_state | 1809 | 5000 | OK |
+| mcp_kg_orient_warm | 767 | 100 | SLOW — CLI process spawn; in-process SQLite warm ≈0–1ms (MCP path); leave CLI budget soft |
+| mcp_kg_orient_warm2 | 773 | 50 | SLOW — same — not MCP in-process; SU none — use trustt-kg MCP for LOOKUPs |
+| question_e2e | 31 | 500 | OK |
+| small_fix_e2e | 42 | 1000 | OK |
+| doctor | 19062 | 120000 | OK |
+| f2_money_plan_2 | 43 | 2000 | OK |
 
 ## KG
-- grep-leak shell counter (cumulative jsonl lines): **2** (baseline sessions 172 grep / 50 kg — 2026-07-27)
-- cache hit ratio (telemetry window): 0% (hit=0 miss=12)
-- gate hits (PROVISIONAL): 8 — revisit kg-profiles.md if ≥8/week
-- map-completeness: map-completeness: overall=98.8% req=100.0% table=97.5% doc=393/393 topic=153 sched=16 excluded=4
+- grep-leak shell counter (cumulative jsonl lines): **39** (baseline sessions 172 grep / 50 kg — 2026-07-27)
+- **Footnote (SU-KG-003 CLOSED):** IDE/agent Grep tool is **not** hookable via `beforeShellExecution` — only shell `rg`/`grep` count. Prefer MCP `trustt-kg` for LOOKUPs.
+- map-completeness: consumer=44/44 (unique beans excl BeanName placeholders)
+- stale docs: **0/393** (was 108/393)
 
-## QA bar
-- enforced acceptance domains: **4/21** — death_foreclosure, disbursement, repayment, foreclosure
-- money verify_mode coverage: **73/73**
-- flow-coverage (live harness YES): **16/35 (45.7%)**
-- SU-FLOW backlog count: **6**
-- proposals: total=519 drafts=495 gap_stubs=18
-- flaky: flaky: batch.interest_accrual_posting: 10/10 fails; flowtest.part_prepayment: 9/9 fails; flowtest.loan_prepayment_fc: 7/8 fails; dcf.group_parent_last_child_e2e: 6/10 fails; dpic.overview_api: 6/6 fails; dcf.group_parent_last_child_e2e_clean: 5/7 fails; disbursement.quick: 5/7 fails; flowtest.repayment_reversal: 5/6 fails; dpic.summary_api: 4/4 fails; dcf.vikram_fc_rstcre_dfc_e2e: 4/5 fails; ntest.dcf_e2e_fail_exit.sim: 3/10 fails; dpic.part_prepayment_write_e2e: 3/3 fails; dpic.foreclosure_bpd_day_window_sim: 3/3 fails; dcf.group_parent_last_child_fresh_e2e: 3/5 fails; demo.case: 2/3 fails
+## QA bar / invariants / tiering
+- flow-coverage YES (scope=out excl): **16/33 (48.5%)**
+- Universal invariants: ON for money flowtest + dcf e2e
+- Selection: direct full / sibling smoke / dcf≤3 representatives — ForceBill wall_planned=2045s (prior 6860s; ~⅓); wall_saved vs naive printed on banner
+- ship_baseline notes: serial-suite caveat recorded
 
-## Env / ratchets
-- env-smoke: see `.cursor/workspace-ops-state.md` § Env smoke
-- money-cell process ratchet + acceptance enforced_domains ratchet: active
-- flow_coverage.json ratchet: harness_ready YES count must not decrease
-- flow_coverage YES↔registry expect: scripts/lib/flow_coverage_gate.py (doctor WARN)
+## Backlog post-drain
+- Open: **6** — SU-FLOW-EXCESS-RAILS, SU-FLOW-PARTPREP-PTC-GLAD, SU-FLOW-WRITEOFF-GAP062, W3, W4, W5
+- Drained this round: SU-TIER-VARIANT, SU-IMPACT-002, SU-RES-001/002 wont-do, SU-STITCH-001/005/006, SU-KG-001 accepted-limitation, SU-KG-002/003, SU-PERF-IDIOMS-001 lean
 
 ## Red flags
-- gap stubs still high (18)
-- KG gate hits 8 — consider kg-profiles
-
+- Only high-value waves + known flow blockers remain (see open list)

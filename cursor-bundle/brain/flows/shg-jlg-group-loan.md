@@ -4,6 +4,8 @@
 
 A SHG/JLG loan is **one parent loan_account + N child loan_accounts**. Parent is what gets disbursed and what posts to the GL. Children are bookkeeping projections that let collections, NPA, and 360 views work per-member. Children are **never created inline** — they're queued in `loan_account_events_queue` and replayed by `childLoanEventProcessingBatchJob`.
 
+> **LAN taxonomy (machine SoT):** `cursor-bundle/kg/curated/loan_taxonomy.json` + `scripts/lib/loan_taxonomy.py` — **SHG** = parent with children; **JLG / INDL** = single LAN (childless). Flowtest refuses a child scenario on a JLG fixture.
+
 > This is the cross-service version. The deep LMS-only version is [`../accounting/06-shg-jlg-group-loans.md`](../accounting/06-shg-jlg-group-loans.md). Read that first.
 
 ## Services involved
@@ -66,7 +68,7 @@ SERVICING — per-member events queue back to siblings
 
 ## The 13 event types
 
-(per [`LoanAccountEventsQueueEntity.java:50-66`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L66))
+(per [`LoanAccountEventsQueueEntity.java:50-66`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java#L50-L66))
 
 | event_type | Description | Replays |
 |---|---|---|
@@ -88,7 +90,7 @@ SERVICING — per-member events queue back to siblings
 
 1. **Sum of child fractions == 1**. `GroupLoanUtility.getFinalAmountListUsingCarryOver` raises `NovopayFatalException("1111")` if the per-child split doesn't add to the parent amount. Carry-over rounding pushes the residue to the **last child** — by design.
 2. **Parent and children commit in separate transactions.** A parent in `ACTIVE` with no children = the CLB event is stuck.
-3. **Child GL hits use the `CG` prefix.** Set `is_child_account=true` in the ExecutionContext so [`ExecuteTransactionRulesProcessor.java:391-393`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393) prefixes `gl_code = "CG" + glCode`.
+3. **Child GL hits use the `CG` prefix.** Set `is_child_account=true` in the ExecutionContext so [`ExecuteTransactionRulesProcessor.java:391-393`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393) prefixes `gl_code = "CG" + glCode`.
 4. **Member-level NPA is independent.** A child can be SMA-2 while siblings are STD; parent's DPD = max across children.
 5. **`ChildLoanEventsProcessingProcessor` catches all exceptions and only logs them.** Failed child events stay at `'P'` forever unless someone resets them. **This is the main failure mode.**
 6. **`childLoanForeclosure` (dispatcher) vs `individualChildLoanForeclosure` (per-child)** — both match the same grep; check which one you're reading.
@@ -110,10 +112,10 @@ See [`../runbooks/shg-jlg-children-missing.md`](../runbooks/shg-jlg-children-mis
 
 ## Code anchors
 
-- Event-queue entity + type map: [`LoanAccountEventsQueueEntity.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java)
-- Replayer: [`ChildLoanEventsProcessingProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
-- EMI splitter: [`GroupLoanUtility.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/utility/GroupLoanUtility.java)
-- Orchestration: [`group_mfi_orc.xml`](../../novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml) (687 lines)
+- Event-queue entity + type map: [`LoanAccountEventsQueueEntity.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEventsQueueEntity.java)
+- Replayer: [`ChildLoanEventsProcessingProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java)
+- EMI splitter: [`GroupLoanUtility.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/utility/GroupLoanUtility.java)
+- Orchestration: [`group_mfi_orc.xml`](../../trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml) (687 lines)
 - Per-flow generators: `loan/grouploan/<flow>/processor/*EventGenerationProcessor.java`
 - Per-flow populators: `loan/grouploan/<flow>/service/*EventsQueueDataPopulator.java`
 

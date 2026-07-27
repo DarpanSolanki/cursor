@@ -160,10 +160,10 @@ See [`../runbooks/disbursement-stuck.md`](../runbooks/disbursement-stuck.md) for
 
 ## Code anchors
 
-- LOS publish: [`DisburseLoanAPIUtil.java`](../../novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java)
-- Accounting consume: [`LmsMessageBrokerConsumer.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java)
-- State machine XML: [`mfi_orc.xml:4-200`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml)
-- LoanStatus: [`LoanAccountEntity.java:33`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33)
-- Disbursement_status block list: [`LoanAccountEntity.java:59-63`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L59-L63)
-- LOS result consumer: `disbursementSyncConsumer` in [`MessageBroker.xml`](../../novopay-mfi-los/deploy/application/messagebroker/MessageBroker.xml)
+- LOS publish: [`DisburseLoanAPIUtil.java`](../../trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java)
+- Accounting consume: [`LmsMessageBrokerConsumer.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java)
+- State machine XML: [`mfi_orc.xml:4-200`](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml)
+- LoanStatus: [`LoanAccountEntity.java:33`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L33)
+- Disbursement_status block list: [`LoanAccountEntity.java:59-63`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java#L59-L63)
+- LOS result consumer: `disbursementSyncConsumer` in [`MessageBroker.xml`](../../trustt-platform-los/deploy/application/messagebroker/MessageBroker.xml)
 - SHG/JLG fan-out: [`../accounting/06-shg-jlg-group-loans.md`](../accounting/06-shg-jlg-group-loans.md)

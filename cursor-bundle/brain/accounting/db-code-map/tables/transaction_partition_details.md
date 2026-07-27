@@ -27,14 +27,14 @@ Records the GL-level legs of every `postTransaction` call. Each row represents o
 
 ## JPA entity
 
-[`transaction/entity/TransactionPartitionDetailsEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/entity/TransactionPartitionDetailsEntity.java)
+[`transaction/entity/TransactionPartitionDetailsEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/entity/TransactionPartitionDetailsEntity.java)
 
 ## Writers
 
 | Processor | Action | Triggered by |
 |---|---|---|
 | `CreateTransactionPartitionDetailsProcessor` | INSERT (one per leg) | `postTransaction` REAL mode |
-| (output of) [`ExecuteTransactionRulesProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java) | builds the rows in-memory; persistor saves them | (same Request) |
+| (output of) [`ExecuteTransactionRulesProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java) | builds the rows in-memory; persistor saves them | (same Request) |
 | `ReverseTransactionProcessor` | INSERT (mirror legs with flipped cr_dr_indicator) | `reverseTransaction` |
 
 ## Readers

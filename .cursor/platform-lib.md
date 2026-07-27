@@ -46,7 +46,7 @@ Local verify both modes: `ntest run dpic.batch.force_async_modes` (toggles `mfi_
 
 ## Version skew (code-verified)
 
-- **Services** (e.g. accounting-v2): Spring Boot **3.5.6** (`novopay-platform-accounting-v2/build.gradle`).
+- **Services** (e.g. accounting-v2): Spring Boot **3.5.6** (`trustt-platform-accounting/build.gradle`).
 - **Infra lib modules** (e.g. infra-platform, infra-navigation): Spring Boot plugin **3.2.11** in their own `build.gradle` files.
 
 Do not use Boot 3.5-only APIs inside `novopay-platform-lib` without upgrading those modules consistently.

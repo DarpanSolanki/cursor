@@ -4,6 +4,12 @@
 - Prevents LOAN_PREPAYMENT BPI_AMT double AIR credit (Vikram 392164); verify: dcf.vikram_fc_rstcre_dfc_e2e PASS
 
 ## 2026-07-24 | kb | CG prevention harden + local DFC zero-partition diag
+
+## 2026-07-27 | acct `dc06ba9aa` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 FC force-bill INT_AMT parity
+apiName: loanPrepayment; keep bpi_amount; force_bill_posted/amount; suppress BPI_AMT; INT_AMT+=force_bill_amount (DFC BLD_INT_AMT parity); parent mirror trackSettlementSlice=false
+
+---
+
 - Fail-closed harness under ACCEPTANCE_STRICT when TM has 0 partitions; jira scan `child_gl_renamed_to_parent_name`
 - KG diag nodes: child CG* vs parent named GL; local DFC/RSCH empty partitions env gap
 
@@ -22,7 +28,7 @@
 - Parent FB amount mirrors each child event (accumulate same installment); EXCESS_*=0 on SHG child; Accrued-cap/consume/parent-EMI harness removed
 - Verify: Vikram matrix_20260724_012246 clean PASS; adversarial Obs3 Accrued>Original pending
 
-# Changelog — `/home/darpan/darpan/`
+# Changelog — `/home/darpan/Documents/sliProd/`
 
 > Audit log of every fix & enhancement committed from this workspace. Newest first. Format in [`README.md`](README.md). For detail, run `git show <sha>`.
 
@@ -378,7 +384,7 @@ getLoanAccountSummaryDetails interest_details: original_amount=billed interest (
 
 
 ## dpiAccrualBooking force_async skip
-## 2026-07-02 | lib `43144909ac` | novopay-platform-lib | feature/delayed_payment_interest | BatchWriterSkipItemSupport generic force_async skip
+## 2026-07-02 | lib `43144909ac` | trustt-platform-lib | feature/delayed_payment_interest | BatchWriterSkipItemSupport generic force_async skip
 
 ---
 
@@ -441,7 +447,7 @@ Authorization had no working cache (zero `cacheClient.get`; the one `set` in `Ge
 
 ## 2026-06-05 | `b546298f6` | accounting-v2 | feature/neft-v2-payment-reinit-qa-3.3.1.2 | Fix duplicate NEFT reinit client reference (BSTP_ERR_0004) — scope counter lookup to active leg
 
-NEFT v2 payment-reinit regenerated a **stale `client_reference_number`** for the NEF/NEI legs, so HDFC rejected the re-attempt with `BSTP_ERR_0004` and the reinit stayed at `DTFC_SUCCESS`. Root cause: [`neftCounterLookupTransactionTypes(leg, reinit=true)`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/util/DisbursementBankCallTypeUtil.java#L63) returned **all four** types (`NEF`, `NEF_REINIT`, `NEI`, `NEI_REINIT`), but the external-ref counter is **namespaced per leg prefix** (NEF=`07`, NEI=`08`). [`computeNextExternalReferenceNo`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/util/ExternalReferenceNoUtil.java) takes the single latest row across the mixed set; when it belongs to the *other* leg, `extractCounterFromExternalReferenceNo` returns `1` on the prefix mismatch → the reinit leg regenerates `…02` and collides with the earlier attempt. Proven on QA3 `6009685830`: `NEI_REINIT` reused `…0802` (2×) and `NEF_REINIT` reused `…0702` (3×). Fix returns only the active leg `[type, type+_REINIT]` so the scanned rows and `legPrefix` are consistent and the counter increments monotonically per leg — mirrors the already-correct `neftV1CounterLookupTransactionTypes`. Build green (Java 17). Status: pushed; awaiting QA retest. (Separately diagnosed: getLoanAccountDetails `134139` for some GROUP enquiries is legacy `group_`-prefix data on pre-2025 loans, not a regression — no code change.)
+NEFT v2 payment-reinit regenerated a **stale `client_reference_number`** for the NEF/NEI legs, so HDFC rejected the re-attempt with `BSTP_ERR_0004` and the reinit stayed at `DTFC_SUCCESS`. Root cause: [`neftCounterLookupTransactionTypes(leg, reinit=true)`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/util/DisbursementBankCallTypeUtil.java#L63) returned **all four** types (`NEF`, `NEF_REINIT`, `NEI`, `NEI_REINIT`), but the external-ref counter is **namespaced per leg prefix** (NEF=`07`, NEI=`08`). [`computeNextExternalReferenceNo`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/util/ExternalReferenceNoUtil.java) takes the single latest row across the mixed set; when it belongs to the *other* leg, `extractCounterFromExternalReferenceNo` returns `1` on the prefix mismatch → the reinit leg regenerates `…02` and collides with the earlier attempt. Proven on QA3 `6009685830`: `NEI_REINIT` reused `…0802` (2×) and `NEF_REINIT` reused `…0702` (3×). Fix returns only the active leg `[type, type+_REINIT]` so the scanned rows and `legPrefix` are consistent and the counter increments monotonically per leg — mirrors the already-correct `neftV1CounterLookupTransactionTypes`. Build green (Java 17). Status: pushed; awaiting QA retest. (Separately diagnosed: getLoanAccountDetails `134139` for some GROUP enquiries is legacy `group_`-prefix data on pre-2025 loans, not a regression — no code change.)
 
 ---
 
@@ -459,25 +465,25 @@ NEFT v2 payment-reinit regenerated a **stale `client_reference_number`** for the
 
 ## 2026-06-05 | `852ff85f6` | accounting-v2 | feature/neft-v2-payment-reinit-qa-3.3.1.2 | Restore reinit columns on getLoanAccountDetails (port of aefd53c4a missed on the -3.3.1.2 fork)
 
-`getLoanAccountDetails` stopped returning the four NEFT-v2 payment-reinit keys on `feature/neft-v2-payment-reinit-qa-3.3.1.2`. Not a deletion — commit `aefd53c4a` ("Expose payment reinit columns…", 22 May, on the original `feature/neft-v2-payment-reinit-qa` @ `3ea207636e`) was never ported when the `-3.3.1.2` fork was cut over base `mfi_integration_v3.3.1.0.1` (`git merge-base --is-ancestor aefd53c4a HEAD` → false). Re-added across all layers: `LoanAccountRepository.getLoanAccountDetails` SELECT gains `reinit_disbursement_status`/`reinit_external_error_code`/`reinit_external_error_message` after `sanction_date`; [GetLoanAccountDetailsProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/GetLoanAccountDetailsProcessor.java) puts `parent_loan_account_id` [44] + the three reinit fields [46-48] into EC; [getLoanAccountDetails_responseTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/response/product/getLoanAccountDetails_responseTemplate.json) declares all four SMPL fields under `loan_details`; plus the three `REINIT_*` constants on [LoanAccountConstants](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/constant/LoanAccountConstants.java) (also absent on this fork). Column-index alignment verified programmatically: 49 SELECT cols, `has_child_accounts`=43, `parent_loan_account_id`=44, `sanction_date`=45, reinit=46/47/48. These run a parallel track to the unchanged `disbursement_status*` fields. Build green (Java 17). Status: pushed; awaiting QA retest.
+`getLoanAccountDetails` stopped returning the four NEFT-v2 payment-reinit keys on `feature/neft-v2-payment-reinit-qa-3.3.1.2`. Not a deletion — commit `aefd53c4a` ("Expose payment reinit columns…", 22 May, on the original `feature/neft-v2-payment-reinit-qa` @ `3ea207636e`) was never ported when the `-3.3.1.2` fork was cut over base `mfi_integration_v3.3.1.0.1` (`git merge-base --is-ancestor aefd53c4a HEAD` → false). Re-added across all layers: `LoanAccountRepository.getLoanAccountDetails` SELECT gains `reinit_disbursement_status`/`reinit_external_error_code`/`reinit_external_error_message` after `sanction_date`; [GetLoanAccountDetailsProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/GetLoanAccountDetailsProcessor.java) puts `parent_loan_account_id` [44] + the three reinit fields [46-48] into EC; [getLoanAccountDetails_responseTemplate.json](../trustt-platform-accounting/deploy/application/templates/response/product/getLoanAccountDetails_responseTemplate.json) declares all four SMPL fields under `loan_details`; plus the three `REINIT_*` constants on [LoanAccountConstants](../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/constant/LoanAccountConstants.java) (also absent on this fork). Column-index alignment verified programmatically: 49 SELECT cols, `has_child_accounts`=43, `parent_loan_account_id`=44, `sanction_date`=45, reinit=46/47/48. These run a parallel track to the unchanged `disbursement_status*` fields. Build green (Java 17). Status: pushed; awaiting QA retest.
 
 ---
 
 ## 2026-06-05 | `d2b294d3b` | accounting-v2 | mfi_integration_v3.3.1.0.0 | Fix disburseLoan false dedupe (134139) — external_ref Object[] lookup returned non-null empty array on no match
 
-`ExternalRefLoanAccountLookup` blocked every brand-new SHG/group disbursement on QA5 with `134139` "loan already exists". Root cause is the JPA `Object[]` trap: [findLoanByExternalRefNumberUsingChildAccountFlag](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L700) returned a single `Object[]` for a 3-column native query, and Spring Data adapts a multi-column projection as a collection — so **zero matches yield a non-null EMPTY `Object[]`, not `null`**. [loanExists()](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/util/ExternalRefLoanAccountLookup.java#L21) used a bare `!= null`, so every absent `external_ref_number` read as an existing loan (verified on QA5: request refs `55566109`/`1345012`/`1344432`/`13455402` had 0 rows in `mfi_accounting.loan_account`, yet the parent check at `ValidateDataForDisbursementProcessor:130→156` threw). Fix: retype the finder + DAO wrapper to `List<Object[]>` and collapse to first-row-or-null via new `firstRowOrNull(...)`; guard the single-column `findOneByExternalRefNumber` fallback with `row.length >= 1`. The three column-reading callers (Kafka skip gate, ENQUIRY, child-status) already length-guard so were unaffected — only the validator's null-check path was wrong. Build green (Java 17). Status: pushed; awaiting QA retest.
+`ExternalRefLoanAccountLookup` blocked every brand-new SHG/group disbursement on QA5 with `134139` "loan already exists". Root cause is the JPA `Object[]` trap: [findLoanByExternalRefNumberUsingChildAccountFlag](../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java#L700) returned a single `Object[]` for a 3-column native query, and Spring Data adapts a multi-column projection as a collection — so **zero matches yield a non-null EMPTY `Object[]`, not `null`**. [loanExists()](../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/util/ExternalRefLoanAccountLookup.java#L21) used a bare `!= null`, so every absent `external_ref_number` read as an existing loan (verified on QA5: request refs `55566109`/`1345012`/`1344432`/`13455402` had 0 rows in `mfi_accounting.loan_account`, yet the parent check at `ValidateDataForDisbursementProcessor:130→156` threw). Fix: retype the finder + DAO wrapper to `List<Object[]>` and collapse to first-row-or-null via new `firstRowOrNull(...)`; guard the single-column `findOneByExternalRefNumber` fallback with `row.length >= 1`. The three column-reading callers (Kafka skip gate, ENQUIRY, child-status) already length-guard so were unaffected — only the validator's null-check path was wrong. Build green (Java 17). Status: pushed; awaiting QA retest.
 
 ---
 
 ## 2026-06-04 | `252881979` (accounting-v2) + `bef6fc27` (initial-setup) | accounting-v2 + initial-setup | feature/dpic-v1 | DPIC: integrate DPI/BPD across Part Prepayment, Death Foreclosure, Write-off and Loan 360 Overview
 
-End-to-end DPI integration sweep across remaining UD §5.11/§5.12 touchpoints after foreclosure waiver. **Part Prepayment**: simple-field pattern (mirror bpi_amount, NOT the 6-field waiver block — part-prepayment has no user-side waiver model) — adds `bpd_amount` SMPL field to [loanAccountPartPrepayment_requestTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/request/product/loanAccountPartPrepayment_requestTemplate.json) and [_approvalTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/approval/product/loanAccountPartPrepayment_approvalTemplate.json); adds `bpdAmount` field + getter/setter to [LoanAccountPartPrepaymentDetailsEntity](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/partprepayment/entity/LoanAccountPartPrepaymentDetailsEntity.java); `BPD_AMOUNT` constant on [LoanAccountPartPrepaymentConstants](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/partprepayment/constant/LoanAccountPartPrepaymentConstants.java); persistence in both [CreateOrUpdateLoanAccountPartPrepaymentProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/partprepayment/processor/CreateOrUpdateLoanAccountPartPrepaymentProcessor.java) (maker) and [LoanAccountPartPrepaymentProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/partprepayment/processor/LoanAccountPartPrepaymentProcessor.java) (approval); EC put back in [PopulateLoanAccountPartPrepaymentDetailsProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/partprepayment/processor/PopulateLoanAccountPartPrepaymentDetailsProcessor.java); V000194 in initial-setup adds the column. **Death Foreclosure**: [DeathForeclosureInsuranceWriter](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/deathforeclosure/writer/DeathForeclosureInsuranceWriter.java) adds `LOSSES_DPI_WAIVED_AIR` + `LOSSES_DPI_WAIVED` EC keys (defaulted to 0 — BPD is already paid via DPI_AMT at line 331 so AIR loss is 0; non-zero values to be wired when DPI write-off cases emerge) plus two new `populateAdditionalAmountDetails` calls alongside the existing INT waivers so DCF GL rules can resolve the DPI loss legs. **Loan 360 Overview**: [getLoanAccountOverviewDetails_responseTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/response/product/getLoanAccountOverviewDetails_responseTemplate.json) gains `dpi_paid_amount` + `dpi_due_amount` SMPL fields — the processor was already populating these EC keys (verified at `GetLoanAccountOverviewDetailsProcessor` 533/553/572 etc.) but the response template was dropping them. **Write-off**: `loanWriteoff` orchestration in [loans_orc.xml:1455](../novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml#L1455) adds the `DPI_AMT` populateAdditionalAmountDetailsProcessor next to PRIN_AMT/INT_AMT/FEE_AMT/PENALTY_AMT so the `LOAN_WRITE_OFF / FINAL_WRITE_OFF` GL rule can resolve the DPI write-off leg via `${DPI_AMT}`. **Reporting**: V001544 in initial-setup drops and recreates `mfi_reporting.soa_loan_account_payment_details` view to surface `lapd.dpi_amount` alongside the other component amounts (source column already added via V000188). Build green (Java 17). Status: pushed; awaiting QA retest.
+End-to-end DPI integration sweep across remaining UD §5.11/§5.12 touchpoints after foreclosure waiver. **Part Prepayment**: simple-field pattern (mirror bpi_amount, NOT the 6-field waiver block — part-prepayment has no user-side waiver model) — adds `bpd_amount` SMPL field to [loanAccountPartPrepayment_requestTemplate.json](../trustt-platform-accounting/deploy/application/templates/request/product/loanAccountPartPrepayment_requestTemplate.json) and [_approvalTemplate.json](../trustt-platform-accounting/deploy/application/templates/approval/product/loanAccountPartPrepayment_approvalTemplate.json); adds `bpdAmount` field + getter/setter to [LoanAccountPartPrepaymentDetailsEntity](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/entity/LoanAccountPartPrepaymentDetailsEntity.java); `BPD_AMOUNT` constant on [LoanAccountPartPrepaymentConstants](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/constant/LoanAccountPartPrepaymentConstants.java); persistence in both [CreateOrUpdateLoanAccountPartPrepaymentProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/processor/CreateOrUpdateLoanAccountPartPrepaymentProcessor.java) (maker) and [LoanAccountPartPrepaymentProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/processor/LoanAccountPartPrepaymentProcessor.java) (approval); EC put back in [PopulateLoanAccountPartPrepaymentDetailsProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/processor/PopulateLoanAccountPartPrepaymentDetailsProcessor.java); V000194 in initial-setup adds the column. **Death Foreclosure**: [DeathForeclosureInsuranceWriter](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/deathforeclosure/writer/DeathForeclosureInsuranceWriter.java) adds `LOSSES_DPI_WAIVED_AIR` + `LOSSES_DPI_WAIVED` EC keys (defaulted to 0 — BPD is already paid via DPI_AMT at line 331 so AIR loss is 0; non-zero values to be wired when DPI write-off cases emerge) plus two new `populateAdditionalAmountDetails` calls alongside the existing INT waivers so DCF GL rules can resolve the DPI loss legs. **Loan 360 Overview**: [getLoanAccountOverviewDetails_responseTemplate.json](../trustt-platform-accounting/deploy/application/templates/response/product/getLoanAccountOverviewDetails_responseTemplate.json) gains `dpi_paid_amount` + `dpi_due_amount` SMPL fields — the processor was already populating these EC keys (verified at `GetLoanAccountOverviewDetailsProcessor` 533/553/572 etc.) but the response template was dropping them. **Write-off**: `loanWriteoff` orchestration in [loans_orc.xml:1455](../trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml#L1455) adds the `DPI_AMT` populateAdditionalAmountDetailsProcessor next to PRIN_AMT/INT_AMT/FEE_AMT/PENALTY_AMT so the `LOAN_WRITE_OFF / FINAL_WRITE_OFF` GL rule can resolve the DPI write-off leg via `${DPI_AMT}`. **Reporting**: V001544 in initial-setup drops and recreates `mfi_reporting.soa_loan_account_payment_details` view to surface `lapd.dpi_amount` alongside the other component amounts (source column already added via V000188). Build green (Java 17). Status: pushed; awaiting QA retest.
 
 ---
 
 ## 2026-06-04 | `a2ab973f2` (accounting-v2) + `4d19d6a2` (initial-setup) | accounting-v2 + initial-setup | feature/dpic-v1 | DPIC foreclosure waiver: BPI-parity split for billed DPI and broken-period DPI (BPD)
 
-Loan foreclosure (`loanPrepayment`) now treats DPI symmetrically with INT/BPI across validation, persistence, waiver application and posting placeholders. Request and approval templates ([loanPrepayment_requestTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/request/product/loanPrepayment_requestTemplate.json), [loanPrepayment_approvalTemplate.json](../novopay-platform-accounting-v2/deploy/application/templates/approval/product/loanPrepayment_approvalTemplate.json)) carry new `billed_dpi_details` and `bpd_details` CMPLX blocks mirroring `billed_interest_details` / `bpi_details` shape (6 fields each — due_amount, is_waived, is_fully_waived, waiver_percentage, waived_amount, amount_to_be_paid). [PrepaymentDetailsEntity](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/entity/PrepaymentDetailsEntity.java) gets 12 new persisted fields; [CreatePrepaymentDetailsProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/CreatePrepaymentDetailsProcessor.java) parses both blocks into the entity. [V000193__add_dpi_waiver_columns_prepayment_details.sql](../novopay-platform-initial-setup/flyway/sli/accounting/sql/product/V000193__add_dpi_waiver_columns_prepayment_details.sql) adds the matching `billed_dpi_*` and `bpd_*` columns to `prepayment_details`. [ValidateLoanPrepaymentDataProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/ValidateLoanPrepaymentDataProcessor.java) parses both request blocks (null-safe so pre-DPI flows pass), extends the `pouplateLoanAccountAmountDetails` switch / `getTotalOverDueAmount` / `getTotalDueAmount` to count DPI rows in `loan_due_details`, computes broken-period DPI via `dpiAccrualDetailsDaoService.getUnbilledAccruedAmountTillDate`, and adds both to `prepaymentAmountDb` so the customer-side total reconciles. New DPI_DUE_AMOUNT / DPI_OVERDUE_AMOUNT / DPI_PAID_AMOUNT constants on [LoanAccountConstants](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/constant/LoanAccountConstants.java). [UpdateDueDetailsForPrepaymentProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdateDueDetailsForPrepaymentProcessor.java) now applies `billed_dpi_waived_amount` to existing DPI rows in `loan_due_details` via the existing `processPendingInstallmentObject` pipeline (component="DPI") and applies `bpd_waived_amount` to the newly-created BPD row in `processDpiTillForeclosure`, with `waiver_details` + `waiver_loan_due_details` rows persisted via the same `saveWaiverDetails`/`updateLoanDueDetailsPaymentDTO` chain used for BPI. [PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor.java) splits the previously-combined DPI value into `DPI_AMOUNT` (billed) and `bpd_amount` (broken-period) placeholders and registers `LOSSES_DPI_WAIVED_AIR` + `LOSSES_BILLED_DPI_WAIVED` next to the existing INT analogs. Build green (Java 17). Status: pushed; awaiting QA retest.
+Loan foreclosure (`loanPrepayment`) now treats DPI symmetrically with INT/BPI across validation, persistence, waiver application and posting placeholders. Request and approval templates ([loanPrepayment_requestTemplate.json](../trustt-platform-accounting/deploy/application/templates/request/product/loanPrepayment_requestTemplate.json), [loanPrepayment_approvalTemplate.json](../trustt-platform-accounting/deploy/application/templates/approval/product/loanPrepayment_approvalTemplate.json)) carry new `billed_dpi_details` and `bpd_details` CMPLX blocks mirroring `billed_interest_details` / `bpi_details` shape (6 fields each — due_amount, is_waived, is_fully_waived, waiver_percentage, waived_amount, amount_to_be_paid). [PrepaymentDetailsEntity](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/entity/PrepaymentDetailsEntity.java) gets 12 new persisted fields; [CreatePrepaymentDetailsProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/CreatePrepaymentDetailsProcessor.java) parses both blocks into the entity. [V000193__add_dpi_waiver_columns_prepayment_details.sql](../`V000193__add_dpi_waiver_columns_prepayment_details.sql` (path retired — see initial-setup Flyway tree)) adds the matching `billed_dpi_*` and `bpd_*` columns to `prepayment_details`. [ValidateLoanPrepaymentDataProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/ValidateLoanPrepaymentDataProcessor.java) parses both request blocks (null-safe so pre-DPI flows pass), extends the `pouplateLoanAccountAmountDetails` switch / `getTotalOverDueAmount` / `getTotalDueAmount` to count DPI rows in `loan_due_details`, computes broken-period DPI via `dpiAccrualDetailsDaoService.getUnbilledAccruedAmountTillDate`, and adds both to `prepaymentAmountDb` so the customer-side total reconciles. New DPI_DUE_AMOUNT / DPI_OVERDUE_AMOUNT / DPI_PAID_AMOUNT constants on [LoanAccountConstants](../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/constant/LoanAccountConstants.java). [UpdateDueDetailsForPrepaymentProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdateDueDetailsForPrepaymentProcessor.java) now applies `billed_dpi_waived_amount` to existing DPI rows in `loan_due_details` via the existing `processPendingInstallmentObject` pipeline (component="DPI") and applies `bpd_waived_amount` to the newly-created BPD row in `processDpiTillForeclosure`, with `waiver_details` + `waiver_loan_due_details` rows persisted via the same `saveWaiverDetails`/`updateLoanDueDetailsPaymentDTO` chain used for BPI. [PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor.java) splits the previously-combined DPI value into `DPI_AMOUNT` (billed) and `bpd_amount` (broken-period) placeholders and registers `LOSSES_DPI_WAIVED_AIR` + `LOSSES_BILLED_DPI_WAIVED` next to the existing INT analogs. Build green (Java 17). Status: pushed; awaiting QA retest.
 
 ---
 
@@ -489,7 +495,7 @@ Two conflicts in the upstream forward-merge (PR `mfi_integration_v3.5.1` → `mf
 
 ## 2026-05-27 | `-` | accounting-v2 | mfi_integration_v3.3.3 | SDCP-10080 obs 4: parent waiver_details reconciliation
 
-When a child loan foreclosure with principal waiver triggers `parentLoanAccountPartPrepayment`, the parent's foreclosure-date `loan_due_details` row receives `waived_amount > 0` and a matching `waiver__loan_due_details` line row (origin still under investigation — verifiably reaches this state) but NO `waiver_details` header. Reporting queries that join `waiver_details.loan_account_id → loan_account` then miss the parent's share of the waiver. Added a defensive reconciliation processor `EnsureWaiverDetailsForParentRescheduleProcessor` that runs after `callInternalOrchestrationProcessor` inside the `is_child_loan=true` block of `loanPrepayment do_prepayment` ([loans_orc.xml:2136](../novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml#L2136)). It iterates the parent's ldd rows for the foreclosure date with `waived_amount > 0`, and for each one without an existing approved `waiver_details` (checked via the existing `findAllByLoanAccountIdAndLoanDueDetailsIdAndWaiverStatus` DAO method) writes a new header row. Pure additive — skips when a header already exists, so no regression for the direct-waiver flows that already write both tables together. New native query `findWaivedDueDetailsByAccountAndDueDate` on `LoanDueDetailsRepository`. Build green (Java 17). Scope: child-foreclosure-with-waiver only (the `is_child_loan=true` Control). Held: obs 1, 2, 3 — awaiting product confirmation on catalogue-209 design + payment_details semantics + which ldd rows QA expects waiver to surface on.
+When a child loan foreclosure with principal waiver triggers `parentLoanAccountPartPrepayment`, the parent's foreclosure-date `loan_due_details` row receives `waived_amount > 0` and a matching `waiver__loan_due_details` line row (origin still under investigation — verifiably reaches this state) but NO `waiver_details` header. Reporting queries that join `waiver_details.loan_account_id → loan_account` then miss the parent's share of the waiver. Added a defensive reconciliation processor `EnsureWaiverDetailsForParentRescheduleProcessor` that runs after `callInternalOrchestrationProcessor` inside the `is_child_loan=true` block of `loanPrepayment do_prepayment` ([loans_orc.xml:2136](../trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml#L2136)). It iterates the parent's ldd rows for the foreclosure date with `waived_amount > 0`, and for each one without an existing approved `waiver_details` (checked via the existing `findAllByLoanAccountIdAndLoanDueDetailsIdAndWaiverStatus` DAO method) writes a new header row. Pure additive — skips when a header already exists, so no regression for the direct-waiver flows that already write both tables together. New native query `findWaivedDueDetailsByAccountAndDueDate` on `LoanDueDetailsRepository`. Build green (Java 17). Scope: child-foreclosure-with-waiver only (the `is_child_loan=true` Control). Held: obs 1, 2, 3 — awaiting product confirmation on catalogue-209 design + payment_details semantics + which ldd rows QA expects waiver to surface on.
 
 ---
 
@@ -703,18 +709,18 @@ Cherry-picked the three NEFT v2 payment-reinitiation fixes from `3.3.1.1` onto `
 
 ## 2026-05-14 — Foreclosure: respect `task_status` IParam in UpdatePrepaymentTaskDetailsProcessor (accounting-v2 `7438b3ce9` on `mfi_integration_v3.3.1.0` prod)
 
-- **Repo:** `novopay-platform-accounting-v2` — `mfi_integration_v3.3.1.0` (commit `7438b3ce9`, pushed to origin; awaiting QA retest). `./gradlew build -x test` green. Forward-port to `3.3.1.0.0` / `3.3.1.0.1` / `3.3.1.1` pending.
+- **Repo:** `trustt-platform-accounting` — `mfi_integration_v3.3.1.0` (commit `7438b3ce9`, pushed to origin; awaiting QA retest). `./gradlew build -x test` green. Forward-port to `3.3.1.0.0` / `3.3.1.0.1` / `3.3.1.1` pending.
 - `UpdatePrepaymentTaskDetailsProcessor.populateTaskDetails()` computed `task_status` from `(sequence, channelCode, isProceed, functionCode)` and silently fell back to `PENDING` when `function_code != APPROVE` AND `taskId != null` AND `sequence == null`. The XML on the deposit/`do_prepayment` branch (line ≈ 2087 of `loanPrepayment` in `loans_orc.xml`) passes `<IParam fieldName="task_status" value="APPROVED"/>` but the processor ignored it. Runtime: foreclosure `prepayment_details.task_status` flipped to PENDING after deposit despite the loan reaching CLOSED. Confirmed on QA5 LAN 6004358026. Fix: read the explicit IParam after `populateTaskDetails` and override `entity.setTaskStatus(...)` if non-null/non-empty — orchestration is now the contract; `populateTaskDetails` becomes a fallback for callers that don't pass `task_status`. Knowledge base updated: new [`claude/flows/loan-servicing/lan-transactions-reference.md`](../flows/loan-servicing/lan-transactions-reference.md) covering all LAN transactions + the 3 gating models; [`claude/flows/foreclosure-and-closure.md`](../flows/foreclosure-and-closure.md) now documents the MFI 3-stage workflow path (loanPrepayment chain DEFAULT → VALIDATE → APPROVE_TASK(x2) → APPROVE) alongside the classic single-approve flow.
 
 ## 2026-05-12 — PRODSLISFR-3293 — DFC writer: fold pre-death BPI into force-bill + collapse AIR-side waiver under new schema
 
-- **Repo:** `novopay-platform-accounting-v2` · `sdcp-9301-hotfix-3.3.1.0` · pushed; awaiting QA retest.
+- **Repo:** `trustt-platform-accounting` · `sdcp-9301-hotfix-3.3.1.0` · pushed; awaiting QA retest.
 - Force-bill amount is now `dcf_bpi_amount + computeUnbilledPartialCycleAccrual` instead of just the post-death partial-cycle slice — the SDCP-9301 clamp (slice start = max(lastBilled, deathDate)) was correct under the old schema where BPI_AMT had its own rule, but the new ruleset has no `BPI_AMT` / `LOSSES_INT_WAIVED_AIR` / `INT_SUSP_AIR` legs, so the pre-death BPI must also be force-billed to enter `BILLED_INTEREST`. After force-bill, all of `LOSSES_INT_WAIVED_AIR` is collapsed into `LOSSES_INT_WAIVED` (pushed as `BLD_INT_WAIVED_AMT`); `LOSSES_INT_WAIVED_AIR` and `BPI_AMOUNT` are explicitly zeroed in EC so `calculateTotalTransactionAmount` / `populateAdvanceSrcAmount` don't double-count.
 - For test LAN 6000256703 this produces the exact 5 GL entries from `6000256703_Correct_GL_Entries`: BILLING force-bill 665 (BILLED_INTEREST / INT_REC), UNBLD_PRIN_AMT 52,945 (DUE_TO_FC_B / LOAN_ACCOUNT), EXCESS_INCOME_INT_AMT 1,475 (INT_INC / EXCESS_ACCT), EXCESS_ACCOUNT_INC_AMT 1,475 (EXCESS_ACCT / LOAN_ACCOUNT), BLD_INT_WAIVED_AMT 665 (BILLED_INT_WAIVE / BILLED_INTEREST). Per-LAN trial balance nets to 0.
 
 ## 2026-05-12 — PRODSLISFR-3293 — DFC writer: align EC pushes with new accounting rule reference codes (Sheet15)
 
-- **Repo:** `novopay-platform-accounting-v2` · `sdcp-9301-hotfix-3.3.1.0` · pushed; awaiting QA retest. Depends on product team installing the new ruleset + placeholders + per-product bindings (BILLED_INT_WAIVE, CBC_FEE, PENAL_AMOUNT, FEES_WAIVED, PINT_AMT_WAIVED, STD/NPA principal waivers) per env.
+- **Repo:** `trustt-platform-accounting` · `sdcp-9301-hotfix-3.3.1.0` · pushed; awaiting QA retest. Depends on product team installing the new ruleset + placeholders + per-product bindings (BILLED_INT_WAIVE, CBC_FEE, PENAL_AMOUNT, FEES_WAIVED, PINT_AMT_WAIVED, STD/NPA principal waivers) per env.
 - Switched `DeathForeclosureInsuranceWriter` `populateAdditionalAmountDetails` block to push the new reference codes from product's Sheet15: `BLD_INT_AMT`/`BLD_PRIN_AMT`/`UNBLD_PRIN_AMT`/`PINT_AMT`/`CBC_FEE_AMT` for settlement legs, `BLD_INT_WAIVED_AMT`/`PINT_AMT_WAIVED`/`CBC_FEE_AMT_WAIVED` for waiver legs, `EXCESS_INCOME_INT_AMT`/`EXCESS_ACCOUNT_INC_AMT` for excess flows, and `ADV_BLD_INT_AMT`/`ADV_UNBLD_PRIN_AMT`/`ADV_PINT_AMT`/`ADV_CBC_FEE_AMT` for excess-fed legs. Dropped `BPI_AMT`/`LOSSES_INT_WAIVED_AIR`/`ADV_PRIN_AMT`/`ADV_BILLED_PRIN_AMT`/`ADV_BPI_AMT`/`ADV_FORECLOSURE_AMT` (no rules in new schema). Internal calculation keys (`INT_AMT`/`POS`/`BILLED_PRIN_AMT`/`PENAL_AMT`/`FEE_AMT`) and SDCP-9301 force-bill + slice-into-waiver swap untouched. Penal and fee waiver totals from `waiveLonaDueDetailsEntries` are now summed and pushed under `pint_amt_waived` / `cbc_fee_amt_waived` so `PINT_AMT_WAIVED` and `CBC_FEE_AMT_WAIVED` rule legs fire with the right amounts. STD/NPA principal-waiver split intentionally deferred.
 
 ## 2026-05-14 — Payment reinit NEFT v2 — wire inquiry-on-STAGE_1_PENDING + DB advance on inquiry success (accounting-v2 `2cfe04431` on `mfi_integration_v3.3.1.1`)
@@ -735,193 +741,193 @@ Flag was read by `DisbursementBankCallTypeUtil.isPaymentReinitiationTransferExec
 
 ## 2026-05-11 — SDCP-9301 + SDCP-9428 — Forward-port DFC fixes onto mfi_integration_v3.3.1.0
 
-- **Repo:** `novopay-platform-accounting-v2` · new branch `sdcp-9301-hotfix-3.3.1.0` (tip `41c6a31a3`) off `upstream/mfi_integration_v3.3.1.0` @ `e6fa4adba` · pushed; awaiting QA retest
+- **Repo:** `trustt-platform-accounting` · new branch `sdcp-9301-hotfix-3.3.1.0` (tip `41c6a31a3`) off `upstream/mfi_integration_v3.3.1.0` @ `e6fa4adba` · pushed; awaiting QA retest
 - Cherry-picked the full 13-commit DFC fix series from `sdcp-9301-hotfix-3.2.8.4` (`13a70c4c6..b74f88731`) — extra-interest baseline + waived-interest exclusion, DCF billing sync (new `DeathForeclosureBillingSyncService`), user_id/List sync handling, sync cutoff alignment, split-billed-principal + interest-waiver fix, SDCP-9301 partial-cycle force-bill (+ EC snapshot/restore + start-clamp + dead-code drop), and SDCP-9428 task↔accounting reorder. All applied cleanly with auto-merge only. Mirrors the 2.8.4 hotfix branch on the next integration line.
 
 ## 2026-05-11 — SDCP-9428 — DFC insurance writer: reorder so task ↔ accounting stay symmetric
 
-- **Repo:** `novopay-platform-accounting-v2` · `sdcp-9301-hotfix-3.2.8.4` `b74f88731` + `sdcp-9428-hotfix-3.3.1.0` `6327d98a5` (off `upstream/mfi_integration_v3.3.1.0`) · both pushed; awaiting QA retest
+- **Repo:** `trustt-platform-accounting` · `sdcp-9301-hotfix-3.2.8.4` `b74f88731` + `sdcp-9428-hotfix-3.3.1.0` `6327d98a5` (off `upstream/mfi_integration_v3.3.1.0`) · both pushed; awaiting QA retest
 - Moved `updateTaskWorkflow` (RE_UPLOAD) and `deleteTask` (APPROVE) to the end of their respective chunk-tx blocks so all accounting DAO writes commit first; removed the `LOG.error` swallow on `deleteTask` so a task-side failure now propagates as `BatchRuntimeException` and rolls the chunk back. Closes the seconds-long drift window where task service committed while accounting later rolled back (and the reverse). Residual chunk-commit-after-task-success microsecond window is unchanged from any non-saga approach; postTransaction / LOS Kafka / GL-CBS drift sources flagged as separate follow-up.
 
 ---
 
 ## 2026-05-08 — SDCP — Allow pre-disburse detail update when disbursement_status=LOAN_BOOKED
 
-- **Repo:** `novopay-platform-accounting-v2` `40c1bba0d` · `mfi_integration_v3.3.1.0` · pushed · PR pending vs khoslalabs upstream
+- **Repo:** `trustt-platform-accounting` `40c1bba0d` · `mfi_integration_v3.3.1.0` · pushed · PR pending vs khoslalabs upstream
 - `LOAN_BOOKED` is set after LMS GL posting but before the bank API leg fires; no money has moved, so LOS must be allowed to correct account/IFSC details via `updateLoanAccountPreDisbursementDetails`.
 
 ---
 
 ## 2026-05-08 — Brain — LMS deep-dive audit on 3.3.1.0.1 + 5 new skills
 
-- **Repos:** doc-only (no code change) · brain docs in `/home/darpan/darpan/claude/` and skills in `/home/darpan/darpan/.claude/skills/`
-- Six parallel deep-dive agents audited disbursement / repayment / posting engine / batch jobs / async event queue + lifecycle / closure flows + data model + 3.3.1.0.1 deltas against `novopay-platform-accounting-v2` head `149009993`. Outputs: new consolidated [`accounting/11-deltas-3.3.1.0.1.md`](../accounting/11-deltas-3.3.1.0.1.md), new [`platform/state-machine-safety.md`](../platform/state-machine-safety.md), updates to `engines/{disbursement,posting,repayment}-engine.md` (branch headers + 3.3.1.0.1 delta blocks; `posting-engine.md` got the `134497` ↔ `134067` dup-CRN error code change), `accounting/03-batch-dependency.md` + `system/07-batch-atlas.md` (corrected — `runEODJobs` only fires 5 child Requests; billing/interest/posting/TB run on independent cron schedules), `runbooks/disbursement-stuck.md` (added §B.1 NDF-recovery + §B.2 auto-flush race CLOSED), `flows/loan-servicing/death-foreclosure.md` (STAGE_6 SDCP-9301 partial-cycle billing narrative). Five new skills landed: `txn-graph`, `batch-atlas-lookup`, `posting-rule-resolver`, `state-machine-safety`, `delta-3-3-1` — all routing / quick-reference, not deep-dive replacements. Project memory `project_lms_audit_2026_05_08.md` records the audit so the next branch upgrade can re-run the same shape.
+- **Repos:** doc-only (no code change) · brain docs in `/home/darpan/Documents/sliProd/claude/` and skills in `/home/darpan/Documents/sliProd/.claude/skills/`
+- Six parallel deep-dive agents audited disbursement / repayment / posting engine / batch jobs / async event queue + lifecycle / closure flows + data model + 3.3.1.0.1 deltas against `trustt-platform-accounting` head `149009993`. Outputs: new consolidated [`accounting/11-deltas-3.3.1.0.1.md`](../accounting/11-deltas-3.3.1.0.1.md), new [`platform/state-machine-safety.md`](../platform/state-machine-safety.md), updates to `engines/{disbursement,posting,repayment}-engine.md` (branch headers + 3.3.1.0.1 delta blocks; `posting-engine.md` got the `134497` ↔ `134067` dup-CRN error code change), `accounting/03-batch-dependency.md` + `system/07-batch-atlas.md` (corrected — `runEODJobs` only fires 5 child Requests; billing/interest/posting/TB run on independent cron schedules), `runbooks/disbursement-stuck.md` (added §B.1 NDF-recovery + §B.2 auto-flush race CLOSED), `flows/loan-servicing/death-foreclosure.md` (STAGE_6 SDCP-9301 partial-cycle billing narrative). Five new skills landed: `txn-graph`, `batch-atlas-lookup`, `posting-rule-resolver`, `state-machine-safety`, `delta-3-3-1` — all routing / quick-reference, not deep-dive replacements. Project memory `project_lms_audit_2026_05_08.md` records the audit so the next branch upgrade can re-run the same shape.
 
 ---
 
 ## 2026-05-07 — SDCP — close MFT auto-flush gaps + flow design doc
 
-- **Repos:** `novopay-platform-accounting-v2` `3e8710f97` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` `3e8710f97` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - Two writers in the original (non-reinit) MFT lane were still doing `dao.save` after in-memory setters — the auto-flush race that hard rule §3 calls out. Migrated `CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode` `FALSE+!isNeft` branch to `LoanAccountStateMachineService.transition` (explicit `fromStates=[DTFC_SUCCESS]`, advances to `PARENT_SUCCESS` when children present, else `COMPLETED`). Migrated `PostMFTChildLoanBankDisbursementProcessor.updateAndSaveQueueRow` FAIL branch to `childClmtStateMachineService.patchJsonFields` (state-agnostic patch). The `state-machine-safety` skill's "outstanding gap" is now closed — every writer to `loan_account.disbursement_status / filler_*` and `loan_account_events_queue.data->>'disbursement_status'` goes through CAS or `patchJsonFields`. Routing for the original lane stays inline per the agreed plan; reinit lane keeps `PaymentReinitiationStateService` as its central control block. New design doc [`engines/disbursement-state-machine-flows.md`](engines/disbursement-state-machine-flows.md) documents both machines with Mermaid state + sequence diagrams, NDF recovery, replay-with-different-fsc semantics, and a per-column writer map.
 
 ---
 
 ## 2026-05-07 — SDCP — payment reinitiation: MFT lane folded into the central state machine
 
-- **Repos:** `novopay-platform-accounting-v2` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - Brought MFT (DISB_MODE_ACCTWB) under the same `PaymentReinitiationStateService` so MFT + NEFT v1 + NEFT v2 share a single control block. Added `FIRE_MFT_REINIT` to `NextStep`; updated `nextStep(loanAccountId, disbursementMode, useNeftV1)` to branch on mode first. Replaced the NEFT-only reinit-complete short-circuit in `CallBankAPIForDisbursementProcessor.process` with a unified `nextStep == REINIT_COMPLETE` gate evaluated after both the MFT-CRR-check and NEFT-skip-inquiry branches. `saveBankErrorResponseCode` `!isNeft` branch now advances `reinit_disbursement_status` to COMPLETED via CAS when reinit, leaving original `disbursement_status` and `filler_1/_2` untouched (CAS uses `rankBackwardSafeFromStates(COMPLETED)` so any pre-COMPLETED state advances cleanly). Memory `project_payment_reinitiation_scope.md` updated.
 
 ---
 
 ## 2026-05-07 — SDCP — payment reinitiation state machine for NEFT v1/v2 (parent)
 
-- **Repos:** `novopay-platform-accounting-v2` · `novopay-platform-initial-setup` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` · `trustt-platform-initial-setup` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - Reinit on a `loan_account` whose `disbursement_status=COMPLETED` previously failed for NEFT v2: `doNEFTTransaction` couldn't route NEF vs NEI without a stage tracker, callbacks REJECTED CAS against the COMPLETED loan, and `saveBankErrorResponseCode` clobbered the original disbursement fillers. Added a parallel state machine: V000189 introduces `loan_account.reinit_disbursement_status / reinit_external_error_code / reinit_external_error_message`; new central `PaymentReinitiationStateService` owns CAS + routing (`nextStep` returns `FIRE_NEFT_V1_REINIT / FIRE_NEF_REINIT / INQUIRE_NEF_REINIT / FIRE_NEI_REINIT / REINIT_COMPLETE`). Reinit-aware wire-ins in `ParentDisbursementNeftV2BankCall.doNEFTTransaction`/`performNEFTTransactionInquiry`, `CallBankAPIForDisbursementProcessor.process` (CRR-type override + reinit-complete short-circuit), `saveBankErrorResponseCode` (forward CAS, NDF rollback, empty-fromStates, error-only patch all retargeted to reinit columns when reinit), and `DoGenericSyncSTPBankNeftCallBackProcessor.processLoanAccount`/`processFailedLoanAccount`/`processInProgressCallback` (route by `transactionType.endsWith(_REINIT)` to new `processReinitNEFCallback` / `processReinitNEICallback`). UTR continues to `loan_disbursement_mode_details.utr_number`. Original `disbursement_status / filler_*` left untouched. Parent JLG/INDL only — child loans use the LAR cash-delivery task and do not flow through here.
 
 ---
 
 ## 2026-05-07 — SDCP — NEFT v2 retry-after-failure: rollback + re-fire path
 
-- **Repos:** `novopay-platform-accounting-v2` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - After previous fixes for the parser-NPE / CRR-drop / empty-fromStates crash, retries from a failed bank attempt still didn't reach COMPLETED. Two underlying issues: (1) `performNeftV2InquiryWhenNotStage1Pending` else branch hard-set `DO_TRANSACTION=FALSE` for any pre-NEFT state, so a second `disburseLoan` from `disbursement_status=DTFC_SUCCESS` (with a prior FAIL NEF CRR) silently skipped the NEFT call → state never advanced; (2) when the bank inquiry returned `{"faxml":{"errorCode":"NDF","errorDesc":"Batch details not found..."}}`, the loan stayed pinned at `NEFT_STAGE_1_PENDING` even after the parser-NPE was caught — `rankBackwardSafeFromStates` is forward-only so no rollback was possible. Fix: (a) parent inquiry router now allows `DO_TRANSACTION=TRUE` for `DTFC_SUCCESS` so retry fires a fresh NEF; (b) parser-NPE catch in parent + child inquiry now sniffs the raw bank response for NDF / "batch not found" signals and signals a rollback (`NEFT_STAGE_STATUS=DTFC_SUCCESS`, `IS_BANK_CALL_FAILED=FALSE`); (c) `saveBankErrorResponseCode` (parent + child) now does a backward CAS `fromStates=[NEFT_STAGE_1_PENDING] → DTFC_SUCCESS` when the empty-fromStates guard fires for `DTFC_SUCCESS`, races safely (REJECTED if a callback advanced state), then sets `IS_BANK_CALL_FAILED=TRUE` so child disbursement aborts and the next `disburseLoan` re-fires NEF cleanly.
 
 ---
 
 ## 2026-05-07 — SDCP — NEFT v2 bank-error-envelope NPE drops CRR (LAN 6009685525)
 
-- **Repos:** `novopay-platform-accounting-v2` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - Bank's NEFT v2 inquiry returned `{"faxml":{"errorCode":"NDF","errorDesc":"Batch details not found..."}}` (no `paymentlist`). HDFC infra JAR's `NeftTransactionStatusInquiryV2.doServiceCall` NPE'd reading `paymentlist.get(...)`, exception unwound out of `performNeftV2InquiryWhenStage1Pending` before any CRR write. Outer catch in `CallBankAPIForDisbursementProcessor.process` reached, but the `request`/`EXTERNAL_REFERENCE_NO` keys were putLocal'd inside the inquiry leg — by the time `handleDisbursementBankCallTryFailure` ran, fallback ref-no produced a row that either collided or had blank fields. Net: CRR not visible for the LAN, state stuck at NEFT_STAGE_1_PENDING. Fix: wrap the `neftTransactionStatusInquiryV2` and `neftPaymentV2`/`neftPaymentV2Stage2` calls (parent + child inquiry) with `try { … } catch (RuntimeException) { … }` that persists CRR locally with the actual bank response, sets `IS_BANK_CALL_FAILED=TRUE`, and returns — guarantees CRR is written and disbursement state stays put for any bank-side parser failure / malformed response.
 
 ---
 
 ## 2026-05-07 — SDCP — NEFT v2 inquiry crash on pre-NEFT disbursement_status (LAN 6009685025)
 
-- **Repos:** `novopay-platform-accounting-v2` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` · `mfi_integration_v3.3.1.0.1` · pushed · awaiting QA retest
 - `disburseLoan` re-trigger via `function_sub_code=DTFC_SUCCESS` after a NEFT URL failure crashed with `IllegalArgumentException: at least one fromState is required` in `CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode`. `performNeftV2InquiryWhenNotStage1Pending` was setting `DO_TRANSACTION=FALSE` without `IS_BANK_CALL_FAILED=TRUE`, so the caller entered the NEFT-success CAS branch with `neftStageStatus=DTFC_SUCCESS`, which has no rank-1 predecessor → empty fromStates → throw. Fix: mark bank-call failed in that else branch; add defensive empty-fromStates guard in both `CallBankAPIForDisbursementProcessor.saveBankErrorResponseCode` and `ChildDisbursementLoanEventsQueueSync.saveBankErrorResponseCode` (also covers the parent/child stage-1-pending "PROCESSED+reply 0" rollback paths that hit the same crash).
 
 ---
 
 ## 2026-05-07 — SDCP — NEFT v2 stuck-CLMT-row fix (Hibernate auto-flush race)
 
-- **Repos:** `novopay-platform-accounting-v2` `4c339282f 09295c377` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA retest
+- **Repos:** `trustt-platform-accounting` `4c339282f 09295c377` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA retest
 - After CAS APPLIED, sync post-handler was still mutating the in-memory CLMT entity → outer-`disburseLoan` Hibernate auto-flush rewrote the row with stale `updated_on`, reverting any later async-callback `COMPLETED`. Removed all post-CAS in-memory mutations across `ChildNeftClmtPostBankService`, `DoGenericSyncSTPBankNeftCallBackProcessor.processInProgressCallbackForChild` advisory branch, and `ChildDisbursementLoanEventsQueueSync` inquiry-failure branch. Advisory/error-only writes now go through new state-agnostic `ChildClmtStateMachineService.patchJsonFields`. Closes QA3 stuck-row class for parent LAN 6009683725 child 19 (queue id 21360).
 
 ---
 
 ## 2026-05-07 — SDCP-9301 — Death-foreclosure full fix on 3.2.8.4
 
-- **Repos:** `novopay-platform-accounting-v2` `13a70c4c6 178814a75 216bdb6b1 f822b9a32 e91ae4b5e 917dddc4b daa263e8b aa5a798ea 0ebb2fa4a c71ea95c8 59e253c54` · `sdcp-9301-hotfix-3.2.8.4` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `13a70c4c6 178814a75 216bdb6b1 f822b9a32 e91ae4b5e 917dddc4b daa263e8b aa5a798ea 0ebb2fa4a c71ea95c8 59e253c54` · `sdcp-9301-hotfix-3.2.8.4` · pushed · awaiting QA
 - Closes claim/GL-outstanding mismatch, billed-principal GL routing, and adds force-billing for the post-deathDate partial-cycle accrual (paired force-accrual + force-billing per Sudheer's spec; no DPI). Requires product-ops to add `BILLED_PRIN_AMT` / `ADV_BILLED_PRIN_AMT` legs (`24511 → 13335`) on `DEATH_FORECLOSURE` and `RSCH_DEATH_FORECLOSURE` rules in QA + prod.
 
 ---
 
 ## 2026-05-06 — SDCP — close remaining backward-write paths on CLMT queue rows
 
-- **Repos:** `novopay-platform-accounting-v2` `ccf7f6b89` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `ccf7f6b89` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
 - Two more sites guarded: async-NEF success callback now also accepts `DTFC_SUCCESS`; `ChildDisbursementLoanEventsQueueSync.saveBankErrorResponseCode` success branch now consults `ChildClmtTerminalStateGuard.isAtOrBeyondStage` before save. Together with `c704969ec`, every disbursement state-machine writer is forward-only without `@Version`.
 
 ---
 
 ## 2026-05-06 — SDCP — close async-NEI-callback vs sync-inquiry-post-handler race
 
-- **Repos:** `novopay-platform-accounting-v2` `c704969ec` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `c704969ec` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
 - Async callback now accepts `NEFT_STAGE_1_SUCCESS` (not just `NEFT_STAGE_2_PENDING`) so it can drive `COMPLETED` even when sync inquiry post-handler hasn't committed yet; sync handler consults `isAtOrBeyondStage` in OK branch (was OLE-only, never fired). Verified against QA3 LAN 6009683325 child 2 (queue 21042).
 
 ---
 
 ## 2026-05-06 — SDCP — tighten verbose comments on populate-before-prepare fix
 
-- **Repos:** `novopay-platform-accounting-v2` `65bdd2a11` · `mfi_integration_v3.2.8.4.1` · pushed
+- **Repos:** `trustt-platform-accounting` `65bdd2a11` · `mfi_integration_v3.2.8.4.1` · pushed
 - Pure comment trim per `feedback_crisp_comments.md`; no behaviour change.
 
 ---
 
 ## 2026-05-06 — SDCP — populate per-member amounts BEFORE writing CLMT queue rows
 
-- **Repos:** `novopay-platform-accounting-v2` `55e58d31d` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `55e58d31d` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
 - Closes regression from `a6fdc1c88` prep-block split: `net_disbursed_amount` was NULL in CLMT data, every child NEFT v2 leg silently bailed at `CallBankAPIForIndividualChildLoanDisbursementProcessor:61-65` (zero log lines). QA3 parent 11850460 (LAN 6009682925) had 23 dropped legs. Defense-in-depth: silent early-return now logs at ERROR.
 
 ---
 
 ## 2026-05-06 — DPIC v1 — manual completion round 2: derived fields + repayment audit + reversal (3.3.2)
 
-- **Repos:** `novopay-platform-accounting-v2` `1f71a8b9c`, `novopay-platform-initial-setup` `aacfc99f 234241a7` · `feature/dpic-v1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `1f71a8b9c`, `trustt-platform-initial-setup` `aacfc99f 234241a7` · `feature/dpic-v1` · pushed · awaiting QA
 - Closes 6 correctness gaps: derived-fields totals, `loan_account_payments_details.dpi_amount`, `transaction_reversal_details.dpi_amount`, repayment reversal DPI walker, `EXCESS_AMT` reversal recompute, payments-reversal clone copies `dpiAmount`. Pattern: forward path was built but persistence audit / write-side / reversal walker / clone paths were skipped.
 
 ---
 
 ## 2026-05-06 — DPIC v1 — manual completion of gaps in Claude-session WIP (3.3.2)
 
-- **Repos:** `novopay-platform-accounting-v2` `2f3c7e25a 456b4d34e 0d0376b85`, `novopay-platform-initial-setup` `716a4bd4` · `feature/dpic-v1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `2f3c7e25a 456b4d34e 0d0376b85`, `trustt-platform-initial-setup` `716a4bd4` · `feature/dpic-v1` · pushed · awaiting QA
 - Closes 8 correctness gaps in the prior WIP: GL postings actually fire, `loanRepayment` carries DPI split, DPD base = PRIN+INT+DPI (per UD §5.5), idempotent flyway scripts + V000xxx naming, NPA detection, deterministic txn-ref-numbers, sub-type system-property overrides, Vo metadata propagation.
 
 ---
 
 ## 2026-05-06 — DPIC v1 — WIP head-start scaffolding (3.3.2)
 
-- **Repos:** `novopay-platform-accounting-v2`, `novopay-platform-initial-setup` · `feature/dpic-v1` (off `upstream/mfi_integration_v3.3.2`) · local WIP
+- **Repos:** `trustt-platform-accounting`, `trustt-platform-initial-setup` · `feature/dpic-v1` (off `upstream/mfi_integration_v3.3.2`) · local WIP
 - Calc service + appropriation processor + code-master seeds done; batch jobs + Loan 360 + lifecycle handlers deferred pending Product Q1-Q6 in `claude/dpic/05-open-questions.md`.
 
 ---
 
 ## 2026-05-05 — SDCP — stabilize child MFT post-bank handler under high CLMT contention
 
-- **Repos:** `novopay-platform-accounting-v2` `5bb49d7a4` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `5bb49d7a4` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
 - MFT path aligned with NEFT v2 fix from `c2583dca9`: 1→2 OLE retries + targeted catch in `execute()` so OLE doesn't escape reactor pipeline or trigger SOF re-fire.
 
 ---
 
 ## 2026-05-05 — SDCP — split disburseLoan: commit CLMT rows in own Transaction before child-bank-call block
 
-- **Repos:** `novopay-platform-accounting-v2` `a6fdc1c88` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
+- **Repos:** `trustt-platform-accounting` `a6fdc1c88` · `mfi_integration_v3.2.8.4.1` · pushed · awaiting QA
 - Replaces the reverted `e8fef5c35` Java REQUIRES_NEW with an XML `<Transaction>` block split. Orphan recovery via existing `PerformChildLoanBankDisbursementProcessor:74-78` lazy-create fallback.
 
 ---
 
 ## 2026-05-05 — SDCP — CLMT REQUIRES_NEW commit + idempotency guard — **REVERTED in `2d9730818`**
 
-- **Repos:** `novopay-platform-accounting-v2` `e8fef5c35` (reverted by `2d9730818`) · `mfi_integration_v3.2.8.4.1`
+- **Repos:** `trustt-platform-accounting` `e8fef5c35` (reverted by `2d9730818`) · `mfi_integration_v3.2.8.4.1`
 - Safety story relied on `accountingBankServiceRetryJob` recovering orphan CLMT rows — false (it queries CRR, not queue; `childLoanEventProcessingBatchJob` excludes CLMT). Rolled back same day. `8abd48f49` retry-with-backoff remains as defence pending proper fix (landed in `a6fdc1c88`).
 
 ---
 
 ## 2026-05-05 — SDCP — retry CLMT queue lookup in child NEFT callback to absorb orchestration commit lag
 
-- **Repos:** `novopay-platform-accounting-v2` `8abd48f49` · `mfi_integration_v3.2.8.4.1` · pushed
+- **Repos:** `trustt-platform-accounting` `8abd48f49` · `mfi_integration_v3.2.8.4.1` · pushed
 - 5-attempt linear-backoff retry (100/200/300/400ms; total max ≈1s) on `findOneByFiller2` covers the bank-async-callback-arrives-mid-orchestration-commit window observed for parent 6009682825 (20-child SHG).
 
 ---
 
 ## 2026-05-05 — SDCP — canonicalise child NEFT UTR write to filler_3
 
-- **Repos:** `novopay-platform-accounting-v2` `7ab965fe3` · `mfi_integration_v3.2.8.4.1` · pushed
+- **Repos:** `trustt-platform-accounting` `7ab965fe3` · `mfi_integration_v3.2.8.4.1` · pushed
 - Sync/inquiry post-bank UTR write now matches async-callback path (both → `filler_3`) so `BookChildLoanProcessor` can populate `loan_disbursement_mode_details.utr_number` regardless of which path delivered success. Pre-fix: sync wrote to `filler_1`, UTR stranded.
 
 ---
 
 ## 2026-05-05 — SDCP — stabilize child NEFT v2 post-bank handler under CLMT contention
 
-- **Repos:** `novopay-platform-accounting-v2` `c2583dca9` · `mfi_integration_v3.2.8.4.1` · pushed
+- **Repos:** `trustt-platform-accounting` `c2583dca9` · `mfi_integration_v3.2.8.4.1` · pushed
 - Closes OLE-drop / lost-CRR / re-fire-bank-call cascade observed for parent 11849960 on QA3.
 
 ---
 
 ## 2026-05-04 — SDCP — atomic child in-flight gate + broadened NEFT stage-1 evidence
 
-- **Repos:** `novopay-platform-lib` `4cb437b28`, `novopay-platform-accounting-v2` `ede4aa325` · `mfi_integration_v3.2.8.4.1` · pushed
+- **Repos:** `trustt-platform-lib` `4cb437b28`, `trustt-platform-accounting` `ede4aa325` · `mfi_integration_v3.2.8.4.1` · pushed
 - Fixes TOCTOU race in cursor's Redis dedup + over-strict NEFT stage-1 guard that was blocking 5+ QA3 children.
 
 ---
 
 ## 2026-05-04 — SDCP — fail-fast on task pre-step errors, defer FREEZE flip until after task workflow
 
-- **Repos:** `novopay-platform-accounting-v2` `154b500c0` · `SDCP-fix-task-id-orphan-3.2.8.4` (off `upstream/mfi_integration_v3.2.8.4`) · pushed · PR pending vs khoslalabs upstream
+- **Repos:** `trustt-platform-accounting` `154b500c0` · `SDCP-fix-task-id-orphan-3.2.8.4` (off `upstream/mfi_integration_v3.2.8.4`) · pushed · PR pending vs khoslalabs upstream
 
 ---
 
 ## 2026-05-04 — SDCP — friendly error for duplicate `client_reference_number` on `loanRepayment`
 
-- **Repos:** `novopay-platform-accounting-v2` `d358a9034`, `novopay-platform-initial-setup` `62cefa1e` · `SDCP-fix-dup-crn-loan-repayment` (off `upstream/mfi_integration_v3.3.1.0.0`) · force-pushed · PRs open vs khoslalabs upstream
+- **Repos:** `trustt-platform-accounting` `d358a9034`, `trustt-platform-initial-setup` `62cefa1e` · `SDCP-fix-dup-crn-loan-repayment` (off `upstream/mfi_integration_v3.3.1.0.0`) · force-pushed · PRs open vs khoslalabs upstream
 
 ## 2026-07-13 | initial-setup | rollback SQL 3.4.2.2_055 → 3.4.2.1_017
 Prepared prod rollback for 13 Flyway scripts between tags (audit/los/masterdata/notifications/platform_master). Path: scripts/sql/deploy/rollback_initial_setup_3.4.2.2_055_to_3.4.2.1_017.sql. QA: varchar(255)→TEXT on forwarded_notes; truncate USING left(...,255) required.

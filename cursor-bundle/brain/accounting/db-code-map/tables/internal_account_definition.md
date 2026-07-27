@@ -19,11 +19,11 @@ Logical account types the platform knows about. Bound to GL via `gl_id`. Every `
 
 ## JPA entity
 
-[`internalaccountdefinition/entity/InternalAccountDefinitionEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/internalaccountdefinition/entity/InternalAccountDefinitionEntity.java)
+[`internalaccountdefinition/entity/InternalAccountDefinitionEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/internalaccountdefinition/entity/InternalAccountDefinitionEntity.java)
 
 ## DAO
 
-[`internalaccountdefinition/daoservice/InternalAccountDefinitionDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/internalaccountdefinition/daoservice/InternalAccountDefinitionDAOService.java)
+[`internalaccountdefinition/daoservice/InternalAccountDefinitionDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/internalaccountdefinition/daoservice/InternalAccountDefinitionDAOService.java)
 
 ## Writers
 

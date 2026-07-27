@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.payments` |
 | DB schema | `mfi_payments` (inferred — entities use unqualified `@Table`) |
 | Repo | [`novopay-platform-payments/`](../../novopay-platform-payments/) |
-| Service CLAUDE.md | [`novopay-platform-payments/CLAUDE.md`](../../novopay-platform-payments/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-payments/CLAUDE.md`](../../trustt-platform-payments/CLAUDE.md) |
 | Code | 37 core entities; ~258 Requests |
 
 ## API surface — orchestration XMLs

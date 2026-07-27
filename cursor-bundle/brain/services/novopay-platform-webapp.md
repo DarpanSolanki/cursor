@@ -9,7 +9,7 @@
 | Framework | Angular **20.3.16** (per `package.json`; CLAUDE.md says 19 — package.json is authoritative) |
 | Structure | Single project (not Nx/monorepo); all features under `src/app/` |
 | Repo | [`novopay-platform-webapp/`](../../novopay-platform-webapp/) |
-| Service CLAUDE.md | [`novopay-platform-webapp/CLAUDE.md`](../../novopay-platform-webapp/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-webapp/CLAUDE.md`](../../trustt-platform-webapp/CLAUDE.md) |
 
 ## Top-level feature areas
 
@@ -27,8 +27,8 @@ Under [`src/app/`](../../novopay-platform-webapp/src/app/), grouped by domain:
 
 ## Backend communication
 
-- All HTTP via [`src/app/service-module/np-http/np-http.service.ts`](../../novopay-platform-webapp/src/app/service-module/np-http/np-http.service.ts) (`NpHttpService` wrapper).
-- API endpoints in [`src/app/services/resource-factory.constants.ts`](../../novopay-platform-webapp/src/app/services/resource-factory.constants.ts).
+- All HTTP via [`src/app/service-module/np-http/np-http.service.ts`](../../trustt-platform-webapp/src/app/service-module/np-http/np-http.service.ts) (`NpHttpService` wrapper).
+- API endpoints in [`src/app/services/resource-factory.constants.ts`](../../trustt-platform-webapp/src/app/services/resource-factory.constants.ts).
 - Three HTTP interceptors:
   - `WhitelistInterceptorService` — URL allow-list
   - `ErrorInterceptorService` — global error handling

@@ -15,7 +15,7 @@
 - **Current behavior**: Logs `apiName|<full request json>|<cacheKey>` at DEBUG.
 - **Expected behavior**: Log only correlation ids (tenant, external_ref_number, cacheKey hash) and status.
 - **Gap reference**: (covered under security lens; will be linked to a GAP when LOS security batch is written)
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
 
 ## Edge Case: Redis in-flight dedupe key has no TTL → stale key blocks replays indefinitely
 
@@ -23,7 +23,7 @@
 - **Current behavior**: Key is set without TTL in Redis DB index `ACCOUNTING`; subsequent calls skip as duplicate.
 - **Expected behavior**: Set with TTL + token + safe cleanup.
 - **Gap reference**: `GAP-003` (existing)
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java`
 
 ## Edge Case: Disbursement sync consumer logs full consumed map (PII leakage)
 
@@ -31,7 +31,7 @@
 - **Current behavior**: Logs `clientMap` at INFO.
 - **Expected behavior**: Log only minimal fields (external_ref_number, entity_type, status, error_code) and Kafka offset.
 - **Gap reference**: (covered under security lens; will be linked to a GAP when LOS security batch is written)
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/kafka/DisbursementSyncConsumer.java`
 
 ## Edge Case: Missing `entity_type` causes LOS sync no-op (status not persisted)
 
@@ -39,5 +39,5 @@
 - **Current behavior**: Service logs and returns early → LOS does not update failure_reason/status.
 - **Expected behavior**: Consumer tolerates missing field (fallback) and persists status.
 - **Gap reference**: `GAP-001` and `GAP-002` (existing)
-- **File**: `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
+- **File**: `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
 

@@ -31,6 +31,19 @@ If this file disagrees with `kg watermark` / git status, **live state wins**.
 
 **Workspace root:** `/home/darpan/Documents/sliProd` (not `/home/darpan/darpan`).
 
+## Workspace rails (post GAP-G / FINAL SYNC — 2026-07-27)
+
+| Rail | Where | Rule |
+|------|-------|------|
+| Universal invariants | `scripts/testing/flowtest/invariants.py` + `finish_scenario` | Money flowtests always snapshot+assert GL/AIR/BPI-after-FB |
+| Selection tiering | `scripts/lib/impact_tests.py` | Direct-impact = full; sibling blast = invariant-smoke; dcf.* family ≤3 representative full |
+| FIX-PLAN gate | `scripts/lib/ship_discipline_gate.py` | Money ships need `fix_plan` budget block |
+| LAN taxonomy | `scripts/lib/loan_taxonomy.py` + `cursor-bundle/kg/curated/loan_taxonomy.json` | SHG=parent+children; JLG/INDL=childless — refuse child scenario on JLG |
+| Penal scope | `flow_coverage.json` `scope=out` | Penal calc/booking permanently out of YES denominator |
+| Orient-before-edit | `kg.py` touch + `after-ship-path-edit` | Fail-closed if money path edited without KG orient this session |
+| Incremental KG | `kg_after_edit.py` + watermark | Light patch on edit; fail-closed STALE when branch-set drifts — full `kg-switch` when needed |
+| Canonical test CLI | `scripts/bin/ntest.sh` | Prefer over raw `ntest.py` |
+
 ## Agent entry
 
 1. `cursor-bundle/memory/MEMORY.md`
@@ -40,4 +53,5 @@ If this file disagrees with `kg watermark` / git status, **live state wins**.
 
 ## Cross-repo train mismatch (ASK-H08)
 
-Accounting claims on `mfi_integration_v3.7.1` are valid for **accounting-v2 only**. LOS (`3.4.2.4`), payments (`3.4.2`), and DPI feature branches are **mixed** — do not assert cross-service contracts without aligning trains or scoping the claim.
+Accounting claims on `mfi_integration_v3.7.1` are valid for **accounting only**. LOS, payments, and DPI feature branches are **mixed** — do not assert cross-service contracts without aligning trains or scoping the claim.
+

@@ -70,7 +70,7 @@ Runtime manifestation of a non-binding leg (exception vs silently-zero leg) **NO
 
 ## RECONCILIATION — "DPI mirrors INTEREST" (product principle, confirmed in code)
 
-Product states DPI behaves the same as normal interest. Confirmed in code: existing interest accrual posts **single-leg top-level `amount`** ([InterestAccrualBookingBatchService.java:281](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java#L281)) with rule `source_amount="amount"` (QA), and the same 3 sub_types `NORMAL_ACCRUAL`/`NPA_ACCRUAL`/`NPA_ACCRUAL_BOOKING`. The DPI code mirrors interest faithfully (DPI-prefixed keys). **It is the SHEET's amount-key names that diverge from the interest convention** — and in two flows they collide.
+Product states DPI behaves the same as normal interest. Confirmed in code: existing interest accrual posts **single-leg top-level `amount`** ([InterestAccrualBookingBatchService.java:281](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualbooking/InterestAccrualBookingBatchService.java#L281)) with rule `source_amount="amount"` (QA), and the same 3 sub_types `NORMAL_ACCRUAL`/`NPA_ACCRUAL`/`NPA_ACCRUAL_BOOKING`. The DPI code mirrors interest faithfully (DPI-prefixed keys). **It is the SHEET's amount-key names that diverge from the interest convention** — and in two flows they collide.
 
 3-way comparison (INTEREST key from QA | DPI code key file:line | DPI sheet `source_amount`):
 

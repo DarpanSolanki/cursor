@@ -42,7 +42,7 @@ Each child in `data` triggers the mapped child Request (e.g. `childLoanRepayment
 
 ## The "stuck row" failure mode
 
-`ChildLoanEventsProcessingProcessor` catches all exceptions and only logs ([source](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L70-L72)). A failed row stays at `event_status='P'` forever.
+`ChildLoanEventsProcessingProcessor` catches all exceptions and only logs ([source](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/events/queue/ChildLoanEventsProcessingProcessor.java#L70-L72)). A failed row stays at `event_status='P'` forever.
 
 **Diagnostic:** [`db-tools/canned-queries/03-pending-event-queue.sql`](../../../db-tools/canned-queries/03-pending-event-queue.sql)
 **Runbook:** [`../../../runbooks/shg-jlg-children-missing.md`](../../../runbooks/shg-jlg-children-missing.md)

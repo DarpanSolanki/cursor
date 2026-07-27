@@ -11,7 +11,7 @@
 | Server port | `8013` |
 | Code stats | 130 entities, 530 processors, 308 DAOs, 48 services |
 | Repo | [`novopay-mfi-los/`](../../novopay-mfi-los/) |
-| Service CLAUDE.md | [`novopay-mfi-los/CLAUDE.md`](../../novopay-mfi-los/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-los/CLAUDE.md`](../../trustt-platform-los/CLAUDE.md) |
 
 ## API surface — orchestration XML
 
@@ -35,7 +35,7 @@ Domains it covers (sample of 60):
 
 ## Lifecycle stages — the loan journey
 
-`StageConstants.java` (`/home/darpan/darpan/novopay-mfi-los/src/main/java/in/novopay/los/constant/StageConstants.java`) defines:
+`StageConstants.java` (`/home/darpan/Documents/sliProd/trustt-platform-los/src/main/java/in/novopay/los/constant/StageConstants.java`) defines:
 
 `ONBOARDING` → `QUICK_DATA_ENTRY` (QDE) → `ELIGIBILITY_SUMMARY` (ES) → `LOAN_DETAILS`
 
@@ -57,7 +57,7 @@ Per-stage status enums live under [`src/main/java/in/novopay/los/enums/`](../../
 
 ## Kafka
 
-Producer: `producer_id_los`. Disbursement is published by [`DisburseLoanAPIUtil`](../../novopay-mfi-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java) onto topic `disburse_loan_api_<tenant>` with format `disburseLoan|<json>|disburseLoan{productId}_{externalRefNumber}`. Result event is consumed back from accounting.
+Producer: `producer_id_los`. Disbursement is published by [`DisburseLoanAPIUtil`](../../trustt-platform-los/src/main/java/in/novopay/los/util/DisburseLoanAPIUtil.java) onto topic `disburse_loan_api_<tenant>` with format `disburseLoan|<json>|disburseLoan{productId}_{externalRefNumber}`. Result event is consumed back from accounting.
 
 Consumer landscape (17 bean types, ~20 topic prefixes — full list in `MessageBroker.xml`, lines 1–994):
 

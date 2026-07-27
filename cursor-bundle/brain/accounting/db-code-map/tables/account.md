@@ -32,7 +32,7 @@ Every account-like entity (loan, savings, internal_account) starts as a row here
 
 ## JPA entity
 
-[`account/common/entity/AccountEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/common/entity/AccountEntity.java)
+[`account/common/entity/AccountEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/common/entity/AccountEntity.java)
 
 - `@Inheritance(strategy = InheritanceType.JOINED)` — base of the inheritance hierarchy
 - `@Table(name = "account")`
@@ -40,8 +40,8 @@ Every account-like entity (loan, savings, internal_account) starts as a row here
 
 ## DAO + Repository
 
-- [`account/common/repository/AccountDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/common/repository/AccountDAOService.java)
-- [`account/common/repository/AccountRepository.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/common/repository/AccountRepository.java)
+- [`account/common/repository/AccountDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/common/repository/AccountDAOService.java)
+- [`account/common/repository/AccountRepository.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/common/repository/AccountRepository.java)
 
 ## Writers
 

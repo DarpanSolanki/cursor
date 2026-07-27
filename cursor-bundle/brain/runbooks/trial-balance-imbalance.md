@@ -37,7 +37,7 @@ Example: `transaction_master` has the row, `transaction_partition_details` shows
 
 Cause: a rule in the catalogue evaluated to zero for the credit leg. Check the rule's `condition_expression` in `transaction_accounting_rule` — likely it referenced an ExecutionContext key that wasn't populated by an earlier processor.
 
-`ExecuteTransactionRulesProcessor` skips legs where `calculatedAmount == 0` ([line 343](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L343)). The fix is upstream — find the processor that should have populated the missing key.
+`ExecuteTransactionRulesProcessor` skips legs where `calculatedAmount == 0` ([line 343](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L343)). The fix is upstream — find the processor that should have populated the missing key.
 
 ### B. Both legs posted but to the wrong GL
 
@@ -59,13 +59,13 @@ A `reverseTransaction` should produce mirror legs (DR/CR flipped). Check `transa
 
 If `entry_type = 'TAX'`, the engine called `taxEngine.compute(...)`. Check `tax_component_slab` for matching slab against the source amount. If no slab matched → tax leg is zero → asymmetric.
 
-Engine: [`TaxEngine.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/core/TaxEngine.java)
+Engine: [`TaxEngine.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/core/TaxEngine.java)
 
 ### F. Pricing leg miscomputed
 
 `entry_type = 'PRICE'` calls `priceEngine.compute(...)` → walks `price_setup` slabs. Same pattern as tax.
 
-Engine: [`PriceEngine.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/core/PriceEngine.java)
+Engine: [`PriceEngine.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/core/PriceEngine.java)
 
 ### G. EOD posting partial
 
@@ -90,9 +90,9 @@ Any row returned = an asymmetric transaction.
 
 ## Code anchors
 
-- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
+- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
 - TaxEngine / PriceEngine: same package
-- Child GL prefix: [`ChildGeneralLedgerEntity.java:25`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java#L25)
+- Child GL prefix: [`ChildGeneralLedgerEntity.java:25`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java#L25)
 - TB jobs: `batchnew/trialbalance/*`
 
 ## Related

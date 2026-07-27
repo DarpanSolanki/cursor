@@ -96,7 +96,7 @@ When debugging a stuck loan: **check `mfi_task.task` first** (look for tasks wit
 
 ## MFI 3-stage workflow (loanPrepayment)
 
-This is the path the production webapp uses for foreclosure. The orchestration is `loanPrepayment` in [`loans_orc.xml`](../../novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml) (≈ line 1675). Workflow definition lives in `mfi_task.workflow_master` (code=`FORECLOSURE`) → `workflow_stage_details` rows pointing at 3 task types.
+This is the path the production webapp uses for foreclosure. The orchestration is `loanPrepayment` in [`loans_orc.xml`](../../trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml) (≈ line 1675). Workflow definition lives in `mfi_task.workflow_master` (code=`FORECLOSURE`) → `workflow_stage_details` rows pointing at 3 task types.
 
 ### Stage table (workflow_master.code='FORECLOSURE')
 
@@ -214,7 +214,7 @@ loanPrepayment(APPROVE) / do_prepayment branch (deposit-driven, see line 2004 in
 
 Before [the SDCP-foreclosure-task-status fix], the processor **computed** `task_status` from `populateTaskDetails(taskId, sequence, channelCode, entity, isProceed, functionCode)` and silently fell back to `PENDING` when `function_code != "APPROVE"` AND `taskId != null` AND `sequence == null`. This caused the deposit-flow `task_status` to regress to PENDING because runtime processors in `do_prepayment` could leave `function_code` as something other than `APPROVE` when this processor was finally invoked. The XML `<IParam fieldName="task_status" value="APPROVED" />` was a lie — the processor ignored it.
 
-The fix in [`UpdatePrepaymentTaskDetailsProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdatePrepaymentTaskDetailsProcessor.java) reads the explicit `task_status` IParam after `populateTaskDetails` and overrides if present. This makes the XML the source of truth and is the pattern you should follow when wiring NEW prepayment stages.
+The fix in [`UpdatePrepaymentTaskDetailsProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/processor/UpdatePrepaymentTaskDetailsProcessor.java) reads the explicit `task_status` IParam after `populateTaskDetails` and overrides if present. This makes the XML the source of truth and is the pattern you should follow when wiring NEW prepayment stages.
 
 If you see a closed loan with `prepayment_details.task_status='PENDING' AND prepayment_status='APPROVED' AND loan_status='CLOSED'`, it's a pre-fix row — safe to data-patch to `task_status='APPROVED'`.
 
@@ -262,7 +262,7 @@ For the entire group exiting:
 
 The "Loan Foreclosure" screen (Balanced Principal / Interest / Current+Future LPP / Foreclosure Fee / **CBC Fee**) is a **live quote**, computed on the fly — there is **no `prepayment_details` row yet** (that's only created on initiation; the post-initiation *view* is `getLoanForeclosureDetails` → `GetLoanForeclosureDetailsProcessor`, which reads `prepayment_details`/`prepayment_charge_details`). Don't confuse the two.
 
-- **Request:** `fetchLoanForeclosureSimulationDetails` ([loans_orc.xml:3401](../../novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml)) → `FetchLoanForeclosureSimulationDetailsProcessor`. The maker/validate path computes the same quote via `ValidateLoanPrepaymentDataProcessor` under `loanPrepayment` DEFAULT.
+- **Request:** `fetchLoanForeclosureSimulationDetails` ([loans_orc.xml:3401](../../trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml)) → `FetchLoanForeclosureSimulationDetailsProcessor`. The maker/validate path computes the same quote via `ValidateLoanPrepaymentDataProcessor` under `loanPrepayment` DEFAULT.
 - **Each charge line is resolved through the product scheme's price-setup**, not read raw. The charge code is resolved by `findPriceSetupCodeByProductSchemeIdAndCatalogueTypeAndSubType(schemeId, TYPE, DEFAULT)` against an **active** `product_scheme__transaction_catalogue__price_setup` mapping, then the matching outstanding `loan_due_details` rows are summed. If the mapping is missing/`is_deleted`, the line silently shows **0.00**.
 - **CBC Fee** in particular is sourced from `loan_due_details` (charge_code = resolved CBC code, tenant = `SI_Fee`), **NOT** from `presentation_bounce_charge_details` (that's the SI bounce ledger, batch-only).
 - Full chain + the "charge shows 0" failure mode: [`../accounting/charge-price-setup-resolution.md`](../accounting/charge-price-setup-resolution.md) · runbook [`../runbooks/charge-amount-shows-zero.md`](../runbooks/charge-amount-shows-zero.md) · `kg why fetchLoanForeclosureSimulationDetails`.

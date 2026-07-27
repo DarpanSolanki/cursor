@@ -47,14 +47,14 @@ When a loan closes (`loan_status=CLOSED` via auto-closure or foreclosure) AND `e
 1. **Staging step** (`proactiveExcessAmountRefundStaging` — runs as part of closure or on a schedule):
    - Reads CLOSED loans with positive excess and refund_allowed
    - For each, INSERTS into `file_staging_proactive_refund` with status=PENDING
-   - Source: [`ProactiveExcessAmountRefundStagingItemProcessor`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefundstaging/ProactiveExcessAmountRefundStagingItemProcessor.java)
+   - Source: [`ProactiveExcessAmountRefundStagingItemProcessor`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/refund/proactiveexcessamountrefundstaging/ProactiveExcessAmountRefundStagingItemProcessor.java)
 
 2. **Process step** (`proactiveExcessAmountRefund`):
    - Reads `file_staging_proactive_refund` WHERE status=PENDING
    - For each, calls vendor refund (UPI/NEFT) via STP bank service
    - On success: posts the refund txn (same legs as standard) + marks staging row PROCESSED
    - On failure: marks FAILED + retried by `accountingBankServiceRetryJob`
-   - Source: [`batchnew/refund/proactivereversetransaction/ProactiveRefundFileStaging.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/refund/proactivereversetransaction/ProactiveRefundFileStaging.java)
+   - Source: [`batchnew/refund/proactivereversetransaction/ProactiveRefundFileStaging.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/refund/proactivereversetransaction/ProactiveRefundFileStaging.java)
 
 3. **Failure rollback** (`proactiveReverseTransaction`):
    - If vendor returns failure days later (vendor-side reverse-feed):

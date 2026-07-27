@@ -8,22 +8,22 @@
 
 | Master table | Java entity | What it defines |
 |---|---|---|
-| `transaction_catalogue` | [TransactionCatalogueEntity](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/entity/TransactionCatalogueEntity.java) | A *named transaction* (e.g. `LOAN_DISB_PRIN`, `LOAN_REP_INT`, `PENAL_INT_BOOK`). Every `postTransaction` call carries a `transaction_catalogue_id`. |
-| `transaction_accounting_rule` | [TransactionAccountingRuleEntity](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/entity/TransactionAccountingRuleEntity.java) | One row per "leg" of the transaction. Holds: source-amount key, debit placeholder, credit placeholder, fallback credit placeholder, entry type, entry sub-type, condition expression, narration templates. |
-| `placeholder_master` | [PlaceholderMasterEntity](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/placeholdermaster/entity/PlaceholderMasterEntity.java) | A *symbolic account name* (e.g. `BANK_AC`, `LOAN_PRINCIPAL_AC`, `INTEREST_INCOME_AC`) with two flags: `isActorAccount`, `isExternallyPassedAccount`. |
-| `product_transaction_catalogue_placeholder` | [ProductTransactionCataloguePlaceholderInternalAccountDefinitionEntity](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/entity/ProductTransactionCataloguePlaceholderInternalAccountDefinitionEntity.java) | The *binding* — for product P + transaction-catalogue T + placeholder X, what `internal_account_definition_id` (and which GL code) does X resolve to? This is the only product-specific master here. |
-| `internal_account` | [InternalAccountEntity](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/internalaccount/entity/InternalAccountEntity.java) | The *physical* office-scoped account instance backing an `internal_account_definition`. Resolved by `(office_id, internal_account_definition_id)`. |
+| `transaction_catalogue` | [TransactionCatalogueEntity](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/entity/TransactionCatalogueEntity.java) | A *named transaction* (e.g. `LOAN_DISB_PRIN`, `LOAN_REP_INT`, `PENAL_INT_BOOK`). Every `postTransaction` call carries a `transaction_catalogue_id`. |
+| `transaction_accounting_rule` | [TransactionAccountingRuleEntity](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/entity/TransactionAccountingRuleEntity.java) | One row per "leg" of the transaction. Holds: source-amount key, debit placeholder, credit placeholder, fallback credit placeholder, entry type, entry sub-type, condition expression, narration templates. |
+| `placeholder_master` | [PlaceholderMasterEntity](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/placeholdermaster/entity/PlaceholderMasterEntity.java) | A *symbolic account name* (e.g. `BANK_AC`, `LOAN_PRINCIPAL_AC`, `INTEREST_INCOME_AC`) with two flags: `isActorAccount`, `isExternallyPassedAccount`. |
+| `product_transaction_catalogue_placeholder` | [ProductTransactionCataloguePlaceholderInternalAccountDefinitionEntity](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/entity/ProductTransactionCataloguePlaceholderInternalAccountDefinitionEntity.java) | The *binding* — for product P + transaction-catalogue T + placeholder X, what `internal_account_definition_id` (and which GL code) does X resolve to? This is the only product-specific master here. |
+| `internal_account` | [InternalAccountEntity](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/internalaccount/entity/InternalAccountEntity.java) | The *physical* office-scoped account instance backing an `internal_account_definition`. Resolved by `(office_id, internal_account_definition_id)`. |
 
 Plus the GL itself:
 
 - `general_ledger` — the chart of accounts. `code` is what shows up on the trial balance.
-- `child_general_ledger` — a parallel ledger keyed off the parent GL; entries get a code prefixed with `CG` for child loan transactions ([ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java#L25)).
+- `child_general_ledger` — a parallel ledger keyed off the parent GL; entries get a code prefixed with `CG` for child loan transactions ([ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/generalledger/entity/ChildGeneralLedgerEntity.java#L25)).
 
 ---
 
 ## 2. The `postTransaction` Request — top-level pipeline
 
-[product_transaction_orc.xml:3-37](../../novopay-platform-accounting-v2/deploy/application/orchestration/product_transaction_orc.xml#L3-L37)
+[product_transaction_orc.xml:3-37](../../trustt-platform-accounting/deploy/application/orchestration/product_transaction_orc.xml#L3-L37)
 
 ```
 postTransaction
@@ -53,7 +53,7 @@ The `<API id="postTransaction">` calls that show up everywhere in the orchestrat
 
 ## 3. `ExecuteTransactionRulesProcessor` — the engine itself
 
-Source: [ExecuteTransactionRulesProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
+Source: [ExecuteTransactionRulesProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
 
 Two phases:
 
@@ -71,8 +71,8 @@ For each `TransactionAccountingRuleEntity` row in the catalogue's rule list, in 
 3. **Compute the entry.** Two paths:
     - `entry_type = "TRANSFER"` → no extra computation, `calculatedAmount = sourceAmount`, no tax.
     - Else → look up a Spring bean named `<lower(entry_type)>Engine` and call `compute(executionContext, request)`. The two ComputeEngine implementations are:
-        - `priceEngine` → [PriceEngine.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/core/PriceEngine.java) — for charges/fees, walks `price_setup` slabs against `product_scheme_transaction_accounting_rule_price_setup`, then applies a `PricingStrategy` (`SystemComputedPricingStrategy` or `ExternalPricingStrategy`).
-        - `taxEngine` → [TaxEngine.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/core/TaxEngine.java) — for tax components, walks `tax_component_slab` and dispatches to one of `InclusiveTaxCalculator`, `ExclusiveTaxCalculator`, `PrecalculatedTaxComputationStrategy`, etc.
+        - `priceEngine` → [PriceEngine.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/core/PriceEngine.java) — for charges/fees, walks `price_setup` slabs against `product_scheme_transaction_accounting_rule_price_setup`, then applies a `PricingStrategy` (`SystemComputedPricingStrategy` or `ExternalPricingStrategy`).
+        - `taxEngine` → [TaxEngine.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/core/TaxEngine.java) — for tax components, walks `tax_component_slab` and dispatches to one of `InclusiveTaxCalculator`, `ExclusiveTaxCalculator`, `PrecalculatedTaxComputationStrategy`, etc.
 4. **Persist intermediate values.** The computed amount + tax amount are placed back in the ExecutionContext under the rule's `reference_code`, so later rules (sequenced after this one) can read them with `${reference_code}` in their own `condition_expression`. **This is how multi-leg transactions chain together.**
 5. **Build a `TransactionRuleDTO`** with the resolved debit/credit/fallback account numbers, GL codes, source/calculated amounts, narrations, part-info fields, and append it to `transaction_rule_dto_list`.
 
@@ -87,7 +87,7 @@ For each `TransactionRuleDTO` whose `calculatedAmount != 0`:
     - Three `part_info_*` fields with placeholder substitution against the ExecutionContext
     - `narration` (template substituted)
     - `entity_id` and `entity_type` (e.g. loan_account_id + "LOANS")
-    - **For child loan transactions** (`is_child_account = true` in the ExecutionContext): `gl_code = "CG" + gl_code` so the row hits `child_general_ledger` instead of `general_ledger` ([line 391-393](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393)). Prefix constant: `ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX = "CG"`.
+    - **For child loan transactions** (`is_child_account = true` in the ExecutionContext): `gl_code = "CG" + gl_code` so the row hits `child_general_ledger` instead of `general_ledger` ([line 391-393](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L391-L393)). Prefix constant: `ChildGeneralLedgerEntity.CHILD_GL_CODE_PREFIX = "CG"`.
 3. The full list goes into the ExecutionContext as `transaction_partition_details_list`. `createTransactionPartitionDetailsProcessor` (next in the pipeline) is what bulk-INSERTs these into `transaction_partition_details`.
 
 ### Display / proof rule (force-bill + any child postTransaction)
@@ -163,11 +163,11 @@ If a flow's GL hit looks wrong, the **first place to look** is which keys these 
 
 ## 7. The repayment-appropriation step (preceeds posting)
 
-For a `loanRepayment` / `childLoanRepayment`, before `postTransaction` is called, the amount must be split across due components (principal, interest, penalty, fee). That happens in [RepaymentApproppriationProcessor.java](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java).
+For a `loanRepayment` / `childLoanRepayment`, before `postTransaction` is called, the amount must be split across due components (principal, interest, penalty, fee). That happens in [RepaymentApproppriationProcessor.java](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java).
 
-Algorithm (verified against [process()](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L64-L121)):
+Algorithm (verified against [process()](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L64-L121)):
 
-1. Look up `loan_product_asset_criteria` for the loan's product + current asset-criteria slab → returns `(comp1, comp2, comp3, comp4, liquidationOrder)`. Each `comp*` is one of `APP_LOGIC_PRIN`, `APP_LOGIC_INT`, `APP_LOGIC_PNLT`, `APP_LOGIC_FEES` (codes in [AccountingConstants.java:37-40](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L37-L40)). The order of those four columns IS the appropriation precedence.
+1. Look up `loan_product_asset_criteria` for the loan's product + current asset-criteria slab → returns `(comp1, comp2, comp3, comp4, liquidationOrder)`. Each `comp*` is one of `APP_LOGIC_PRIN`, `APP_LOGIC_INT`, `APP_LOGIC_PNLT`, `APP_LOGIC_FEES` (codes in [AccountingConstants.java:37-40](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L37-L40)). The order of those four columns IS the appropriation precedence.
 2. Sort `loan_due_details_list` by `liquidationOrder`:
     - `LIQ_INSTL` → installment first (due_date), then component
     - `LIQ_COMP` → component first, then due_date
@@ -211,7 +211,7 @@ Used everywhere — internalise these:
 | `134207` thrown | No `product_transaction_catalogue_placeholder` row for `(product_id, transaction_catalogue_id, placeholder_code)` | the binding table |
 | `134182` thrown | No `internal_account` instance for `(office_id, internal_account_definition_id)` and no default-office override either | check `internal_account` table for that office, or `loan.internal.account.default.office.id` config (default `1`) |
 | Tax came out as zero on a fee | TaxEngine ran but `tax_component_slab` returned no slab match for the source amount | `tax_component_slab` rows for that tax component |
-| Same `client_reference_number` rejected | Idempotency dedup ([clientReferenceNumberDedupProcessor](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java)) found a prior `transaction_master` row | by design — caller must pass a fresh ref |
+| Same `client_reference_number` rejected | Idempotency dedup ([clientReferenceNumberDedupProcessor](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java)) found a prior `transaction_master` row | by design — caller must pass a fresh ref |
 
 ---
 

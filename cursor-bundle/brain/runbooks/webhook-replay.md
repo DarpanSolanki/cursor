@@ -73,7 +73,7 @@ Before replaying any event:
 
 - Gateway dedup: [`novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/`](../../novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/)
 - Audit replay: `getApiResponseByStan` Request in audit
-- Accounting txn dedup: `clientReferenceNumberDedupProcessor` in [`novopay-platform-accounting-v2`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java)
+- Accounting txn dedup: `clientReferenceNumberDedupProcessor` in [`novopay-platform-accounting-v2`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ClientReferenceNumberDedupProcessor.java)
 
 ## Related
 

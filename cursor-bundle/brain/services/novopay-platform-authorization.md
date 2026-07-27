@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.authorization` |
 | DB schema | `mfi_authorization` |
 | Repo | [`novopay-platform-authorization/`](../../novopay-platform-authorization/) |
-| Service CLAUDE.md | [`novopay-platform-authorization/CLAUDE.md`](../../novopay-platform-authorization/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-authorization/CLAUDE.md`](../../trustt-platform-authorization/CLAUDE.md) |
 
 ## API surface
 
@@ -28,7 +28,7 @@ None. Producer is configured but no-op. No consumers.
 
 ## Inbound — the gateway is the primary caller
 
-[`AuthorizationCheckFilter.java`](../../novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java) calls `checkPermissionByUsecase` on every request to validate the user's role grants the usecase before forwarding.
+[`AuthorizationCheckFilter.java`](../../trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/filter/AuthorizationCheckFilter.java) calls `checkPermissionByUsecase` on every request to validate the user's role grants the usecase before forwarding.
 
 ## DB clusters
 

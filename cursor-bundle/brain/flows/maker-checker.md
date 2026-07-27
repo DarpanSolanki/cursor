@@ -145,7 +145,7 @@ The `getUseCaseDetails` call against actor returns metadata for codes like `GENL
 
 ## Code anchors
 
-- approval Requests: [`novopay-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`](../../novopay-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml)
+- approval Requests: [`trustt-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`](../../trustt-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml)
 - accounting maker side: every `createOrUpdate*` Request in accounting wraps with `${maker_checker_enabled}` Control
 - Use-case master: actor service
 

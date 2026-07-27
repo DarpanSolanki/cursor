@@ -175,9 +175,9 @@ For SHG/JLG parent: parent stays `ACTIVE` after parent-side reschedule; children
 
 - **Orchestration**: `loans_orc.xml::loanAccountPartPrepayment`, `group_mfi_orc.xml:409` (`childLoanPartPrepayment`), `group_mfi_orc.xml:429` (`parentLoanAccountPartPrepayment`)
 - **Inline reschedule**: `loanAccountRescheduleBatchProcessor` in `loan/rescheduling/processor/`
-- **Per-child installment splitter**: [`loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java)
-- **Per-child posting**: [`ChildPostPartPrepaymentTransactionProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildPostPartPrepaymentTransactionProcessor.java)
-- **Event generator (SHG/JLG)**: [`ChildLoanPartPrepaymentEventGenerationProcessor.java`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildLoanPartPrepaymentEventGenerationProcessor.java)
+- **Per-child installment splitter**: [`loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/CreateChildLoanPartPrepaymentInstallmentProcessor.java)
+- **Per-child posting**: [`ChildPostPartPrepaymentTransactionProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildPostPartPrepaymentTransactionProcessor.java)
+- **Event generator (SHG/JLG)**: [`ChildLoanPartPrepaymentEventGenerationProcessor.java`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/partprepayment/processor/ChildLoanPartPrepaymentEventGenerationProcessor.java)
 - **Entity**: `LoanAccountPartPrepaymentDetailsEntity` (in `loan/partprepayment/entity/`)
 - **DB tables**: [`loan_account_part_prepayment_details`](../../accounting/db-code-map/tables/_TEMPLATE.md) (Tier 2 — not yet curated; use `inspect-table.sh` for live schema)
 

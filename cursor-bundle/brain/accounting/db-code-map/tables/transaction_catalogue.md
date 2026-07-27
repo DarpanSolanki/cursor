@@ -20,11 +20,11 @@ Catalogue of named transactions. Each is bound to a list of rules (`transaction_
 
 ## JPA entity
 
-[`transaction/entity/TransactionCatalogueEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/entity/TransactionCatalogueEntity.java)
+[`transaction/entity/TransactionCatalogueEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/entity/TransactionCatalogueEntity.java)
 
 ## DAO
 
-[`transaction/repository/TransactionCatalogueDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/repository/TransactionCatalogueDAOService.java)
+[`transaction/repository/TransactionCatalogueDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/repository/TransactionCatalogueDAOService.java)
 
 ## Writers
 
@@ -35,9 +35,9 @@ Catalogue of named transactions. Each is bound to a list of rules (`transaction_
 
 ## Readers
 
-- [`GetTransactionCatalogueIdProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueIdProcessor.java) — resolves `code` → `id` at the start of `postTransaction`
-- [`GetTransactionCatalogueListProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueListProcessor.java) — admin UI listings
-- [`GetTransactionCatalogueListGroupedByProductTypeProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueListGroupedByProductTypeProcessor.java) — grouped views
+- [`GetTransactionCatalogueIdProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueIdProcessor.java) — resolves `code` → `id` at the start of `postTransaction`
+- [`GetTransactionCatalogueListProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueListProcessor.java) — admin UI listings
+- [`GetTransactionCatalogueListGroupedByProductTypeProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/GetTransactionCatalogueListGroupedByProductTypeProcessor.java) — grouped views
 
 ## Related Requests
 

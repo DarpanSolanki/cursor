@@ -1,6 +1,6 @@
 # Dependency & version risk map
 
-**Scan:** all `**/build.gradle` under workspace service roots + `novopay-platform-lib/**/build.gradle` + `novopay-platform-dependency-mgmt/build.gradle`. **`pom.xml`:** none in tree. **`package.json`:** `novopay-platform-webapp/package.json` (Angular 20.x — separate from JVM stack). **`requirements.txt`:** none. **Date:** 2026-04-07.
+**Scan:** all `**/build.gradle` under workspace service roots + `novopay-platform-lib/**/build.gradle` + `trustt-platform-dependency-mgmt/build.gradle`. **`pom.xml`:** none in tree. **`package.json`:** `trustt-platform-webapp/package.json` (Angular 20.x — separate from JVM stack). **`requirements.txt`:** none. **Date:** 2026-04-07.
 
 ## 1. Platform / Novopay Gradle plugin coordinates (by consuming root)
 
@@ -38,7 +38,7 @@
 | Dependency | Version | Where | Risk |
 |------------|---------|-------|------|
 | `org.springframework.boot` plugin | **3.5.6** | accounting-v2, los, actor, payments, task, audit, batch, notifications, approval, authorization, masterdata, dms, api-gateway | **Higher** than infra-platform/lib subprojects documented at **3.2.11** in `.cursor/architecture.md` — **major Boot skew** between **application** and **library** compile targets is intentional per composite build but increases “works in service / breaks in lib” drift risk |
-| Spring Cloud BOM (accounting-v2 ext) | **2023.0.1** | `novopay-platform-accounting-v2/build.gradle` `ext.springCloudVersion` | Medium — verify other services use same BOM where applicable |
+| Spring Cloud BOM (accounting-v2 ext) | **2023.0.1** | `trustt-platform-accounting/build.gradle` `ext.springCloudVersion` | Medium — verify other services use same BOM where applicable |
 
 ## 3. Dead / orphan dependencies
 
@@ -56,4 +56,4 @@
 
 ---
 
-**Evidence paths:** `novopay-platform-accounting-v2/build.gradle`, `novopay-mfi-los/build.gradle`, `novopay-platform-dependency-mgmt/build.gradle`, `novopay-platform-lib/infra-platform/build.gradle`, `novopay-platform-lib/infra-transaction-hdfc/build.gradle`.
+**Evidence paths:** `trustt-platform-accounting/build.gradle`, `trustt-platform-los/build.gradle`, `trustt-platform-dependency-mgmt/build.gradle`, `novopay-platform-lib/infra-platform/build.gradle`, `novopay-platform-lib/infra-transaction-hdfc/build.gradle`.

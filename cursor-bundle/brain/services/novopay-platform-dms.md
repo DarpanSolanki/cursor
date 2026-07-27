@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.dms` |
 | DB schema | (single cluster, unqualified) — primary tables `document_master`, `file_master`, `document_tags`, `sequence_generator` |
 | Repo | [`novopay-platform-dms/`](../../novopay-platform-dms/) |
-| Service CLAUDE.md | [`novopay-platform-dms/CLAUDE.md`](../../novopay-platform-dms/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-dms/CLAUDE.md`](../../trustt-platform-dms/CLAUDE.md) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (6 Requests)
 
@@ -37,7 +37,7 @@ Processors branch on the storage type at runtime:
 
 Used by accounting `disburseLoan` (and other LOS flows) to gate execution on KYC + agreement + NACH-mandate verification. Sets `document_master.isVerified = true` for a batch of document codes.
 
-[`VerifyDocumentsProcessor.java`](../../novopay-platform-dms/src/main/java/in/novopay/dms/processor/VerifyDocumentsProcessor.java)
+[`VerifyDocumentsProcessor.java`](../../trustt-platform-dms/src/main/java/in/novopay/dms/processor/VerifyDocumentsProcessor.java)
 
 ## Document taxonomy
 

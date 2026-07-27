@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.notifications` |
 | DB schema | `mfi_notifications` |
 | Repo | [`novopay-platform-notifications/`](../../novopay-platform-notifications/) |
-| Service CLAUDE.md | [`novopay-platform-notifications/CLAUDE.md`](../../novopay-platform-notifications/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-notifications/CLAUDE.md`](../../trustt-platform-notifications/CLAUDE.md) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (~13 Requests)
 
@@ -29,8 +29,8 @@ Used heavily by accounting at the end of every interactive Request — `accounti
 
 ## Outbound
 
-- **FCM gateway** — `https://fcm.googleapis.com/fcm/send` ([`CustomFCMService.java`](../../novopay-platform-notifications/src/main/java/in/novopay/notifications/fcm/service/CustomFCMService.java))
-- **SMS gateways** — Vodafone XML POST via Apache `HttpClient` ([`SmsGatewayImplVFLowPriority.java`](../../novopay-platform-notifications/src/main/java/in/novopay/notifications/sms/adapter/vf/SmsGatewayImplVFLowPriority.java))
+- **FCM gateway** — `https://fcm.googleapis.com/fcm/send` ([`CustomFCMService.java`](../../trustt-platform-notifications/src/main/java/in/novopay/notifications/fcm/service/CustomFCMService.java))
+- **SMS gateways** — Vodafone XML POST via Apache `HttpClient` ([`SmsGatewayImplVFLowPriority.java`](../../trustt-platform-notifications/src/main/java/in/novopay/notifications/sms/adapter/vf/SmsGatewayImplVFLowPriority.java))
 - Other SMS/email providers via similar adapter pattern
 
 ## Inbound

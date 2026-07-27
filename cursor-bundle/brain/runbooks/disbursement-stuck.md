@@ -113,7 +113,7 @@ If `maker_checker_enabled=1` for `disburseLoan`, the loan stays in `APPROVED` un
 - Consumer: `trustt-platform-accounting/.../LmsMessageBrokerConsumer.java` — owner-token lock + `getDisburseDecision` terminal/LOCK/continuation/fail-closed matrix
 - Producer: `trustt-platform-los/.../DisburseLoanAPIUtil.java` — owner-token marker before Kafka publish
 - Shared primitive: `trustt-platform-lib/infra-cache/.../RedisCacheClient.java` — Lua `removeIfValueEquals`
-- State machine: [`mfi_orc.xml:4-200`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) — `function_sub_code` IParam matrix
+- State machine: [`mfi_orc.xml:4-200`](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L4) — `function_sub_code` IParam matrix
 - Retry job: scheduled by batch service; logic in `accounting:accountingBankServiceRetryJob` Request
 
 ## Related

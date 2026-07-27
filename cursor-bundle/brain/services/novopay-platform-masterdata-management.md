@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.masterdata` |
 | DB schema | `mfi_masterdata` |
 | Repo | [`novopay-platform-masterdata-management/`](../../novopay-platform-masterdata-management/) |
-| Service CLAUDE.md | [`novopay-platform-masterdata-management/CLAUDE.md`](../../novopay-platform-masterdata-management/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-masterdata-management/CLAUDE.md`](../../trustt-platform-masterdata-management/CLAUDE.md) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (~22 Requests)
 
@@ -22,7 +22,7 @@ Top: `getDatatypeMaster`, `getCodeMasterListBasedOnGroup`, `getBranchList`, `get
 Code masters are identified by a **(dataType, dataSubType)** pair, e.g. `(TAX_TYPE, DEFAULT)` or `(REPAYMENT_MODE, LOANS)`. Each maps to a list of code-value rows in `code_master_details`.
 
 Entities:
-- [`CodeMasterEntity.java`](../../novopay-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemanagement/entity/CodeMasterEntity.java) — header
+- [`CodeMasterEntity.java`](../../trustt-platform-masterdata-management/src/main/java/in/novopay/masterdata/codemanagement/entity/CodeMasterEntity.java) — header
 - `code_master_details` — values
 
 ### How services consume master data

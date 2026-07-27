@@ -13,7 +13,7 @@ Mirrors `interest_accrual_details` (account_id, base_amount, start/end_date, int
 ## Writers
 
 - [`PenalInterestAccrualCalculationItemWriter`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/penal/) — INSERT
-- [`PenalInterestAccrualBookingItemWriter`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/batchnew/penal/penalaccrualbooking/PenalInterestAccrualBookingItemWriter.java) — UPDATE + posts to GL via `postTransaction` and INSERTs PINT rows in `loan_due_details`
+- [`PenalInterestAccrualBookingItemWriter`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/penal/penalaccrualbooking/PenalInterestAccrualBookingItemWriter.java) — UPDATE + posts to GL via `postTransaction` and INSERTs PINT rows in `loan_due_details`
 
 ## Readers
 

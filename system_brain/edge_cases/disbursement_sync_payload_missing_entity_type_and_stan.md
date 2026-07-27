@@ -14,8 +14,8 @@
 - Missing `stan` weakens async correlation between original LOS request and accounting sync-back.
 
 ## Evidence files
-- `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
-- `novopay-mfi-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
+- `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+- `trustt-platform-los/src/main/java/in/novopay/los/service/disbursement/DisbursementSyncService.java`
 
 ## Current risk
 - High for correctness (`entity_type` contract drift).

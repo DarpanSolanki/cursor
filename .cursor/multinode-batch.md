@@ -21,7 +21,7 @@ What this branch does **not** implement (no evidence found in code):
 ### Startup
 
 - `AutoScheduler.onLoadScheduleGroups()` triggers scheduling load on application startup:
-  - `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`
+  - `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java`
   - Calls `TenantDetailsDAOService.getAllTenants()` and selects the **first** tenant as the “batch tenant”
   - Builds an `ExecutionContext` and calls `BatchScheduleService.autoSchedule(...)`
 
@@ -71,8 +71,8 @@ Because dependency tracking is in-memory:
 
 Batch uses `NovopayInternalAPIClient` to trigger jobs across services:
 
-- `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`
-- `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java`
+- `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`
+- `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/DirectJobExecutor.java`
 
 This inherits the infra risk: **no retry/circuit breaker** (documented as High in `.cursor/gaps-and-risks.md`).
 

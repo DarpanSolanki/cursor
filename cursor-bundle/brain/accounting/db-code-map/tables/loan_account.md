@@ -102,7 +102,7 @@ Track which actor/employee originated and currently services the loan.
 
 ## JPA entity
 
-[`account/loans/entity/LoanAccountEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java)
+[`account/loans/entity/LoanAccountEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/entity/LoanAccountEntity.java)
 
 Notes:
 - `@PrimaryKeyJoinColumn(name = "account_id")` — JOINED inheritance from `AccountEntity`
@@ -112,14 +112,14 @@ Notes:
 
 ## DAO + Repository
 
-- [`account/loans/repository/LoanAccountDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountDAOService.java)
-- [`account/loans/repository/LoanAccountRepository.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java)
+- [`account/loans/repository/LoanAccountDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountDAOService.java)
+- [`account/loans/repository/LoanAccountRepository.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/repository/LoanAccountRepository.java)
 
 ## Writers
 
 | Processor | Action | Triggered by Request | Notes |
 |---|---|---|---|
-| [`CreateLoanAccountProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) | INSERT | `disburseLoan` (mfi_orc.xml:4, function_sub_code DEFAULT/LAN_CREATED) | initial `loan_status=APPROVED`, `disbursement_status=LAN_CREATED` |
+| [`CreateLoanAccountProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/loans/processor/CreateLoanAccountProcessor.java) | INSERT | `disburseLoan` (mfi_orc.xml:4, function_sub_code DEFAULT/LAN_CREATED) | initial `loan_status=APPROVED`, `disbursement_status=LAN_CREATED` |
 | `UpdateLoanAccountStatusProcessor` | UPDATE `loan_status` (+ syncs `account.status` via `LOAN_ACCOUNT_ACCOUNT_STATUS_MAP`) | almost every state-change Request: `disburseLoan`, `loanForeclosure`, `loanPrepayment`, `loanAccountClosure`, `*Reopening`, `*Restructuring`, `*Rebooking`, `*PartPrepayment`, `*DisbursementCancellation`, `loanWriteoff` | The single point through which loan_status changes |
 | `loanAccountDpdCalcProcessor` | UPDATE `past_due_days` | EOD `loanAccountDpdCalcJob`; inline in `loanRepayment`, foreclosure | uses calendar + due_details |
 | `loanAccountAssetCriteriaProcessor` | UPDATE `asset_criteria_group_id`, `asset_criteria_slabs_id` | EOD; inline in repayment/foreclosure | walks `loan_product_asset_criteria` |

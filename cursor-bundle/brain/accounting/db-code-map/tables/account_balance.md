@@ -14,7 +14,7 @@
 
 ## JPA entity
 
-[`account/balance/entity/AccountBalanceEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/account/balance/entity/AccountBalanceEntity.java)
+[`account/balance/entity/AccountBalanceEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/account/balance/entity/AccountBalanceEntity.java)
 
 ## DAO + Repository
 

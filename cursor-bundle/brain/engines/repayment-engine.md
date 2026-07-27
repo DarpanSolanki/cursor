@@ -3,9 +3,9 @@
 **Branch verified:** `mfi_integration_v3.3.1.0.1` (head `149009993`, audited 2026-05-08).
 **3.3.1.0.1 deltas:** (i) dup-CRN error code returned by `clientReferenceNumberDedupProcessor` is now `134497` (was `134067`) — friendly error per `d358a9034`; (ii) SI Manual Presentation customer-name fix + optimization (`3ce59eaf2`, `562957eb8`, `a59d96066`) — purely cosmetic on the SI presentation screen, no flow change.
 **Authoritative paths:**
-- [loans_orc.xml](../novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml) `<Request name="loanRepayment">` at L958.
-- [mfi_orc.xml](../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml) `<Request name="loanRepayment">` at L2661 (DDP / `novosli` channel).
-- [group_mfi_orc.xml](../novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml) `<Request name="childLoanRepayment">` at L33.
+- [loans_orc.xml](../trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml) `<Request name="loanRepayment">` at L958.
+- [mfi_orc.xml](../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml) `<Request name="loanRepayment">` at L2661 (DDP / `novosli` channel).
+- [group_mfi_orc.xml](../trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml) `<Request name="childLoanRepayment">` at L33.
 - Java: [src/main/java/in/novopay/accounting/loan/repayment/](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/) (parent), [loan/grouploan/repayment/](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/repayment/) (child enqueue).
 
 ---
@@ -118,7 +118,7 @@ Identical pattern in `loans_orc.xml` L1228–L1254 and `mfi_orc.xml` L2793–L28
 
 ## 5. Parent → Child enqueue
 
-Java: [`ChildLoanRepaymentEventGenerationProcessor.java`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/grouploan/repayment/processor/ChildLoanRepaymentEventGenerationProcessor.java) (L20–L53).
+Java: [`ChildLoanRepaymentEventGenerationProcessor.java`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/repayment/processor/ChildLoanRepaymentEventGenerationProcessor.java) (L20–L53).
 
 Invoked at:
 - `loans_orc.xml` L1224
@@ -203,7 +203,7 @@ Verified test inventory on this branch:
 
 ## 9.5. NPA suspense — **set during appropriation, not as post-step**
 
-**Critical insight (was undocumented):** `RepaymentApproppriationProcessor.process()` ([file](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)) populates `suspense_amount = interest_amount` inline at L113–L116 **only when** `loanAccountEntity.getNpaAgeingStartDate() != null`. The 1-st `postTransaction` then resolves the credit leg through the rule engine — credit goes to `INT_SUSPENSE` (not `INT_INCOME`) because the placeholder binding for NPA loans is configured that way in `transaction_accounting_rule`.
+**Critical insight (was undocumented):** `RepaymentApproppriationProcessor.process()` ([file](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)) populates `suspense_amount = interest_amount` inline at L113–L116 **only when** `loanAccountEntity.getNpaAgeingStartDate() != null`. The 1-st `postTransaction` then resolves the credit leg through the rule engine — credit goes to `INT_SUSPENSE` (not `INT_INCOME`) because the placeholder binding for NPA loans is configured that way in `transaction_accounting_rule`.
 
 The 2-nd (NPA reverse) `postTransaction` (L2807–L2827 in mfi_orc.xml; L2228–L2254 in loans_orc.xml) only fires when `do_npa_reverse_movement=true` (set by `CheckNPAReverseMovementRequiredProcessor`). It uses a **separate `client_reference_number = "NPA_" + primary_cref`** (L31 of CheckNPAReverseMovementRequiredProcessor) — independent dedup keying so the primary repayment + NPA reverse can be replayed without collision.
 
@@ -231,7 +231,7 @@ These processors are referenced by ORC but not currently locatable in the code s
 - `populateAmountForExcessRepaymentModeProcessor` (loans_orc.xml L1132, mfi_orc.xml L2739, group_mfi_orc.xml L83) — populates `excess_amount` based on `repayment_mode`.
 - `checkEligibleForRepaymentAppropriationProcessor` (same call sites) — gates whether the appropriation block runs at all. If it sets `do_repayment_appropriation=false`, the appropriation chain is skipped and `principal_amount` / `interest_amount` are **never populated** — subsequent `postTransaction` will fail validation.
 
-**Action:** when debugging "appropriation skipped" symptoms, grep wider — `grep -rn "checkEligibleForRepaymentAppropriationProcessor\|populateAmountForExcessRepaymentModeProcessor" /home/darpan/darpan/`. If still missing, the processor name in ORC may be a Spring bean alias or tenant-overridden — consult `application.properties` and component-scan paths.
+**Action:** when debugging "appropriation skipped" symptoms, grep wider — `grep -rn "checkEligibleForRepaymentAppropriationProcessor\|populateAmountForExcessRepaymentModeProcessor" /home/darpan/Documents/sliProd/`. If still missing, the processor name in ORC may be a Spring bean alias or tenant-overridden — consult `application.properties` and component-scan paths.
 
 ---
 
@@ -240,9 +240,9 @@ These processors are referenced by ORC but not currently locatable in the code s
 ```bash
 # All postTransaction call-sites in repayment ORC
 grep -n 'name="postTransaction"' \
-  novopay-platform-accounting-v2/deploy/application/orchestration/loans_orc.xml \
-  novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml \
-  novopay-platform-accounting-v2/deploy/application/orchestration/group_mfi_orc.xml
+  trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml \
+  trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml \
+  trustt-platform-accounting/deploy/application/orchestration/group_mfi_orc.xml
 
 # Confirm 3-way mode mapping parity for a specific mode
 grep -n 'value="<MODE_NAME>"' \

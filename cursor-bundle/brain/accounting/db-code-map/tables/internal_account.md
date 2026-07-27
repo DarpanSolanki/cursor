@@ -18,11 +18,11 @@ Resolution: a placeholder (e.g. `BANK_AC`) → a `internal_account_definition` (
 
 ## JPA entity
 
-[`internalaccount/entity/InternalAccountEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/internalaccount/entity/InternalAccountEntity.java)
+[`internalaccount/entity/InternalAccountEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/internalaccount/entity/InternalAccountEntity.java)
 
 ## DAO
 
-[`internalaccount/daoservice/InternalAccountDAOService.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/internalaccount/daoservice/InternalAccountDAOService.java)
+[`internalaccount/daoservice/InternalAccountDAOService.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/internalaccount/daoservice/InternalAccountDAOService.java)
 
 ## Writers
 
@@ -30,7 +30,7 @@ Resolution: a placeholder (e.g. `BANK_AC`) → a `internal_account_definition` (
 
 ## Readers
 
-- [`ExecuteTransactionRulesProcessor.getInternalAccountEntity`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L300) — falls back to `loan.internal.account.default.office.id` (default `1`) if the office-specific instance isn't found
+- [`ExecuteTransactionRulesProcessor.getInternalAccountEntity`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java#L300) — falls back to `loan.internal.account.default.office.id` (default `1`) if the office-specific instance isn't found
 - Admin UI listings
 
 ## Related Requests

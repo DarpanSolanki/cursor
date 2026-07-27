@@ -6,7 +6,7 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 
 | Branch | Latest | Service | Sha | Tag |
 |--------|--------|---------|-----|-----|
-| `mfi_integration_v3.4.2.4` | 2026-07-22 | accounting-v2 | `935c52743` | kg-flow |
+| `mfi_integration_v3.4.2.4` | 2026-07-27 | accounting-v2 | `f377e6c80` | kg-flow |
 | `main` | 2026-07-21 | sliProd | `workspace` | kb-only |
 | `mfi_integration_v3.7.1` | 2026-07-21 | accounting-v2 | `ac8f185bbc` | kg-flow |
 | `feature/tdpqa72-dfc-acceptance-labd-lapd` | 2026-07-17 | accounting-v2 | `a7e6d1d1c4` | kg-flow |
@@ -52,6 +52,8 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 - 2026-07-10 `068247cc9` — SDCP-10227 bank error filler REQUIRES_NEW persist
 
 ### `mfi_integration_v3.4.2.4`
+- 2026-07-27 `f377e6c80` — TDPQA-72 bpi_amount=0 after force-bill (all paths)
+- 2026-07-27 `dc06ba9aa` — TDPQA-72 FC force-bill INT_AMT parity
 - 2026-07-22 `935c52743` — DCF parent force-bill CRN unique per claim
 - 2026-07-22 `9b6454df6` — TDPQA-72 parent FB + excess=0
 - 2026-07-20 `7e1642a57e` — Parent disburse rejects multi member REP_ACCT (134126)

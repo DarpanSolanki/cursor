@@ -14,7 +14,7 @@
 - Ops RCA becomes harder because skip reason is visible in accounting logs but not reflected in LOS process state.
 
 ## Evidence file
-- `novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
+- `trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java`
 
 ## Risk
 - High (cross-service state divergence).

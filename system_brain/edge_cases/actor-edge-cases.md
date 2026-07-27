@@ -5,7 +5,7 @@
 
 ## Kafka producer — null message key (same pattern as payments GAP-042)
 
-- **File:** `novopay-platform-actor/src/main/java/in/novopay/actor/common/utility/ActorKafkaProducer.java`  
+- **File:** `trustt-platform-actor/src/main/java/in/novopay/actor/common/utility/ActorKafkaProducer.java`  
 - **Behaviour:** `novopayKafkaProducer.sendMessage(topic, null, message, null)` — no stable partition key for `session_activity_login_`, `geo_tracking_login_logout_audit_`, `update_customer_loan_details_failed`, etc.  
 - **Risk:** Ordering not guaranteed per entity; operational diagnosis harder under retry.  
 - **Mining:** Not opened as a new GAP number — treat as **duplicate pattern** of GAP-042 / document per-service; fix should be coordinated platform-wide.

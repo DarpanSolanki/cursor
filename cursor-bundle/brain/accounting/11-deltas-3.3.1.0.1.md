@@ -108,7 +108,7 @@ Commit `d358a9034` (`SDCP | Return friendly error for duplicate client_reference
 
 ## 5. `runEODJobs` orchestration scope (DOC FIX, no code change)
 
-This was a long-running misunderstanding in the brain docs. Verified by reading [`MfiRunEODJobsProcessor.java:23–28`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java#L23):
+This was a long-running misunderstanding in the brain docs. Verified by reading [`MfiRunEODJobsProcessor.java:23–28`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/custom/mfi/jobs/processor/MfiRunEODJobsProcessor.java#L23):
 
 `runEODJobs` invokes only **5 child Requests** sequentially:
 1. `loanAccountDpdCalcJob`

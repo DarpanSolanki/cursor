@@ -77,7 +77,7 @@ Check:
 
 ## Code anchors
 
-- approval Requests: [`novopay-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`](../../novopay-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml)
+- approval Requests: [`trustt-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml`](../../trustt-platform-approval/deploy/application/orchestration/ServiceOrchestrationXML.xml)
 - Maker pattern: every `createOrUpdate*` Request in accounting wraps with `${maker_checker_enabled}` Control
 - Lifecycle: [`../accounting/07-loan-account-lifecycle.md`](../accounting/07-loan-account-lifecycle.md)
 

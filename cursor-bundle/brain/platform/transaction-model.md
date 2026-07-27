@@ -75,7 +75,7 @@ Implications:
 
 ## Where this matters in practice — disburseLoan
 
-[`mfi_orc.xml:4`](../../novopay-platform-accounting-v2/deploy/application/orchestration/mfi_orc.xml#L4) declares:
+[`mfi_orc.xml:4`](../../trustt-platform-accounting/deploy/application/orchestration/mfi_orc.xml#L4) declares:
 
 ```xml
 <Request name="disburseLoan" isAsync="true" explicitTxnMgmt="true">
@@ -91,8 +91,8 @@ Several DAO methods carry their own `@Transactional` annotations and **commit in
 
 | DAO method | Propagation | Effect |
 |---|---|---|
-| `ClientRequestResponseLogDAOService.save` ([line 39](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java#L39)) | `REQUIRES_NEW` | CRR rows commit IMMEDIATELY regardless of orchestration's outer transaction. This is why CRR audit always lands cleanly even when queue updates fail. |
-| `ClientRequestResponseLogDAOService.saveAll` ([line 46](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java#L46)) | `REQUIRES_NEW` | Same. |
+| `ClientRequestResponseLogDAOService.save` ([line 39](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java#L39)) | `REQUIRES_NEW` | CRR rows commit IMMEDIATELY regardless of orchestration's outer transaction. This is why CRR audit always lands cleanly even when queue updates fail. |
+| `ClientRequestResponseLogDAOService.saveAll` ([line 46](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/client/repository/ClientRequestResponseLogDAOService.java#L46)) | `REQUIRES_NEW` | Same. |
 | `LoanAccountEventsQueueDAOService.save` / `saveAll` | (none — joins caller) | Queue rows commit only when the caller's transaction commits. This was the source of the CLMT visibility race in disburseLoan. |
 | Spring Data JPA `JpaRepository.save` / `saveAll` (default) | `REQUIRED` | Joins caller's transaction; if no caller txn, opens its own short transaction. |
 

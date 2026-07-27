@@ -12,7 +12,7 @@
 | DB schema | `mfi_accounting` |
 | Error-code prefix | `NOT-` |
 | Repo | [`novopay-platform-accounting-v2/`](../../novopay-platform-accounting-v2/) |
-| Service CLAUDE.md | [`novopay-platform-accounting-v2/CLAUDE.md`](../../novopay-platform-accounting-v2/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-accounting/CLAUDE.md`](../../trustt-platform-accounting/CLAUDE.md) |
 
 ## API surface — orchestration XMLs
 
@@ -84,4 +84,4 @@ Almost every LMS feature or production issue ends here. The short rule: if money
 
 ## Local testing / regression suite
 
-For changes to disbursement (the most-tested path), the workspace ships a regression harness at [`/home/darpan/darpan/scripts/`](../../scripts/) — start at [`scripts/START_HERE.md`](../../scripts/START_HERE.md). Provides `make all` to run JLG/INDL/SHG flows against a local Yugabyte + accounting service and emits an HTML report with value-level DB validators (loan_account, schedule, mode_details, mandate, event queue, GL postings). Run before shipping any disburseLoan change.
+For changes to disbursement (the most-tested path), the workspace ships a regression harness at [`/home/darpan/Documents/sliProd/scripts/`](../../scripts/) — start at [`scripts/START_HERE.md`](../../scripts/START_HERE.md). Provides `make all` to run JLG/INDL/SHG flows against a local Yugabyte + accounting service and emits an HTML report with value-level DB validators (loan_account, schedule, mode_details, mandate, event queue, GL postings). Run before shipping any disburseLoan change.

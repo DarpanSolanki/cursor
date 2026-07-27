@@ -9,11 +9,11 @@
 | Java root package | `in.novopay.apigateway` |
 | DB schema | `mfi_api_gateway` |
 | Repo | [`novopay-platform-api-gateway/`](../../novopay-platform-api-gateway/) |
-| Service CLAUDE.md | [`novopay-platform-api-gateway/CLAUDE.md`](../../novopay-platform-api-gateway/CLAUDE.md) |
+| Service CLAUDE.md | [`trustt-platform-api-gateway/CLAUDE.md`](../../trustt-platform-api-gateway/CLAUDE.md) |
 
 ## Routing
 
-**No `<Request>` registry.** Routing is programmatic: `/api/{apiVersion}/{apiName}` → [`GatewayController.java:59`](../../novopay-platform-api-gateway/src/main/java/in/novopay/apigateway/GatewayController.java#L59) → `NovopayAPIClient.callAPI(apiName, version, ...)` → service registry resolves which service owns the apiName via `TenantDetailsDAOService` + `api_usecase_mapping`.
+**No `<Request>` registry.** Routing is programmatic: `/api/{apiVersion}/{apiName}` → [`GatewayController.java:59`](../../trustt-platform-api-gateway/src/main/java/in/novopay/apigateway/GatewayController.java#L59) → `NovopayAPIClient.callAPI(apiName, version, ...)` → service registry resolves which service owns the apiName via `TenantDetailsDAOService` + `api_usecase_mapping`.
 
 The `NovopayAPIClient` (in `infra-api-client`) is the routing brain.
 

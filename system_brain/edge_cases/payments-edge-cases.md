@@ -13,7 +13,7 @@
 - **Behavior**: `sendMessage(..., null, message, null)` — no stable entity key.
 - **Risk**: Partition churn; harder ordering guarantees under retry.
 - **Gap**: GAP-042  
-- **File**: `novopay-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`
+- **File**: `trustt-platform-payments/src/main/java/in/novopay/payments/common/util/PaymentsKafkaProducer.java`
 
 ## Edge: Bulk consumer success/failure log maps never populated (outer scope)
 
@@ -21,7 +21,7 @@
 - **Behavior**: Outer `failedRecords` / `successCollectionRefs` are not the same instances filled inside `processCollectionData` → INFO counts often **always zero** even when inner processing failed/succeeded.
 - **Risk**: False “all green” operations view; delayed incident detection.
 - **Gap**: GAP-043  
-- **File**: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
+- **File**: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
 
 ## Edge: JSON parse failure → null payload → silent skip
 
@@ -29,7 +29,7 @@
 - **Behavior**: `parseData` catches, logs error, returns `null`; processing skipped without DLQ in this method.
 - **Risk**: Lost collection intent if offset commits (data drift vs LMS/accounting expectations).
 - **Gap**: GAP-044  
-- **File**: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
+- **File**: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/consumer/CreateOrUpdateBulkCollectionConsumer.java`
 
 ## Edge: SMS / leader notification swallowed after collection save
 
@@ -37,7 +37,7 @@
 - **Behavior**: `try/catch` logs “Suppressing execption” and continues — DB state committed, comms may never run.
 - **Risk**: Customer/leader inconsistency (money recorded, no alert). Not the same as double-charge; pairs with support load.
 - **Gap**: GAP-045  
-- **File**: `novopay-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`
+- **File**: `trustt-platform-payments/src/main/java/in/novopay/payments/collections/mfi/repository/MfiCollectionsDAOService.java`
 
 ## NEFT stage-2 context gate
 

@@ -24,7 +24,7 @@ Master GL chart. Each row defines one ledger account: code, name, category (asse
 
 ## JPA entity
 
-[`generalledger/entity/GeneralLedgerEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/generalledger/entity/GeneralLedgerEntity.java)
+[`generalledger/entity/GeneralLedgerEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/generalledger/entity/GeneralLedgerEntity.java)
 
 ## DAO
 

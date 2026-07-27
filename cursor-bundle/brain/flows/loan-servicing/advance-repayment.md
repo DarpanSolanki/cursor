@@ -85,4 +85,4 @@ ACTIVE (with excess) ──advance batch fires──► ACTIVE (excess reduced) 
 
 - **Orchestration**: `loans_orc.xml::loanAdvanceRepayment`
 - **Batch wiring**: `mfi_batch.batch_job` row with name='loanAdvanceRepayment'
-- **Reuses**: [`RepaymentApproppriationProcessor`](../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) (same engine as user-driven repayment)
+- **Reuses**: [`RepaymentApproppriationProcessor`](../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java) (same engine as user-driven repayment)

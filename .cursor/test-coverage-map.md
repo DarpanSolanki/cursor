@@ -285,7 +285,7 @@ grep -r "LmsMessageBrokerConsumer" --include="*.java" */src/test | wc -l
 find . -path "*/deploy/application/orchestration/*.xml" | wc -l
 
 # Batch job beans
-grep -c '@Bean(name' novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/config/BatchJobPlaceholderConfig.java
+grep -c '@Bean(name' trustt-platform-accounting/src/main/java/in/novopay/accounting/config/BatchJobPlaceholderConfig.java
 ```
 
 ## 12) `trustt-platform-reporting` job name sample (first 40 of 103)

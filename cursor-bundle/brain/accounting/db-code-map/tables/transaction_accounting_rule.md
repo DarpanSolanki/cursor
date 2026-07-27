@@ -41,19 +41,19 @@ This is master data — populated at tenant onboarding, modified rarely (CRUD'd 
 
 ## JPA entity
 
-[`accountingrules/entity/TransactionAccountingRuleEntity.java`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/entity/TransactionAccountingRuleEntity.java)
+[`accountingrules/entity/TransactionAccountingRuleEntity.java`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/entity/TransactionAccountingRuleEntity.java)
 
 ## DAO
 
-[`accountingrules/repository/`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/repository/)
+[`accountingrules/repository/`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/repository/)
 
 ## Writers
 
 | Processor | Action | Triggered by Request |
 |---|---|---|
-| [`CreateAccountingRulesProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/processor/CreateAccountingRulesProcessor.java) | INSERT | `createOrUpdateAccountingRules` (maker submit) |
-| [`ModifyTransactionAccountingRuleProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/processor/ModifyTransactionAccountingRuleProcessor.java) | UPDATE | `createOrUpdateAccountingRules` (checker approve / re-edit) |
-| [`DeleteTransactionAccountingRuleProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/processor/DeleteTransactionAccountingRuleProcessor.java) | DELETE | `deleteAccountingRules` |
+| [`CreateAccountingRulesProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/processor/CreateAccountingRulesProcessor.java) | INSERT | `createOrUpdateAccountingRules` (maker submit) |
+| [`ModifyTransactionAccountingRuleProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/processor/ModifyTransactionAccountingRuleProcessor.java) | UPDATE | `createOrUpdateAccountingRules` (checker approve / re-edit) |
+| [`DeleteTransactionAccountingRuleProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/processor/DeleteTransactionAccountingRuleProcessor.java) | DELETE | `deleteAccountingRules` |
 
 ## Readers
 
@@ -62,9 +62,9 @@ THE big one:
 | Reader | Triggered by |
 |---|---|
 | `getTransactionRuleListProcessor` | `postTransaction` — loads the rules into EC `transaction_rule_list` |
-| [`ExecuteTransactionRulesProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java) | `postTransaction` — iterates the rule list |
-| [`GetTransactionAccountingRuleListProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/processor/GetTransactionAccountingRuleListProcessor.java) | `getTransactionAccountingRuleList` (admin UI) |
-| [`PopulateTransactionAccountingRuleByProductTypeProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/accountingrules/processor/PopulateTransactionAccountingRuleByProductTypeProcessor.java) | various preview Requests |
+| [`ExecuteTransactionRulesProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java) | `postTransaction` — iterates the rule list |
+| [`GetTransactionAccountingRuleListProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/processor/GetTransactionAccountingRuleListProcessor.java) | `getTransactionAccountingRuleList` (admin UI) |
+| [`PopulateTransactionAccountingRuleByProductTypeProcessor`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/accountingrules/processor/PopulateTransactionAccountingRuleByProductTypeProcessor.java) | various preview Requests |
 
 ## Related Requests
 

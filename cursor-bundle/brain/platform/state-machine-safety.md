@@ -10,9 +10,9 @@
 
 | Service | Owns | Method | Effect |
 |---|---|---|---|
-| [`ChildClmtStateMachineService`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) | `loan_account_events_queue.data->>'disbursement_status'` (CLMT rows for SHG/JLG child legs) | `transition(ChildClmtTransitionRequest)` | Atomic CAS via `@Modifying` UPDATE … WHERE `(data::jsonb)->>'disbursement_status' = ANY(string_to_array(:fromStatesCsv, ','))`. Returns `APPLIED` (1 row) or `REJECTED` (0 rows). |
+| [`ChildClmtStateMachineService`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildClmtStateMachineService.java) | `loan_account_events_queue.data->>'disbursement_status'` (CLMT rows for SHG/JLG child legs) | `transition(ChildClmtTransitionRequest)` | Atomic CAS via `@Modifying` UPDATE … WHERE `(data::jsonb)->>'disbursement_status' = ANY(string_to_array(:fromStatesCsv, ','))`. Returns `APPLIED` (1 row) or `REJECTED` (0 rows). |
 | | (same row) | `patchJsonFields(rowId, patches, filler2, updatedBy)` | State-agnostic — for advisory/error/info writes. Throws `IllegalArgumentException` if `patches` contains `disbursement_status`. **Use this for everything that is not a state transition.** |
-| [`LoanAccountStateMachineService`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java) | `loan_account.disbursement_status` (parent JLG/INDL flow) | `transition(LoanAccountTransitionRequest)` | Atomic CAS on the parent column. Same APPLIED / REJECTED contract. |
+| [`LoanAccountStateMachineService`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/LoanAccountStateMachineService.java) | `loan_account.disbursement_status` (parent JLG/INDL flow) | `transition(LoanAccountTransitionRequest)` | Atomic CAS on the parent column. Same APPLIED / REJECTED contract. |
 
 Both rejects on race-loss. Caller must check the result.
 
@@ -22,7 +22,7 @@ Both rejects on race-loss. Caller must check the result.
 
 **After a CAS returns APPLIED, do NOT call setters on the entity object you used to compute the request.**
 
-That entity is loaded by `PerformChildLoanBankDisbursementProcessor:74` (or analog) at the start of `disburseLoan` and stays in the outer NP-Executor thread's persistence context. `AbstractBaseEntity` has **no `@PreUpdate` / no `@UpdateTimestamp`** ([file:line](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/entity/AbstractBaseEntity.java#L35-L44)) — so the in-memory `updated_on` keeps its load-time value forever.
+That entity is loaded by `PerformChildLoanBankDisbursementProcessor:74` (or analog) at the start of `disburseLoan` and stays in the outer NP-Executor thread's persistence context. `AbstractBaseEntity` has **no `@PreUpdate` / no `@UpdateTimestamp`** ([file:line](../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/entity/AbstractBaseEntity.java#L35-L44)) — so the in-memory `updated_on` keeps its load-time value forever.
 
 When the outer `disburseLoan` transaction commits, Hibernate dirty-checks the entity, sees mutations on `data` / `event_status` / `filler_2`, and emits a plain `UPDATE` that **rewrites the row with the in-memory state including the stale `updated_on`** — undoing any later async-callback CAS to `COMPLETED`.
 
@@ -85,8 +85,8 @@ DTFC_SUCCESS(1) < NEFT_STAGE_1_PENDING(2) < NEFT_STAGE_1_SUCCESS(3) < NEFT_STAGE
 
 Canonical column is `loan_account_events_queue.filler_3` (commit `7ab965fe3`).
 
-- **Sync writer:** [`ChildNeftClmtPostBankService.applyClmtAndSave:104`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildNeftClmtPostBankService.java#L104) — passes `.filler3(utrNumber)` in the CAS request builder. **Never** does `entity.setFiller3(utr)` directly (would auto-flush-revert).
-- **Async writer:** [`DoGenericSyncSTPBankNeftCallBackProcessor.processLoanAccountForChildLoans:262`](../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L262) — same.
+- **Sync writer:** [`ChildNeftClmtPostBankService.applyClmtAndSave:104`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/service/ChildNeftClmtPostBankService.java#L104) — passes `.filler3(utrNumber)` in the CAS request builder. **Never** does `entity.setFiller3(utr)` directly (would auto-flush-revert).
+- **Async writer:** [`DoGenericSyncSTPBankNeftCallBackProcessor.processLoanAccountForChildLoans:262`](../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/disbursement/processor/DoGenericSyncSTPBankNeftCallBackProcessor.java#L262) — same.
 - **Reader:** `BookChildLoanProcessor.java:412` copies `event.getFiller3()` to `loan_disbursement_mode_details.utr_number`.
 
 ---

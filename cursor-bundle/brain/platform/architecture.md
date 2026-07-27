@@ -32,7 +32,7 @@
 
 ## 2. Accounting-v2 Spring Boot shell (verified)
 
-```30:37:novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/Application.java
+```30:37:trustt-platform-accounting/src/main/java/in/novopay/accounting/Application.java
 @SpringBootApplication
 @EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class })
 @ComponentScan(basePackages = "in.novopay")
@@ -90,7 +90,7 @@ Services depend on these as Gradle dependencies; **do not duplicate** framework 
    - `CallInternalOrchestrationProcessor` builds a new `ExecutionContext` and runs another Request with **explicit** transaction management — still not a shared DB transaction with the outer flow.
 
 3. **Kafka**
-   - Tenant-suffixed topics. **Accounting broker config**: `novopay-platform-accounting-v2/deploy/application/messagebroker/MessageBroker.xml` (see `.cursor/service-contracts.md` for beans). Broader contracts: `system_brain/events/kafka_topics.md`.
+   - Tenant-suffixed topics. **Accounting broker config**: `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml` (see `.cursor/service-contracts.md` for beans). Broader contracts: `system_brain/events/kafka_topics.md`.
 
 4. **No gRPC** observed as the primary pattern in this workspace; the spine is REST + Kafka + batch.
 
@@ -119,7 +119,7 @@ There are **two different “multi-node” concepts** in this workspace and they
 
 - **Scheduler service:** `novopay-platform-batch` runs scheduled batch groups and triggers jobs via internal HTTP.
 - **Distribution mechanism:** **in-process parallelism** using `CompletableFuture.runAsync(...)` on a fixed thread pool (`Executors.newFixedThreadPool(50)`) in:
-  - `novopay-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`
+  - `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java`
 - **Cross-node coordination:** **implicit** via shared Spring Batch execution tables queried through `JobService` and `BatchScheduleService`:
   - `BatchScheduleService.canStart(...)` uses “is any job STARTING/STARTED” checks across last executions.
   - `BatchScheduleService.isJobRunning(...)` consults `JobService.getLastJobExecution(jobName)`.

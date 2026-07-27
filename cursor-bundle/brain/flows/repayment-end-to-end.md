@@ -103,7 +103,7 @@ If a parent-level repayment is captured (rare; usually it's per-member), the par
 
 ## NPA + suspense
 
-If the loan has `npa_ageing_start_date != null`, the appropriation processor sets `suspense_amount = interest_amount` ([`RepaymentApproppriationProcessor.java:113-115`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L113-L115)). Downstream, the GL leg credits a **suspense GL** instead of interest income. When the loan exits NPA, a separate flow moves accumulated suspense back to interest income.
+If the loan has `npa_ageing_start_date != null`, the appropriation processor sets `suspense_amount = interest_amount` ([`RepaymentApproppriationProcessor.java:113-115`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L113-L115)). Downstream, the GL leg credits a **suspense GL** instead of interest income. When the loan exits NPA, a separate flow moves accumulated suspense back to interest income.
 
 ## Failure modes → runbook
 
@@ -121,9 +121,9 @@ See [`../runbooks/repayment-mismatch.md`](../runbooks/repayment-mismatch.md). Mo
 
 - Top-of-flow: `mfi_orc.xml:2661` (`loanRepayment` Request)
 - Group variant: `group_mfi_orc.xml:33` (`childLoanRepayment` Request)
-- Appropriation: [`RepaymentApproppriationProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
-- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
-- Component types: [`AccountingConstants.java:42-45`](../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L42-L45)
+- Appropriation: [`RepaymentApproppriationProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java)
+- Posting engine: [`ExecuteTransactionRulesProcessor.java`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/transaction/processor/ExecuteTransactionRulesProcessor.java)
+- Component types: [`AccountingConstants.java:42-45`](../../trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AccountingConstants.java#L42-L45)
 
 ## Where to dig deeper
 

@@ -21,7 +21,7 @@ Key columns: `id`, `asset_criteria_master_id`, `min_dpd`, `max_dpd`, `asset_clas
 ## Readers
 
 - [`loanAccountAssetCriteriaProcessor`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/) — looks up slab for a loan's DPD
-- `loanProductAssetCriteriaDAOService.getAssetCriteriaSlabDetailsByProductAndAssetCriteriaSlabId` — used by `RepaymentApproppriationProcessor` to fetch appropriation precedence + liquidation order ([`RepaymentApproppriationProcessor.java:71-79`](../../../../novopay-platform-accounting-v2/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L71-L79))
+- `loanProductAssetCriteriaDAOService.getAssetCriteriaSlabDetailsByProductAndAssetCriteriaSlabId` — used by `RepaymentApproppriationProcessor` to fetch appropriation precedence + liquidation order ([`RepaymentApproppriationProcessor.java:71-79`](../../../../trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java#L71-L79))
 
 ## Related Requests
 
