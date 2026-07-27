@@ -9,6 +9,33 @@ FILE=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).g
 
 python3 "$ROOT/scripts/lib/infer_ship_apis.py" --is-ship-path "$FILE" 2>/dev/null || exit 0
 
+# ── X4 ORIENT-BEFORE-EDIT GATE ─────────────────────────────────────────────
+# Ship-path file edited → require kg orient/flow within last 60 min this session.
+python3 - <<'ORIENT_PY' "$ROOT"
+import sys, json, time
+from pathlib import Path
+root = Path(sys.argv[1])
+session_file = root / ".cursor" / "kg-orient-session.json"
+MAX_AGE = 3600  # 60 minutes
+banner = None
+if not session_file.is_file():
+    banner = "KG ORIENT REQUIRED — no kg orient/flow recorded this session. Run: python3 cursor-bundle/kg/bin/kg.py orient <apiName>"
+else:
+    try:
+        state = json.loads(session_file.read_text(encoding="utf-8"))
+        last_ts = state.get("last_orient_ts", 0)
+        age = int(time.time()) - last_ts
+        if age > MAX_AGE:
+            banner = f"KG ORIENT STALE ({age//60}m ago) — re-run: python3 cursor-bundle/kg/bin/kg.py orient {state.get('last_orient_api','<apiName>')}"
+    except Exception:
+        banner = "KG ORIENT REQUIRED — session state unreadable"
+if banner:
+    flag = root / ".orient-required"
+    flag.write_text(banner + "\n", encoding="utf-8")
+    print(f"\n{'='*70}\n⚠  ORIENT-BEFORE-EDIT GATE: {banner}\n{'='*70}\n", file=sys.stderr)
+    sys.exit(1)
+ORIENT_PY
+
 python3 - <<'PY' "$FILE" "$ROOT"
 import sys
 from pathlib import Path

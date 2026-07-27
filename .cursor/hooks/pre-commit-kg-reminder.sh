@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # beforeShellExecution — remind: changelog + KG rebuild belong in the same task turn as commit.
+# Fast-exit: bash pattern check before python spawn.
 set -euo pipefail
 input=$(cat)
+# ── fast-exit: skip python entirely unless this looks like a git commit ──
+[[ "$input" =~ git ]] || { echo '{"permission":"allow"}'; exit 0; }
+[[ "$input" =~ commit ]] || { echo '{"permission":"allow"}'; exit 0; }
 command=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('command',''))" <<<"$input")
 
 if [[ ! "$command" =~ git[[:space:]]+commit ]]; then

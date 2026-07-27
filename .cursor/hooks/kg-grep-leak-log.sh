@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Log rg/grep into service trees when KG may already answer (T6 grep-leakage counter).
+# Fast-exit: pattern check in bash before any python spawn.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 INPUT=$(cat || true)
+# ── fast-exit: no python spawn unless the command looks like a service-tree grep ──
+[[ "$INPUT" =~ (rg|grep) ]] || exit 0
+[[ "$INPUT" =~ (trustt-platform-|novopay-platform-|novopay-mfi-|orchestration|_orc\.xml|Processor\.java) ]] || exit 0
+# Only then: parse full JSON
 CMD=$(echo "$INPUT" | python3 -c "import json,sys
 try:
  d=json.load(sys.stdin); print(d.get('command') or '')

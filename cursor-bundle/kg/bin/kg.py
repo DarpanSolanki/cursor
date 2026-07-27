@@ -120,6 +120,9 @@ def cmd_node(c,a):
     for e in ins[:80]: print(f"  {e[1]} -{e[0]}->  [{e[3] or '?'}]")
 
 def cmd_flow(c,a):
+    # Record orient-session touch so orient-before-edit gate is satisfied by kg flow too.
+    if a:
+        _touch_orient_session(a[0])
     # bare name or repo/name — resolve() handles repo-scoped request ids
     nid=resolve(c, a[0]) or resolve(c, "request:"+a[0])
     if not nid or not str(nid).startswith("request:"):
@@ -639,6 +642,8 @@ def cmd_orient(c,a):
     """Evidence-only map for a request: flow spine + why surface + cases. Does not invent edges."""
     if not a:
         print("Usage: kg orient <request>  — flow + why + cases (evidence only)"); return
+    # Record orient timestamp for orient-before-edit gate (X4).
+    _touch_orient_session(a[0] if a else "")
     print("=== ORIENT (evidence only — verify orch XML + DB before claiming) ===")
     print("--- flow ---")
     cmd_flow(c,a)
@@ -646,6 +651,27 @@ def cmd_orient(c,a):
     cmd_why(c,a)
     print("--- cases (CHANGELOG precedents only) ---")
     cmd_cases(c,a)
+
+
+def _touch_orient_session(api: str) -> None:
+    """Write last orient timestamp to .cursor/kg-orient-session.json (X4 gate)."""
+    import time as _time
+    try:
+        state_path = os.path.join(ROOT, ".cursor", "kg-orient-session.json")
+        import json as _json
+        existing: dict = {}
+        if os.path.isfile(state_path):
+            try:
+                with open(state_path, encoding="utf-8") as _f:
+                    existing = _json.load(_f)
+            except Exception:
+                pass
+        existing["last_orient_ts"] = int(_time.time())
+        existing["last_orient_api"] = api
+        with open(state_path, "w", encoding="utf-8") as _f:
+            _f.write(_json.dumps(existing) + "\n")
+    except Exception:
+        pass
 
 def cmd_fixed_elsewhere(c,a):
     """Delegate cross-branch lookup; KG remains the evidence source for flow files/case SHAs."""
