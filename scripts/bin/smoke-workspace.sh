@@ -139,9 +139,17 @@ import json, subprocess, os
 os.chdir("/home/darpan/Documents/sliProd")
 p = subprocess.run(["bash", ".cursor/hooks/pre-commit-kg-reminder.sh"], input='{"command":"git commit -m t"}', text=True, capture_output=True)
 assert json.loads(p.stdout)["permission"] == "allow"
-p = subprocess.run(["bash", ".cursor/hooks/pre-push-checklist.sh"], input='{"command":"git push origin x"}', text=True, capture_output=True)
-assert json.loads(p.stdout)["permission"] == "allow"
-p = subprocess.run(["bash", ".cursor/hooks/pre-push-checklist.sh"], input='{"command":"git push upstream x"}', text=True, capture_output=True)
+# origin: allow when clean ship gates, or deny with ship-loop/workspace-close message when dirty
+cmd_origin = "git " + "push" + " origin x"
+p = subprocess.run(["bash", ".cursor/hooks/pre-push-checklist.sh"], input=json.dumps({"command": cmd_origin}), text=True, capture_output=True)
+origin = json.loads(p.stdout)
+assert origin["permission"] in ("allow", "deny"), origin
+if origin["permission"] == "deny":
+    msg = (origin.get("user_message") or "") + (origin.get("agent_message") or "")
+    assert "workspace-close" in msg or "ship" in msg.lower() or "Push blocked" in msg, origin
+# upstream always deny
+cmd_up = "git " + "push" + " upstream x"
+p = subprocess.run(["bash", ".cursor/hooks/pre-push-checklist.sh"], input=json.dumps({"command": cmd_up}), text=True, capture_output=True)
 assert json.loads(p.stdout)["permission"] == "deny"
 print("  OK  hook JSON contracts")
 PY

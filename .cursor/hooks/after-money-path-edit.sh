@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# afterFileEdit — flag ship-path files; accumulate pending ship work (apis/repos/cases).
+# ORPHAN-DOCUMENTED (SU-STITCH-005): NOT wired in .cursor/hooks.json.
+# Superseded by after-ship-path-edit.sh (afterFileEdit). Kept as reference / manual invoke.
+# Indirect caller: historically workspace-close docs; live path = after-ship-path-edit.sh.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 INPUT=$(cat)

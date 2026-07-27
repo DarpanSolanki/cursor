@@ -53,7 +53,7 @@ Step-2 performance: Extension must be backward-compatible for current callers. *
 
 ## Hot-path performance (workspace-wide)
 
-Before closing fixes on loops / per-item / high-volume paths: no N+1; no repeated full scan; no duplicate fetch; miss sentinels on caches; query ladder. Output: `Significant perf in scope` + `Hot-path scan: PASS|WARN`. Automation: `hot-path-scan.sh`.
+Before closing fixes on loops / per-item / high-volume paths: no N+1; no repeated full scan; no duplicate fetch; miss sentinels on caches; query ladder. Output: `Significant perf in scope` + `Hot-path scan: PASS|WARN`. Automation: `hot-path-scan.sh`. Reviewer: skim **Perf idioms** in `.cursor/skills/workspace-gates-reference/hot-path-perf-gate.md` (catalog is advisory — never block ships on absence).
 
 ## Upstream sync — zero unrelated diff
 

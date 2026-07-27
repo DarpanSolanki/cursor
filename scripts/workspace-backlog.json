@@ -127,168 +127,200 @@
     },
     {
       "id": "WS-019",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Portfolio transfer ntest case for executeLMSPortfolioTransfer",
       "detail": "Domain portfolio is thin \u2014 add flow/api registry case when local fixture exists; until then fallback health.accounting",
       "domain": "portfolio",
-      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+      "evidence": "inventory_gap_only \u2014 no implementation claimed",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-020",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "loanWriteoff registry e2e (writeoff domain)",
       "detail": "Orchestration loanWriteoff exists; no ntest case \u2014 add when writeoff fixture + money-path harness ready",
       "domain": "writeoff",
-      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+      "evidence": "inventory_gap_only \u2014 no implementation claimed",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-021",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "brain",
       "title": "Refresh historical DFC walkthrough branch refs to 3.7.1 pointer",
       "detail": "death-foreclosure-walkthrough.md still cites sdcp-9301-hotfix; banner added 2026-07-10 \u2014 full rewrite deferred",
       "domain": "death_foreclosure",
-      "evidence": "inventory_gap_only \u2014 no implementation claimed"
+      "evidence": "inventory_gap_only \u2014 no implementation claimed",
+      "wave": "W4",
+      "note": " Deferred to W4 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-022",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin accounting domains need dedicated release_cases",
       "detail": "Domains still without release_cases after fallback: []. Prefer real e2e over health.accounting only.",
-      "domain": ""
+      "domain": "",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-023",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "testing",
       "title": "ASK-027C extract DCF test helpers to scripts/testing/lib/",
-      "detail": "payments stub, actor seed, staging cleanup, batch wait \u2014 extract from dcf_sanity for reuse"
+      "detail": "payments stub, actor seed, staging cleanup, batch wait \u2014 extract from dcf_sanity for reuse",
+      "wave": "W5",
+      "note": " Deferred to W5 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-024",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "testing",
       "title": "ASK-027E group-flow smoke: child repayment fan-out + CLB stuck read-only",
-      "detail": "Add registry cases after helpers (WS-023); read-only first"
+      "detail": "Add registry cases after helpers (WS-023); read-only first",
+      "wave": "W5",
+      "note": " Deferred to W5 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-025",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `repayment` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "repayment",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-026",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `prepayment` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "prepayment",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-027",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `reversal` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "reversal",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-028",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `restructuring` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "restructuring",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-029",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `eod_bod` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "eod_bod",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-030",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `read_inquiry` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "read_inquiry",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-031",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `write_ops` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "write_ops",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-032",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `mandates_si` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "mandates_si",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-033",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `insurance` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "insurance",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-034",
-      "status": "open",
+      "status": "deferred",
       "auto_safe": false,
       "area": "registry",
       "title": "Thin domain `batch_other` \u2014 add release_case when orch+fixture exist",
       "detail": "inventory_gap_only \u2014 no fake registry stub; prove orch Request + local script/fixture before adding ntest case",
       "domain": "batch_other",
       "evidence": "accounting_flow_domains.json release_cases empty 2026-07-10",
-      "owner": "gap-closure / ASK-H09"
+      "owner": "gap-closure / ASK-H09",
+      "wave": "W3",
+      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
     },
     {
       "id": "WS-035",
@@ -325,40 +357,48 @@
     {
       "id": "SU-RES-001",
       "title": "Registry cases for postTransaction/postManualJournalEntry/doGLTransfer",
-      "status": "open",
+      "status": "wont-do",
       "auto_safe": false,
       "source": "self_upgrade",
       "draft_plan": "Draft registry money cases with value-level db_asserts; promote from impact stubs impact.stub.*",
-      "created_at": "2026-07-23T11:34:18Z"
+      "created_at": "2026-07-23T11:34:18Z",
+      "note": "No durable fixture for postTransaction/postManualJournalEntry/doGLTransfer money e2e; covered by accounting.read_smoke + flowtest.invariants_universal on money ships. Promoting thin stubs without value asserts would weaken QA bar.",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-RES-002",
       "title": "KG request nodes lack registry mapping for many posting flows",
-      "status": "open",
+      "status": "wont-do",
       "auto_safe": false,
       "source": "self_upgrade",
       "draft_plan": "Mine impact.stub.* weekly; add registry api+smoke_tier=money for top missing by ship frequency",
-      "created_at": "2026-07-23T11:34:18Z"
+      "created_at": "2026-07-23T11:34:18Z",
+      "note": "Same as SU-RES-001 \u2014 missing posting apis stay as impact MISSING_CASE banners; do not flood registry with presence-only stubs. Mine only when fixture+value asserts exist.",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-IMPACT-002",
       "title": "Impact banner can show flows>0 with cases=0 missing=0 (stubs not emitted)",
-      "status": "open",
+      "status": "done",
       "auto_safe": false,
       "perf": false,
       "source": "self_upgrade",
       "draft_plan": "Root: topic-consumer:* and/or non-registry flow apis skipped in cases_for_flows without appending to missing. Fix: (1) treat every flow without a registry case as missing (including topic-consumer\u2192service health mapping or stub); (2) when --banner/--no-stubs still count missing in banner stats; (3) default banner path should draft stubs unless --no-stubs; (4) unit test: dirty tree producing flows must have cases+missing == len(flows) for non-skipped kinds. Verify sessionStart banner after fix.",
-      "created_at": "2026-07-23T11:39:13Z"
+      "created_at": "2026-07-23T11:39:13Z",
+      "note": "topic-consumer flows map to health.* or missing; FLOW_CASE_COVERAGE banner invariant",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-PERF-IDIOMS-001",
       "title": "perf-idioms catalog (harvest from in-tree exemplars + build.gradle versions, bus-fed)",
-      "status": "open",
+      "status": "done",
       "auto_safe": false,
       "perf": false,
       "source": "self_upgrade",
       "draft_plan": "DRAFT: Harvest perf idioms from in-tree exemplars (Repository/@Query patterns that EXPLAIN PASS on money tables) + pin build.gradle/YB version notes; feed learning_bus events from query-plan-gate WARN/FAIL. Deliverable: cursor-bundle/brain/reference/perf-idioms.md + optional KG nodes. Do NOT block ships on catalog absence. Owner: next Upgrade after 11-LEAN. Auto_safe=false (structural/doc harvest).",
-      "created_at": "2026-07-23T12:32:05Z"
+      "created_at": "2026-07-23T12:32:05Z",
+      "note": "Lean catalog in hot-path-perf-gate.md + reviewer line in 10-quality-gates.mdc; no new gate",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-FLOW-PENAL-READER-ELIG",
@@ -367,6 +407,117 @@
       "auto_safe": false,
       "note": "User scope cut GAP-G \u2014 penal flows permanently out of coverage denominator",
       "done_date": "2026-07-27"
+    },
+    {
+      "id": "SU-TIER-VARIANT",
+      "title": "Representative-variant selection inside direct impact (dcf family \u22643 full)",
+      "status": "done",
+      "auto_safe": true,
+      "done_date": "2026-07-27",
+      "note": "ForceBill wall_planned 2045s vs prior 6860s (~\u2153)"
+    },
+    {
+      "id": "SU-STITCH-001",
+      "title": "ntest.sh canonical wrapper",
+      "status": "done",
+      "auto_safe": true,
+      "done_date": "2026-07-27"
+    },
+    {
+      "id": "SU-STITCH-005",
+      "title": "4 orphan hooks documented/indirect callers",
+      "status": "done",
+      "auto_safe": true,
+      "done_date": "2026-07-27"
+    },
+    {
+      "id": "SU-KG-002",
+      "title": "Consumer denominator unique beans excl placeholders",
+      "status": "done",
+      "auto_safe": true,
+      "done_date": "2026-07-27",
+      "note": "BeanName excluded; unique beans \u2192 100%"
+    },
+    {
+      "id": "SU-KG-003",
+      "title": "IDE Grep not hookable \u2014 documented",
+      "status": "done",
+      "auto_safe": true,
+      "done_date": "2026-07-27"
+    },
+    {
+      "id": "SU-STITCH-006",
+      "title": "Stale doc path cites (novopay\u2192trustt remap)",
+      "status": "done",
+      "auto_safe": true,
+      "note": "108\u219222 stale docs via novopay\u2192trustt path rewrite; residual=missing CLAUDE.md / deleted files",
+      "done_date": "2026-07-27"
+    },
+    {
+      "id": "SU-KG-001",
+      "title": "Orch incremental spine",
+      "status": "wont-do",
+      "auto_safe": false,
+      "done_date": "2026-07-27",
+      "note": "Accepted limitation: kg_after_edit already patches processor/orch lightly; full spine rebuild via kg-switch remains SoT for large orch edits \u2014 incremental full-spine rewrite not worth complexity."
+    },
+    {
+      "id": "SU-FLOW-PARTPREP-PTC-GLAD",
+      "title": "part_prepayment PTC/placeholder blocker",
+      "status": "open",
+      "auto_safe": false,
+      "area": "flowtest"
+    },
+    {
+      "id": "SU-FLOW-WRITEOFF-GAP062",
+      "title": "loanWriteoff PrepaymentAppropriation NPE \u2014 LMS defect",
+      "status": "open",
+      "auto_safe": false,
+      "area": "flowtest"
+    },
+    {
+      "id": "SU-FLOW-EXCESS-RAILS",
+      "title": "proactive excess refund PARTIAL \u2014 rails",
+      "status": "open",
+      "auto_safe": false,
+      "area": "flowtest"
+    },
+    {
+      "id": "W3",
+      "title": "Registry/domain coverage wave \u2014 thin release_cases",
+      "status": "open",
+      "auto_safe": false,
+      "area": "wave"
+    },
+    {
+      "id": "W4",
+      "title": "Brain docs refresh wave \u2014 historical branch refs",
+      "status": "open",
+      "auto_safe": false,
+      "area": "wave"
+    },
+    {
+      "id": "W5",
+      "title": "Test harness extract + group-flow smoke wave",
+      "status": "open",
+      "auto_safe": false,
+      "area": "wave"
+    },
+    {
+      "id": "LMS-DEFECT-WRITEOFF-GAP062",
+      "title": "LMS defect handoff: writeoff PrepaymentAppropriation NPE",
+      "status": "open",
+      "auto_safe": false,
+      "area": "lms-defect",
+      "evidence": "scripts/scratch/flowtest-f5/"
+    },
+    {
+      "id": "LMS-DEFECT-NPA-VARCHAR64",
+      "title": "LMS defect handoff: NPA criteria varchar(64)/code 333",
+      "status": "open",
+      "auto_safe": false,
+      "area": "lms-defect",
+      "evidence": "scripts/scratch/flowtest-f5/"
     }
   ]
 }

@@ -45,3 +45,12 @@
 - `conventions.md` — coding patterns specific to this codebase
 - `changelog.md` — append-only history of all changes
 - **`AGENTS.md`** (workspace root) — human/agent guide: graph-first RCA, parallel research, fix checklist
+
+## Test / ship selection (GAP-G)
+
+- **Canonical runner:** `bash scripts/bin/ntest.sh …` (wraps `scripts/testing/ntest.py`)
+- **Impact plan:** `python3 scripts/lib/impact_tests.py --banner` — prints tier + planned wall (serial-suite estimate)
+- **Money paths:** FIX-PLAN gate + universal invariants always on; never skip invariants to go faster
+- **Speed doctrine:** select fewer cases (direct full / sibling smoke / dcf representatives) — never weaken money rails
+- **LAN taxonomy:** SHG has children; JLG/INDL do not — flowtest refuses wrong fixture shape
+- **Penal:** `scope=out` — not in coverage denominator (wont-do)

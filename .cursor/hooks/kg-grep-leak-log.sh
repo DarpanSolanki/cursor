@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Log rg/grep into service trees when KG may already answer (T6 grep-leakage counter).
 # Fast-exit: pattern check in bash before any python spawn.
+#
+# LIMITATION (SU-KG-003 CLOSED): Cursor IDE Grep / agent Grep tool is NOT hookable via
+# beforeShellExecution — only shell `rg`/`grep` invocations are counted. Agent-native
+# Grep bypasses this counter by design; use MCP trustt-kg first for LOOKUPs instead.
+# Footnote: cursor-bundle/memory/SELF-REPORT.md § KG.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 INPUT=$(cat || true)

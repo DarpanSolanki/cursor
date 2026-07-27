@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# INDIRECT (SU-STITCH-005): not listed in hooks.json by filename.
+# Wired via: kg-session-start.sh → this script (sessionStart); also enrichment-sync,
+# setup-local, smoke-workspace, kg-ensure-fresh callers.
 # sessionStart / workspaceOpen — cache-first KG sync for multi-repo branch-sets.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"

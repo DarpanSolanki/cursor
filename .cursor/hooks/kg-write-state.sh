@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+# INDIRECT (SU-STITCH-005): not listed in hooks.json by filename.
+# Called by: kg-session-watermark.sh, kg-switch.sh, kg-session-sync.sh, kg-ensure-fresh.sh.
 # Write .cursor/workspace-kg-state.md from current kg.db (no rebuild / no kg-switch).
-# Preserves ## Telemetry (last 20) block appended by kg_state_banner / sync scripts.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 cd "$ROOT"

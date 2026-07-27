@@ -176,8 +176,12 @@ def measure() -> dict:
         # Honest disk: JobBuilder/JOB_NAME + MessageBroker topicPrefix (not registry circularity)
         totals["scheduler"][1] = len(disk_jobs_all)
         totals["topic"][1] = len(disk_topics_all)
-        # consumer disk ≈ MessageBroker <bean> count across repos
-        bean_n = 0
+        # consumer disk ≈ unique MessageBroker <bean> names, excluding template placeholders
+        beans: set[str] = set()
+        _ph = re.compile(
+            r"^(BeanName|TODO|FIXME|placeholder|template|example|sample|\$\{.*\})$",
+            re.I,
+        )
         for name in repos:
             if name in excluded:
                 continue
@@ -188,8 +192,11 @@ def measure() -> dict:
                     txt = xml.read_text(encoding="utf-8", errors="replace")
                 except OSError:
                     continue
-                bean_n += len(re.findall(r"<bean>\s*([^<\s]+)\s*</bean>", txt, re.I))
-        totals["consumer"][1] = bean_n
+                for b in re.findall(r"<bean>\s*([^<\s]+)\s*</bean>", txt, re.I):
+                    if _ph.match(b.strip()):
+                        continue
+                    beans.add(b.strip())
+        totals["consumer"][1] = len(beans)
 
     def pct(n, d):
         if d == 0:

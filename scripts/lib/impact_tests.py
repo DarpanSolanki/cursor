@@ -451,7 +451,35 @@ def cases_for_flows(flows: list[dict], reg: dict | None = None) -> tuple[list[di
     for fl in flows:
         api = fl["api"]
         if api.startswith("topic-consumer:"):
-            # service-level topic hit — try health/config cases later
+            # SU-IMPACT-002: never silent-skip — map to health.<svc> or count as missing
+            svc = api.split(":", 1)[-1].strip().lower().replace("_", "")
+            health_id = None
+            for cid, meta in (reg or {}).items():
+                if not cid.startswith("health.") or not isinstance(meta, dict):
+                    continue
+                if svc and svc in cid.lower().replace("_", "").replace("-", ""):
+                    health_id = cid
+                    break
+            if health_id and health_id not in seen:
+                seen.add(health_id)
+                cases.append(
+                    {
+                        "case": health_id,
+                        "api": api,
+                        "why": (fl.get("why") or [f"topic-consumer→{health_id}"])[0],
+                        "why_all": fl.get("why") or [],
+                        "tables": fl.get("tables") or [],
+                        "role": "topic_consumer_health",
+                    }
+                )
+            else:
+                missing.append(
+                    {
+                        "api": api,
+                        "why": fl.get("why") or [f"topic-consumer unmapped:{api}"],
+                        "tables": fl.get("tables") or [],
+                    }
+                )
             continue
         cids = by_api.get(api) or []
         if not cids:
@@ -478,6 +506,21 @@ def cases_for_flows(flows: list[dict], reg: dict | None = None) -> tuple[list[di
                 }
             )
     return cases, missing
+
+
+def flow_case_coverage_ok(flows: list[dict], cases: list[dict], missing: list[dict]) -> tuple[bool, str]:
+    """SU-IMPACT-002 invariant: every non-empty flow set must resolve to cases and/or missing.
+
+    Note: one flow may map to many cases, so equality is on flow coverage, not counts.
+    """
+    if not flows:
+        return True, "no flows"
+    covered_apis = {c.get("api") for c in cases} | {m.get("api") for m in missing}
+    flow_apis = {f.get("api") for f in flows}
+    uncovered = sorted(a for a in flow_apis if a and a not in covered_apis)
+    if uncovered:
+        return False, f"uncovered flows={uncovered[:8]}"
+    return True, f"flows={len(flow_apis)} covered via cases={len(cases)} missing={len(missing)}"
 
 
 def draft_missing_stubs(missing: list[dict]) -> list[dict]:
@@ -643,6 +686,56 @@ def _case_wall_s(cid: str, reg: dict) -> int:
     return _WALL_SMOKE
 
 
+# Representative-variant pick order inside a prefix family (A1 SU-TIER-VARIANT)
+_DCF_REPRESENTATIVE_ORDER = (
+    "dcf.group_parent_last_child_e2e",  # canonical money e2e + ship_baseline
+    "dcf.force_bill_crn_sim",  # ForceBill CRN uniqueness
+    "dcf.vikram_fc_rstcre_dfc_e2e",  # cross-path FC→RSTCRE→DFC
+    "dcf.principal_split_sim",
+    "dcf.group_parent_last_child_e2e_clean",
+)
+
+
+def _apply_representative_variants(
+    full_cases: list[str],
+    *,
+    prefix: str = "dcf.",
+    max_full: int = 3,
+) -> tuple[list[str], list[str], list[str]]:
+    """Keep ≤max_full representatives full; demote same-prefix siblings to smoke.
+
+    Catch-power: one canonical e2e + ForceBill-specific sim + one cross-path cover
+    the money write shapes; remaining variants share GL/invariants so smoke catches
+    product imbalance without 12× full wall.
+    """
+    family = [c for c in full_cases if c.startswith(prefix)]
+    if len(family) <= max_full:
+        return full_cases, [], []
+    preferred = [c for c in _DCF_REPRESENTATIVE_ORDER if c in family]
+    keep: list[str] = []
+    for c in preferred:
+        if c not in keep:
+            keep.append(c)
+        if len(keep) >= max_full:
+            break
+    for c in family:
+        if len(keep) >= max_full:
+            break
+        if c not in keep:
+            keep.append(c)
+    demote = [c for c in family if c not in keep]
+    keep_set = set(keep)
+    new_full = [c for c in full_cases if not c.startswith(prefix) or c in keep_set]
+    lines = [
+        f"TIER variant-full {c}: representative of {prefix}* family ({len(family)}→{len(keep)})"
+        for c in keep
+    ] + [
+        f"TIER variant-smoke {c}: same-family sibling of representatives (invariant-smoke)"
+        for c in demote
+    ]
+    return new_full, demote, lines
+
+
 def _apply_selection_tiering(
     ordered: list[str],
     *,
@@ -706,6 +799,13 @@ def _apply_selection_tiering(
             skipped_smoke.append(cid)
             tier_lines.append(f"TIER smoke-skip {cid}: sibling/domain blast ({why})")
 
+    # A1: within dcf.* full set, keep ≤3 representatives; demote rest to smoke
+    full_cases, demoted_variants, variant_lines = _apply_representative_variants(full_cases)
+    for c in demoted_variants:
+        if c not in skipped_smoke:
+            skipped_smoke.append(c)
+    tier_lines.extend(variant_lines)
+
     smoke_exec: list[str] = []
     if skipped_smoke:
         if INVARIANTS_CASE in reg:
@@ -727,6 +827,10 @@ def _apply_selection_tiering(
 
     wall_full = sum(_case_wall_s(c, reg) for c in full_cases)
     wall_smoke = sum(_case_wall_s(c, reg) for c in smoke_exec)
+    # invariants counted once (may already be in smoke_exec or prepended)
+    inv_extra = 0 if INVARIANTS_CASE in smoke_exec or INVARIANTS_CASE in full_cases else _case_wall_s(
+        INVARIANTS_CASE, reg
+    )
     wall_naive = sum(
         _case_wall_s(c, reg)
         for c in ordered
@@ -736,10 +840,16 @@ def _apply_selection_tiering(
         "full_count": len(full_cases),
         "smoke_skip_count": len(skipped_smoke),
         "smoke_exec_count": len(smoke_exec),
+        "variant_demoted": len(demoted_variants),
         "wall_full_s": wall_full,
         "wall_smoke_s": wall_smoke,
-        "wall_planned_s": wall_full + wall_smoke + _case_wall_s(INVARIANTS_CASE, reg),
+        "wall_planned_s": wall_full + wall_smoke + inv_extra,
         "wall_naive_full_s": wall_naive,
+        "wall_saved_pct": (
+            round(100.0 * (1.0 - (wall_full + wall_smoke + inv_extra) / wall_naive), 1)
+            if wall_naive
+            else 0.0
+        ),
     }
     return final, tier_lines, stats
 
@@ -837,6 +947,7 @@ def build_plan(
         conn.close()
 
     cases, missing = cases_for_flows(flows)
+    cov_ok, cov_msg = flow_case_coverage_ok(flows, cases, missing)
     reg = load_registry()
     cases = [c for c in cases if not (reg.get(c["case"]) or {}).get("quarantine")]
     stubs = draft_missing_stubs(missing) if draft_stubs else []
@@ -886,6 +997,8 @@ def build_plan(
         "cases": cases,
         "ordered_cases": ordered,
         "missing_flows": missing,
+        "flow_coverage_ok": cov_ok,
+        "flow_coverage_msg": cov_msg,
         "drafted_stubs": [s["id"] for s in stubs],
         "acceptance_guards": guards,
         "domain_mandatory_added": domain_added,
@@ -979,6 +1092,11 @@ def format_banner(plan: dict) -> str:
         f"files={len(plan.get('files') or [])} flows={len(plan.get('flows') or [])} "
         f"cases={len(plan.get('ordered_cases') or [])} missing={len(plan.get('missing_flows') or [])}",
     ]
+    cov_ok = plan.get("flow_coverage_ok")
+    if cov_ok is not None:
+        lines.append(
+            f"  FLOW_CASE_COVERAGE {'OK' if cov_ok else 'FAIL'} {plan.get('flow_coverage_msg')}"
+        )
     # Prefer case WHY; always include at least one WHY per flow for provenance
     printed = 0
     for w in plan.get("why_lines") or []:
@@ -1020,8 +1138,11 @@ def format_banner(plan: dict) -> str:
         lines.append(
             f"  SELECTION_TIER full={stats.get('full_count')} smoke_skip={stats.get('smoke_skip_count')} "
             f"smoke_exec={stats.get('smoke_exec_count')} "
+            f"variant_demoted={stats.get('variant_demoted', 0)} "
             f"wall_planned={stats.get('wall_planned_s')}s "
-            f"wall_naive_full={stats.get('wall_naive_full_s')}s"
+            f"wall_naive_full={stats.get('wall_naive_full_s')}s "
+            f"wall_saved={stats.get('wall_saved_pct', 0)}% "
+            f"(serial-suite estimate — not parallel wall)"
         )
     for tl in (plan.get("selection_tier_lines") or [])[:25]:
         lines.append(f"  {tl}")

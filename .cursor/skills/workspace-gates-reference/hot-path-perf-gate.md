@@ -35,3 +35,15 @@ Hot-path scan: PASS | WARN (<findings>) — run: scripts/bin/hot-path-scan.sh --
 - **Ship-loop** prints scan WARN on money tier (non-blocking unless `HOT_PATH_SCAN_STRICT=1`).
 
 Batch-specific precedents: `.cursor/rules/batch-hot-path-perf.mdc`.
+
+## Perf idioms (lean catalog — SU-PERF-IDIOMS-001)
+
+Reviewer checklist only — **not** a ship gate. Prefer these over inventing new patterns:
+
+1. **Indexed equality first** — `loan_account_id` / `account_number` / `reference_number` before date range; prove with `query-plan-gate.sh` on money tables.
+2. **Preload + Java filter** — one DAO fetch per request/chunk; never N+1 inside day/installment loops (reuse-queries ladder).
+3. **Set-based GL check** — `GROUP BY transaction_id HAVING SUM(D)≠SUM(C)` beats per-ref round-trips (`flowtest/invariants.py`).
+4. **Miss sentinels** — cache maps that only store hits must store explicit miss (Redis / in-JVM).
+5. **YB note** — prefer native SQL with `is_deleted=false`; avoid `SELECT *` on hot partition tables.
+
+Harvest more only when query-plan-gate WARN/FAIL repeats the same shape — feed `learning_bus`, do not grow this list preemptively.

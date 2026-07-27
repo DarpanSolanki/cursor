@@ -17,41 +17,51 @@
       "id": "SU-RES-001",
       "title": "Registry cases for postTransaction/postManualJournalEntry/doGLTransfer",
       "sot": "impact_tests missing_flows / gaps",
-      "status": "open",
+      "status": "wont-do",
       "auto_safe": false,
       "draft_plan": "Draft registry money cases with value-level db_asserts; promote from impact.stub.*",
       "created_at": "2026-07-23T11:34:34Z",
-      "oldest_at": "2026-07-23T11:34:34Z"
+      "oldest_at": "2026-07-23T11:34:34Z",
+      "note": "No durable fixture for postTransaction/postManualJournalEntry/doGLTransfer money e2e; covered by accounting.read_smoke + flowtest.invariants_universal on money ships. Promoting thin stubs without value asserts would weaken QA bar.",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-RES-002",
       "title": "KG request nodes lack registry mapping for many posting flows",
       "sot": "impact_tests missing_flows",
-      "status": "open",
+      "status": "wont-do",
       "auto_safe": false,
       "draft_plan": "Mine impact.stub.* weekly; add registry api+smoke_tier=money for top missing by ship frequency",
       "created_at": "2026-07-23T11:34:34Z",
-      "oldest_at": "2026-07-23T11:34:34Z"
+      "oldest_at": "2026-07-23T11:34:34Z",
+      "note": "Same as SU-RES-001 \u2014 missing posting apis stay as impact MISSING_CASE banners; do not flood registry with presence-only stubs. Mine only when fixture+value asserts exist.",
+      "done_date": "2026-07-27"
     },
     {
       "id": "SU-IMPACT-002",
       "title": "Impact banner can show flows>0 with cases=0 missing=0 (stubs not emitted)",
       "sot": "scripts/lib/impact_tests.py cases_for_flows / format_banner; proof4 sessionStart banner",
-      "status": "open",
+      "status": "done",
       "auto_safe": false,
       "draft_plan": "Root: topic-consumer:* and/or non-registry flow apis skipped in cases_for_flows without appending to missing. Fix: (1) treat every flow without a registry case as missing (including topic-consumer\u2192service health mapping or stub); (2) when --banner/--no-stubs still count missing in banner stats; (3) default banner path should draft stubs unless --no-stubs; (4) unit test: dirty tree producing flows must have cases+missing == len(flows) for non-skipped kinds. Verify sessionStart banner after fix.",
       "created_at": "2026-07-23T11:39:13Z",
-      "oldest_at": "2026-07-23T11:39:13Z"
+      "oldest_at": "2026-07-23T11:39:13Z",
+      "note": "topic-consumer flows map to health.* or missing; FLOW_CASE_COVERAGE banner invariant",
+      "done_date": "2026-07-27",
+      "done_at": "2026-07-27T14:04:28Z"
     },
     {
       "id": "SU-PERF-IDIOMS-001",
       "title": "perf-idioms catalog (harvest from in-tree exemplars + build.gradle versions, bus-fed)",
       "sot": "Upgrade 11-LEAN deferred catalog \u2014 query-plan-gate ships first",
-      "status": "open",
+      "status": "done",
       "auto_safe": false,
       "draft_plan": "DRAFT: Harvest perf idioms from in-tree exemplars (Repository/@Query patterns that EXPLAIN PASS on money tables) + pin build.gradle/YB version notes; feed learning_bus events from query-plan-gate WARN/FAIL. Deliverable: cursor-bundle/brain/reference/perf-idioms.md + optional KG nodes. Do NOT block ships on catalog absence. Owner: next Upgrade after 11-LEAN. Auto_safe=false (structural/doc harvest).",
       "created_at": "2026-07-23T12:32:05Z",
-      "oldest_at": "2026-07-23T12:32:05Z"
+      "oldest_at": "2026-07-23T12:32:05Z",
+      "note": "Lean catalog in hot-path-perf-gate.md + reviewer line in 10-quality-gates.mdc; no new gate",
+      "done_date": "2026-07-27",
+      "done_at": "2026-07-27T14:04:28Z"
     }
   ]
 }

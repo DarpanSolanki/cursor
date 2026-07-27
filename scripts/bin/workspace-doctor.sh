@@ -169,6 +169,36 @@ if [[ "$ENV_SMOKE" == 1 || "$MODE" == "full" ]]; then
 fi
 
 echo ""
+echo "--- GAP-G / sync rails ---"
+# freshness fail-closed already covered above
+if [[ -f scripts/lib/loan_taxonomy.py && -f cursor-bundle/kg/curated/loan_taxonomy.json ]]; then
+  ok "LAN taxonomy file + helper"
+else
+  die "LAN taxonomy missing"
+fi
+if python3 -c "from pathlib import Path; import ast; t=Path('scripts/lib/ship_discipline_gate.py').read_text(); assert 'fix_plan' in t" 2>/dev/null; then
+  ok "FIX-PLAN gate present in ship_discipline_gate"
+else
+  die "FIX-PLAN gate missing"
+fi
+if python3 -c "from pathlib import Path; t=Path('scripts/lib/impact_tests.py').read_text(); assert '_apply_selection_tiering' in t and '_apply_representative_variants' in t" 2>/dev/null; then
+  ok "selection tiering + representative variants"
+else
+  die "selection tiering missing"
+fi
+if python3 -c "from pathlib import Path; t=Path('scripts/testing/flowtest/invariants.py').read_text(); assert 'run_universal_invariants' in t" 2>/dev/null; then
+  ok "universal invariants module"
+else
+  die "invariants module missing"
+fi
+if [[ -f .cursor/kg-grep-leak.jsonl ]] || [[ -f .cursor/hooks/kg-grep-leak-log.sh ]]; then
+  ok "grep-leak counter hook (shell rg only — IDE Grep not hookable)"
+else
+  echo "  WARN grep-leak counter absent"
+  ok "grep-leak (WARN)"
+fi
+
+echo ""
 if [[ "$fail" -eq 0 ]]; then
   echo "=== DOCTOR: HEALTHY ==="
   echo "Next: make -C scripts test-smoke-quick  |  ntest auto <apiName>"
