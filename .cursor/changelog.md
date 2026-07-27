@@ -1,4 +1,4 @@
-[2026-07-27] | HYGIENE | prune impact.stub flood (519→26); impact_tests stubs opt-in --draft-stubs; hygiene warns proposals flood + untracked sql packs; commit digest/learnings + ops SQL (CLB/NEFT/SP329/DCF/deploy)
+[2026-07-27] | FIX TDPQA-72 | Centralize bpi_amount=0 after partial-cycle force-bill in ForceBillBillingSupport — covers INDL/JLG/SHG child FC (loans_orc + group_mfi_orc) and DFC child/parent via DeathForeclosureForceBillService; prevents double AIR credit on LOAN_PREPAYMENT BPI_AMT after AIR→BI billing | trustt-platform-accounting ForceBillBillingSupport.java @ mfi_integration_v3.4.2.4
 
 [2026-07-27] | STITCH-FIX | X1: process_matrix at scripts/lib (not testing/) — absorbed into process_router.py (Upgrade 8 / 6f95865); X2: fast-exit hooks (grep-leak+pre-commit non-match 28→5ms); X3: expect.status for YES-coverage (disbursement.quick PASS / dpic PARTIAL) + drift probe; X4: orient-before-edit gate (kg.py touch session; after-ship-path-edit fail-closed) | .cursor/hooks/*, cursor-bundle/kg/bin/kg.py, scripts/testing/registry.json
 

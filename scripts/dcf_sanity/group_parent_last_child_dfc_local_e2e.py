@@ -332,6 +332,127 @@ def assert_gl_balance_for_loan(lan: str, reference_codes: list[str]) -> None:
             assert_gl_balanced_txn(ref, f"{lan}/{txn_type}")
 
 
+def _all_success_txn_refs_for_lan(lan: str) -> list[str]:
+    """All SUCCESS txn refs for LAN: transaction_details + labd-linked + force-bill CRN (prod GL trial)."""
+    raw = psql(f"""
+SELECT DISTINCT ref FROM (
+  SELECT tm.reference_number AS ref
+  FROM mfi_accounting.transaction_details td
+  JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id
+  WHERE td.account_number = '{lan}' AND tm.reversed = false AND tm.status = 'SUCCESS'
+  UNION
+  SELECT labd.transaction_reference_number AS ref
+  FROM mfi_accounting.loan_account_billing_details labd
+  JOIN mfi_accounting.loan_account la ON la.account_id = labd.account_id
+  WHERE la.la_account_number = '{lan}'
+    AND COALESCE(labd.reversed,false) = false
+    AND labd.transaction_reference_number IS NOT NULL
+) u WHERE ref IS NOT NULL AND ref <> ''
+ORDER BY 1;
+""")
+    refs = {r.strip() for r in raw.splitlines() if r.strip()}
+    fb_row = psql(_dfc_force_bill_tm_sql(lan))
+    if fb_row:
+        refs.add(fb_row.split("|", 1)[0].strip())
+    return sorted(refs)
+
+
+def assert_all_txn_gl_balanced_for_lan(lan: str, *, label: str = "all-txn") -> None:
+    """Every SUCCESS txn on LAN (incl. force-bill BILLING via labd) must have partition D=C."""
+    if not ACCEPTANCE_STRICT:
+        print(f"  GL all-txn SKIP: ACCEPTANCE_STRICT=0 ({lan})")
+        return
+    refs = _all_success_txn_refs_for_lan(lan)
+    if not refs:
+        raise AssertionError(f"GL all-txn FAIL: {lan} no SUCCESS transactions")
+    for ref in refs:
+        assert_gl_balanced_txn(ref, f"{lan}/{label}")
+    print(f"  GL all-txn PASS: {lan} label={label} refs={len(refs)} each D=C")
+
+
+def _air_bi_totals_for_refs(refs: list[str]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """Sum AIR/BI partition legs for txn refs (partition-only — no td join double-count)."""
+    if not refs:
+        return (Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"))
+    in_list = ",".join(f"'{r}'" for r in refs)
+    row = psql(f"""
+SELECT
+  COALESCE(SUM(CASE WHEN tpd.gl_code IN ('13578','CG13578') AND tpd.cr_dr_indicator='D' THEN tpd.amount ELSE 0 END),0)::text,
+  COALESCE(SUM(CASE WHEN tpd.gl_code IN ('13578','CG13578') AND tpd.cr_dr_indicator='C' THEN tpd.amount ELSE 0 END),0)::text,
+  COALESCE(SUM(CASE WHEN tpd.gl_code IN ('13336','CG13336') AND tpd.cr_dr_indicator='D' THEN tpd.amount ELSE 0 END),0)::text,
+  COALESCE(SUM(CASE WHEN tpd.gl_code IN ('13336','CG13336') AND tpd.cr_dr_indicator='C' THEN tpd.amount ELSE 0 END),0)::text
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_partition_details tpd ON tpd.transaction_id = tm.id
+WHERE tm.reference_number IN ({in_list})
+  AND tm.reversed = false AND tm.status = 'SUCCESS';
+""")
+    if not row:
+        return (Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"))
+    return tuple(map(Decimal, row.split("|", 3)))  # type: ignore[return-value]
+
+
+def _fc_settlement_txn_refs(lan: str) -> list[str]:
+    """Prod FC approve bundle: accrual INTEREST + force-bill BILLING + LOAN_PREPAYMENT (TDPQA-72 392164)."""
+    refs: list[str] = []
+    fb_row = psql(_dfc_force_bill_tm_sql(lan))
+    fb_interest: Decimal | None = None
+    if fb_row:
+        fb_ref, _client, amt_s = fb_row.split("|", 2)
+        refs.append(fb_ref.strip())
+        fb_interest = Decimal(amt_s or "0")
+    lp_ref, _lp_amt = latest_txn_poll(lan, "LOAN_PREPAYMENT", timeout_s=1)
+    if lp_ref:
+        refs.append(lp_ref.strip())
+    if fb_interest is not None and fb_interest > 0:
+        # INTEREST accrual on approve binds td.account_number to CG codes, not LAN — match by amount.
+        raw = psql(f"""
+SELECT tm.reference_number
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id AND tc.type = 'INTEREST'
+JOIN mfi_accounting.transaction_partition_details tpd ON tpd.transaction_id = tm.id
+  AND tpd.gl_code IN ('13578','CG13578') AND tpd.cr_dr_indicator = 'D'
+  AND tpd.amount = {fb_interest}
+WHERE tm.reversed = false AND tm.status = 'SUCCESS'
+GROUP BY tm.reference_number, tm.id
+ORDER BY tm.id DESC LIMIT 3;
+""")
+        for line in raw.splitlines():
+            r = line.strip()
+            if r and r not in refs:
+                refs.append(r)
+    return refs
+
+
+def assert_product_gl_air_bi_balanced(lan: str, *, tol: Decimal = Decimal("0.01")) -> None:
+    """Vikram 392164 class: FC settlement bundle AIR/BI must net to zero (accrual + force-bill + LP).
+
+    Lifetime LAN rollup is wrong here — EMI BILLING credits AIR while accrual INTEREST debits bind to CG codes.
+    """
+    if not ACCEPTANCE_STRICT:
+        print(f"  FC settlement AIR/BI SKIP: ACCEPTANCE_STRICT=0 ({lan})")
+        return
+    refs = _fc_settlement_txn_refs(lan)
+    if not refs:
+        print(f"  FC settlement AIR/BI SKIP: {lan} no force-bill / FC txn refs")
+        return
+    air_d, air_c, bi_d, bi_c = _air_bi_totals_for_refs(refs)
+    if abs(air_d - air_c) > tol:
+        raise AssertionError(
+            f"FC settlement AIR/BI FAIL: {lan} AIR debit={air_d} credit={air_c} "
+            f"diff={abs(air_d - air_c)} refs={refs} (Vikram 392164 — check BPI_AMT after force-bill)"
+        )
+    # BI: force-bill debits BI; LOAN_PREPAYMENT settles via TRMN/POS legs — only check when BI credits exist.
+    if bi_c > 0 and abs(bi_d - bi_c) > tol:
+        raise AssertionError(
+            f"FC settlement AIR/BI FAIL: {lan} BI debit={bi_d} credit={bi_c} "
+            f"diff={abs(bi_d - bi_c)} refs={refs}"
+        )
+    print(
+        f"  FC settlement AIR/BI PASS: {lan} refs={len(refs)} "
+        f"AIR D={air_d} C={air_c} BI D={bi_d} C={bi_c}"
+    )
+
+
 def assert_transaction_posting_audit(
     child_lan: str, parent_lan: str, *, phase: str = "last_child"
 ) -> dict:
@@ -2704,6 +2825,37 @@ def assert_loan_prepayment_force_bill(child_lan: str) -> None:
             f"force-bill only (Sim B loanPrepayment BRE-blocked locally)"
         )
     assert_force_bill_labd(child_lan, require_emi_fixture=False)
+    if VIKRAM_USE_LOAN_PREPAYMENT and ACCEPTANCE_STRICT:
+        assert_no_bpi_air_credit_after_force_bill(child_lan)
+        assert_all_txn_gl_balanced_for_lan(child_lan, label="fc-post")
+        assert_product_gl_air_bi_balanced(child_lan)
+
+
+def assert_no_bpi_air_credit_after_force_bill(lan: str) -> None:
+    """TDPQA-72 392164: after FC force-bill, LOAN_PREPAYMENT must not credit AIR via BPI_AMT."""
+    fb = psql(_dfc_force_bill_tm_sql(lan))
+    if not fb:
+        return
+    row = psql(f"""
+SELECT COALESCE(SUM(tpd.amount),0)::text
+FROM mfi_accounting.transaction_details td
+JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id
+  AND tm.reversed = false AND tm.status = 'SUCCESS'
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+JOIN mfi_accounting.transaction_partition_details tpd ON tpd.transaction_id = tm.id
+WHERE td.account_number = '{lan}'
+  AND tc.type = 'LOAN_PREPAYMENT'
+  AND tpd.cr_dr_indicator = 'C'
+  AND tpd.gl_code IN ('13578','CG13578')
+  AND COALESCE(tpd.reference_code,'') = 'BPI_AMT';
+""")
+    amt = Decimal(row or "0")
+    if amt > 0:
+        raise AssertionError(
+            f"BPI-after-FB FAIL: {lan} LOAN_PREPAYMENT still credits AIR via BPI_AMT amount={amt} "
+            f"(force-bill already moved Accrued→BI; double AIR credit)"
+        )
+    print(f"  BPI-after-FB PASS: {lan} no BPI_AMT AIR credit on LOAN_PREPAYMENT")
 
 
 def compute_outstanding_rounded(child_lan: str, death_date: str) -> str:
@@ -3576,7 +3728,8 @@ def main() -> int:
                     assert_loan_prepayment_force_bill(child)
                     if VIKRAM_USE_LOAN_PREPAYMENT:
                         print("\n--- GL balance after Vikram non-last FC ---")
-                        assert_gl_balance_for_loan(child, ["LOAN_PREPAYMENT"])
+                        assert_all_txn_gl_balanced_for_lan(child, label="fc-matrix")
+                        assert_product_gl_air_bi_balanced(child)
                     else:
                         print(
                             "\n--- GL balance after Vikram non-last FC SKIP "
@@ -3617,12 +3770,17 @@ def main() -> int:
         for child in children_in_order:
             if VIKRAM_PATH and child != last_child:
                 if VIKRAM_USE_LOAN_PREPAYMENT:
-                    assert_gl_balance_for_loan(child, ["LOAN_PREPAYMENT"])
+                    assert_all_txn_gl_balanced_for_lan(child, label="fc-final")
+                    assert_product_gl_air_bi_balanced(child)
                 else:
                     print(f"  GL matrix SKIP LOAN_PREPAYMENT for ICF FC child {child}")
             else:
                 assert_gl_balance_for_loan(child, ["DEATH_FORECLOSURE"])
+                assert_all_txn_gl_balanced_for_lan(child, label="dfc-final")
+                assert_product_gl_air_bi_balanced(child)
         assert_gl_balance_for_loan(parent, ["RSCH_DEATH_FORECLOSURE"])
+        assert_all_txn_gl_balanced_for_lan(parent, label="parent-final")
+        assert_product_gl_air_bi_balanced(parent)
 
         print("\n--- Transaction posting audit full (S7) ---")
         assert_transaction_posting_audit(last_child, parent)
