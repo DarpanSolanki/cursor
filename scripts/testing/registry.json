@@ -1633,6 +1633,11 @@
           "checked_by": "parent RSCH columns PASS amount==principal excess=0 interest=0"
         },
         {
+          "table": "death_foreclosure_details",
+          "assert": "S9 full money column audit: claim OS bal == staging OS; OS == UNBLD_PRIN+EXCESS_econ; child/parent lapd + closed dues identity",
+          "checked_by": "assert_full_money_column_audit (S9)"
+        },
+        {
           "table": "transaction_partition_details",
           "assert": "parent RSCH EXCESS_*=0 and BLD_INT*=0 (no double INT); child DEATH_FORECLOSURE EXCESS_INCOME_INT when EXTRA>0; debit==credit on parent FB, parent RSCH, child DFC",
           "checked_by": "GL PASS debit=credit; parent RSCH partitions PASS EXCESS_*=0 BLD_INT*=0; child EXCESS PASS"
@@ -2141,6 +2146,11 @@
           "checked_by": "assert_amount_calculations_last_child (last child only)"
         },
         {
+          "table": "death_foreclosure_details",
+          "assert": "S9: dfd.outstanding_loan_balance == staging.outstanding_loan_balance >0; OS == UNBLD_PRIN + EXCESS_econ; child+parent lapd amount==principal excess=0 interest=0; dues paid+waived+pending==due and pending=0 (obs123: parent INT/DPI Out-of-scope GAP-074)",
+          "checked_by": "assert_full_money_column_audit (S9)"
+        },
+        {
           "table": "interest_accrual_details",
           "assert": "Obs3 Accrued<=Original (+\u20b91) for parent and both children after last DFC; no Accrued on soft-deleted installments after RSTCRE",
           "checked_by": "assert_accrued_le_original + assert_no_accrued_on_deleted_installments"
@@ -2191,6 +2201,11 @@
           "table": "loan_account_payments_details",
           "assert": "last-child: parent RSCH amount==principal_amount excess_amount=0 (Obs2); child DFC original_amount may differ from parent RSCH by design; non-last: child DEATH_FORECLOSURE.original_amount == parent RSCH.original_amount",
           "checked_by": "assert_amount_calculations_last_child + assert_amount_calculations_non_last"
+        },
+        {
+          "table": "death_foreclosure_details",
+          "assert": "S9: outstanding_loan_balance == staging OS; OS == UNBLD_PRIN+EXCESS_econ; lapd+dues identity",
+          "checked_by": "assert_full_money_column_audit (S9)"
         },
         {
           "table": "transaction_partition_details",

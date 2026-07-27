@@ -383,6 +383,28 @@ LIMIT 1;
             "interest_amount": Decimal(intr),
             "excess_amount": Decimal(exc),
         }
+        if ACCEPTANCE_STRICT and phase == "last_child":
+            if evidence["child"]["lapd"]["amount"] != evidence["child"]["death_foreclosure"]["original_amount"]:
+                raise AssertionError(
+                    f"txn audit FAIL: child DFC lapd.amount={evidence['child']['lapd']['amount']} "
+                    f"!= tm.original_amount={evidence['child']['death_foreclosure']['original_amount']}"
+                )
+            # Obs2 amount==principal is parent last-child A2 netting (Vikram). Child claim
+            # amount may include BLD_INT/PINT (QA4 dual-death + local S_B: 31300 vs 30000).
+            if evidence["child"]["lapd"]["amount"] != evidence["child"]["lapd"]["principal_amount"]:
+                print(
+                    f"  txn audit INFO (last_child): child DFC amount="
+                    f"{evidence['child']['lapd']['amount']} != principal="
+                    f"{evidence['child']['lapd']['principal_amount']} — allowed; "
+                    f"parent RSCH Obs2 remains fail-closed"
+                )
+            if evidence["child"]["lapd"]["excess_amount"] != 0:
+                raise AssertionError(
+                    f"txn audit FAIL: child DFC excess_amount="
+                    f"{evidence['child']['lapd']['excess_amount']} must be 0"
+                )
+    elif ACCEPTANCE_STRICT and phase == "last_child":
+        raise AssertionError(f"txn audit FAIL: child {child_lan} DFC lapd missing ref={child_ref}")
     child_labd = psql(f"""
 SELECT labd.id::text,
        labd.transaction_reference_number,
@@ -547,6 +569,268 @@ def assert_amount_calculations_last_child(
         f"claim_minus_rsch={delta} EXTRA≈{expected_extra} "
         f"lapd amount=principal={rsch_cols['principal_amount']} excess=0"
     )
+
+
+def _partition_amount_one_side(ref: str, reference_code: str) -> Decimal:
+    """Sum one CR/DR side of a partition code (debit==credit so either side equals economic amt)."""
+    row = psql(f"""
+SELECT COALESCE(SUM(tpd.amount),0)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id=tpd.transaction_id
+WHERE tm.reference_number='{ref}'
+  AND tpd.reference_code='{reference_code}'
+  AND tpd.cr_dr_indicator='D';
+""") or "0"
+    return Decimal(row)
+
+
+def assert_full_money_column_audit(
+    parent_lan: str,
+    children: list[str],
+    last_child: str,
+) -> None:
+    """S9 — fail-closed money column / outstanding / calculation audit (harness improvement).
+
+    Covers what Obs1–3 + S6/S7 leave implicit:
+      - death_foreclosure_details ↔ staging outstanding_loan_balance / claim fields
+      - OS bal == UNBLD_PRIN + claim-overpay EXCESS economic leg (when present)
+      - child DEATH + parent RSCH lapd columns (amount/prin/int/excess)
+      - closed-loan dues identity: pending==0 (obs123: INT/DPI out-of-scope on parent only)
+      - loan_account.loan_status CLOSED for parent + all children
+    """
+    if not ACCEPTANCE_STRICT:
+        print("  full money column audit SKIP: ACCEPTANCE_STRICT=0")
+        return
+
+    # --- statuses ---
+    for lan, role in [(parent_lan, "parent")] + [(c, "child") for c in children]:
+        st = psql(
+            f"SELECT loan_status FROM mfi_accounting.loan_account "
+            f"WHERE la_account_number='{lan}' AND is_deleted=false;"
+        )
+        if st != "CLOSED":
+            raise AssertionError(f"column audit FAIL: {role} {lan} loan_status={st!r} expected CLOSED")
+
+    # --- claim / outstanding columns (last death child) ---
+    claim = psql(f"""
+SELECT dfd.id::text,
+       COALESCE(dfd.outstanding_loan_balance,0)::text,
+       COALESCE(dfd.balance_claim_amount,0)::text,
+       s.id::text,
+       COALESCE(s.outstanding_loan_balance,0)::text,
+       COALESCE(s.payment_amount_for_nominee,0)::text,
+       COALESCE(s.balance_claim_amount,0)::text
+FROM mfi_accounting.death_foreclosure_details dfd
+JOIN mfi_accounting.loan_account la ON la.account_id = dfd.loan_account_id
+JOIN mfi_accounting.death_foreclosure_insurance_staging_details s
+  ON s.death_foreclosure_details_id = dfd.id
+WHERE la.la_account_number='{last_child}'
+  AND COALESCE(s.is_deleted,false)=false
+ORDER BY dfd.id DESC, s.id DESC LIMIT 1;
+""")
+    if not claim:
+        raise AssertionError(f"column audit FAIL: no DFD/staging for last child {last_child}")
+    (
+        dfd_id,
+        dfd_os_s,
+        dfd_claim_s,
+        stg_id,
+        stg_os_s,
+        stg_nominee_s,
+        stg_claim_s,
+    ) = claim.split("|", 6)
+    dfd_os = Decimal(dfd_os_s)
+    stg_os = Decimal(stg_os_s)
+    dfd_claim = Decimal(dfd_claim_s)
+    stg_nominee = Decimal(stg_nominee_s)
+    if dfd_os <= 0:
+        raise AssertionError(
+            f"column audit FAIL: dfd.outstanding_loan_balance={dfd_os} must be >0 "
+            f"(dfd_id={dfd_id})"
+        )
+    if dfd_os != stg_os:
+        raise AssertionError(
+            f"column audit FAIL: dfd.outstanding_loan_balance={dfd_os} != "
+            f"staging.outstanding_loan_balance={stg_os} (dfd={dfd_id} staging={stg_id})"
+        )
+    # Nominee / claim fields: staging payment_amount_for_nominee is set from balance_claim at seed;
+    # tolerate either staging.balance_claim_amount or dfd.balance_claim_amount as SoT.
+    claim_sot = Decimal(stg_claim_s) if Decimal(stg_claim_s) != 0 else dfd_claim
+    if claim_sot != 0 and stg_nominee != 0 and stg_nominee != claim_sot:
+        raise AssertionError(
+            f"column audit FAIL: staging.payment_amount_for_nominee={stg_nominee} != "
+            f"claim_sot={claim_sot} (dfd_claim={dfd_claim} stg_claim={stg_claim_s})"
+        )
+    print(
+        f"  claim/OS columns PASS: last_child={last_child} dfd={dfd_id} staging={stg_id} "
+        f"outstanding_loan_balance={dfd_os} claim_sot={claim_sot} nominee={stg_nominee}"
+    )
+
+    # --- child DFC lapd + UNBLD/OS identity ---
+    child_ref, child_amt_s = latest_txn(last_child, "DEATH_FORECLOSURE")
+    if not child_ref:
+        raise AssertionError(f"column audit FAIL: missing DEATH_FORECLOSURE on {last_child}")
+    child_amt = Decimal(child_amt_s or "0")
+    child_lapd = psql(f"""
+SELECT COALESCE(lapd.amount,0)::text,
+       COALESCE(lapd.principal_amount,0)::text,
+       COALESCE(lapd.interest_amount,0)::text,
+       COALESCE(lapd.excess_amount,0)::text
+FROM mfi_accounting.loan_account_payments_details lapd
+WHERE lapd.transaction_reference_number='{child_ref}' LIMIT 1;
+""")
+    if not child_lapd:
+        raise AssertionError(f"column audit FAIL: child DFC lapd missing ref={child_ref}")
+    c_amt_s, c_prin_s, c_int_s, c_exc_s = child_lapd.split("|", 3)
+    c_amt, c_prin, c_int, c_exc = (
+        Decimal(c_amt_s),
+        Decimal(c_prin_s),
+        Decimal(c_int_s),
+        Decimal(c_exc_s),
+    )
+    if c_amt != child_amt:
+        raise AssertionError(
+            f"column audit FAIL: child lapd.amount={c_amt} != tm.original_amount={child_amt}"
+        )
+    if c_amt != c_prin:
+        print(
+            f"  child DFC INFO: lapd amount={c_amt} != principal={c_prin} "
+            f"(claim may include INT/PINT; parent Obs2 remains fail-closed)"
+        )
+    if c_exc != 0:
+        raise AssertionError(
+            f"column audit FAIL: child DFC lapd.excess_amount={c_exc} must be 0 "
+            f"(UI excess=0; Sheet15 EXCESS_* may still post in GL)"
+        )
+    unbld = _partition_amount_one_side(child_ref, "UNBLD_PRIN_AMT")
+    # UNBLD should match principal component of settlement (not necessarily full claim amount).
+    if unbld != c_prin and ACCEPTANCE_STRICT:
+        # Some dual-DFC partitions split BLD_PRIN + UNBLD; allow UNBLD <= principal.
+        if unbld > c_prin:
+            raise AssertionError(
+                f"column audit FAIL: UNBLD_PRIN_AMT(D)={unbld} > lapd.principal={c_prin} ref={child_ref}"
+            )
+        print(f"  child DFC INFO: UNBLD={unbld} <= principal={c_prin} (BLD_PRIN may cover rest)")
+    # Economic claim-overpay EXCESS (one side). Prefer EXCESS_INCOME_INT_AMT, else ACCOUNT.
+    excess_econ = _partition_amount_one_side(child_ref, "EXCESS_INCOME_INT_AMT")
+    if excess_econ == 0:
+        excess_econ = _partition_amount_one_side(child_ref, "EXCESS_ACCOUNT_INC_AMT")
+    # QA4 SoT (Vikram death child): OS == UNBLD; EXCESS_* not folded into OS.
+    # Local Vikram harness seed often OS == UNBLD+EXCESS.
+    # Dual-DFC harness seeds OS from compute_outstanding_rounded which need not equal
+    # UNBLD±EXCESS after multi-leg settlement (S_B: OS=31100 UNBLD=27742 prin=30000).
+    if dfd_os < unbld:
+        raise AssertionError(
+            f"column audit FAIL: outstanding_loan_balance={dfd_os} < UNBLD_PRIN={unbld} ref={child_ref}"
+        )
+    if dfd_os == unbld:
+        os_shape = "QA4_OS_EQ_UNBLD"
+    elif dfd_os == unbld + excess_econ:
+        os_shape = "LOCAL_OS_EQ_UNBLD_PLUS_EXCESS"
+    elif dfd_os == c_prin:
+        os_shape = "OS_EQ_LAPD_PRINCIPAL"
+    elif VIKRAM_PATH:
+        raise AssertionError(
+            f"column audit FAIL (Vikram): outstanding_loan_balance={dfd_os} matches neither "
+            f"UNBLD({unbld}) nor UNBLD+EXCESS({unbld + excess_econ}) nor principal({c_prin}) "
+            f"ref={child_ref}"
+        )
+    else:
+        os_shape = "OS_GE_UNBLD_DUAL_DFC_SEEDED"
+        print(
+            f"  child DFC INFO: OS={dfd_os} not in Vikram OS shapes "
+            f"(UNBLD={unbld} EXCESS={excess_econ} prin={c_prin}) — allowed for dual-DFC seed"
+        )
+    print(
+        f"  child DFC money PASS: ref={child_ref} lapd amount={c_amt} principal={c_prin} excess=0 "
+        f"UNBLD={unbld} EXCESS_econ={excess_econ} OS={dfd_os} shape={os_shape}"
+    )
+
+    # --- parent RSCH: latest last-child row — Obs2 amount==principal when VIKRAM; else excess=0 ---
+    parent_ref, parent_amt_s = latest_txn(parent_lan, "RSCH_DEATH_FORECLOSURE")
+    if not parent_ref:
+        raise AssertionError(f"column audit FAIL: missing RSCH_DEATH_FORECLOSURE on {parent_lan}")
+    parent_amt = Decimal(parent_amt_s or "0")
+    parent_unbld = _partition_amount_one_side(parent_ref, "UNBLD_PRIN_AMT")
+    if parent_unbld > parent_amt:
+        raise AssertionError(
+            f"column audit FAIL: parent UNBLD_PRIN_AMT(D)={parent_unbld} > "
+            f"tm.original_amount={parent_amt} ref={parent_ref}"
+        )
+    if parent_unbld != parent_amt:
+        print(
+            f"  parent RSCH INFO: UNBLD={parent_unbld} != tm={parent_amt} "
+            f"(other partition legs may apply)"
+        )
+    if VIKRAM_PATH and parent_amt != child_amt:
+        raise AssertionError(
+            f"column audit FAIL (Vikram): parent RSCH tm={parent_amt} != child DFC tm={child_amt}"
+        )
+    if (not VIKRAM_PATH) and parent_amt != child_amt:
+        print(
+            f"  parent RSCH INFO: tm={parent_amt} != child DFC tm={child_amt} "
+            f"(last-child A2 netting / dual-DFC claim delta OK)"
+        )
+    print(
+        f"  parent RSCH money PASS: ref={parent_ref} tm={parent_amt} UNBLD={parent_unbld}"
+    )
+
+    # --- dues identity: paid+waived+pending == due; pending==0 when closed ---
+    for lan, role in [(parent_lan, "parent")] + [(c, "child") for c in children]:
+        rows = subprocess.check_output(
+            [
+                *PG,
+                "-c",
+                f"""
+SELECT ldd.component_type,
+       COALESCE(SUM(ldd.due_amount),0)::text,
+       COALESCE(SUM(ldd.paid_amount),0)::text,
+       COALESCE(SUM(ldd.waived_amount),0)::text,
+       COALESCE(SUM(ldd.due_amount-ldd.paid_amount-ldd.waived_amount),0)::text
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id=ldd.loan_account_id
+WHERE la.la_account_number='{lan}' AND ldd.is_deleted=false
+GROUP BY ldd.component_type
+ORDER BY ldd.component_type;
+""",
+            ],
+            env=PG_ENV,
+            text=True,
+        ).strip()
+        if not rows:
+            raise AssertionError(f"column audit FAIL: no dues rows for {role} {lan}")
+        for line in rows.split("\n"):
+            if not line or "|" not in line:
+                continue
+            comp, due_s, paid_s, waived_s, pend_s = line.split("|", 4)
+            due, paid, waived, pend = (
+                Decimal(due_s),
+                Decimal(paid_s),
+                Decimal(waived_s),
+                Decimal(pend_s),
+            )
+            if paid + waived + pend != due:
+                raise AssertionError(
+                    f"column audit FAIL: {role} {lan} {comp} "
+                    f"paid({paid})+waived({waived})+pending({pend}) != due({due})"
+                )
+            skip_pending = (
+                role == "parent"
+                and ACCEPTANCE_SCOPE == "obs123"
+                and comp in ("INT", "DPI")
+            )
+            if pend != 0 and not skip_pending:
+                raise AssertionError(
+                    f"column audit FAIL: {role} {lan} {comp} pending={pend} != 0 (CLOSED)"
+                )
+            if skip_pending and pend != 0:
+                print(
+                    f"  dues Out-of-scope: {role} {lan} {comp} pending={pend} "
+                    f"(ACCEPTANCE_SCOPE=obs123 / GAP-074)"
+                )
+        print(f"  dues identity PASS: {role} {lan} components ok")
+
+    print("  === full money column audit PASS (S9) ===")
 
 
 def child_already_closed_from_dfc(child_lan: str) -> bool:
@@ -3343,6 +3627,9 @@ def main() -> int:
         print("\n--- Transaction posting audit full (S7) ---")
         assert_transaction_posting_audit(last_child, parent)
 
+        print("\n--- Full money column / outstanding / dues audit (S9) ---")
+        assert_full_money_column_audit(parent, children_in_order, last_child)
+
         print("\n--- Obs3 Accrued ≤ Original (summary formula via SQL) ---")
         assert_accrued_le_original(parent, "parent")
         for child in children_in_order:
@@ -3362,7 +3649,7 @@ def main() -> int:
             else "SDCP-10199 group parent last-child DFC local e2e"
         )
         print(f"\n=== PASS: {pass_label} "
-              f"(matrix S1-S8 strict={ACCEPTANCE_STRICT} extra={SEED_EXTRA} emi_labd={SEED_EMI_LABD} "
+              f"(matrix S1-S9 strict={ACCEPTANCE_STRICT} extra={SEED_EXTRA} emi_labd={SEED_EMI_LABD} "
               f"vikram={VIKRAM_PATH}) ===")
         return 0
     finally:
