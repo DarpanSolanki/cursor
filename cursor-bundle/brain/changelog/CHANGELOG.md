@@ -1,3 +1,8 @@
+## 2026-07-27 | acct `f377e6c80` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 bpi_amount=0 after force-bill (all paths)
+- apiName: loanPrepayment, loanDeathForeclosure, individualChildLoanForeclosure; tables: transaction_partition_details, loan_account_billing_details
+- ForceBillBillingSupport.postPartialCycleBilling zeros bpi_amount after AIR→BI BILLING — INDL/JLG/SHG child FC + DFC child/parent
+- Prevents LOAN_PREPAYMENT BPI_AMT double AIR credit (Vikram 392164); verify: dcf.vikram_fc_rstcre_dfc_e2e PASS
+
 ## 2026-07-24 | kb | CG prevention harden + local DFC zero-partition diag
 - Fail-closed harness under ACCEPTANCE_STRICT when TM has 0 partitions; jira scan `child_gl_renamed_to_parent_name`
 - KG diag nodes: child CG* vs parent named GL; local DFC/RSCH empty partitions env gap
