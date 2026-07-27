@@ -29,8 +29,6 @@ SoT: `.cursor/gaps-and-risks.md`. Escalate to full file when task touches a GAP-
 | **`loanWriteoff` orchestration vs `PrepaymentApproppriationProcessor` ExecutionContext contract mismatch** | **High** | `loans_orc.xml` `loanWriteoff` passes `prepayment_amount` (not `total_foreclosure_amount`); `ValidateLoanWriteOffDataProcessor` sets `penalty_amount` but processor reads `penal_amount`; write-off uses `value_date`, processor reads `foreclosure_date`; `fee_amount` not set pre-processor — **GAP-062** | Appropriation/posting branch can **NPE** or apply **wrong component splits** for final write-off ledger and dues updates. |
 
 ## Medium/Low index
-GAP-IMPACT | Impact-tests was static map-only — RESOLVED by dynamic KG resolver (SU-IMPACT-001); residual registry stubs SU-RES-001/002 awaiting approval | scripts/lib/impact_tests.py
-
 
 GAP-018 | Platform-lib crypto utilities swallow exceptions and hardcod | see-full
 GAP-019 | Kafka producer wrapper swallows send failures (no signal to  | see-full

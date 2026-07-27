@@ -1,3 +1,5 @@
+[2026-07-27] | HYGIENE | prune impact.stub flood (519→26); impact_tests stubs opt-in --draft-stubs; hygiene warns proposals flood + untracked sql packs; commit digest/learnings + ops SQL (CLB/NEFT/SP329/DCF/deploy)
+
 [2026-07-27] | STITCH-FIX | X1: process_matrix at scripts/lib (not testing/) — absorbed into process_router.py (Upgrade 8 / 6f95865); X2: fast-exit hooks (grep-leak+pre-commit non-match 28→5ms); X3: expect.status for YES-coverage (disbursement.quick PASS / dpic PARTIAL) + drift probe; X4: orient-before-edit gate (kg.py touch session; after-ship-path-edit fail-closed) | .cursor/hooks/*, cursor-bundle/kg/bin/kg.py, scripts/testing/registry.json
 
 [2026-07-27] | FEATURE | KG truth: fix /home/darpan/darpan FRESH lie + fail-closed STALE KG-paths; MCP in-process SQLite (≤20ms warm); unified cache key; consumer/scheduler/unresolved parse; after-edit fail-closed + light incremental; grep-leak counter | cursor-bundle/kg/**, scripts/lib/kg_state_banner.py, .cursor/hooks.json

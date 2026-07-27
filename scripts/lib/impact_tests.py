@@ -517,7 +517,7 @@ def build_plan(
     range_spec: str | None = None,
     from_pending: bool = True,
     paths: list[str] | None = None,
-    draft_stubs: bool = True,
+    draft_stubs: bool = False,
 ) -> dict:
     changed = collect_changed_paths(
         range_spec=range_spec, from_pending=from_pending, paths=paths
@@ -810,7 +810,16 @@ def main() -> int:
     ap.add_argument("--banner", action="store_true")
     ap.add_argument("--mark-ran", action="store_true")
     ap.add_argument("--check-ran", action="store_true")
-    ap.add_argument("--no-stubs", action="store_true")
+    ap.add_argument(
+        "--draft-stubs",
+        action="store_true",
+        help="Opt-in: write impact.stub.* drafts into registry-proposals.json (default OFF — was flooding dirty tree)",
+    )
+    ap.add_argument(
+        "--no-stubs",
+        action="store_true",
+        help="Deprecated no-op (stubs already off by default)",
+    )
     ap.add_argument("--waiver", default="", help="Log explicit waiver reason and exit 0")
     args = ap.parse_args()
 
@@ -828,7 +837,7 @@ def main() -> int:
         range_spec=args.range_spec,
         from_pending=not args.no_pending,
         paths=args.path or None,
-        draft_stubs=not args.no_stubs,
+        draft_stubs=bool(args.draft_stubs),
     )
     if args.mark_ran:
         mark_ran(plan)

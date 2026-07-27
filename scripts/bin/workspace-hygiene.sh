@@ -192,6 +192,67 @@ PY
   fi
 fi
 
+# registry-proposals.json — impact.stub flood (impact_tests used to draft on every mark-ran)
+PROPOSALS="$ROOT/scripts/testing/registry-proposals.json"
+if [[ -f "$PROPOSALS" ]]; then
+  stub_n=$(python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path("scripts/testing/registry-proposals.json")
+try:
+    data = json.loads(p.read_text(encoding="utf-8"))
+except Exception:
+    print(0); raise SystemExit
+n = sum(
+    1
+    for x in (data.get("proposals") or [])
+    if (x.get("source") == "impact_tests")
+    or str(x.get("id") or "").startswith("impact.stub.")
+)
+print(n)
+PY
+)
+  if [[ "$stub_n" -gt 0 ]]; then
+    warn "registry-proposals has $stub_n impact.stub drafts (noise — promote intentionally via --draft-stubs)"
+    if [[ "$CLEAN" == 1 ]]; then
+      python3 - <<'PY'
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+p = Path("scripts/testing/registry-proposals.json")
+data = json.loads(p.read_text(encoding="utf-8"))
+kept = [
+    x for x in (data.get("proposals") or [])
+    if not (
+        (x.get("source") == "impact_tests")
+        or str(x.get("id") or "").startswith("impact.stub.")
+    )
+]
+removed = len(data.get("proposals") or []) - len(kept)
+data["proposals"] = kept
+data["updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print(f"    → pruned {removed} impact stubs; kept {len(kept)}")
+PY
+    fi
+  else
+    ok "registry-proposals has no impact.stub flood"
+  fi
+fi
+
+# Untracked ops SQL under scripts/sql/{adhoc,deploy} — hygiene never auto-deletes these
+# (ops packs are deliberate). Warn so agents commit or move to scratch, not leave dirty forever.
+untracked_sql=$(git -C "$ROOT" status --porcelain -- scripts/sql/adhoc scripts/sql/deploy 2>/dev/null | grep -E '^\?\?' | wc -l || true)
+untracked_sql=${untracked_sql// /}
+if [[ "${untracked_sql:-0}" -gt 0 ]]; then
+  warn "untracked scripts/sql packs: $untracked_sql file(s) — commit reusable ops SQL or delete one-shots (hygiene will NOT auto-rm)"
+  if [[ "$VERBOSE" == 1 ]]; then
+    git -C "$ROOT" status --porcelain -- scripts/sql/adhoc scripts/sql/deploy 2>/dev/null | grep -E '^\?\?' || true
+  fi
+else
+  ok "no untracked scripts/sql/{adhoc,deploy} packs"
+fi
+
 if [[ "$ISSUES" -eq 0 ]]; then
   echo "✓ No hygiene issues found"
 else
