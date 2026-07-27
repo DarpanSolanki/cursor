@@ -3547,6 +3547,11 @@ def main() -> int:
         f"seed_extra={SEED_EXTRA} seed_emi_labd={SEED_EMI_LABD} "
         f"allow_a2_netting_display_diff={ALLOW_A2_NETTING_DISPLAY_DIFF}"
     )
+    sys.path.insert(0, str(ROOT / "scripts/testing"))
+    from flowtest.invariants import run_universal_invariants, snapshot_invariants  # noqa: WPS433
+
+    _inv_lans = [parent, child1, child2]
+    _inv_baseline: dict | None = None
     if not ACCEPTANCE_STRICT or ALLOW_A2_NETTING_DISPLAY_DIFF:
         print("  WARN: acceptance gate relaxed — this run is DEBUG ONLY and is NOT a QA handoff Pass.")
     if ACCEPTANCE_SCOPE == "obs123":
@@ -3598,6 +3603,9 @@ def main() -> int:
         RUN_TXN_FLOOR_ID = int(psql(
             "SELECT COALESCE(MAX(id),0)::text FROM mfi_accounting.transaction_master;"
         ) or "0")
+        # Baseline AFTER restore/prep — fixture may carry pre-existing imbalance (delta-only fail).
+        _inv_baseline = snapshot_invariants(_inv_lans)
+        print(f"  invariants baseline: lans={_inv_lans}")
         snapshot_dues(parent, "parent-before")
         snapshot_dues(child1, "child1-before")
         snapshot_dues(child2, "child2-before")
@@ -3800,6 +3808,13 @@ def main() -> int:
 
         print("\n--- Webapp-bound APIs (summary / overview / statement) (S8) ---")
         assert_webapp_bound_apis(parent, children_in_order, last_child)
+
+        print("\n--- Universal invariants (TRUE-TO-WORLD R0 — not selectable) ---")
+        run_universal_invariants(
+            _inv_lans,
+            baseline=_inv_baseline,
+            label="dcf.e2e-final",
+        )
 
         pass_label = (
             "VIKRAM FC→RSTCRE→last DFC"

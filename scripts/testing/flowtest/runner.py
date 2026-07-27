@@ -1,4 +1,4 @@
-"""Thin flow runner: restore → fire Request → wait → selected asserts → evidence."""
+"""Thin flow runner: restore → fire Request → wait → selected asserts → UNIVERSAL invariants."""
 from __future__ import annotations
 
 import os
@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 from . import asserts as A
 from .db import psql
 from .fixture import ensure_snapshot_or_restore
+from .invariants import lans_from_ctx, run_universal_invariants, snapshot_invariants
 from .lock import acquire_flowtest_lock, mark_lock_held
 from .profiles import FixtureProfile
 
@@ -92,6 +93,11 @@ def run_scenario(scenario: Scenario) -> int:
     if scenario.setup:
         ctx.update(scenario.setup() or {})
 
+    inv_lans = lans_from_ctx(ctx) or [scenario.parent_lan]
+    inv_baseline = snapshot_invariants(inv_lans)
+    ctx["invariant_baseline"] = inv_baseline
+    print(f"  invariants baseline: lans={inv_lans}")
+
     job_name = scenario.job_name or scenario.api
     if scenario.batch:
         before = max_batch_execution_id(job_name)
@@ -105,6 +111,13 @@ def run_scenario(scenario: Scenario) -> int:
 
     for fn in scenario.asserts:
         fn(ctx)
+
+    # Universal layer — not selectable; scenario asserts PASS is insufficient alone.
+    run_universal_invariants(
+        lans_from_ctx(ctx) or inv_lans,
+        baseline=inv_baseline,
+        label=f"scenario:{scenario.name}",
+    )
 
     print(f"=== PASS: flowtest scenario={scenario.name} ===")
     return 0

@@ -20,6 +20,7 @@ from flowtest.asserts import assert_loan_status, snapshot_dues  # noqa: E402
 from flowtest.db import psql  # noqa: E402
 from flowtest.doc_stub import document_details  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.loan_state import age_dues_for_dpd, force_regular_asset_slab  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
@@ -85,6 +86,7 @@ def main() -> int:
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.ensure_fixture_accounts_active(PARENT)
     assert_loan_status(CHILD, "ACTIVE")
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
 
     child_id = int(
         psql(
@@ -159,6 +161,7 @@ FROM mfi_accounting.loan_due_details WHERE id = {due_id}
             raise AssertionError(f"due {due_id} still pending={left} after waive")
     print(f"  waived PASS: int_waived {before['int_waived']}→{after['int_waived']}")
     print("  LAYERS_DECLARE: aging=SEEDED waive=REAL docs=STUB_PAYLOAD")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.waiver_charges")
     print("=== PASS: flowtest.waiver_charges ===")
     return 0
 

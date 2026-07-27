@@ -24,6 +24,7 @@ from flowtest.asserts import (  # noqa: E402
 )
 from flowtest.db import psql  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import run_universal_invariants, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
 
@@ -50,6 +51,8 @@ def main() -> int:
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.prepare_fixture_pint_free(PARENT)
     dcf.ensure_fixture_accounts_active(PARENT)
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: {[PARENT, CHILD]}")
 
     # ICF needs valueDate <= FD < maturity AND an INTEREST due AFTER prevDueDate
     # (134292 / 134291 / 132381 / "No current installment"). DCF bak matured
@@ -146,6 +149,12 @@ ORDER BY lacd.id DESC LIMIT 1;
         assert_gl_balanced_txn(ref, f"{CHILD}/icf-closure")
     assert_loan_status(PARENT, "ACTIVE", label="parent-active")
     assert_webapp_summary_accrued_le_original(CHILD, role="icf-child")
+
+    run_universal_invariants(
+        [PARENT, CHILD],
+        baseline=inv_baseline,
+        label="flowtest.loan_prepayment_fc",
+    )
 
     print("=== PASS: flowtest.loan_prepayment_fc ===")
     return 0
