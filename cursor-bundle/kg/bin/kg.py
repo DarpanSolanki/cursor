@@ -344,7 +344,7 @@ def cmd_stale(c,a):
     that no longer exists (renamed/moved/deleted) — a high-confidence staleness signal.
     `stale` = scan all docs; `stale <doc-substring>` = one doc."""
     import os, re
-    root="/home/darpan/darpan"
+    root=ROOT
     REF=re.compile(r'\b((?:novopay-[\w.-]+|trustt-[\w.-]+)/[\w./-]+\.\w+)(?::\d+)?')
     rows=c.execute("SELECT id,src FROM nodes WHERE kind='doc'"+(" AND id LIKE ?" if a else ""),
                    (f"%{a[0]}%",) if a else ()).fetchall()
