@@ -27,6 +27,7 @@ from flowtest.asserts import (  # noqa: E402
 )
 from flowtest.db import psql  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import RSTCRE_SPINE  # noqa: E402
 from flowtest.runner import fire_batch, max_batch_execution_id, wait_batch  # noqa: E402
@@ -88,6 +89,10 @@ def main() -> int:
     print("=== flowtest.rstcre_spine (F1 pilot) ===")
     print(f"  parent={PARENT} non_last={CHILD_NON_LAST} remaining={CHILD_REMAINING} death={DEATH_DATE}")
 
+    inv_lans = [PARENT, CHILD_NON_LAST, CHILD_REMAINING]
+    inv_baseline = snapshot_invariants(inv_lans)
+    print(f"  invariants baseline: lans={inv_lans}")
+
     _ensure_stack()
     ensure_snapshot_or_restore(PARENT, RSTCRE_SPINE, force_restore=True)
 
@@ -143,6 +148,7 @@ WHERE parent_account_id={parent_id} AND event_type='RSTCRE' AND is_deleted=false
     snapshot_dues(PARENT, "parent-after")
 
     print("=== PASS: flowtest.rstcre_spine ===")
+    finish_scenario(inv_lans, baseline=inv_baseline, label="flowtest.rstcre_spine")
     return 0
 
 

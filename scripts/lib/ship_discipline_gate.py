@@ -128,6 +128,63 @@ def _check_impact_analysis(disc: dict) -> list[str]:
     return errors
 
 
+def _check_fix_plan(pending: dict, disc: dict) -> list[str]:
+    """G2 FIX-PLAN gate — WARN on budget exceed; block on money when missing."""
+    errors: list[str] = []
+    warns: list[str] = []
+    plan = disc.get("fix_plan")
+    if not isinstance(plan, dict):
+        if _needs_impact_analysis(pending, disc):
+            errors.append(
+                "missing fix_plan — emit root_cause, flow_spine, minimal_option, "
+                "diff_budget, reuse_check before first edit"
+            )
+        return errors
+    for k in ("root_cause", "flow_spine", "minimal_option", "reuse_check"):
+        if len(str(plan.get(k) or "").strip()) < 8:
+            errors.append(f"fix_plan.{k} missing or too short")
+    budget = plan.get("diff_budget") or {}
+    max_files = int(budget.get("files") or 0)
+    max_lines = int(budget.get("lines") or 0)
+    if max_files <= 0 or max_lines <= 0:
+        errors.append("fix_plan.diff_budget needs positive files and lines")
+        return errors
+    import subprocess
+
+    files = pending.get("files") or []
+    total_lines = 0
+    for f in files:
+        p = ROOT / f if not str(f).startswith("/") else Path(f)
+        if not p.is_file():
+            continue
+        r = subprocess.run(
+            ["git", "diff", "--numstat", "HEAD", "--", str(p)],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(ROOT if "trustt-" not in str(f) and "novopay-" not in str(f) else ROOT / str(f).split("/")[0]),
+        )
+        for line in (r.stdout or "").splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+                total_lines += int(parts[0]) + int(parts[1])
+    if len(files) > max_files or total_lines > max_lines:
+        msg = (
+            f"fix_plan budget exceeded: diff files={len(files)}>{max_files} "
+            f"or lines={total_lines}>{max_lines}"
+        )
+        if (pending.get("tier") or "").lower() == "money":
+            errors.append(msg)
+        else:
+            warns.append(msg)
+    reuse = str(plan.get("reuse_check") or "").lower()
+    if "duplicate" in reuse or "reimplements" in reuse:
+        warns.append(f"fix_plan reuse_check flags duplication: {plan.get('reuse_check')}")
+    for w in warns:
+        print(f"ship-discipline WARN: {w}", file=sys.stderr)
+    return errors
+
+
 def needs_discipline(pending: dict) -> bool:
     tier = (pending.get("tier") or "workspace").lower()
     if tier in ("money", "service"):
@@ -203,6 +260,7 @@ def check(*, hard: bool = True) -> int:
         # Money tier, service on accounting/payments/LOS, or money-path files: impact matrix.
         if _needs_impact_analysis(pending, disc):
             errors.extend(_check_impact_analysis(disc))
+        errors.extend(_check_fix_plan(pending, disc))
 
     # Fail-closed acceptance matrix (any money/service flow — see acceptance_coverage.py).
     import subprocess
@@ -318,6 +376,18 @@ def write(args: argparse.Namespace) -> int:
         "overengineering": False,
         "apis": pending.get("apis") or [],
     }
+    if getattr(args, "fix_plan_root_cause", None):
+        data["fix_plan"] = {
+            "root_cause": (args.fix_plan_root_cause or "").strip(),
+            "flow_spine": (args.fix_plan_flow_spine or "").strip(),
+            "minimal_option": (args.fix_plan_minimal or "").strip(),
+            "rejected": (args.fix_plan_rejected or "").strip(),
+            "diff_budget": {
+                "files": int(args.fix_plan_files or 0),
+                "lines": int(args.fix_plan_lines or 0),
+            },
+            "reuse_check": (args.fix_plan_reuse or "").strip(),
+        }
 
     if args.reuse_step:
         data["reuse_query"] = {
@@ -370,6 +440,13 @@ def main() -> int:
         help="claim=evidence (repeatable); prefer --assumptions-none",
     )
     w.add_argument("--layers-dropped", default="")
+    w.add_argument("--fix-plan-root-cause", default="")
+    w.add_argument("--fix-plan-flow-spine", default="")
+    w.add_argument("--fix-plan-minimal", default="")
+    w.add_argument("--fix-plan-rejected", default="")
+    w.add_argument("--fix-plan-files", type=int, default=0)
+    w.add_argument("--fix-plan-lines", type=int, default=0)
+    w.add_argument("--fix-plan-reuse", default="")
     w.add_argument("--tier", default="money")
     w.add_argument(
         "--reuse-step",

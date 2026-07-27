@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "scripts/testing"))
 
 SU = "SU-FLOW-PENAL-READER-ELIG"
+SCOPE = "out"  # permanent user scope cut — WONT-DO
 PARENT = os.environ.get("PARENT_LAN", "6000137433")
 CHILD = os.environ.get("CHILD1_LAN", "6000137440")
 

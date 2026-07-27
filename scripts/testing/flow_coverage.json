@@ -203,17 +203,19 @@
       "flow": "penalInterestAccrualCalculation",
       "verify_mode": "none",
       "harness_ready": "NO",
+      "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "SU-FLOW-PENAL-READER-ELIG"
+      "note": "SU-FLOW-PENAL-READER-ELIG — WONT-DO per user scope cut"
     },
     {
       "flow": "penalInterestAccrualBooking",
       "verify_mode": "none",
       "harness_ready": "NO",
+      "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "blocked with calc"
+      "note": "blocked with calc — scope=out permanently"
     },
     {
       "flow": "loanAccountBillingJob",
@@ -269,5 +271,5 @@
       "registry": "dpic.two_emi_full_chain"
     }
   ],
-  "self_report": "FLOWTEST coverage YES 16/35 = 45.7% (F5 unlocked reopen+waiver; writeoff amount harness green but GAP-062 blocks YES)"
+  "self_report": "FLOWTEST coverage YES 16/33 = 48.5% (penal scope=out excluded from denominator; F5 unlocked reopen+waiver; writeoff GAP-062 blocks YES)"
 }

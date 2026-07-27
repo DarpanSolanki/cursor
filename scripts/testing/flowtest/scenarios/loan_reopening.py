@@ -24,6 +24,7 @@ from flowtest.asserts import (  # noqa: E402
 from flowtest.db import psql  # noqa: E402
 from flowtest.doc_stub import document_details  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
 
@@ -125,6 +126,9 @@ def main() -> int:
     print(f"  parent={PARENT} child={CHILD}")
     print("  DOC_STUB: request payload (ValidateDocument + CreateDocument local DB) — no HTTP DMS")
 
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
+
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
         env={**os.environ, "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"},
@@ -175,6 +179,7 @@ ORDER BY lacd.id DESC LIMIT 1
     assert_webapp_summary_accrued_le_original(CHILD, role="reopened-child")
     print("  LAYERS_DECLARE: ICF=REAL reopen=REAL docs=STUB_PAYLOAD")
     print("=== PASS: flowtest.loan_reopening ===")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.loan_reopening")
     return 0
 
 

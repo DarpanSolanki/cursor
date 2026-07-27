@@ -26,6 +26,39 @@ RAN_FILE = ROOT / ".cursor/.impact-tests-ran.json"
 WAIVER_LOG = ROOT / ".cursor/.impact-tests-waivers.log"
 FINDINGS = ROOT / "cursor-bundle/memory/self-upgrade-findings.json"
 BACKLOG = ROOT / "scripts/workspace-backlog.json"
+FLOW_COV = ROOT / "scripts/testing/flow_coverage.json"
+INVARIANTS_CASE = "flowtest.invariants_universal"
+SMOKE_READ_CASE = "accounting.read_smoke"
+# L2 speed doctrine — wall estimates (seconds) when registry ship_baseline missing
+_WALL_FULL_FLOW = 90
+_WALL_SMOKE = 20
+_WALL_HEALTH = 8
+_WALL_INVARIANTS = 15
+
+# Dirty-tree noise — must not expand blast radius (G1 evidence: settings.gradle ×17 repos).
+_NOISE_FRAGMENTS = (
+    "/settings.gradle",
+    "/logs/",
+    "commits_with_files_",
+    "/archieve/scripts/",
+    "/sli/archieve/",
+    ".csv",
+    "aepsBioAuthRequest.xml",
+    "QA_Authorization_Cache.txt",
+    "application/dist/application.properties",
+)
+
+_REPLAY_AXIS_FRAGMENTS = (
+    "clientreferencededup",
+    "dedup",
+    "callback",
+    "replay",
+    "idempoten",
+    "stan",
+    "messagebroker",
+    "kafkaconsumer",
+    "lmsmessagebroker",
+)
 
 try:
     from change_test_map import api_from_class_stem, api_from_path  # noqa: E402
@@ -56,6 +89,60 @@ def _to_rel(path: str) -> str:
         except ValueError:
             return str(p).replace("\\", "/")
     return path.replace("\\", "/").lstrip("./")
+
+
+def _is_noise_path(rel: str) -> bool:
+    s = rel.replace("\\", "/").lower()
+    return any(f.lower() in s for f in _NOISE_FRAGMENTS)
+
+
+def _repo_of(rel: str) -> str:
+    s = rel.replace("\\", "/")
+    if s.startswith("trustt-") or s.startswith("novopay-"):
+        return s.split("/", 1)[0]
+    return ""
+
+
+def _scope_out_cases() -> set[str]:
+    """Registry cases for flows permanently scope=out (penal cut + domain scope=out)."""
+    out: set[str] = set()
+    if FLOW_COV.is_file():
+        try:
+            data = json.loads(FLOW_COV.read_text(encoding="utf-8"))
+            for row in data.get("flows") or []:
+                if (row.get("scope") or "").lower() == "out":
+                    key = row.get("registry")
+                    if key:
+                        out.add(str(key))
+        except Exception:
+            pass
+    try:
+        from accounting_flow_domains import load_domains, domain_cases  # noqa: WPS433
+
+        reg = load_registry()
+        for did, meta in load_domains().items():
+            if (meta.get("scope") or "").lower() != "out":
+                continue
+            for phase in ("impact", "deep", "release"):
+                for cid in domain_cases(did, phase=phase, reg=reg):
+                    out.add(cid)
+    except Exception:
+        pass
+    return out
+
+
+def _filter_changed_paths(paths: list[str], *, pending_anchor: list[str] | None = None) -> list[str]:
+    """Drop noise; when pending anchor exists, only keep dirty from touched repos."""
+    anchor = pending_anchor or []
+    anchor_repos = {_repo_of(p) for p in anchor if _repo_of(p)}
+    filtered: list[str] = []
+    for p in paths:
+        if _is_noise_path(p) and p not in anchor:
+            continue
+        if anchor_repos and _repo_of(p) and _repo_of(p) not in anchor_repos:
+            continue
+        filtered.append(p)
+    return filtered
 
 
 def collect_changed_paths(
@@ -107,9 +194,16 @@ def collect_changed_paths(
         except Exception:
             pass
 
-    # Always union dirty trees (human edits regardless of author)
+    pending_anchor = list(out) if from_pending and out else []
+
+    # Always union dirty trees (human edits regardless of author) — scoped to pending repos when anchored.
     for repo in [ROOT, *sorted(ROOT.glob("trustt-*")), *sorted(ROOT.glob("novopay-*"))]:
         if not (repo / ".git").is_dir():
+            continue
+        repo_name = "" if repo == ROOT else f"{repo.name}/"
+        if pending_anchor and repo != ROOT and repo_name.rstrip("/") not in {
+            _repo_of(p) for p in pending_anchor
+        }:
             continue
         for args in (
             ["git", "-C", str(repo), "diff", "--name-only", "HEAD"],
@@ -140,7 +234,7 @@ def collect_changed_paths(
             for line in d.stdout.splitlines():
                 if line.strip():
                     add(prefix + line.strip())
-    return out
+    return _filter_changed_paths(out, pending_anchor=pending_anchor or None)
 
 
 def _kg() -> sqlite3.Connection | None:
@@ -447,6 +541,203 @@ def acceptance_guards(flows: list[dict], cases: list[dict]) -> list[str]:
     return list(dict.fromkeys(guards))
 
 
+def _money_path_touched(changed: list[str], flows: list[dict], cases: list[dict]) -> bool:
+    if acceptance_guards(flows, cases):
+        return True
+    blob = " ".join(p.replace("\\", "/").lower() for p in changed)
+    return any(
+        tok in blob
+        for tok in (
+            "/loan/",
+            "foreclos",
+            "disburse",
+            "transaction",
+            "posting",
+            "scripts/testing/flowtest",
+            "scripts/dcf_",
+            "scripts/dpic/",
+        )
+    )
+
+
+def _replay_axis_flags(changed: list[str]) -> dict[str, str]:
+    blob = " ".join(p.replace("\\", "/").lower() for p in changed)
+    flags: dict[str, str] = {}
+    if any(f in blob for f in _REPLAY_AXIS_FRAGMENTS):
+        flags["replay_dedup_callback"] = "NOT-EXERCISED"
+    return flags
+
+
+def _exclude_scope_out(case_ids: list[str]) -> tuple[list[str], list[str]]:
+    out_cases = _scope_out_cases()
+    if not out_cases:
+        return case_ids, []
+    kept, dropped = [], []
+    for cid in case_ids:
+        if cid in out_cases:
+            dropped.append(cid)
+        else:
+            kept.append(cid)
+    return kept, dropped
+
+
+def _flow_is_sibling_only(fl: dict) -> bool:
+    whys = fl.get("why") or fl.get("why_all") or []
+    if not whys:
+        return False
+    return all("→ sibling" in w or "sibling processor" in w for w in whys)
+
+
+def _direct_apis_from_nodes(
+    nodes: list[dict], flows: list[dict], changed: list[str] | None = None
+) -> set[str]:
+    """Apis tied to changed files (non-sibling KG expansion)."""
+    direct: set[str] = set()
+    for fl in flows:
+        if not _flow_is_sibling_only(fl):
+            direct.add(str(fl.get("api") or ""))
+    for n in nodes:
+        if n.get("kind") == "request" and n.get("via") in (
+            "orch_xml",
+            "change_test_map_seed",
+            "change_test_map_path",
+        ):
+            direct.add(_norm_api(n["id"]))
+    if changed and api_from_path:
+        for p in changed:
+            hint = api_from_path(p)
+            if hint:
+                direct.add(hint)
+    return {a for a in direct if a}
+
+
+def _foreclosure_path_touch(changed: list[str]) -> bool:
+    blob = " ".join(p.replace("\\", "/").lower() for p in (changed or []))
+    return any(
+        tok in blob
+        for tok in (
+            "forcebill",
+            "foreclos",
+            "/loan/foreclosure",
+            "loanprepayment",
+            "individualchildloanforeclosure",
+        )
+    )
+
+
+def _case_wall_s(cid: str, reg: dict) -> int:
+    meta = reg.get(cid) or {}
+    bl = meta.get("ship_baseline") or {}
+    if bl.get("wall_s"):
+        return int(bl["wall_s"])
+    if cid == INVARIANTS_CASE:
+        return _WALL_INVARIANTS
+    if cid == SMOKE_READ_CASE:
+        return _WALL_SMOKE
+    if cid.startswith("health."):
+        return _WALL_HEALTH
+    if cid.startswith("dcf."):
+        return 600
+    if meta.get("type") == "flow":
+        return _WALL_FULL_FLOW
+    return _WALL_SMOKE
+
+
+def _apply_selection_tiering(
+    ordered: list[str],
+    *,
+    cases: list[dict],
+    domain_added: list[str],
+    nodes: list[dict],
+    flows: list[dict],
+    changed: list[str],
+    reg: dict,
+) -> tuple[list[str], list[str], dict]:
+    """L2: direct-impact → full run; sibling write blast → invariants + read_smoke."""
+    direct_apis = _direct_apis_from_nodes(nodes, flows, changed)
+    fc_touch = _foreclosure_path_touch(changed)
+    case_tier: dict[str, str] = {}
+    for c in cases:
+        case_tier[c["case"]] = (
+            "smoke" if _flow_is_sibling_only({"why_all": c.get("why_all") or [c.get("why", "")]}) else "full"
+        )
+
+    tier_lines: list[str] = []
+    full_cases: list[str] = []
+    skipped_smoke: list[str] = []
+
+    for cid in ordered:
+        if cid in (INVARIANTS_CASE, SMOKE_READ_CASE):
+            continue
+        meta = reg.get(cid) or {}
+        api = str(meta.get("api") or "")
+        tier = case_tier.get(cid)
+        if tier is None:
+            if api in direct_apis:
+                tier = "full"
+            elif fc_touch and any(
+                tok in cid
+                for tok in (
+                    "foreclosure.",
+                    "dcf.",
+                    "flowtest.loan_prepayment",
+                    "flowtest.loan_prepayment_fc",
+                )
+            ):
+                tier = "full"
+            elif cid in domain_added:
+                tier = "smoke"
+            elif cid.startswith("health.") or cid == SMOKE_READ_CASE:
+                tier = "smoke"
+            else:
+                tier = "smoke"
+        why = case_tier.get(cid) and "KG case map" or f"api={api or 'domain'}"
+        if tier == "full":
+            if cid not in full_cases:
+                full_cases.append(cid)
+                tier_lines.append(f"TIER full {cid}: direct-impact ({why})")
+        else:
+            skipped_smoke.append(cid)
+            tier_lines.append(f"TIER smoke-skip {cid}: sibling/domain blast ({why})")
+
+    smoke_exec: list[str] = []
+    if skipped_smoke:
+        if INVARIANTS_CASE in reg:
+            smoke_exec.append(INVARIANTS_CASE)
+        if SMOKE_READ_CASE in reg:
+            smoke_exec.append(SMOKE_READ_CASE)
+        tier_lines.append(
+            f"TIER smoke-exec {smoke_exec}: invariant-guarded smoke replaces "
+            f"{len(skipped_smoke)} sibling/domain cases"
+        )
+
+    final: list[str] = []
+    for cid in [INVARIANTS_CASE] + full_cases + smoke_exec:
+        if not cid or cid in final:
+            continue
+        if (reg.get(cid) or {}).get("quarantine"):
+            continue
+        final.append(cid)
+
+    wall_full = sum(_case_wall_s(c, reg) for c in full_cases)
+    wall_smoke = sum(_case_wall_s(c, reg) for c in smoke_exec)
+    wall_naive = sum(
+        _case_wall_s(c, reg)
+        for c in ordered
+        if c and not (reg.get(c) or {}).get("quarantine")
+    )
+    stats = {
+        "full_count": len(full_cases),
+        "smoke_skip_count": len(skipped_smoke),
+        "smoke_exec_count": len(smoke_exec),
+        "wall_full_s": wall_full,
+        "wall_smoke_s": wall_smoke,
+        "wall_planned_s": wall_full + wall_smoke + _case_wall_s(INVARIANTS_CASE, reg),
+        "wall_naive_full_s": wall_naive,
+    }
+    return final, tier_lines, stats
+
+
 def domain_mandatory_cases(
     changed: list[str], flows: list[dict], cases: list[dict]
 ) -> tuple[list[str], list[str]]:
@@ -552,6 +843,20 @@ def build_plan(
         for c in dict.fromkeys(guards + domain_ordered + case_ids)
         if not (reg.get(c) or {}).get("quarantine")
     ]
+    money_touch = _money_path_touched(changed, flows, cases)
+    if money_touch and INVARIANTS_CASE in (reg or {}) and INVARIANTS_CASE not in ordered:
+        ordered.insert(0, INVARIANTS_CASE)
+    ordered, scope_dropped = _exclude_scope_out(ordered)
+    replay_axes = _replay_axis_flags(changed)
+    ordered, tier_lines, tier_stats = _apply_selection_tiering(
+        ordered,
+        cases=cases,
+        domain_added=domain_added,
+        nodes=uniq_nodes,
+        flows=flows,
+        changed=changed,
+        reg=reg,
+    )
 
     q_files = []
     try:
@@ -578,6 +883,11 @@ def build_plan(
         "drafted_stubs": [s["id"] for s in stubs],
         "acceptance_guards": guards,
         "domain_mandatory_added": domain_added,
+        "scope_out_dropped": scope_dropped,
+        "invariants_mandatory": money_touch,
+        "reality_axes": replay_axes,
+        "selection_tier_lines": tier_lines,
+        "selection_tier_stats": tier_stats,
         "why_lines": [f"{c['case']}: {c['why']}" for c in cases]
         + [f"{cid}: domain_mandatory_suite" for cid in domain_added],
         "query_touched": bool(q_files),
@@ -690,6 +1000,27 @@ def format_banner(plan: dict) -> str:
             f"({', '.join(plan['domain_mandatory_added'][:12])}"
             f"{'…' if len(plan['domain_mandatory_added']) > 12 else ''})"
         )
+    if plan.get("invariants_mandatory"):
+        lines.append(f"  INVARIANTS_MANDATORY {INVARIANTS_CASE} (money-path universal layer)")
+    if plan.get("scope_out_dropped"):
+        lines.append(
+            f"  SCOPE_OUT dropped={plan['scope_out_dropped'][:8]}"
+            f"{'…' if len(plan['scope_out_dropped']) > 8 else ''}"
+        )
+    for axis, status in (plan.get("reality_axes") or {}).items():
+        lines.append(f"  REALITY_AXIS {axis}={status}")
+    stats = plan.get("selection_tier_stats") or {}
+    if stats:
+        lines.append(
+            f"  SELECTION_TIER full={stats.get('full_count')} smoke_skip={stats.get('smoke_skip_count')} "
+            f"smoke_exec={stats.get('smoke_exec_count')} "
+            f"wall_planned={stats.get('wall_planned_s')}s "
+            f"wall_naive_full={stats.get('wall_naive_full_s')}s"
+        )
+    for tl in (plan.get("selection_tier_lines") or [])[:25]:
+        lines.append(f"  {tl}")
+    if len(plan.get("selection_tier_lines") or []) > 25:
+        lines.append(f"  … +{len(plan['selection_tier_lines']) - 25} tier lines")
     for m in (plan.get("missing_flows") or [])[:10]:
         lines.append(f"  MISSING_CASE api={m.get('api')} (stub draftable)")
     if plan.get("drafted_stubs"):

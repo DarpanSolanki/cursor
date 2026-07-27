@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
 from flowtest.asserts import assert_gl_balanced_txn, assert_loan_status, snapshot_dues  # noqa: E402
 from flowtest.db import psql, psql_raw  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
 
@@ -74,6 +75,9 @@ def main() -> int:
     os.environ["DCF_E2E_LOCK_HELD"] = "1"
     print("=== flowtest.part_prepayment (F2 — REAL on DCF child) ===")
     print(f"  parent={PARENT} child={CHILD} net={NET}")
+
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -317,6 +321,7 @@ LIMIT 1;
         print(f"  GL INFO: response legs={len(otd) if isinstance(otd, list) else 'n/a'} ref={ref!r}")
 
     print("=== PASS: flowtest.part_prepayment ===")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.part_prepayment")
     return 0
 
 

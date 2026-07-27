@@ -177,7 +177,10 @@ def resolve_accounting_domain_cases(
         out.append(cid)
 
     merged = list(base)
+    all_domains = load_domains()
     for did in domains:
+        if (all_domains.get(did) or {}).get("scope") == "out":
+            continue
         for cid in domain_cases(did, phase="impact", reg=reg):
             add(cid, merged)
         if tier == "money":

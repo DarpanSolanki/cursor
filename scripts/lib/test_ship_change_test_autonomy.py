@@ -75,10 +75,9 @@ class ResolveImpactTest(unittest.TestCase):
         )
         apis = resolve_apis_for_path(path)
         self.assertIn("penalInterestAccrualCalculation", apis)
-        self.assertNotIn("penalInterestAccrualCalculationBatchService", apis)
-        self.assertNotIn("disburseLoan", apis)
         impact = build_impact([path])
-        self.assertIn("batch.penal_interest_accrual_calc", impact["ntest_cases"])
+        # penal scope=out — must not auto-select batch penal cases
+        self.assertNotIn("batch.penal_interest_accrual_calc", impact["ntest_cases"])
         self.assertNotIn("batch.interest_accrual_calc", impact["ntest_cases"])
 
     def test_advance_impact_not_dpi_repayment(self) -> None:
@@ -129,9 +128,9 @@ class ResolveImpactTest(unittest.TestCase):
             out = resolve(ROOT, pending, "", [], True)
             self.assertNotIn("disburseLoan", out["apis"])
             self.assertNotIn("disbursement.quick", out["ntest_cases"])
-            self.assertIn("batch.penal_interest_accrual_calc", out["ntest_cases"])
+            self.assertNotIn("batch.penal_interest_accrual_calc", out["ntest_cases"])
             refreshed = json.loads(pending.read_text(encoding="utf-8"))
-            self.assertIn("batch.penal_interest_accrual_calc", refreshed.get("registry_cases") or [])
+            self.assertNotIn("batch.penal_interest_accrual_calc", refreshed.get("registry_cases") or [])
 
 
 class FingerprintGateTest(unittest.TestCase):

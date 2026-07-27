@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "updated": "2026-07-27T13:11:33Z",
+  "provenance": {
+    "LOAN_SHG": "GetLoanAccountBasicDetailsProcessor.java:22; CreateMandateDetailsProcessor.java:59; loan_account.has_child_accounts",
+    "LOAN_JLG": "GetLoanAccountBasicDetailsProcessor.java:21; ValidateMandateDetailsForCreateProcessor.java:51 (single LAN per member)",
+    "LOAN_IND": "GetLoanAccountBasicDetailsProcessor.java:23",
+    "child_flows": "group_mfi_orc.xml childLoan* Requests; LoanAccountEventsQueueEntity EVENT_TYPE_ORC_API_MAP"
+  },
+  "loan_types": {
+    "LOAN_SHG": {
+      "label": "SHG",
+      "has_children": true,
+      "parent_child_lans": true,
+      "child_flows": [
+        "childLoanDisbursement",
+        "childLoanRepayment",
+        "childLoanForeclosure",
+        "childLoanRestructuring",
+        "childLoanReopening",
+        "childLoanTransactionReversal",
+        "childLoanPartPrepayment",
+        "parentLoanAccountPartPrepayment",
+        "childLoanDisbursementCancellation",
+        "childLoanAccountExcessAmountRefund",
+        "childLoanEventProcessingBatchJob",
+        "deathForeclosureInsuranceJob"
+      ],
+      "invalid_for": []
+    },
+    "LOAN_JLG": {
+      "label": "JLG",
+      "has_children": false,
+      "parent_child_lans": false,
+      "child_flows": [],
+      "invalid_for": [
+        "childLoanForeclosure",
+        "childLoanRepayment",
+        "childLoanDisbursement",
+        "parentLoanAccountPartPrepayment",
+        "deathForeclosureInsuranceJob"
+      ]
+    },
+    "LOAN_IND": {
+      "label": "INDL",
+      "has_children": false,
+      "parent_child_lans": false,
+      "child_flows": [],
+      "invalid_for": [
+        "childLoanForeclosure",
+        "childLoanRepayment",
+        "childLoanDisbursement",
+        "parentLoanAccountPartPrepayment",
+        "deathForeclosureInsuranceJob"
+      ]
+    }
+  }
+}

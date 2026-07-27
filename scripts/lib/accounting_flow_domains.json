@@ -303,6 +303,7 @@
     },
     "penal_interest": {
       "label": "Penal interest accrual calc & booking",
+      "scope": "out",
       "path_hints": [
         "/batchnew/penal/",
         "penalinterest",

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-23",
+  "updated": "2026-07-27",
   "description": "Workspace infra debt \u2014 agents drain auto_safe items via workspace-max-pass.sh",
   "items": [
     {
@@ -359,6 +359,14 @@
       "source": "self_upgrade",
       "draft_plan": "DRAFT: Harvest perf idioms from in-tree exemplars (Repository/@Query patterns that EXPLAIN PASS on money tables) + pin build.gradle/YB version notes; feed learning_bus events from query-plan-gate WARN/FAIL. Deliverable: cursor-bundle/brain/reference/perf-idioms.md + optional KG nodes. Do NOT block ships on catalog absence. Owner: next Upgrade after 11-LEAN. Auto_safe=false (structural/doc harvest).",
       "created_at": "2026-07-23T12:32:05Z"
+    },
+    {
+      "id": "SU-FLOW-PENAL-READER-ELIG",
+      "title": "Penal reader eligibility on DCF child fixture",
+      "status": "wont-do",
+      "auto_safe": false,
+      "note": "User scope cut GAP-G \u2014 penal flows permanently out of coverage denominator",
+      "done_date": "2026-07-27"
     }
   ]
 }

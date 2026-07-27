@@ -91,6 +91,38 @@ WHERE tm.reference_number IN ({in_list})
     return _dec(a), _dec(b)
 
 
+def per_ref_gl_imbalances(refs: list[str], *, tol: Decimal = TOL) -> dict[str, Decimal]:
+    """Set-based per-txn |D−C| — one query for all refs (W1 perf)."""
+    if not refs:
+        return {}
+    in_list = ",".join(f"'{r}'" for r in refs)
+    raw = psql_raw(
+        f"""
+SELECT tm.reference_number,
+  ABS(
+    COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('D','DEBIT') THEN tpd.amount ELSE 0 END),0)
+    - COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('C','CREDIT') THEN tpd.amount ELSE 0 END),0)
+  )::text
+FROM mfi_accounting.transaction_master tm
+JOIN mfi_accounting.transaction_partition_details tpd ON tpd.transaction_id = tm.id
+WHERE tm.reference_number IN ({in_list})
+  AND tm.reversed = false AND tm.status = 'SUCCESS'
+GROUP BY tm.reference_number
+HAVING ABS(
+  COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('D','DEBIT') THEN tpd.amount ELSE 0 END),0)
+  - COALESCE(SUM(CASE WHEN UPPER(tpd.cr_dr_indicator) IN ('C','CREDIT') THEN tpd.amount ELSE 0 END),0)
+) > {tol};
+"""
+    ).strip()
+    out: dict[str, Decimal] = {}
+    for line in raw.splitlines():
+        if not line.strip() or "|" not in line:
+            continue
+        ref, imb = line.split("|", 1)
+        out[ref.strip()] = _dec(imb)
+    return out
+
+
 def bpi_air_credit_after_force_bill(lan: str) -> Decimal:
     """TDPQA-72 392164 detector: LOAN_PREPAYMENT BPI_AMT crediting AIR after FB exists."""
     fb = psql(
@@ -200,11 +232,7 @@ def snapshot_invariants(lans: list[str]) -> dict[str, Any]:
             continue
         refs = all_success_txn_refs(lan)
         d, c = scope_gl_totals(refs)
-        unbalanced: list[str] = []
-        for ref in refs:
-            rd, rc = scope_gl_totals([ref])
-            if abs(rd - rc) > TOL:
-                unbalanced.append(ref)
+        unbalanced = sorted(per_ref_gl_imbalances(refs).keys())
         air_delta, _ = fc_settlement_air_delta(lan)
         bpi = bpi_air_credit_after_force_bill(lan)
         row = psql(
@@ -298,12 +326,12 @@ def run_universal_invariants(
         n = now["lans"][lan]
         refs = all_success_txn_refs(lan)
         base_unbal = set(b.get("unbalanced_refs") or [])
+        imb_map = per_ref_gl_imbalances(refs)
         # (a) per-txn — only NEW unbalanced refs fail (baseline-delta)
-        for ref in refs:
-            rd, rc = scope_gl_totals([ref])
-            if abs(rd - rc) > TOL and ref not in base_unbal:
+        for ref, imb in imb_map.items():
+            if ref not in base_unbal:
                 failures.append(
-                    f"inv GL per-txn FAIL {lan} ref={ref}: debit={rd} credit={rc}"
+                    f"inv GL per-txn FAIL {lan} ref={ref}: |D-C|={imb}"
                 )
         d, c = scope_gl_totals(refs)
         scope_imb = abs(d - c)

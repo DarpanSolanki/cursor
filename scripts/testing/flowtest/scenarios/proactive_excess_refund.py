@@ -23,6 +23,7 @@ from flowtest.asserts import assert_gl_balanced_txn, assert_loan_status  # noqa:
 from flowtest.dateroll import declare_layers, eod_ms_ist, fire_and_wait  # noqa: E402
 from flowtest.db import psql, psql_multi  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore, resolve_fixture  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
 
@@ -44,6 +45,9 @@ def main() -> int:
     os.environ["DCF_E2E_LOCK_HELD"] = "1"
     print("=== flowtest.proactive_excess_refund (F4 FLOW D) ===")
     print(f"  parent={PARENT} child={CHILD} seed_excess={SEED_EXCESS}")
+
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -116,12 +120,14 @@ ORDER BY tm.id DESC LIMIT 1
         print(f"  excess PASS: {before}→{after} ref={ref}")
         print("  LAYERS_DECLARE: excess=SEEDED jobs=REAL(staging+refund) bank=REAL_OR_STUB")
         print("=== PASS: flowtest.proactive_excess_refund ===")
+        finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.proactive_excess_refund")
         return 0
 
     if after < before:
         print(f"  excess reduced {before}→{after} but no EXCESS txn — PARTIAL")
         print("  LAYERS_DECLARE: excess=SEEDED jobs=REAL gl=MISSING")
         print("=== PARTIAL: flowtest.proactive_excess_refund ===")
+        finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.proactive_excess_refund")
         return 0
 
     # Jobs may COMPLETE while writer swallows bank failures (High gap) — honest PARTIAL
@@ -132,6 +138,7 @@ ORDER BY tm.id DESC LIMIT 1
     )
     print("  LAYERS_DECLARE: excess=SEEDED jobs=REAL(COMPLETED) bank=NO_EFFECT money=UNCHANGED")
     print("=== PARTIAL: flowtest.proactive_excess_refund ===")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.proactive_excess_refund")
     return 0
 
 

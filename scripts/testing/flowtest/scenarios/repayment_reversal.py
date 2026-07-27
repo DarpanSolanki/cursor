@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
 from flowtest.asserts import assert_gl_balanced_txn, assert_loan_status, snapshot_dues  # noqa: E402
 from flowtest.db import psql  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
 
@@ -71,6 +72,9 @@ def main() -> int:
     os.environ["DCF_E2E_LOCK_HELD"] = "1"
     print("=== flowtest.repayment_reversal (F2 — DCF child manual repay+rev) ===")
     print(f"  parent={PARENT} child={CHILD}")
+
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -269,6 +273,7 @@ WHERE tm.reference_number='{ref}';
         assert_gl_balanced_txn(ref, f"{CHILD}/reversed-repay")
 
     print("=== PASS: flowtest.repayment_reversal ===")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.repayment_reversal")
     return 0
 
 

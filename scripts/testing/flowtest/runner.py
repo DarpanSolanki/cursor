@@ -94,6 +94,19 @@ def run_scenario(scenario: Scenario) -> int:
         ctx.update(scenario.setup() or {})
 
     inv_lans = lans_from_ctx(ctx) or [scenario.parent_lan]
+    try:
+        from loan_taxonomy import validate_scenario_fixture  # noqa: WPS433
+
+        refuse = validate_scenario_fixture(
+            parent_lan=scenario.parent_lan,
+            profile_name=scenario.profile.name,
+            scenario_name=scenario.name,
+        )
+        if refuse:
+            print(refuse)
+            return 2
+    except ImportError:
+        pass
     inv_baseline = snapshot_invariants(inv_lans)
     ctx["invariant_baseline"] = inv_baseline
     print(f"  invariants baseline: lans={inv_lans}")

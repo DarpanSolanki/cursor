@@ -43,11 +43,28 @@ PATH_TRIGGERED_CASES = frozenset(
         "batch.loan_installment_due_notification",
         "batch.loan_installment_bounce_notification",
         "config.notification_sms_throughput",
-        "batch.penal_interest_accrual_calc",
-        "batch.penal_interest_accrual_booking",
         "batch.loan_advance_repayment",
     }
 )
+
+# scope=out flows (penal cut) — never path-trigger or ship-auto
+def _scope_out_case_ids() -> frozenset[str]:
+    try:
+        from impact_tests import _scope_out_cases  # noqa: WPS433
+
+        return frozenset(_scope_out_cases())
+    except Exception:
+        return frozenset(
+            {
+                "flowtest.penal_accrual",
+                "batch.penal_interest_accrual_calc",
+                "batch.penal_interest_accrual_booking",
+            }
+        )
+
+
+def _scope_out_blocked(cid: str) -> bool:
+    return cid in _scope_out_case_ids()
 
 # Mandatory on any DPI money-path ship touching calc/booking/billing (SDCP-10497 harness gap)
 _DPI_BOOKING_GUARD_CASES = frozenset(
@@ -111,6 +128,8 @@ def path_blob(paths: list[str] | None) -> str:
 
 def is_ship_auto_case(cid: str, meta: dict) -> bool:
     """Whether ship-loop may run this case without explicit ntest invoke."""
+    if _scope_out_blocked(cid):
+        return False
     if not meta or cid.startswith("_"):
         return False
     if cid in _DPI_FULL_SUITE_CASES:
@@ -170,6 +189,8 @@ def registry_case_for_api_ship(
         if c.get("api") != api:
             continue
         if cid in PATH_TRIGGERED_CASES and not _path_triggered_now(cid, path_blob_s):
+            continue
+        if _scope_out_blocked(cid):
             continue
         if not is_ship_auto_case(cid, c) and cid not in PATH_TRIGGERED_CASES:
             continue
@@ -271,14 +292,6 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "novopay-platform-notifications",
             "notification_sms_",
         ),
-        "batch.penal_interest_accrual_calc": (
-            "penalinterestaccrualcalculation",
-            "/batchnew/penal/",
-        ),
-        "batch.penal_interest_accrual_booking": (
-            "penalinterestaccrualbooking",
-            "/batchnew/penal/",
-        ),
         "batch.loan_advance_repayment": (
             "loanadvancerepayment",
             "/batchnew/loanadvancerepayment/",
@@ -296,6 +309,8 @@ def expand_path_cases(blob: str, apis: set[str], reg: dict) -> list[str]:
 
     def add(cid: str) -> None:
         if cid not in reg or cid in out:
+            return
+        if _scope_out_blocked(cid):
             return
         if cid == "foreclosure.dpi_waiver_smoke" and not _dpi_waiver_smoke_applicable():
             return

@@ -98,6 +98,89 @@ WHERE id = {pid};
         print(f"  restored partition id={pid} amount={amt}")
 
 
+def _ensure_synthetic_loan_prepayment(lan: str, aid: str) -> tuple[str, str | None]:
+    """Insert probe LOAN_PREPAYMENT SUCCESS txn if none exists; return (tm_id, ref)."""
+    lp_tid = psql(
+        f"""
+SELECT tm.id::text
+FROM mfi_accounting.transaction_details td
+JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id
+JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
+WHERE td.account_number = '{lan}' AND tc.type = 'LOAN_PREPAYMENT'
+  AND tm.reversed = false AND tm.status = 'SUCCESS'
+ORDER BY tm.id DESC LIMIT 1;
+"""
+    )
+    if lp_tid:
+        ref = psql(f"SELECT reference_number FROM mfi_accounting.transaction_master WHERE id={lp_tid};")
+        return lp_tid.strip(), ref.strip() if ref else None
+
+    cat_id = psql(
+        "SELECT id::text FROM mfi_accounting.transaction_catalogue "
+        "WHERE type='LOAN_PREPAYMENT' ORDER BY id LIMIT 1;"
+    )
+    if not cat_id:
+        raise RuntimeError("no LOAN_PREPAYMENT catalogue row")
+    ref = f"R0LP{int(time.time() * 1000)}"
+    stan = f"r0lp-{ref[-12:]}"
+    office = "1"
+    tmpl = psql(
+        f"""
+SELECT COALESCE(tpd.currency,'INR'), COALESCE(tpd.account_number,'CG13578')
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_details td ON td.transaction_id=tpd.transaction_id
+WHERE td.account_number='{lan}' LIMIT 1;
+"""
+    )
+    currency, gl_acct = (tmpl or "INR|CG13578").split("|", 1)
+    td_tmpl = psql(
+        f"""
+SELECT COALESCE(originating_office_id,1)::text, COALESCE(office_id,1)::text,
+       COALESCE(gl_code,'CG13334'), COALESCE(business_date::text, NOW()::text)
+FROM mfi_accounting.transaction_details WHERE account_number='{lan}' LIMIT 1;
+"""
+    )
+    orig_off, off, gl_code, biz_date = (td_tmpl or "1|1|CG13334|NOW()").split("|", 3)
+    psql_multi(
+        f"""
+INSERT INTO mfi_accounting.transaction_master (
+  transaction_catalogue_id, reference_number, client_reference_number,
+  operation_mode, client_code, channel_code, stan, currency, original_amount,
+  status, business_date, transaction_value_date, transaction_date,
+  created_by, approved_on, approved_by, updated_on, updated_by
+) VALUES (
+  {cat_id}, '{ref}', '{PROBE_TAG}_LP_{ref}',
+  'SELF', 'NOVOPAY', 'NOVOPAY', '{stan}', '{currency}', 15.000000,
+  'SUCCESS', '{biz_date}'::timestamp, '{biz_date}'::timestamp, NOW(),
+  '{PROBE_TAG}', NOW(), '{PROBE_TAG}', NOW(), '{PROBE_TAG}'
+);
+INSERT INTO mfi_accounting.transaction_details (
+  transaction_id, originating_office_id, office_id, account_number, gl_code,
+  currency, net_amount, cr_dr_indicator, value_date, business_date, transaction_date,
+  is_child_gl_code
+) VALUES (
+  currval(pg_get_serial_sequence('mfi_accounting.transaction_master','id')),
+  {orig_off}, {off}, '{lan}', '{gl_code}',
+  '{currency}', 15.000000, 'D', '{biz_date}'::timestamp, '{biz_date}'::timestamp, NOW(),
+  false
+);
+INSERT INTO mfi_accounting.transaction_partition_details (
+  transaction_id, reference_code, account_number, gl_code, office_id, currency,
+  amount, source_amount, cr_dr_indicator, created_date, is_child_gl_code
+) VALUES (
+  currval(pg_get_serial_sequence('mfi_accounting.transaction_master','id')),
+  'POS', '{gl_acct}', 'CG13578', {office}, '{currency}',
+  15.000000, 15.000000, 'D', NOW(), true
+);
+"""
+    )
+    lp_tid = psql(
+        f"SELECT id::text FROM mfi_accounting.transaction_master WHERE reference_number='{ref}';"
+    )
+    print(f"  synthetic LOAN_PREPAYMENT inserted ref={ref} id={lp_tid}")
+    return lp_tid.strip(), ref
+
+
 def proof_iii(lan: str) -> int:
     """Insert BPI_AMT AIR credit + balancer so per-txn D=C still holds — product AIR fails."""
     print(f"=== R0 proof_iii BPI-after-FB detector lan={lan} ===")
@@ -152,31 +235,9 @@ WHERE id = {tid};
         _fb_restore = None
 
     baseline = snapshot_invariants([lan])
-    lp_tid = psql(
-        f"""
-SELECT tm.id::text
-FROM mfi_accounting.transaction_details td
-JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id
-JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
-WHERE td.account_number = '{lan}' AND tc.type = 'LOAN_PREPAYMENT'
-  AND tm.reversed = false AND tm.status = 'SUCCESS'
-ORDER BY tm.id DESC LIMIT 1;
-"""
-    )
-    if not lp_tid:
-        # Try any SUCCESS txn on LAN
-        lp_tid = psql(
-            f"""
-SELECT tm.id::text
-FROM mfi_accounting.transaction_details td
-JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id
-WHERE td.account_number = '{lan}' AND tm.reversed = false AND tm.status = 'SUCCESS'
-ORDER BY tm.id DESC LIMIT 1;
-"""
-        )
-    if not lp_tid:
-        print("FAIL: proof_iii no SUCCESS txn on LAN")
-        return 1
+    _lp_cleanup_ref: str | None = None
+    lp_tid, lp_ref = _ensure_synthetic_loan_prepayment(lan, aid)
+    _lp_cleanup_ref = lp_ref
 
     template = psql(
         f"""
@@ -226,6 +287,15 @@ WHERE transaction_id = {lp_tid}
   AND reference_code IN ('BPI_AMT', '{PROBE_TAG}_BAL');
 """
         )
+        if _lp_cleanup_ref and _lp_cleanup_ref.startswith("R0LP"):
+            psql_multi(
+                f"""
+DELETE FROM mfi_accounting.transaction_details WHERE transaction_id = {lp_tid};
+DELETE FROM mfi_accounting.transaction_partition_details WHERE transaction_id = {lp_tid};
+DELETE FROM mfi_accounting.transaction_master WHERE id = {lp_tid};
+"""
+            )
+            print(f"  synthetic LOAN_PREPAYMENT removed ref={_lp_cleanup_ref}")
         if _fb_restore:
             tid, old_crn = _fb_restore
             psql_multi(

@@ -20,6 +20,7 @@ from flowtest.asserts import assert_gl_balanced_txn, assert_loan_status  # noqa:
 from flowtest.dateroll import CHAIN_DPD_NPA, declare_layers, eod_ms_ist, roll  # noqa: E402
 from flowtest.db import psql, psql_raw  # noqa: E402
 from flowtest.fixture import ensure_snapshot_or_restore, resolve_fixture  # noqa: E402
+from flowtest.invariants import finish_scenario, snapshot_invariants  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
 from flowtest.loan_state import age_dues_for_dpd, force_regular_asset_slab  # noqa: E402
 from flowtest.profiles import DCF_GROUP  # noqa: E402
@@ -38,6 +39,9 @@ def main() -> int:
     os.environ["FLOWTEST_E2E_LOCK_HELD"] = "1"
     print("=== flowtest.dpd_npa (F3 FLOW C — lazy age + REAL jobs) ===")
     print(f"  parent={PARENT} child={CHILD} min_dpd={MIN_DPD}")
+
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -140,6 +144,7 @@ ORDER BY 1
         f"job_time={eod_ms_ist(as_of)}"
     )
     print("=== PASS: flowtest.dpd_npa ===")
+    finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.dpd_npa")
     return 0
 
 
