@@ -1665,7 +1665,14 @@
       },
       "note": "ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 (default): Obs1\u20133 + RSTCRE fail-closed; GAP-074 INT/DPI Out-of-scope. Scope=full FAILS on parent INT pending. Last-child amount: Obs2 amount==principal excess=0 (NOT child==parent). Non-last: tm parity. Dirty: DCF_SEED_EMI_LABD=1. Pin DEATH_DATE=2025-08-02."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE \u2192 childLoanEventProcessingBatchJob \u2192 childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
+    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE \u2192 childLoanEventProcessingBatchJob \u2192 childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate).",
+    "ship_baseline": {
+      "wall_s": 337,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
+    }
   },
   "flowtest.rstcre_spine": {
     "type": "flow",
@@ -1717,7 +1724,14 @@
       ],
       "note": "F1 pilot \u2014 proves flowtest core extraction. Uses DCF fixture restore + one non-last DFC seed then childLoanEventProcessingBatchJob."
     },
-    "note": "Pilot for scripts/testing/flowtest/. Shared lock/fixture/asserts. Does not replace dcf.group_parent_last_child_e2e."
+    "note": "Pilot for scripts/testing/flowtest/. Shared lock/fixture/asserts. Does not replace dcf.group_parent_last_child_e2e.",
+    "ship_baseline": {
+      "wall_s": 161,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
+    }
   },
   "flowtest.loan_prepayment_fc": {
     "type": "flow",
@@ -1770,6 +1784,13 @@
         }
       ],
       "note": "F2 green: ICF Sim A on dcf_bak child after maturity/lid/dues window hygiene. Vikram loanPrepayment deferred SU-FLOW-PREPAY-VIKRAM."
+    },
+    "ship_baseline": {
+      "wall_s": 113,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.part_prepayment": {
@@ -1860,6 +1881,13 @@
         "si_ach_enach": "Rails OUT \u2014 coverage NO+blocker async-collection"
       },
       "note": "F2 green: WITHOUT_MAKER_CHECKER repay + reversal DEFAULT/APPROVE; NPA\u2192regular slab hygiene."
+    },
+    "ship_baseline": {
+      "wall_s": 105,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.accrual_billing": {
@@ -1913,6 +1941,13 @@
         }
       ],
       "note": "dateroll CHAIN_ACCRUAL_BILLING; quarantine portfolio; layers jobs=REAL"
+    },
+    "ship_baseline": {
+      "wall_s": 88,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.invariants_universal": {
@@ -1926,7 +1961,7 @@
       "r0",
       "mandatory"
     ],
-    "title": "Universal money invariants — mandatory post-scenario layer (R0/G1)",
+    "title": "Universal money invariants \u2014 mandatory post-scenario layer (R0/G1)",
     "cmd": "python3 scripts/testing/flowtest/r0_invariant_proofs.py",
     "expect": {
       "status": "PASS"
@@ -2031,6 +2066,13 @@
         }
       ],
       "note": "Lazy path: dues aged SEEDED; jobs REAL. Shared force_regular_asset_slab from loan_state."
+    },
+    "ship_baseline": {
+      "wall_s": 82,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.loan_reopening": {
@@ -2072,6 +2114,13 @@
         }
       ],
       "note": "F5: document_details stub (version/number_of_files/file_names objects); reason=OTHER."
+    },
+    "ship_baseline": {
+      "wall_s": 128,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.loan_writeoff": {
@@ -2150,6 +2199,13 @@
         }
       ],
       "note": "F5 document_details stub; compose age_dues_for_dpd."
+    },
+    "ship_baseline": {
+      "wall_s": 76,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-27",
+      "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433)"
     }
   },
   "flowtest.proactive_excess_refund": {

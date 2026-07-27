@@ -672,6 +672,12 @@ def _apply_selection_tiering(
         meta = reg.get(cid) or {}
         api = str(meta.get("api") or "")
         tier = case_tier.get(cid)
+        if tier == "smoke" and fc_touch and (
+            cid.startswith("foreclosure.")
+            or cid.startswith("dcf.")
+            or cid.startswith("flowtest.loan_prepayment")
+        ):
+            tier = "full"
         if tier is None:
             if api in direct_apis:
                 tier = "full"
