@@ -1,3 +1,5 @@
+[2026-07-27] | FEATURE | KG truth: fix /home/darpan/darpan FRESH lie + fail-closed STALE KG-paths; MCP in-process SQLite (≤20ms warm); unified cache key; consumer/scheduler/unresolved parse; after-edit fail-closed + light incremental; grep-leak counter | cursor-bundle/kg/**, scripts/lib/kg_state_banner.py, .cursor/hooks.json
+
 ## 2026-07-27 — DCF S_C harness: stop SEED_EXTRA group billing extend
 
 - Root cause: fixture billed whole group through CURRENT_DATE before non-last DCF → sticky BLD_PRIN → parent POS desync (Δ=extra billed PRIN). Product Writer not at fault for this fail mode.

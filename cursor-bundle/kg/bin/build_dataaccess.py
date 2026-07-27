@@ -366,6 +366,7 @@ def main():
     unresolved=0; proc_seen=0; proc_with_db=0; real_miss=0; no_db_skip=0
     miss_tbl=collections.Counter()
     unres_detail=collections.Counter()   # (reason, ftype, method) -> count
+    real_miss_sites=[]  # (bean, ftype, meth, why, src)
     for name,c in classes.items():
         if not is_data_actor(name): continue
         bean=bean_name(name)
@@ -392,8 +393,10 @@ def main():
                     if ftype.endswith(DBTYPE):
                         unresolved+=1
                         why=why_unresolved(ftype,meth)
-                        if why.endswith("REAL") or why.endswith("not_captured"): real_miss+=1   # genuine missed DB op
-                        else: no_db_skip+=1                                                       # method does no DB — correctly no edge
+                        if why.endswith("REAL") or why.endswith("not_captured"):
+                            real_miss+=1
+                            real_miss_sites.append((bean,ftype,meth,why,f"{rel}:{ln_no}"))
+                        else: no_db_skip+=1
                         if DBG: unres_detail[(why,ftype,meth)]+=1
                     elif DBG and ftype.endswith(MAYBE):
                         unres_detail[("maybe:"+why_unresolved(ftype,meth),ftype,meth)]+=1
@@ -411,12 +414,24 @@ def main():
 
     for (bean,relk,tbl,op),src in sorted(edges.items()):
         emit({"t":"edge","from":f"processor:{bean}","to":f"table:{tbl}","rel":relk,
-              "note":op,"src":src})   # note = fine op (read/upsert/soft_delete/native_*); rel = coarse reads/writes/deletes
+              "note":op,"src":src})
+
+    # Honest UNRESOLVED nodes for genuine missed DB ops (never silent) — T5
+    seen_u=set()
+    for bean,ftype,meth,why,src in real_miss_sites:
+        uid=f"diag:unresolved:{bean}:{ftype}.{meth}"
+        if uid in seen_u: continue
+        seen_u.add(uid)
+        emit({"t":"node","id":uid,"kind":"diag","label":f"UNRESOLVED {ftype}.{meth}",
+              "role":"dataaccess_unresolved","src":src,"note":why})
+        emit({"t":"edge","from":f"processor:{bean}","to":uid,"rel":"unresolved",
+              "note":why,"src":src})
 
     warn(f"[dataaccess] processors(in-flow)={proc_seen} with-db={proc_with_db} edges={len(edges)} "
          f"| DB-call-sites unresolved={unresolved}: real-misses={real_miss} "
          f"(genuine missed DB op), no-db-helpers={no_db_skip} (method does no DB — correctly no edge) "
-         f"| missing_table_refs={sum(miss_tbl.values())} (distinct {len(miss_tbl)})")
+         f"| missing_table_refs={sum(miss_tbl.values())} (distinct {len(miss_tbl)}) "
+         f"| unresolved_nodes={len(seen_u)}")
     if miss_tbl:
         warn("  top unmapped table refs: "+", ".join(f"{t}({n})" for t,n in miss_tbl.most_common(10)))
     if DBG and unres_detail:

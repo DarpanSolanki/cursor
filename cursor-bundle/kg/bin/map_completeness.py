@@ -66,6 +66,39 @@ def _disk_tables(repo: Path) -> set[str]:
     return names
 
 
+def _disk_batch_jobs(repo: Path) -> set[str]:
+    names: set[str] = set()
+    job_re = re.compile(
+        r'(?:JobBuilder|jobBuilder)\s*\(\s*"([^"]+)"'
+        r'|JOB_NAME\s*=\s*"([^"]+)"'
+        r'|(?:public|private)\s+Job\s+(\w+)\s*\('
+    )
+    for java in repo.glob("src/main/java/**/*.java"):
+        try:
+            txt = java.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "JobBuilder" not in txt and "JOB_NAME" not in txt:
+            continue
+        for m in job_re.finditer(txt):
+            names.add(next(g for g in m.groups() if g))
+    return names
+
+
+def _disk_topics(repo: Path) -> set[str]:
+    names: set[str] = set()
+    for xml in repo.rglob("MessageBroker.xml"):
+        if "/build/" in str(xml):
+            continue
+        try:
+            txt = xml.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for m in re.finditer(r"<topicPrefix>\s*([^<\s]+)\s*</topicPrefix>", txt, re.I):
+            names.add(m.group(1).strip().rstrip("_"))
+    return names
+
+
 def measure() -> dict:
     cfg = _load_cfg()
     excluded = {e["repo"] for e in cfg.get("exclude_from_orch_coverage", [])}
@@ -79,7 +112,9 @@ def measure() -> dict:
         repos.append(d.name)
 
     per_repo = {}
-    totals = {"request": [0, 0], "table": [0, 0], "doc": [0, 0], "topic": [0, 0], "scheduler": [0, 0]}
+    totals = {"request": [0, 0], "table": [0, 0], "doc": [0, 0], "topic": [0, 0], "scheduler": [0, 0], "consumer": [0, 0]}
+    disk_jobs_all: set[str] = set()
+    disk_topics_all: set[str] = set()
     for name in repos:
         if name in excluded:
             per_repo[name] = {"excluded": True, "reason": next(
@@ -89,6 +124,10 @@ def measure() -> dict:
         repo = ROOT / name
         disk_req = _disk_requests(repo)
         disk_tbl = _disk_tables(repo)
+        disk_jobs = _disk_batch_jobs(repo)
+        disk_topics = _disk_topics(repo)
+        disk_jobs_all |= disk_jobs
+        disk_topics_all |= disk_topics
         kg_req = kg_tbl = 0
         if c:
             kg_req = c.execute(
@@ -100,6 +139,8 @@ def measure() -> dict:
         per_repo[name] = {
             "request": {"kg": kg_req, "disk": len(disk_req)},
             "table": {"kg": kg_tbl, "disk": len(disk_tbl)},
+            "scheduler_disk": len(disk_jobs),
+            "topic_disk": len(disk_topics),
         }
         totals["request"][0] += kg_req
         totals["request"][1] += len(disk_req)
@@ -110,7 +151,7 @@ def measure() -> dict:
         totals["doc"][0] = c.execute("SELECT count(*) FROM nodes WHERE kind='doc'").fetchone()[0]
         totals["topic"][0] = c.execute("SELECT count(*) FROM nodes WHERE kind='topic'").fetchone()[0]
         totals["scheduler"][0] = c.execute("SELECT count(*) FROM nodes WHERE kind='scheduler'").fetchone()[0]
-        # disk for doc = same roots the docs extractor indexes (cap pct ≤100)
+        totals["consumer"][0] = c.execute("SELECT count(*) FROM nodes WHERE kind='consumer'").fetchone()[0]
         doc_roots = [
             ROOT / "cursor-bundle/brain",
             ROOT / ".cursor",
@@ -132,23 +173,23 @@ def measure() -> dict:
                 seen_docs.add(rel)
                 disk_docs += 1
         totals["doc"][1] = disk_docs
-        # schedulers: registry backtick beans (approx denominator)
-        reg = ROOT / ".cursor/scheduler-registry.md"
-        if reg.is_file():
-            txt = reg.read_text(encoding="utf-8", errors="replace")
-            beans = set(re.findall(
-                r"`([A-Za-z][A-Za-z0-9_]*(?:Job|Batch|Scheduler|ConfigService|Executor|Config)[A-Za-z0-9_]*)`",
-                txt,
-            ))
-            beans |= set(re.findall(
-                r"`(AutoScheduler|processJobs|ThreadPoolTaskScheduler|ScheduleBatchGroupExecutor)`",
-                txt,
-            ))
-            totals["scheduler"][1] = max(len(beans), totals["scheduler"][0])
-        else:
-            totals["scheduler"][1] = totals["scheduler"][0]
-        # topics: no stable disk inventory — report kg count; pct N/A (use 100 when present)
-        totals["topic"][1] = totals["topic"][0]
+        # Honest disk: JobBuilder/JOB_NAME + MessageBroker topicPrefix (not registry circularity)
+        totals["scheduler"][1] = len(disk_jobs_all)
+        totals["topic"][1] = len(disk_topics_all)
+        # consumer disk ≈ MessageBroker <bean> count across repos
+        bean_n = 0
+        for name in repos:
+            if name in excluded:
+                continue
+            for xml in (ROOT / name).rglob("MessageBroker.xml"):
+                if "/build/" in str(xml):
+                    continue
+                try:
+                    txt = xml.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                bean_n += len(re.findall(r"<bean>\s*([^<\s]+)\s*</bean>", txt, re.I))
+        totals["consumer"][1] = bean_n
 
     def pct(n, d):
         if d == 0:
@@ -202,7 +243,9 @@ def main(argv: list[str]) -> int:
         f"req={cur['kinds']['request']['pct']}% "
         f"table={cur['kinds']['table']['pct']}% "
         f"doc={cur['kinds']['doc']['kg']}/{cur['kinds']['doc']['disk']} "
-        f"topic={cur['kinds']['topic']['kg']} sched={cur['kinds']['scheduler']['kg']} "
+        f"topic={cur['kinds']['topic']['kg']}/{cur['kinds']['topic']['disk']} "
+        f"sched={cur['kinds']['scheduler']['kg']}/{cur['kinds']['scheduler']['disk']} "
+        f"consumer={cur['kinds'].get('consumer',{}).get('kg',0)}/{cur['kinds'].get('consumer',{}).get('disk',0)} "
         f"excluded={len(cur['excluded'])}"
     )
     print(line)

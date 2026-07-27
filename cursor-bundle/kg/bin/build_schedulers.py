@@ -94,16 +94,55 @@ def link_requests(sid: str, names: set[str], rel_src: str) -> None:
                 break
 
 
+def scan_java_jobs(seen: set[str]) -> None:
+    """Source of truth: Spring Batch JobBuilder / JOB_NAME in service Java (T5)."""
+    JOB_BUILDER = re.compile(
+        r'(?:JobBuilder|jobBuilder)\s*\(\s*"([^"]+)"'
+        r'|JOB_NAME\s*=\s*"([^"]+)"'
+        r'|(?:public|private)\s+Job\s+(\w+)\s*\('
+    )
+    for d in sorted(WORKSPACE.iterdir()):
+        if not d.is_dir() or not (d / ".git").is_dir():
+            continue
+        if not (d.name.startswith("trustt-") or d.name.startswith("novopay-")):
+            continue
+        repo = SVC_ALIAS.get(d.name, d.name)
+        for jf in d.glob("src/main/java/**/*.java"):
+            try:
+                txt = jf.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "JobBuilder" not in txt and "JOB_NAME" not in txt and " Job " not in txt:
+                continue
+            rel = str(jf.relative_to(WORKSPACE))
+            for m in JOB_BUILDER.finditer(txt):
+                name = next(g for g in m.groups() if g)
+                if name in seen:
+                    continue
+                seen.add(name)
+                sid = f"scheduler:{name}"
+                emit({
+                    "t": "node", "id": sid, "kind": "scheduler", "label": name,
+                    "repo": repo, "src": rel, "note": "spring_batch_job",
+                })
+                svc_id = f"service:{repo}"
+                emit({"t": "edge", "from": sid, "to": svc_id, "rel": "triggers",
+                      "src": rel, "note": "owns batch job"})
+                link_requests(sid, {name}, rel)
+
+
 def main() -> None:
     tmp = sys.argv[1]
     load_known(tmp)
+    seen: set[str] = set()
+    # (a) Java JobBuilder / JOB_NAME — primary source
+    scan_java_jobs(seen)
     paths = [
         WORKSPACE / ".cursor" / "scheduler-registry.md",
         WORKSPACE / "cursor-bundle" / "brain" / "platform" / "scheduler-registry.md",
     ]
     # bean -> owning service
     owners: dict[str, str] = {}
-    seen: set[str] = set()
     job_aliases: set[str] = set()
 
     for path in paths:
@@ -120,14 +159,14 @@ def main() -> None:
         names = set(NAME_RE.findall(txt)) | set(EXTRA.findall(txt)) | set(owners.keys()) | job_aliases
         for name in sorted(names):
             if name in seen:
-                # still allow service edge refresh if owner newly known
+                # enrichment only — attach registry note edge if owner known
                 if name in owners:
                     sid = f"scheduler:{name}"
                     svc = owners[name]
                     svc_id = f"service:{svc}"
                     if svc_id in KNOWN_SVC or svc.startswith("trustt-"):
                         emit({"t": "edge", "from": sid, "to": svc_id, "rel": "triggers",
-                              "src": rel, "note": "owns batch schedule"})
+                              "src": rel, "note": "registry enrichment"})
                 continue
             seen.add(name)
             sid = f"scheduler:{name}"
@@ -143,7 +182,6 @@ def main() -> None:
             extra = job_aliases if name.startswith("Reject") else set()
             link_requests(sid, {name} | extra, rel)
 
-    # Ensure job-name aliases also get nodes linked to task service
     for jn in sorted(job_aliases):
         if jn in seen:
             continue

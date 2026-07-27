@@ -1,66 +1,53 @@
 #!/usr/bin/env python3
-"""trustt-kg MCP server — thin stdio wrapper around cursor-bundle/kg/bin/kg.py.
-
-No business logic duplication: every tool shells out to kg.py.
-Official MCP SDK optional; this file implements minimal JSON-RPC 2.0 stdio
-(initialize, tools/list, tools/call) with zero external deps.
-"""
+"""trustt-kg MCP server — in-process SQLite (read-only). No kg.py subprocess spawn."""
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
-import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]  # sliProd
-KG_PY = ROOT / "cursor-bundle" / "kg" / "bin" / "kg.py"
+BIN = ROOT / "cursor-bundle" / "kg" / "bin"
+sys.path.insert(0, str(BIN))
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+
+import kg as kg_mod  # noqa: E402
+
 MAX_CHARS = 10_000
 TRUNC_MARK = "\n\n… [truncated — refine query / narrower args; max 10000 chars] …\n"
-
-SERVER_INFO = {"name": "trustt-kg", "version": "1.0.0"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.1.0"}
 PROTOCOL = "2024-11-05"
 
-# READ-ONLY tools only — map MCP name → kg.py argv prefix
 TOOLS = {
     "kg_orient": {
         "description": "Orient on an apiName/request: flow spine + silent branches + precedents. Prefer for LOOKUP before grepping.",
         "args": ["orient"],
         "schema": {
             "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "apiName / request / partial id"},
-            },
+            "properties": {"query": {"type": "string", "description": "apiName / request / partial id"}},
             "required": ["query"],
         },
     },
     "kg_flow": {
         "description": "Ordered processor chain (flow spine) + DB footprint for a Request.",
         "args": ["flow"],
-        "schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     "kg_why": {
         "description": "Failure-mode / silent decision-point catalog for a request, processor, table, or symptom.",
         "args": ["why"],
-        "schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     "kg_impact": {
         "description": "Reverse blast radius — who reaches this node (recursive CTE).",
         "args": ["impact"],
         "schema": {
             "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "depth": {"type": "integer", "description": "optional --depth N"},
-            },
+            "properties": {"query": {"type": "string"}, "depth": {"type": "integer", "description": "optional --depth N"}},
             "required": ["query"],
         },
     },
@@ -95,21 +82,34 @@ TOOLS = {
     "kg_search": {
         "description": "Full-text node search (FTS5). Smallest query first.",
         "args": ["search"],
-        "schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     "kg_cases": {
         "description": "Shipped-fix precedents (CHANGELOG cases) for a flow/table.",
         "args": ["cases"],
-        "schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-        },
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}},
+    },
+    "kg_crud": {
+        "description": "DB footprint of a flow (reads/writes/deletes).",
+        "args": ["crud"],
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    },
+    "kg_writes": {
+        "description": "Who writes a table.",
+        "args": ["writes"],
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
 }
+
+_DB = None
+os.environ.setdefault("KG_NO_AUTO_REBUILD", "1")
+
+
+def _db():
+    global _DB
+    if _DB is None:
+        _DB = kg_mod.conn(readonly=True)
+    return _DB
 
 
 def truncate(s: str) -> str:
@@ -118,37 +118,62 @@ def truncate(s: str) -> str:
     return s[: MAX_CHARS - len(TRUNC_MARK)] + TRUNC_MARK
 
 
-def run_kg(argv: list[str]) -> str:
-    if not KG_PY.is_file():
-        return f"ERROR: kg.py not found at {KG_PY}"
-    env = os.environ.copy()
-    env.setdefault("KG_NO_AUTO_REBUILD", "1")  # MCP lookups stay fast; agent can kg-switch separately
-    try:
-        proc = subprocess.run(
-            [sys.executable, str(KG_PY), *argv],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
-    except subprocess.TimeoutExpired:
-        return "ERROR: kg.py timed out (120s)"
-    out = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
-    if proc.returncode != 0 and not out.strip():
-        out = f"ERROR: kg.py exit {proc.returncode}"
-    body = truncate(out.strip() or "(empty)")
-    # Provenance travels with every answer (Upgrade 6) — skip if kg.py already prepended
-    if body.startswith("[KG @"):
-        return body
-    try:
-        sys.path.insert(0, str(ROOT / "scripts" / "lib"))
-        from kg_state_banner import provenance_header  # type: ignore
+_HEADER_CACHE = None  # (mono, str)
 
-        header = provenance_header()
+def _header() -> str:
+    global _HEADER_CACHE
+    import time as _time
+    now = _time.monotonic()
+    if _HEADER_CACHE and (now - _HEADER_CACHE[0]) < 5.0:
+        return _HEADER_CACHE[1]
+    try:
+        from kg_state_banner import provenance_header
+
+        h = provenance_header()
     except Exception as exc:  # noqa: BLE001
-        header = f"[KG @? set=? WIP:?] (header failed: {exc})"
-    return header + "\n" + body
+        h = f"[KG @? set=? WIP:?] (header failed: {exc})"
+    _HEADER_CACHE = (now, h)
+    return h
+
+
+def run_kg(argv: list[str]) -> str:
+    cmd = argv[0]
+    args = argv[1:]
+    if cmd not in kg_mod.CMDS:
+        return f"ERROR: unknown kg cmd {cmd}"
+    # validate still shells to kg_validate for integrity PRAGMA (rare)
+    if cmd == "validate":
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            try:
+                kg_mod.CMDS[cmd](_db(), args)
+            except SystemExit as e:
+                if e.code not in (0, None):
+                    return truncate((_header() + "\n" + buf.getvalue()).strip() or f"ERROR: validate exit {e.code}")
+        body = buf.getvalue().strip()
+        return truncate(_header() + "\n" + (body or "OK"))
+    if cmd == "fixed-elsewhere":
+        # keeps branch_train subprocess (rare path)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            try:
+                kg_mod.CMDS[cmd](_db(), args)
+            except SystemExit:
+                pass
+        body = buf.getvalue().strip()
+        return truncate(_header() + "\n" + (body or "(empty)"))
+
+    buf = io.StringIO()
+    t0 = time.perf_counter()
+    with contextlib.redirect_stdout(buf):
+        kg_mod.CMDS[cmd](_db(), args)
+    ms = (time.perf_counter() - t0) * 1000
+    body = buf.getvalue().strip() or "(empty)"
+    if os.environ.get("KG_MCP_TIMING"):
+        body = f"(mcp_inproc_ms={ms:.1f})\n" + body
+    if body.startswith("[KG @"):
+        return truncate(body)
+    return truncate(_header() + "\n" + body)
 
 
 def tool_argv(name: str, arguments: dict) -> list[str]:
@@ -170,11 +195,7 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
 def tools_list_payload():
     return {
         "tools": [
-            {
-                "name": name,
-                "description": meta["description"],
-                "inputSchema": meta["schema"],
-            }
+            {"name": name, "description": meta["description"], "inputSchema": meta["schema"]}
             for name, meta in TOOLS.items()
         ]
     }
@@ -206,30 +227,20 @@ def handle(msg: dict) -> dict | None:
             return {
                 "jsonrpc": "2.0",
                 "id": mid,
-                "result": {
-                    "content": [{"type": "text", "text": f"Unknown tool: {name}"}],
-                    "isError": True,
-                },
+                "result": {"content": [{"type": "text", "text": f"Unknown tool: {name}"}], "isError": True},
             }
         text = run_kg(tool_argv(name, arguments))
-        return {
-            "jsonrpc": "2.0",
-            "id": mid,
-            "result": {"content": [{"type": "text", "text": text}]},
-        }
+        return {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
     if method == "ping":
         return {"jsonrpc": "2.0", "id": mid, "result": {}}
-    # Ignore other notifications
     if mid is None:
         return None
-    return {
-        "jsonrpc": "2.0",
-        "id": mid,
-        "error": {"code": -32601, "message": f"Method not found: {method}"},
-    }
+    return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"Method not found: {method}"}}
 
 
 def main() -> None:
+    # warm DB open once
+    _db()
     for line in sys.stdin:
         line = line.strip()
         if not line:

@@ -93,6 +93,17 @@ def main():
                               "note": bean.group(1).strip() if bean else "", "src": rel})
                 if bean:
                     b = bean.group(1).strip()
+                    if b.lower() in ("beanname", "bean"):
+                        continue
+                    # Emit consumer bean as a first-class node (T5)
+                    cid = f"consumer:{b}"
+                    emit({
+                        "t": "node", "id": cid, "kind": "consumer", "label": b,
+                        "repo": repo, "src": rel, "note": "MessageBroker.xml bean",
+                    })
+                    emit({"t": "edge", "from": cid, "to": tid, "rel": "consumes", "src": rel})
+                    emit({"t": "edge", "from": f"service:{repo}", "to": cid, "rel": "owns",
+                          "src": rel, "note": "kafka_consumer"})
                     # bean often camelCase consumer class name without Processor suffix
                     cand = b[0].lower() + b[1:] if b and b[0].isupper() else b
                     for name in (b, cand, b + "Processor", cand):

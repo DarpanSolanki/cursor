@@ -25,24 +25,11 @@ FORCE=0
 [[ "${1:-}" == "--force" ]] && FORCE=1
 
 _composite() {
-  local s="" r b h dh doch
-  for r in $REPOS; do
-    b=$(git -C "$r" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
-    h=$(git -C "$r" rev-parse HEAD 2>/dev/null || echo "?")
-    if [ -n "$(git -C "$r" status --porcelain 2>/dev/null)" ]; then
-      dh=$( { git -C "$r" status --porcelain; git -C "$r" diff HEAD; } 2>/dev/null | sha1sum | cut -c1-12 )
-      h="$h+d$dh"
-    fi
-    s="$s$r:$b:$h|"
-  done
-  doch=$( { find "$BUNDLE/brain" -name '*.md' -type f -printf '%P %T@ %s\n' 2>/dev/null; \
-            find "$BUNDLE/kg/curated" -type f -name '*.jsonl' -printf 'cur/%P %T@ %s\n' 2>/dev/null; } \
-          | LC_ALL=C sort | sha1sum | cut -c1-12)
-  s="${s}docs:${doch}|"
-  printf '%s' "$s"
+  # Shared key with kg-switch / kg_composite.py (docs mtime_ns fingerprint).
+  python3 "$BIN/kg_composite.py" key
 }
 
-KEY="$(_composite | sha1sum | cut -c1-16)"
+KEY="$(_composite)"
 if [[ "$FORCE" == 0 ]] && [[ -f "$CACHE/$KEY.db" ]]; then
   cp "$CACHE/$KEY.db" "$DATA/kg.db"
   cp "$CACHE/$KEY.jsonl" "$DATA/kg.jsonl" 2>/dev/null || true

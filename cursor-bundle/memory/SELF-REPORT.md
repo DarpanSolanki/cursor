@@ -15,6 +15,7 @@ Generated: 2026-07-24T23:16:14Z · Upgrade 8 self-metrics
 - `read-only-rca`: p50=0.01s p95=0.02s n=20
 
 ## KG
+- grep-leak shell counter (cumulative jsonl lines): **2** (baseline sessions 172 grep / 50 kg — 2026-07-27)
 - cache hit ratio (telemetry window): 0% (hit=0 miss=12)
 - gate hits (PROVISIONAL): 8 — revisit kg-profiles.md if ≥8/week
 - map-completeness: map-completeness: overall=98.8% req=100.0% table=97.5% doc=393/393 topic=153 sched=16 excluded=4

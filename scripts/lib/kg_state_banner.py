@@ -157,9 +157,24 @@ def compute_kg_state() -> dict:
 
 
 def provenance_header() -> str:
-    """One-line header for every KG answer (MCP + CLI)."""
+    """One-line header for every KG answer (MCP + CLI). Includes STALE when KG-paths drifted."""
     st = compute_kg_state()
-    return f"[KG @{st['built_at']} set={st['key_short']} WIP:{st['wip_n']}]"
+    base = f"[KG @{st['built_at']} set={st['key_short']} WIP:{st['wip_n']}]"
+    try:
+        sys.path.insert(0, str(ROOT / "cursor-bundle" / "kg" / "bin"))
+        import kg as _kg  # type: ignore
+
+        _b, drift, _d, files = _kg._drift_check()
+        if drift or files:
+            n = len(files) if files else len(drift)
+            base += f" STALE:{n}"
+            if files:
+                base += " files=" + ",".join(files[:5])
+                if len(files) > 5:
+                    base += f"+{len(files) - 5}"
+    except Exception:
+        pass
+    return base
 
 
 def banner_and_stop(task_text: str = "", classification: str = "") -> tuple[str, str | None]:

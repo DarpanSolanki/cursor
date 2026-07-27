@@ -18,6 +18,9 @@
     "afterFileEdit": [
       {
         "command": ".cursor/hooks/after-ship-path-edit.sh"
+      },
+      {
+        "command": ".cursor/hooks/kg-after-file-edit.sh"
       }
     ],
     "beforeShellExecution": [
@@ -28,6 +31,10 @@
       {
         "command": ".cursor/hooks/pre-push-checklist.sh",
         "matcher": "git\\s+push"
+      },
+      {
+        "command": ".cursor/hooks/kg-grep-leak-log.sh",
+        "matcher": "(rg|grep)\\s"
       }
     ],
     "afterShellExecution": [

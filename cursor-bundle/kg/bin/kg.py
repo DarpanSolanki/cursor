@@ -37,12 +37,28 @@ Partial ids resolve when unambiguous (e.g. `flow disburseLoan`, `deps accounting
 import os, sys, sqlite3
 
 HERE = os.path.dirname(__file__)
-DB   = os.path.join(HERE, "..", "data", "kg.db")
+sys.path.insert(0, HERE)
+try:
+    from _paths import WORKSPACE as _WS, KG_DATA as _KG_DATA
+    ROOT = str(_WS)
+    DB = str(_KG_DATA / "kg.db")
+except Exception:
+    ROOT = os.path.abspath(os.path.join(HERE, "../../.."))
+    DB = os.path.join(HERE, "..", "data", "kg.db")
 
-def conn():
+_KG_EXTS = (".java", ".xml")
+_KG_PATH_HINTS = ("/src/", "src/", "orchestration", "deploy/", "messagebroker")
+
+def conn(readonly=False):
     if not os.path.exists(DB):
         sys.exit("kg.db missing — run claude/kg/bin/build.sh first")
-    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; return c
+    if readonly:
+        uri = f"file:{DB}?mode=ro"
+        c = sqlite3.connect(uri, uri=True)
+    else:
+        c = sqlite3.connect(DB)
+    c.row_factory = sqlite3.Row
+    return c
 
 def resolve(c, q):
     """Resolve a node id. Requests are repo-scoped (request:{repo}/{name}); bare
@@ -365,51 +381,107 @@ def _dirty_hash(d):
     blob=_git(d,"status","--porcelain")+_git(d,"diff","HEAD")
     return hashlib.sha1(blob.encode("utf-8","replace")).hexdigest()[:12] if blob else ""
 
+def _is_kg_path(path: str) -> bool:
+    p = path.replace("\\", "/")
+    if not p.endswith(_KG_EXTS):
+        return False
+    return any(h in p for h in _KG_PATH_HINTS) or p.endswith(".xml") or p.endswith(".java")
+
+def _porcelain_paths(d):
+    out = []
+    for line in (_git(d, "status", "--porcelain") or "").splitlines():
+        if not line.strip():
+            continue
+        # git porcelain: XY<space>PATH (X,Y are one char each). Be robust if a tool strips a column.
+        if len(line) >= 4 and line[2] == " ":
+            path = line[3:]
+        elif len(line) >= 3 and line[1] == " ":
+            path = line[2:]
+        else:
+            path = line[2:] if len(line) > 2 else line
+        path = path.strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if path:
+            out.append(path)
+    return out
+
 def _docs_newer_than_db():
-    """Cheap: is any claude/ brain doc / CHANGELOG newer than kg.db? Early-exits on the first hit.
-    This is the 'doc-corpus' staleness axis (separate from code/branch drift) — the docs on disk are
-    always correct; only the KG's searchable copy lags, so this WARNS rather than forcing a rebuild."""
+    """Cheap: is any brain doc / CHANGELOG newer than kg.db? Early-exits on first hit."""
     import glob
     try: dbm=os.path.getmtime(DB)
     except OSError: return False
-    for f in glob.iglob("/home/darpan/darpan/claude/**/*.md", recursive=True):
-        try:
-            if os.path.getmtime(f)>dbm: return True
-        except OSError: pass
+    brain = os.path.join(ROOT, "cursor-bundle", "brain")
+    for pat in (os.path.join(brain, "**", "*.md"),
+                os.path.join(ROOT, "cursor-bundle", "brain", "changelog", "CHANGELOG.md")):
+        for f in glob.iglob(pat, recursive=True):
+            try:
+                if os.path.getmtime(f)>dbm: return True
+            except OSError: pass
     return False
 
+_DRIFT_CACHE = None  # (mono_ts, built_at, drift, docs_stale, files)
+
 def _drift_check():
-    """Two axes, returned separately so the caller can act differently:
-      (built_at, [repo_drift lines], docs_stale_bool)
-    repo_drift = branch/commit/dirty drift vs the watermark (cheap: one `git rev-parse HEAD` per
-    repo; hashes only repos dirty RIGHT NOW). docs_stale = a claude/ doc/CHANGELOG newer than kg.db.
-    Empty list + False => KG matches the live checkout + docs exactly."""
+    """Fail-closed freshness: (built_at, drift_lines, docs_stale, stale_kg_files).
+
+    STALE when any KG-covered repo has branch/sha advance OR dirty/advanced java/xml
+    under src/orchestration/deploy not reflected in the watermark dirty_hash.
+    Non-kg dirty (settings.gradle, docs scripts) alone does not force STALE.
+    Cached ~5s so MCP in-process queries stay ≤20ms.
+    """
+    import time as _time
+    global _DRIFT_CACHE
+    now = _time.monotonic()
+    if _DRIFT_CACHE and (now - _DRIFT_CACHE[0]) < 5.0:
+        return _DRIFT_CACHE[1:]
     wm=_load_watermark()
-    if not wm: return None,[],False
-    root="/home/darpan/darpan"; drift=[]
+    if not wm:
+        _DRIFT_CACHE = (now, None, [], False, [])
+        return None, [], False, []
+    root=ROOT; drift=[]; stale_files=[]
     for repo,info in wm.get("repos",{}).items():
         d=os.path.join(root,repo)
-        live=_git(d,"rev-parse","HEAD")[:10]
-        if not live: continue                       # repo absent / not a git tree — skip
-        if live!=info.get("sha"):
+        if not os.path.isdir(os.path.join(d,".git")) and not os.path.isdir(d):
+            continue
+        live=_git(d,"rev-parse","--short=10","HEAD")
+        if not live: continue
+        wm_sha=(info.get("sha") or "")[:10]
+        if live!=wm_sha:
             lb=_git(d,"rev-parse","--abbrev-ref","HEAD")
             if lb and lb!=info.get("branch"):
-                drift.append(f"{repo}: KG={info.get('branch')}@{info.get('sha')} → now {lb}@{live}")
+                drift.append(f"{repo}: KG={info.get('branch')}@{wm_sha} → now {lb}@{live}")
             else:
-                drift.append(f"{repo}: KG@{info.get('sha')} → now @{live} (same branch, advanced)")
+                drift.append(f"{repo}: KG@{wm_sha} → now @{live} (same branch, advanced)")
+            full=_git(d,"rev-parse","HEAD")
+            old=info.get("sha") or ""
+            if old and full:
+                diff=_git(d,"diff","--name-only",f"{old}..{full}")
+                for p in (diff or "").splitlines():
+                    if _is_kg_path(p):
+                        stale_files.append(f"{repo}/{p}")
             continue
-        # Same commit — check uncommitted-edit drift (pinpoint; hashes only if dirty now).
-        if _git(d,"status","--porcelain"):
+        paths=_porcelain_paths(d)
+        kg_paths=[p for p in paths if _is_kg_path(p)]
+        if kg_paths:
             if _dirty_hash(d)!=(info.get("dirty_hash") or ""):
-                drift.append(f"{repo}: @{live} has uncommitted edits not in the KG — rebuild to capture")
-        elif info.get("dirty"):
+                drift.append(f"{repo}: @{live} has uncommitted KG-path edits not in the KG — rebuild")
+                for p in kg_paths:
+                    stale_files.append(f"{repo}/{p}")
+        elif info.get("dirty") and not paths:
             drift.append(f"{repo}: KG built from a dirty tree, now clean — rebuild")
-    return wm.get("built_at","?"), drift, _docs_newer_than_db()
+    seen=set(); uniq=[]
+    for f in stale_files:
+        if f not in seen:
+            seen.add(f); uniq.append(f)
+    built = wm.get("built_at","?")
+    _DRIFT_CACHE = (now, built, drift, _docs_newer_than_db(), uniq)
+    return built, drift, _DRIFT_CACHE[3], uniq
 
 def cmd_watermark(c,a):
     """Show, per repo, the branch@sha the KG knowledge was built from vs the repo's live HEAD —
     so you know exactly 'up to which branch/commit the knowledge is current'."""
-    root="/home/darpan/darpan"
+    root=ROOT
     wm=_load_watermark()
     if not wm:
         print("no watermark in stats.json — rebuild with claude/kg/bin/build.sh to stamp branch@sha."); return
@@ -433,6 +505,11 @@ def cmd_watermark(c,a):
         elif live_s and live_s!=s:
             ahead=_git(d,"rev-list","--count",f"{s}..HEAD") or "?"
             tag+=f"  ⚠ {ahead} commit(s) ahead (now {live_s})"; drift+=1
+        else:
+            # fail-closed dirty KG paths
+            kg_paths=[p for p in _porcelain_paths(d) if _is_kg_path(p)]
+            if kg_paths and _dirty_hash(d)!=(info.get("dirty_hash") or ""):
+                tag+=f"  ⚠ STALE KG-paths ({len(kg_paths)})"; drift+=1
         print(f"  {repo:<40} {b}@{s}{'  [dirty@build]' if info.get('dirty') else ''}{tag}")
     print(f"-- {drift} repo(s) drifted from the watermark; {wip} built off a non-release (feature/WIP) branch.")
     print("   For a WIP repo: the stable knowledge baseline is its UPSTREAM release base (shown above);")
@@ -444,9 +521,11 @@ def cmd_doctor(c,a):
           "/", c.execute("SELECT count(*) FROM edges").fetchone()[0])
     print("kinds:", dict(c.execute("SELECT kind,count(*) FROM nodes GROUP BY kind").fetchall()))
     dbm=os.path.getmtime(DB)
-    root="/home/darpan/darpan"
+    root=ROOT
     newer=[]
-    for pat in ("*/deploy/application/orchestration/**/*.xml","claude/changelog/CHANGELOG.md","claude/**/*.md"):
+    for pat in ("*/deploy/application/orchestration/**/*.xml",
+                "cursor-bundle/brain/changelog/CHANGELOG.md",
+                "cursor-bundle/brain/**/*.md"):
         for f in glob.glob(os.path.join(root,pat), recursive=True):
             try:
                 if os.path.getmtime(f)>dbm: newer.append(os.path.relpath(f,root))
@@ -467,6 +546,10 @@ def cmd_doctor(c,a):
             live_b=_git(d,"rev-parse","--abbrev-ref","HEAD"); live_s=_git(d,"rev-parse","--short=10","HEAD")
             if live_b and live_b!=info.get("branch"): drift.append(f"{repo}: built {info.get('branch')} -> now {live_b}")
             elif live_s and live_s!=info.get("sha"): drift.append(f"{repo}: {info.get('sha')} -> {live_s}")
+            else:
+                kg_paths=[p for p in _porcelain_paths(d) if _is_kg_path(p)]
+                if kg_paths and _dirty_hash(d)!=(info.get("dirty_hash") or ""):
+                    drift.append(f"{repo}: {len(kg_paths)} dirty KG-path file(s)")
         if drift:
             print(f"WATERMARK DRIFT: {len(drift)} repo(s) moved since build (built {wm.get('built_at','?')}) — `kg watermark` for detail, then rebuild:")
             for x in drift[:8]: print("   ", x)
@@ -527,9 +610,8 @@ def cmd_reads(c,a):   _reverse_db(c,a,'reads','READERS of')
 def cmd_deletes(c,a): _reverse_db(c,a,'deletes','DELETERS of')
 
 def cmd_fresh(c,a):
-    """Compact freshness verdict (for session start / quick check): is the KG branch-correct for
-    the CURRENT live checkout of every repo? Names exactly which repos drifted (branch/commit/dirty)."""
-    built_at,drift,docs_stale=_drift_check()
+    """Compact freshness verdict: fail-closed on dirty/advanced java/xml/orc KG paths."""
+    built_at,drift,docs_stale,stale_files=_drift_check()
     if built_at is None:
         print("KG: no watermark — run claude/kg/bin/build.sh"); return
     if not drift and not docs_stale:
@@ -538,9 +620,12 @@ def cmd_fresh(c,a):
     if drift:
         print(f"KG STALE — built {built_at}; {len(drift)} repo(s) drifted from the live checkout:")
         for x in drift: print("   "+x)
-        print("(a knowledge query auto-rebuilds; instant if this branch-set was built before): claude/kg/bin/build.sh")
+        if stale_files:
+            print(f"STALE KG-path files ({len(stale_files)}):")
+            for f in stale_files: print("   "+f)
+        print("(rebuild): scripts/bin/kg-switch.sh  or  cursor-bundle/kg/bin/build.sh")
     if docs_stale:
-        print("NOTE: a claude/ brain doc or CHANGELOG was edited since the build — `kg search`/`docs`/`cases` text may lag; run claude/kg/bin/build.sh to refold (does NOT auto-rebuild on doc edits).")
+        print("NOTE: a brain doc or CHANGELOG was edited since the build — `kg search`/`docs`/`cases` text may lag; run build.sh to refold.")
 
 def cmd_validate(c,a):
     """Integrity + min size guard — delegates to kg_validate.py (exit 1 on fail)."""
@@ -629,13 +714,14 @@ def main():
             pass
     if argv[0] in _KNOWLEDGE_CMDS and not nocheck:
         import sys as _s
-        built_at,drift,docs_stale=_drift_check()
+        built_at,drift,docs_stale,_stale_files=_drift_check()
         if drift:                                       # code/branch/dirty drift → must be branch-correct
             if os.environ.get("KG_NO_AUTO_REBUILD"):
                 print(f"⚠ KG BRANCH DRIFT — knowledge may be WRONG for the current checkout "
                       f"(built {built_at}; {len(drift)} repo(s) moved). Auto-rebuild disabled "
                       "(KG_NO_AUTO_REBUILD). Rebuild: claude/kg/bin/build.sh",file=_s.stderr)
                 for x in drift[:6]: print("    "+x,file=_s.stderr)
+                for f in _stale_files[:12]: print("    file: "+f,file=_s.stderr)
             else:
                 _auto_rebuild(built_at,drift)           # rebuilds kg.db in place; conn() below opens the fresh DB
         elif docs_stale:                                # doc-only edit → warn (docs on disk are correct; no 217s surprise)
