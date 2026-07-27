@@ -41,7 +41,9 @@ python3 - <<'PY' || FAIL=$((FAIL + 1))
 import sqlite3, json, os, sys
 c = sqlite3.connect("cursor-bundle/kg/data/kg.db")
 assert c.execute("SELECT count(*) FROM nodes").fetchone()[0] > 6000
-assert c.execute("SELECT 1 FROM nodes WHERE id='request:disburseLoan'").fetchone()
+assert c.execute(
+    "SELECT 1 FROM nodes WHERE id='request:trustt-platform-accounting/disburseLoan' OR (kind='request' AND label='disburseLoan')"
+).fetchone()
 cases = c.execute("SELECT count(*) FROM nodes WHERE kind='case'").fetchone()[0]
 # Opt-in precedents only (| kg-flow | rows) — not full audit log
 assert cases >= 5, f"case nodes {cases} < 5 (run changelog-add --kg-flow + refresh_cases)"
