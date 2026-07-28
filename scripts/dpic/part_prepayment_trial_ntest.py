@@ -84,21 +84,23 @@ def _find_dpi_amount(payload: object) -> Decimal:
 def main() -> int:
     print(f"=== loanAccountPartPrepayment TRIAL LAN={LAN} gross={GROSS} overdue={OVERDUE} stan={STAN} ===")
     request = {
-        "loan_account_number": LAN,
-        "rescheduling_effective_date": RESCHED_MS,
-        "part_prepayment_impact": "REDUCE_TENOR",
-        "broken_period_interest_handling": "NO",
-        "bpi_amount": str(BPI),
-        "bpd_amount": str(BPD),
-        "overdue_amount": str(OVERDUE),
-        "overdue_fee_charges": "0",
-        "charges": str(CHARGES),
-        "net_amount": str(NET),
-        "gross_amount": str(GROSS),
-        "due_amount": str(DUE),
-        "instrument_type": "CASH",
-        "receipt_number": RECEIPT,
-        "excess_amount": "0",
+        "loan_account_part_prepayment": {
+            "loan_account_number": LAN,
+            "rescheduling_effective_date": RESCHED_MS,
+            "part_prepayment_impact": "REDUCE_TENOR",
+            "broken_period_interest_handling": "NO",
+            "bpi_amount": str(BPI),
+            "bpd_amount": str(BPD),
+            "overdue_amount": str(OVERDUE),
+            "overdue_fee_charges": "0",
+            "charges": str(CHARGES),
+            "net_amount": str(NET),
+            "gross_amount": str(GROSS),
+            "due_amount": str(DUE),
+            "instrument_type": "CASH",
+            "receipt_number": RECEIPT,
+            "excess_amount": "0",
+        }
     }
     body = {"headers": _headers(), "request": request}
     resp = _post("loanAccountPartPrepayment", body)

@@ -15,6 +15,9 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 echo "=== DPI repayment + reversal E2E (loan=$LOAN_ACCOUNT_ID) ==="
 dpi_ensure_accounting
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpic_harness_lib.sh"
+dpic_harness_preflight || fail "harness preflight"
 demo_require_reversal_services
 demo_ensure_task_reversal_prereqs
 

@@ -1,3 +1,16 @@
+[2026-07-28] | TEST harness | DPIC overview registry asserts; demo_runtime helpers; repayment wall-clock platform date; part-prep JTF nest | scripts/testing/registry.json, scripts/dpic/demo/lib/demo_runtime.sh
+
+[2026-07-28] | TEST harness upgrade | DPIC harness lib (two clocks, safe repay, preflight, learnings); feedback_dpic_harness_gotchas.md | scripts/dpic/lib/dpic_harness_lib.sh, demo_runtime.sh, registry, learnings.jsonl
+
+[2026-07-28] | FIX (timeout) | Correct derived DPI batch wait budget computation (median from durations via argv; no stdin-heredoc loss) | scripts/dpic/lib/wait_batch_job.sh
+
+[2026-07-28] | FIX (ship-determinism) | DPI batch wait budget derived from mfi_batch durations + human waiver requires head_sha+expiry (no silent future carry) | scripts/dpic/lib/wait_batch_job.sh, scripts/lib/ship_fingerprint.py, scripts/lib/impact_tests.py
+
+[2026-07-28] | FIX (L1) | Align `ChildLoanForeclosureProcessor` mapping to KG request `childLoanForeclosure` (C1 selection truth) | scripts/lib/change_test_map.json
+
+[2026-07-28] | FIX TDPQA-180/184/186/187/188 | Seal DPI accrual on AID rate change; accept scheme days_in_month 30; LIQ_INSTL installment-before-charge; LAPD-sourced reversal DPI; part-prep due_amount excludes unbilled BPD | trustt-platform-accounting @ mfi_integration_v3.7.1 852f72097
+
+
 [2026-07-27] | FEATURE | FINAL SYNC: drain A1–A9 (tier variants≈⅓ ForceBill wall, FLOW_CASE_COVERAGE, penal/stubs wont-do, ntest canonical, orphan hooks documented, consumer denom 44/44, IDE Grep footnote, lean perf idioms, ship_baseline serial caveat); B path rewrite 108→0 stale docs; doctor GAP-G rails; smoke hook-contract allow-or-deny; SELF-REPORT F3/F4 | scripts/lib/impact_tests.py, map_completeness.py, workspace-doctor.sh, smoke-workspace.sh, brain+cursor docs, SELF-REPORT.md
 
 [2026-07-27] | FIX TDPQA-72 L1 | Surgical EC split: force_bill_posted + force_bill_amount on FC force-bill; keep bpi_amount for lapd/UI; suppress BPI_AMT/ADV_BPI_AMT GL; roll slice into INT_AMT on LOAN_PREPAYMENT (DFC BLD_INT_AMT parity) | ForceBillBillingSupport.java, RegularForeclosureForceBillService.java, PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor.java @ mfi_integration_v3.4.2.4
