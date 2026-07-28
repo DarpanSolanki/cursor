@@ -10,6 +10,7 @@ source "$ROOT/scripts/dpic/demo/lib/common.sh"
 
 # shellcheck disable=SC1091
 source "$ROOT/scripts/dpic/lib/dpi_harness_lib.sh"
+NET="${PART_PREP_NET:-5000}"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 echo "=== DPI loanAccountPartPrepayment TRIAL write (LAN=$ACCOUNT_NUMBER) ==="

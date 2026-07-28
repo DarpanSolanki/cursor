@@ -96,7 +96,16 @@ dpic_harness_preflight() {
   echo "  preflight OK"
 }
 
-# Map common harness error codes → fix hint (agents: check harness before product).
+# Fail-fast wall clock for E2E scripts (override: DPI_E2E_TIMEOUT_S=300).
+dpic_e2e_timeout() {
+  local secs="${DPI_E2E_TIMEOUT_S:-120}"
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --foreground "$secs" "$@"
+  else
+    "$@"
+  fi
+}
+
 dpic_harness_hint_for_code() {
   local code="${1:-}"
   case "$code" in
