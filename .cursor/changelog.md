@@ -1,3 +1,5 @@
+[2026-07-28] | FIX (timeout) | Correct derived DPI batch wait budget computation (median from durations via argv; no stdin-heredoc loss) | scripts/dpic/lib/wait_batch_job.sh
+
 [2026-07-28] | FIX (ship-determinism) | DPI batch wait budget derived from mfi_batch durations + human waiver requires head_sha+expiry (no silent future carry) | scripts/dpic/lib/wait_batch_job.sh, scripts/lib/ship_fingerprint.py, scripts/lib/impact_tests.py
 
 [2026-07-28] | FIX (L1) | Align `ChildLoanForeclosureProcessor` mapping to KG request `childLoanForeclosure` (C1 selection truth) | scripts/lib/change_test_map.json

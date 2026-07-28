@@ -35,17 +35,10 @@ SQL
   )"
 
   TIMEOUT_S="$(
-    printf '%s\n' "$durations" | python3 - <<'PY'
-import math,sys
-lines=[x.strip() for x in sys.stdin.read().splitlines() if x.strip()]
-ds=[]
-for x in lines:
-    try:
-        v=float(x)
-        if v>0:
-            ds.append(v)
-    except Exception:
-        pass
+    python3 -c 'import math,sys
+raw=sys.argv[1]
+ds=[float(x) for x in raw.split() if x.strip()]
+ds=[x for x in ds if x>0]
 if not ds:
     print(120)
 else:
@@ -53,7 +46,7 @@ else:
     n=len(ds)
     p50 = ds[n//2] if n%2==1 else (ds[n//2-1]+ds[n//2])/2.0
     print(int(max(120, math.ceil(3.0*p50))))
-PY
+' "$durations"
   )"
   echo ">>> batch wait budget (derived) JOB_NAME=$JOB_NAME TIMEOUT_S=${TIMEOUT_S}s" >&2
 fi
