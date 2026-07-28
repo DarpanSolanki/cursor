@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# sessionStart wrapper — full KG sync (not --fast).
-exec "$(dirname "$0")/kg-session-watermark.sh" sessionStart
+# sessionStart wrapper — lean path only.
+exec "$(dirname "$0")/kg-session-watermark.sh" workspaceOpen

@@ -10,9 +10,8 @@ PENDING=".cursor/.pending-kg-rebuild"
 mkdir -p .cursor scripts/scratch/logs
 
 MODE="--fast"
-[[ "${1:-}" == "sessionStart" ]] && MODE=""
 
-if [[ -x "$ROOT/scripts/bin/kg-session-sync.sh" ]]; then
+if [[ "${1:-}" == "enrichment-sync" ]] && [[ -x "$ROOT/scripts/bin/kg-session-sync.sh" ]]; then
   timeout 540 bash "$ROOT/scripts/bin/kg-session-sync.sh" $MODE --quiet \
     >>"$ROOT/scripts/scratch/logs/kg-session-sync.log" 2>&1 || true
 fi
@@ -21,10 +20,7 @@ bash "$ROOT/.cursor/hooks/kg-write-state.sh"
 
 # Human-edit impact plan banner (reads git dirty/unpushed — never agent memory)
 export IMPACT_BANNER=""
-if [[ "${1:-}" == "sessionStart" ]]; then
-  IMPACT_BANNER="$(python3 "$ROOT/scripts/lib/impact_tests.py" --banner --no-stubs 2>/dev/null || true)"
-  export IMPACT_BANNER
-fi
+# Keep session start lean: heavy impact banner remains on-demand only.
 
 if [[ "${1:-}" == "workspaceOpen" ]]; then
   exit 0
