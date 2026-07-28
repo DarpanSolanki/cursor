@@ -8,7 +8,8 @@ source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/dpic/demo/lib/common.sh"
 
-NET="${PART_PREP_NET:-5000}"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_harness_lib.sh"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 echo "=== DPI loanAccountPartPrepayment TRIAL write (LAN=$ACCOUNT_NUMBER) ==="
@@ -17,10 +18,12 @@ dpi_ensure_masterdata
 dpi_ensure_actor
 dpi_export_correlators
 dpi_restore_api_state
+dpic_harness_preflight || fail "harness preflight"
 
 dpi_pg -v ON_ERROR_STOP=1 -f "$ROOT/scripts/dpic/sql/helpers/seed_part_prepayment_dpi_catalogue_6367.sql" >/dev/null
 
-RESCHED_MS="$(demo_platform_business_date_ms)"
+dpic_repayment_timestamps
+RESCHED_MS="$REPAY_MS"
 export RESCHED_MS
 
 read -r OVERDUE DPI_OPEN <<<"$(

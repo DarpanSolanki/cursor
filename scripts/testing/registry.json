@@ -35,16 +35,15 @@
       "status": "SUCCESS",
       "code": "30223",
       "paths": [
-        "account_overview_list[0].amount_details.dpi_paid_amount",
-        "account_overview_list[0].amount_details.dpi_waived_amount",
-        "account_overview_list[0].amount_details.total_accrued_dpi_amount"
+        "account_overview_list[0].amount_details.total_accrued_dpi_amount",
+        "account_overview_list[0].payment_details.payment_details_list"
       ]
     },
     "print": [
       "account_overview_list[0].amount_details.dpi_overdue_amount",
       "account_overview_list[0].amount_details.dpi_due_amount",
-      "account_overview_list[0].amount_details.dpi_paid_amount",
-      "account_overview_list[0].amount_details.total_accrued_dpi_amount"
+      "account_overview_list[0].amount_details.total_accrued_dpi_amount",
+      "account_overview_list[0].payment_details.payment_details_list[0].dpi_amount"
     ]
   },
   "dpic.restructuring_bpi_api": {
@@ -248,6 +247,7 @@
       "ACCOUNT_NUMBER": "6004044425",
       "JOB_TIME": "1782563400000"
     },
+    "note": "Harness: JOB_TIME=batch only; loanRepayment uses dpic_platform_repay_ms (wall-clock). Safe amount via compute_safe_loan_repayment_amount.sql (DPI_REPAY_CAP). Assert lapd.dpi_amount not overview.dpi_paid_amount. See feedback_dpic_harness_gotchas.md",
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime",
@@ -321,7 +321,7 @@
       "ACCOUNT_NUMBER": "6004044425",
       "JOB_TIME": "1782563400000"
     },
-    "note": "Requires task :8019 + actor :8003; run dpic.repayment_e2e first if no open repayment",
+    "note": "Requires task :8019 + actor :8003; run dpic.repayment_e2e first if no open repayment. Harness: platform-date + safe repay \u2014 feedback_dpic_harness_gotchas.md",
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"

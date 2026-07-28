@@ -1,4 +1,5 @@
 - Ship-test autonomy (change→impact on push): `feedback_ship_test_autonomy_change_map.md` + `scripts/lib/change_test_map.json`.
+- [DPIC harness gotchas](feedback_dpic_harness_gotchas.md) — two clocks (JOB_TIME vs platform date); 132280/134243/130241 = harness first; `dpic_harness_lib.sh`; never fail ship on overview optional keys. (2026-07-28)
 
 # Memory Index
 - [Child CG* vs parent named GL](feedback_child_cg_gl_vs_parent_named.md) — never strip CG / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored (CG13336…). (TDPQA-72 2026-07-24)

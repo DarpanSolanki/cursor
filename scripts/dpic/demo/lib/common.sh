@@ -6,6 +6,11 @@ _DEMO_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _DEMO_ROOT="$(cd "$_DEMO_LIB_DIR/../../../.." && pwd)"
 
 source "$_DEMO_LIB_DIR/../demo_config.env"
+# shellcheck disable=SC1091
+source "$_DEMO_LIB_DIR/demo_runtime.sh"
+
+# Anchor timeline (EMI 14th; presentation day default 15-Jun-2026).
+eval "$(python3 "$_DEMO_LIB_DIR/compute_dates.py" --anchor "${DEMO_ANCHOR:-2026-06-15}")"
 
 export ROOT="$_DEMO_ROOT"
 export STATE_FILE="${STATE_FILE:-$ROOT/$DEMO_STATE_FILE}"

@@ -28,8 +28,9 @@
 - **Window**: from max `end_date` (or first overdue due) through `today` (trunc job date).
 - **precomputeDaySnapshots** (daily): base += PRIN/INT with `due <= segStart`; anchor INT with **`due <= segStart`** (NOT segStart+1 — `a8f822cf0`).
 - **Boundary walk**: `segEnd = nextBoundary(segStart)` = min(next EMI due, next month-end, today) — **inclusive end_date on boundary**.
-- **Slice split**: new row when `open==null || isLastDayOfMonth(segStart)`; else extend open row.
+- **Slice split**: new row when `open==null || isLastDayOfMonth(segStart) || (open.dpiAnnualRate != live AID effective_rate)`; else extend open row.
 - **Amount**: `DPICalculationService.calculateSegment` — grace gate, interest start, preloaded `segOverdueBase`, HALF_UP to int + carry.
+- **Carry rule (rate-change seal)**: when splitting specifically due to `open.dpiAnnualRate` mismatch, the new row must be created WITHOUT adding the previous open row's `carryOverAmount` (interest accrual does the same).
 - **Rows without boundary end_date** (in-flight `end_date=today`): **must not book** until boundary.
 
 ### 2. Booking (`DpiAccrualBookingBatchService`)
@@ -56,7 +57,8 @@
 3. booking gate uses **slice end_date**, not job_time
 4. billing waits for **next EMI** and **posted** accruals
 5. go-live filters dues (`postGoLiveDueDays`) and maturity skip
-6. compare `InterestAccrualBookingBatchService.isAccrualPostingDate` + interest calc segmentation
+6. compare `InterestAccrualCalculationBatchService.createOrUpdateIADE` rate/base branches — DPI must mirror, not invent rebook-side ops SQL
+7. **Harness discipline:** registry `path_exists` must match **observed API contract**; do not add product default keys only to satisfy ntest (overview omits `dpi_paid_amount` when no DPI due rows — use `total_accrued_dpi_amount` + `payment_details_list[].dpi_amount` instead). **Full harness SoT:** `cursor-bundle/memory/feedback_dpic_harness_gotchas.md` + `scripts/dpic/lib/dpic_harness_lib.sh`.
 
 ## Scenario matrix (minimum registry coverage)
 

@@ -13,8 +13,8 @@
     { "type": "http_status", "name": "http_2xx" },
     { "type": "response_status", "name": "api_success", "status": "SUCCESS", "code": "30223" },
     { "type": "path_exists", "name": "overview_row", "path": "account_overview_list[0]" },
-    { "type": "path_exists", "name": "dpi_paid_present", "path": "account_overview_list[0].amount_details.dpi_paid_amount" },
-    { "type": "path_exists", "name": "dpi_overdue_present", "path": "account_overview_list[0].amount_details.dpi_overdue_amount" },
+    { "type": "path_exists", "name": "total_accrued_dpi_present", "path": "account_overview_list[0].amount_details.total_accrued_dpi_amount" },
+    { "type": "path_exists", "name": "payment_details_present", "path": "account_overview_list[0].payment_details.payment_details_list" },
     {
       "type": "any_path_decimal_gt",
       "name": "dpi_amount_positive",

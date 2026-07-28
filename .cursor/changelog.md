@@ -1,3 +1,7 @@
+[2026-07-28] | TEST harness | DPIC overview registry asserts; demo_runtime helpers; repayment wall-clock platform date; part-prep JTF nest | scripts/testing/registry.json, scripts/dpic/demo/lib/demo_runtime.sh
+
+[2026-07-28] | TEST harness upgrade | DPIC harness lib (two clocks, safe repay, preflight, learnings); feedback_dpic_harness_gotchas.md | scripts/dpic/lib/dpic_harness_lib.sh, demo_runtime.sh, registry, learnings.jsonl
+
 [2026-07-28] | FIX (timeout) | Correct derived DPI batch wait budget computation (median from durations via argv; no stdin-heredoc loss) | scripts/dpic/lib/wait_batch_job.sh
 
 [2026-07-28] | FIX (ship-determinism) | DPI batch wait budget derived from mfi_batch durations + human waiver requires head_sha+expiry (no silent future carry) | scripts/dpic/lib/wait_batch_job.sh, scripts/lib/ship_fingerprint.py, scripts/lib/impact_tests.py
