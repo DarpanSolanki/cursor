@@ -6,6 +6,7 @@ import contextlib
 import io
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -98,6 +99,16 @@ TOOLS = {
         "description": "Who writes a table.",
         "args": ["writes"],
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    },
+    "workspace_status": {
+        "description": "Workspace health snapshot: KG freshness/watermark, ship gate status, stack-doctor summary, flow coverage, backlog SU, speed, waivers.",
+        "args": [],
+        "schema": {"type": "object", "properties": {}},
+    },
+    "ship_plan": {
+        "description": "Current pending selection plan: ordered cases, WHY, tier, planned wall, NOT-COVERED.",
+        "args": [],
+        "schema": {"type": "object", "properties": {"repo": {"type": "string"}}},
     },
 }
 
@@ -192,6 +203,151 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
     return argv
 
 
+def _read_json(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _run_cmd(cmd: list[str], *, timeout_s: int = 8) -> tuple[int, str]:
+    try:
+        cp = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, check=False)
+        return cp.returncode, (cp.stdout or cp.stderr or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        return 1, f"error: {exc}"
+
+
+def _flow_coverage_pct() -> str:
+    fp = ROOT / "scripts/testing/flow_coverage.json"
+    data = _read_json(fp)
+    flows = data.get("flows") or []
+    yes = 0
+    den = 0
+    for row in flows:
+        scope = str(row.get("scope") or "").lower()
+        if scope == "out":
+            continue
+        den += 1
+        if str(row.get("status") or "").upper() == "YES":
+            yes += 1
+    if den <= 0:
+        return "0/0 (0%)"
+    pct = round((yes * 100.0) / den, 1)
+    return f"{yes}/{den} ({pct}%)"
+
+
+def _backlog_su_open() -> int:
+    bp = ROOT / "scripts/workspace-backlog.json"
+    data = _read_json(bp)
+    n = 0
+    for item in data.get("items") or []:
+        iid = str(item.get("id") or "")
+        st = str(item.get("status") or "").lower()
+        if iid.startswith("SU-") and st in {"open", "todo", "pending", "in_progress"}:
+            n += 1
+    return n
+
+
+def _speed_p50_from_self_report() -> dict:
+    fp = ROOT / "cursor-bundle/memory/SELF-REPORT.md"
+    if not fp.is_file():
+        return {}
+    out: dict[str, str] = {}
+    for line in fp.read_text(encoding="utf-8", errors="ignore").splitlines():
+        s = line.strip()
+        if not s.startswith("- `") or "p50=" not in s:
+            continue
+        try:
+            k = s.split("`", 2)[1]
+            p50 = s.split("p50=", 1)[1].split()[0]
+            out[k] = p50
+        except Exception:
+            continue
+    return out
+
+
+def _active_waivers() -> list[dict]:
+    wp = ROOT / ".cursor/.impact-tests-human-waiver.json"
+    if not wp.is_file():
+        return []
+    data = _read_json(wp)
+    return [data] if data else []
+
+
+def _stack_doctor_summary() -> dict:
+    rc, out = _run_cmd(["bash", str(ROOT / "scripts/bin/stack-doctor.sh"), "--json"], timeout_s=12)
+    if not out:
+        return {"ok": False, "error": "no output"}
+    try:
+        j = json.loads(out)
+        j["rc"] = rc
+        return j
+    except Exception:
+        return {"ok": rc == 0, "raw": out[:600]}
+
+
+def _workspace_status_payload() -> dict:
+    pending = _read_json(ROOT / ".cursor/.pending-ship-work.json")
+    passed = _read_json(ROOT / ".cursor/.ship-loop-passed.json")
+    impact_ran = _read_json(ROOT / ".cursor/.impact-tests-ran.json")
+    close_state = _read_json(ROOT / ".cursor/.autopilot-state.json")
+
+    kg_fresh = run_kg(["fresh"])
+    kg_watermark = run_kg(["watermark"])
+    return {
+        "provenance": _header(),
+        "kg": {"fresh": kg_fresh, "watermark": kg_watermark},
+        "ship": {
+            "pending_repos": pending.get("repos") or [],
+            "pending_tier": pending.get("tier"),
+            "pending_head_shas": pending.get("repo_head_shas") or {},
+            "gate_passed_at": passed.get("passed_at"),
+            "gate_repo_head_shas": passed.get("repo_head_shas") or {},
+            "impact_ran_at": impact_ran.get("ran_at"),
+            "last_close_result": close_state.get("last_end_result") or close_state.get("last_result"),
+        },
+        "stack_doctor": _stack_doctor_summary(),
+        "flow_coverage": _flow_coverage_pct(),
+        "backlog_su_open": _backlog_su_open(),
+        "speed_p50": _speed_p50_from_self_report(),
+        "active_waivers": _active_waivers(),
+    }
+
+
+def _ship_plan_payload(arguments: dict) -> dict:
+    try:
+        from impact_tests import build_plan  # noqa: WPS433
+        from chain_budgets import plan_wall_s  # noqa: WPS433
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"import failed: {exc}"}
+
+    repo = str(arguments.get("repo") or "").strip()
+    pending = _read_json(ROOT / ".cursor/.pending-ship-work.json")
+    rel_paths = list(pending.get("files") or [])
+    if repo:
+        rel_paths = [p for p in rel_paths if p.startswith(f"{repo}/") or p == repo]
+    plan = build_plan(from_pending=not rel_paths, paths=(rel_paths or None), shipped_only=True)
+    ordered = list(plan.get("ordered_cases") or [])
+    why_lines = list(plan.get("why_lines") or [])
+    why = {}
+    for line in why_lines:
+        if ": " in line:
+            c, w = line.split(": ", 1)
+            why[c] = w
+    return {
+        "provenance": _header(),
+        "tier": pending.get("tier") or ("money" if plan.get("invariants_mandatory") else "service"),
+        "files": rel_paths or list(plan.get("files") or []),
+        "ordered_cases": [{"case": c, "why": why.get(c, "")} for c in ordered],
+        "planned_wall_s": int(plan_wall_s(ordered)),
+        "selection_tier_stats": plan.get("selection_tier_stats") or {},
+        "not_covered": plan.get("not_covered_blocking") or plan.get("not_covered_flows") or [],
+    }
+
+
 def tools_list_payload():
     return {
         "tools": [
@@ -229,7 +385,12 @@ def handle(msg: dict) -> dict | None:
                 "id": mid,
                 "result": {"content": [{"type": "text", "text": f"Unknown tool: {name}"}], "isError": True},
             }
-        text = run_kg(tool_argv(name, arguments))
+        if name == "workspace_status":
+            text = truncate(_header() + "\n" + json.dumps(_workspace_status_payload(), indent=2))
+        elif name == "ship_plan":
+            text = truncate(_header() + "\n" + json.dumps(_ship_plan_payload(arguments), indent=2))
+        else:
+            text = run_kg(tool_argv(name, arguments))
         return {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
     if method == "ping":
         return {"jsonrpc": "2.0", "id": mid, "result": {}}

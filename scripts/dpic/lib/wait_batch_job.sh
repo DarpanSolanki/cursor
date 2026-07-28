@@ -11,6 +11,14 @@ PROGRESS_S="${BATCH_PROGRESS_S:-5}"
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 LOGS="$ROOT/scripts/bin/novopay-logs.sh"
+PROGRESS_LOG="${SHIP_PROGRESS_LOG:-$ROOT/.cursor/ship-progress.log}"
+
+_ship_prog() {
+  local line="$1"
+  echo "$line"
+  mkdir -p "$(dirname "$PROGRESS_LOG")"
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$line" >>"$PROGRESS_LOG"
+}
 # shellcheck disable=SC1091
 source "$ROOT/scripts/lib/novopay-service-lib.sh"
 
@@ -21,6 +29,13 @@ WAIT_SERVICE="${BATCH_WAIT_SERVICE:-accounting}"
 # Fail fast when the JVM dies mid-batch (EMF closed) — do not poll until TIMEOUT_S.
 SERVICE_DOWN_FAIL_FAST_S="${BATCH_SERVICE_DOWN_FAIL_FAST_S:-12}"
 ABANDON_SQL="$ROOT/scripts/dpic/sql/helpers/dpi_abandon_stuck_batch_jobs.sql"
+
+_booking_floor() {
+  case "$JOB_NAME" in
+    dpiAccrualBooking|dpiInterestBooking) echo "${BATCH_BOOKING_FLOOR_S:-300}" ;;
+    *) echo 120 ;;
+  esac
+}
 
 abandon_hung_dpi_batches() {
   local older="${1:-30}"
@@ -47,7 +62,8 @@ started_epoch="$(date +%s)"
 
 if [[ -z "$TIMEOUT_S" ]]; then
   # Derive timeout from recorded history (avoid hard-coded too-short budgets).
-  # Budget = max(120s, ceil(3×p50)) from last 10 COMPLETED durations.
+  # Budget = max(floor, ceil(3×p50)) from last 10 COMPLETED durations.
+  # dpiAccrualBooking on a dirty local portfolio can exceed 90s even when healthy.
   durations="$(
     "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name="$JOB_NAME" <<'SQL'
 SELECT ROUND(EXTRACT(EPOCH FROM (bje.end_time - bje.start_time))::numeric, 2)::text AS duration_s
@@ -62,21 +78,34 @@ LIMIT 10;
 SQL
   )"
 
+  _FLOOR=120
+  case "$JOB_NAME" in
+    dpiAccrualBooking|dpiInterestBooking) _FLOOR="${BATCH_BOOKING_FLOOR_S:-300}" ;;
+  esac
+
   TIMEOUT_S="$(
     python3 -c 'import math,sys
 raw=sys.argv[1]
+floor=int(sys.argv[2])
 ds=[float(x) for x in raw.split() if x.strip()]
 ds=[x for x in ds if x>0]
 if not ds:
-    print(120)
+    print(floor)
 else:
     ds=sorted(ds)
     n=len(ds)
     p50 = ds[n//2] if n%2==1 else (ds[n//2-1]+ds[n//2])/2.0
-    print(int(max(120, math.ceil(3.0*p50))))
-' "$durations"
+    print(int(max(floor, math.ceil(3.0*p50))))
+' "$durations" "$_FLOOR"
   )"
-  echo ">>> batch wait budget (derived) JOB_NAME=$JOB_NAME TIMEOUT_S=${TIMEOUT_S}s" >&2
+  echo ">>> batch wait budget (derived) JOB_NAME=$JOB_NAME TIMEOUT_S=${TIMEOUT_S}s floor=${_FLOOR}s" >&2
+fi
+
+# Env default BATCH_POLL_TIMEOUT_S=90 (dpi_demo_fixture) must not undercut booking floor.
+_FLOOR="$(_booking_floor)"
+if [[ -n "$TIMEOUT_S" && "$TIMEOUT_S" -lt "$_FLOOR" ]]; then
+  echo ">>> batch wait floor bump JOB_NAME=$JOB_NAME ${TIMEOUT_S}s → ${_FLOOR}s (env was too low)" >&2
+  TIMEOUT_S="$_FLOOR"
 fi
 
 deadline=$((started_epoch + TIMEOUT_S))
@@ -130,7 +159,7 @@ while [[ "$(date +%s)" -le "$deadline" ]]; do
   elapsed=$((now - started_epoch))
 
   if [[ "$now" -ge "$next_progress" && "${status:-}" != "$last_status" ]] || [[ "$now" -ge "$next_progress" ]]; then
-    echo "  … ${JOB_NAME} ${status:-STARTING} (${elapsed}s) — novopay-logs.sh snap $WAIT_SERVICE"
+    _ship_prog "  … batch-wait ${JOB_NAME} ${status:-STARTING} ${elapsed}s/${TIMEOUT_S}s"
     next_progress=$((now + PROGRESS_S))
   fi
   last_status="${status:-}"

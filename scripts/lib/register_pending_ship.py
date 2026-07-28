@@ -19,7 +19,7 @@ from infer_ship_apis import (  # noqa: E402
     is_ship_path,
     merge_tier,
 )
-from ship_push_gate import file_fingerprint, fingerprints_for_files  # noqa: E402
+from ship_fingerprint import repo_head_shas  # noqa: E402
 
 PENDING_DEFAULT = ROOT / ".cursor/.pending-ship-work.json"
 LAST_COMMIT = ROOT / ".cursor/.last-ship-commit"
@@ -111,12 +111,25 @@ def register_paths(
     impact = build_impact(all_paths)
     data["tier"] = impact["tier"]
     data["apis"] = impact["apis"]
-    data["registry_cases"] = impact.get("ntest_cases") or impact.get("registry_cases") or []
+    rel_paths = list(data.get("files") or [])
+    try:
+        from impact_tests import build_plan  # noqa: WPS433
+
+        plan = build_plan(from_pending=False, paths=rel_paths, shipped_only=True)
+        ordered = list(plan.get("ordered_cases") or [])
+        data["registry_cases"] = ordered or impact.get("ntest_cases") or impact.get("registry_cases") or []
+        data["selection_source"] = "impact_tests" if ordered else "FALLBACK: no selection"
+        data["resolution"] = data["selection_source"]
+    except Exception:
+        data["registry_cases"] = impact.get("ntest_cases") or impact.get("registry_cases") or []
+        data["selection_source"] = "FALLBACK: no selection"
+        data["resolution"] = "heuristic"
+    data["ntest_cases"] = data["registry_cases"]
     data["smoke_money_cases"] = impact["smoke_money_cases"]
     data["smoke_service_cases"] = impact["smoke_service_cases"]
     data["health_cases"] = impact["health_cases"]
-    data["resolution"] = impact.get("resolution", "heuristic")
-    data["file_fingerprints"] = fingerprints_for_files(root, data["files"])
+    pending_for_shas = {"repos": data.get("repos") or [], "files": data.get("files") or []}
+    data["repo_head_shas"] = repo_head_shas(pending_for_shas)
     data["close_command"] = "bash scripts/bin/workspace-close.sh --from-pending"
     data["updated_at"] = now
     data.pop("ship_loop_passed_at", None)

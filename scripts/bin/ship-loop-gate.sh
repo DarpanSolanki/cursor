@@ -68,6 +68,45 @@ fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="
 
+_SELECTION_SRC="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('selection_source') or '?')" 2>/dev/null || echo '?')"
+echo "→ selection source: $_SELECTION_SRC (${#_SMART_CASES[@]} case(s))"
+if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+  echo "$_IMPACT_JSON" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for cid in d.get('ntest_cases') or []:
+    why = (d.get('case_why') or {}).get(cid, d.get('selection_source', ''))
+    print(f'  PLAN {cid}: {why}')
+"
+fi
+export SHIP_LOOP_CASES="${_SMART_CASES[*]:-}"
+export RUN_GUARDED_CHAIN_STARTED="$(date +%s)"
+if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+  export RUN_GUARDED_CHAIN_CEILING="$(python3 "$ROOT/scripts/lib/chain_budgets.py" ship-loop-total \
+    $(for c in "${_SMART_CASES[@]}"; do printf ' --case %q' "$c"; done) 2>/dev/null || echo 5400)"
+  # Live progress contract — init plan + budgets into .cursor/ship-progress.log
+  python3 - <<'PY' "$ROOT" "${_SMART_CASES[@]}"
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "scripts/lib"))
+from chain_budgets import case_wall_s, step_budget
+from ship_progress import init_plan
+cases = sys.argv[2:]
+budgets = {c: step_budget("ntest-case", cases=[c]) for c in cases}
+init_plan(cases, budgets)
+print(f"→ ship-progress initialized n={len(cases)} ceiling={sum(budgets.values())}s (log=.cursor/ship-progress.log)")
+PY
+fi
+
+# Stack hygiene before any tests (Phase D)
+echo "→ stack-doctor (preflight)"
+bash "$ROOT/scripts/bin/stack-doctor.sh" --remediate || {
+  echo "ship-loop-gate: FAIL — stack-doctor (dirty stack)" >&2
+  bash "$ROOT/scripts/bin/stack-doctor.sh" 2>&1 | tail -20 >&2 || true
+  exit 1
+}
+
 # Query plan gate — only when pending touches @Query/native SQL/repo methods (conditional).
 if [[ "$FROM_PENDING" -eq 1 || "$PENDING_FILES" -gt 0 ]]; then
   if bash "$ROOT/scripts/bin/query-plan-gate.sh" --check-touched >/dev/null 2>&1; then
@@ -81,34 +120,44 @@ if [[ "$FROM_PENDING" -eq 1 || "$PENDING_FILES" -gt 0 ]]; then
   fi
 fi
 
-# Impact-tests gate FIRST: money/service ships must have run dynamic impact plan this session
-# (or an explicit logged waiver). Skip for pure workspace tier.
+# Impact-tests gate: service/money ships require impact record keyed to HEAD sha.
+# Record is written at END of ship-loop after tests pass — never by workspace-close.
+# Selection is NOT expanded from cache — impact_tests.build_plan is sole case list.
 if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then
-  if [[ "${IMPACT_TESTS_WAIVER:-}" != "" ]]; then
-    python3 "$ROOT/scripts/lib/impact_tests.py" --waiver "$IMPACT_TESTS_WAIVER" || true
-    echo "→ impact-tests WAIVER: $IMPACT_TESTS_WAIVER"
-  elif ! python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >/dev/null 2>&1; then
-    echo "ship-loop-gate: FAIL — impact-tests plan not run for current pending files." >&2
-    echo "  Run: bash scripts/bin/impact-tests.sh --mark-ran" >&2
-    echo "  Or set IMPACT_TESTS_WAIVER='reason' (logged)." >&2
-    python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >&2 || true
-    exit 1
+  if python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >/dev/null 2>&1; then
+    echo "→ impact-tests cache HIT: $(python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran 2>/dev/null || true)"
   else
-    echo "→ impact-tests ran: $(python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran 2>/dev/null || true)"
-    # Union KG blast-radius cases into the ship run set
-    mapfile -t _IMPACT_CASES < <(python3 -c "
+    echo "→ impact-tests cache MISS — will record after tests pass"
+  fi
+fi
+
+# Fail-closed: money tier blocks on NOT-COVERED flows without human waiver.
+if [[ "$TIER" == "money" ]]; then
+  _PLAN_NC="$(python3 "$ROOT/scripts/lib/impact_tests.py" --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+rows=d.get('not_covered_blocking')
+if rows is None:
+    rows=d.get('not_covered_flows') or []
+for row in rows:
+    print(row.get('api') or row.get('flow') or '?')
+" 2>/dev/null || true)"
+  if [[ -n "$_PLAN_NC" ]]; then
+    _HUMAN_WAIVER=0
+    python3 -c "
 import json
 from pathlib import Path
-p=Path('$ROOT')/'.cursor/.impact-tests-ran.json'
-if p.is_file():
-  d=json.loads(p.read_text())
-  for c in d.get('ordered_cases') or []:
-    print(c)
-" 2>/dev/null || true)
-    if [[ ${#_IMPACT_CASES[@]} -gt 0 ]]; then
-      _UNION="$(printf '%s\n' "${_SMART_CASES[@]}" "${_IMPACT_CASES[@]}" | awk 'NF && !seen[$0]++')"
-      mapfile -t _SMART_CASES <<< "$_UNION"
-      echo "→ impact cases union: ${_IMPACT_CASES[*]}"
+w=Path('$ROOT')/'.cursor/.impact-tests-human-waiver.json'
+import sys
+sys.exit(0 if w.is_file() and json.loads(w.read_text()).get('reason') else 1)
+" 2>/dev/null && _HUMAN_WAIVER=1
+    if [[ "$_HUMAN_WAIVER" -eq 0 ]]; then
+      echo "ship-loop-gate: FAIL — money path NOT-COVERED flows (no registry case):" >&2
+      while IFS= read -r api; do
+        [[ -n "$api" ]] && echo "  NOT-COVERED flow ${api} impacted — NOT-COVERED" >&2
+      done <<< "$_PLAN_NC"
+      echo "  Add registry case or: bash scripts/bin/impact-tests.sh --human-waiver 'reason'" >&2
+      exit 1
     fi
   fi
 fi
@@ -202,8 +251,61 @@ fi
 _run_ntest() {
   local case_id="$1"
   local label="${2:-}"
-  echo "→ ntest run $case_id${label:+ ($label)}"
-  bash "$ROOT/scripts/bin/ntest.sh" run "$case_id" || return 1
+  local budget idx n start_ts end_ts rc el phases_json
+  budget="$(python3 "$ROOT/scripts/lib/chain_budgets.py" ntest-case --case "$case_id" 2>/dev/null || echo 300)"
+  n="${#_SMART_CASES[@]}"
+  idx=0
+  local i c
+  for i in "${!_SMART_CASES[@]}"; do
+    c="${_SMART_CASES[$i]}"
+    [[ "$c" == "$case_id" ]] && idx=$((i + 1)) && break
+  done
+  [[ "$idx" -eq 0 ]] && idx=1
+  python3 "$ROOT/scripts/lib/ship_progress.py" start "$idx" "$n" "$case_id" "$budget"
+  start_ts=$(date +%s)
+  # Phase: fire+flow (ntest owns fixture/fire/wait/asserts — heartbeat while silent)
+  python3 "$ROOT/scripts/lib/ship_progress.py" phase "$idx" "$n" "$case_id" "fire+flow" "ntest run"
+  set +e
+  if command -v timeout >/dev/null 2>&1; then
+    (
+      bash "$ROOT/scripts/bin/ntest.sh" run "$case_id"
+    ) &
+    local child=$!
+    local last_hb=$start_ts now
+    while kill -0 "$child" 2>/dev/null; do
+      sleep 1
+      now=$(date +%s)
+      el=$((now - start_ts))
+      if [[ $((now - last_hb)) -ge 15 ]]; then
+        python3 "$ROOT/scripts/lib/ship_progress.py" hb "$idx" "$n" "$case_id" "$el" "$budget" "ntest${label:+ /$label}"
+        last_hb=$now
+      fi
+      if [[ "$el" -ge "$budget" ]]; then
+        kill -TERM "$child" 2>/dev/null || true
+        sleep 5
+        kill -KILL "$child" 2>/dev/null || true
+        wait "$child" 2>/dev/null || true
+        python3 "$ROOT/scripts/lib/ship_progress.py" end "$idx" "$n" "$case_id" FAIL "$el" '{}'
+        set -e
+        return 1
+      fi
+    done
+    wait "$child"
+    rc=$?
+  else
+    bash "$ROOT/scripts/bin/ntest.sh" run "$case_id"
+    rc=$?
+  fi
+  set -e
+  end_ts=$(date +%s)
+  el=$((end_ts - start_ts))
+  phases_json="$(python3 -c "import json; print(json.dumps({'fire_flow_ms': ${el} * 1000}))")"
+  if [[ "$rc" -eq 0 ]]; then
+    python3 "$ROOT/scripts/lib/ship_progress.py" end "$idx" "$n" "$case_id" PASS "$el" "$phases_json"
+  else
+    python3 "$ROOT/scripts/lib/ship_progress.py" end "$idx" "$n" "$case_id" FAIL "$el" "$phases_json"
+    return 1
+  fi
 }
 
 _run_api_tests() {
@@ -354,19 +456,6 @@ for r in repos:
       echo "ship-loop-gate: FAIL — money tier empty cases/apis (no health/smoke fallback)" >&2
       exit 1
     fi
-  # Auto-escalation: deep phase (path-aware, not manual verify-dpi)
-  mapfile -t _DEEP_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase deep --list 2>/dev/null || true)
-  if [[ ${#_DEEP_CASES[@]} -gt 0 ]]; then
-    echo "→ auto deep phase: ${_DEEP_CASES[*]}"
-    _run_case_list "deep" "${_DEEP_CASES[@]}" || exit 1
-  fi
-  if [[ "${SHIP_CLOSE_RELEASE_TESTS:-}" == "1" ]]; then
-    mapfile -t _RELEASE_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase release --list 2>/dev/null || true)
-    if [[ ${#_RELEASE_CASES[@]} -gt 0 ]]; then
-      echo "→ auto release phase (push gate): ${_RELEASE_CASES[*]}"
-      SHIP_TEST_PHASES=release python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --run --phases release || exit 1
-    fi
-  fi
     ;;
   *)
     echo "Unknown tier: $TIER" >&2
@@ -397,24 +486,30 @@ import json, sys, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(sys.argv[1]) / "scripts/lib"))
-from ship_push_gate import fingerprints_for_files
+from ship_fingerprint import load_pending, repo_head_shas
 from ship_push_lock import update_pending_ship
 from ship_outbox import record_gate_passed, log_outbox_error
+from impact_tests import build_plan, mark_ran
 
 root = Path(sys.argv[1])
 tier = sys.argv[2]
 apis = sys.argv[3:]
 now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-passed = {"passed_at": now, "tier": tier, "apis": apis, "repos": [], "file_fingerprints": {}}
+pending = load_pending()
+head_shas = repo_head_shas(pending)
+passed = {
+    "passed_at": now,
+    "tier": tier,
+    "apis": apis,
+    "repos": pending.get("repos") or [],
+    "repo_head_shas": head_shas,
+}
 p = root / ".cursor/.pending-ship-work.json"
-pending = {}
 if p.is_file():
     try:
-        pending = json.loads(p.read_text(encoding="utf-8"))
-        passed["repos"] = pending.get("repos") or []
-        passed["tier"] = pending.get("tier") or tier
-        files = pending.get("files") or []
-        passed["file_fingerprints"] = pending.get("file_fingerprints") or fingerprints_for_files(root, files)
+        pend = json.loads(p.read_text(encoding="utf-8"))
+        passed["repos"] = pend.get("repos") or passed["repos"]
+        passed["tier"] = pend.get("tier") or tier
 
         def _mark_passed(data: dict) -> dict:
             data["ship_loop_passed_at"] = now
@@ -423,11 +518,14 @@ if p.is_file():
         update_pending_ship(root, _mark_passed, pending_path=p)
     except Exception:
         pass
+if tier in ("money", "service"):
+    plan = build_plan(from_pending=True, draft_stubs=False)
+    mark_ran(plan, result="pass")
 try:
     record_gate_passed(
         tier=passed.get("tier") or tier,
         apis=list(passed.get("apis") or apis),
-        extra={"repos": passed.get("repos") or [], "file_fingerprints": passed.get("file_fingerprints") or {}},
+        extra={"repos": passed.get("repos") or [], "repo_head_shas": head_shas},
     )
 except Exception as ex:
     log_outbox_error(ex, "record_gate_passed")
@@ -439,7 +537,7 @@ import os
 if os.environ.get("SHIP_LOOP_SKIP_KNOWLEDGE_GATE") != "1":
     p.unlink(missing_ok=True)
 label = ", ".join(apis) if apis else f"tier={tier}"
-print(f"ship-loop PASS at {now} ({label})")
+print(f"ship-loop PASS at {now} ({label}) head_shas={head_shas}")
 PY
 
 echo "=== ship-loop-gate: PASS ==="

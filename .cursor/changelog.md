@@ -1,3 +1,5 @@
+[2026-07-28] | SHIP-TIME | Live progress contract (ship_progress + run-guarded heartbeats); booking wait floor; exclude ship_scope=manual (full_regression+ud_compliance); invariants gate on main; stack-doctor/chain_budgets | scripts/lib/ship_progress.py, run-guarded.sh, ship-loop-gate.sh, wait_batch_job.sh, impact_tests.py, registry.json
+
 [2026-07-28] | TEST harness | Fail-fast batch wait + dpi_prep_before_batch; harness SoT on origin/main (cherry-pick from 3.4.2.4 + overlay) | scripts/dpic/lib/wait_batch_job.sh, dpi_demo_fixture.sh, dpi-sanity.sh, agent-ops-lib.sh, feedback_harness_push_origin_main_only.md
 
 [2026-07-28] | TEST harness | DPIC overview registry asserts; demo_runtime helpers; repayment wall-clock platform date; part-prep JTF nest | scripts/testing/registry.json, scripts/dpic/demo/lib/demo_runtime.sh

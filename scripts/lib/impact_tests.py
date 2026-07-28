@@ -66,6 +66,25 @@ except ImportError:  # pragma: no cover
     api_from_class_stem = None  # type: ignore
     api_from_path = None  # type: ignore
 
+try:
+    from ship_fingerprint import (  # noqa: E402
+        is_fingerprint_exempt,
+        load_pending,
+        primary_ship_repos,
+        repo_head_sha,
+        repo_head_shas,
+        repo_train_version,
+        ship_range_paths,
+    )
+except ImportError:  # pragma: no cover
+    is_fingerprint_exempt = None  # type: ignore
+    load_pending = None  # type: ignore
+    primary_ship_repos = None  # type: ignore
+    repo_head_sha = None  # type: ignore
+    repo_head_shas = None  # type: ignore
+    repo_train_version = None  # type: ignore
+    ship_range_paths = None  # type: ignore
+
 
 def _utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -145,13 +164,122 @@ def _filter_changed_paths(paths: list[str], *, pending_anchor: list[str] | None 
     return filtered
 
 
+def collect_shipped_code_paths(pending: dict | None = None) -> list[str]:
+    """Shipped-code-only paths: upstream...HEAD per pending repo (exempt knowledge)."""
+    pending = pending or load_pending() if load_pending else {}
+    out: list[str] = []
+    seen: set[str] = set()
+    if primary_ship_repos and ship_range_paths:
+        for repo_name, repo_path in primary_ship_repos(pending):
+            for rel in ship_range_paths(repo_path, repo_name):
+                if rel not in seen:
+                    seen.add(rel)
+                    out.append(rel)
+    if out:
+        return _filter_changed_paths(out, pending_anchor=list(out))
+    # workspace-only pending — use pending file list minus exempt
+    for rel in pending.get("files") or []:
+        s = _to_rel(str(rel))
+        if is_fingerprint_exempt and is_fingerprint_exempt(s):
+            continue
+        if s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out
+
+
+def _infer_case_train(meta: dict) -> str | None:
+    """Train tag from registry case metadata (note / train field)."""
+    if meta.get("train"):
+        return str(meta["train"])
+    note = str(meta.get("note") or "")
+    m = re.search(r"mfi_(?:integration|release)_v(\d+(?:\.\d+)*)", note)
+    return m.group(1) if m else None
+
+
+def _filter_cases_by_train(
+    ordered: list[str], reg: dict, pending: dict | None
+) -> tuple[list[str], list[str]]:
+    """Skip cases whose train tag mismatches shipped repo branch (C4)."""
+    pending = pending or {}
+    repos = primary_ship_repos(pending) if primary_ship_repos else []
+    train_by_repo: dict[str, str | None] = {}
+    for name, path in repos:
+        train_by_repo[name] = repo_train_version(path) if repo_train_version else None
+    if not train_by_repo:
+        return ordered, []
+    kept: list[str] = []
+    skipped: list[str] = []
+    for cid in ordered:
+        meta = reg.get(cid) or {}
+        case_train = _infer_case_train(meta)
+        if not case_train:
+            kept.append(cid)
+            continue
+        ok = False
+        for repo, repo_train in train_by_repo.items():
+            if repo_train is None or case_train == repo_train:
+                ok = True
+                break
+        if ok:
+            kept.append(cid)
+        else:
+            want = ",".join(f"{r}={t or '?'}" for r, t in train_by_repo.items())
+            skipped.append(f"SKIP_TRAIN {cid}: case_train={case_train} repo_trains={want}")
+    return kept, skipped
+
+
+def _collect_changed_symbols(paths: list[str]) -> list[str]:
+    """Method-level symbols from git diff hunks (C5 bounded impact)."""
+    symbols: list[str] = []
+    seen: set[str] = set()
+    repos_done: set[str] = set()
+    for rel in paths:
+        repo = _repo_of(rel)
+        if not repo or repo in repos_done:
+            continue
+        repos_done.add(repo)
+        repo_path = ROOT / repo
+        if not (repo_path / ".git").is_dir():
+            continue
+        up_r = subprocess.run(
+            ["git", "-C", str(repo_path), "rev-parse", "--abbrev-ref", "@{upstream}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if up_r.returncode == 0 and up_r.stdout.strip():
+            diff_spec = f"{up_r.stdout.strip()}...HEAD"
+        else:
+            diff_spec = "HEAD"
+        r = subprocess.run(
+            ["git", "-C", str(repo_path), "diff", "-U0", diff_spec],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in r.stdout.splitlines():
+            m = re.match(r"^[+-]\s+(?:public|protected|private)?\s*[\w<>,\s\[\]]+\s+(\w+)\s*\(", line)
+            if m:
+                sym = m.group(1)
+                if sym not in seen and sym not in ("if", "for", "while", "switch"):
+                    seen.add(sym)
+                    symbols.append(sym)
+    return symbols
+
+
 def collect_changed_paths(
     *,
     range_spec: str | None = None,
     from_pending: bool = True,
     paths: list[str] | None = None,
+    shipped_only: bool = False,
 ) -> list[str]:
-    """Default: pending-ship files ∪ dirty git trees. --range uses git diff."""
+    """Default: shipped commit range when from_pending+shipped_only; else pending∪dirty."""
+    if shipped_only and from_pending and not paths and not range_spec:
+        shipped = collect_shipped_code_paths()
+        if shipped:
+            return shipped
     out: list[str] = []
     seen: set[str] = set()
 
@@ -821,7 +949,12 @@ def _apply_selection_tiering(
     for cid in [INVARIANTS_CASE] + full_cases + smoke_exec:
         if not cid or cid in final:
             continue
-        if (reg.get(cid) or {}).get("quarantine"):
+        meta = reg.get(cid) or {}
+        if meta.get("quarantine"):
+            continue
+        # ship_scope=manual → never auto-select (e.g. dpic.full_regression)
+        if str(meta.get("ship_scope") or "").lower() == "manual":
+            tier_lines.append(f"TIER skip-manual {cid}: ship_scope=manual")
             continue
         final.append(cid)
 
@@ -925,10 +1058,16 @@ def build_plan(
     from_pending: bool = True,
     paths: list[str] | None = None,
     draft_stubs: bool = False,
+    shipped_only: bool = True,
 ) -> dict:
     changed = collect_changed_paths(
-        range_spec=range_spec, from_pending=from_pending, paths=paths
+        range_spec=range_spec,
+        from_pending=from_pending,
+        paths=paths,
+        shipped_only=shipped_only and not paths and not range_spec,
     )
+    symbols = _collect_changed_symbols(changed)
+    pending = load_pending() if load_pending else {}
     conn = _kg()
     nodes: list[dict] = []
     for p in changed:
@@ -974,6 +1113,30 @@ def build_plan(
         changed=changed,
         reg=reg,
     )
+    ordered, train_skipped = _filter_cases_by_train(ordered, reg, pending)
+    tier_lines.extend(train_skipped)
+
+    direct_apis = _direct_apis_from_nodes(uniq_nodes, flows, changed)
+    not_covered_all = [
+        {"api": m.get("api"), "flow": m.get("api"), "reason": "no registry case"}
+        for m in missing
+    ]
+    not_covered_blocking: list[dict] = []
+    for m in missing:
+        api = str(m.get("api") or "")
+        fl = next((f for f in flows if str(f.get("api") or "") == api), {})
+        has_writes = bool(fl.get("tables"))
+        money_case = any(
+            (reg.get(cid) or {}).get("smoke_tier") == "money"
+            for cid, meta in reg.items()
+            if isinstance(meta, dict) and (meta.get("api") == api)
+        )
+        if has_writes or money_case:
+            not_covered_blocking.append(
+                {"api": api, "flow": api, "reason": "no registry case (money/write path)"}
+            )
+    if not_covered_all:
+        _draft_not_covered_proposals(not_covered_all)
 
     q_files = []
     try:
@@ -997,6 +1160,11 @@ def build_plan(
         "cases": cases,
         "ordered_cases": ordered,
         "missing_flows": missing,
+        "not_covered_flows": not_covered_all,
+        "not_covered_blocking": not_covered_blocking,
+        "changed_symbols": symbols,
+        "train_skipped": train_skipped,
+        "repo_head_shas": repo_head_shas(pending) if repo_head_shas else {},
         "flow_coverage_ok": cov_ok,
         "flow_coverage_msg": cov_msg,
         "drafted_stubs": [s["id"] for s in stubs],
@@ -1019,67 +1187,132 @@ def build_plan(
     return plan
 
 
-def mark_ran(plan: dict) -> None:
+def _draft_not_covered_proposals(not_covered: list[dict]) -> None:
+    """Auto-draft registry proposals for impacted flows without cases (C3)."""
+    if not not_covered or not PROPOSALS.parent.is_dir():
+        return
+    data: dict = {"proposals": []}
+    if PROPOSALS.is_file():
+        try:
+            data = json.loads(PROPOSALS.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    existing = {p.get("id") for p in data.get("proposals") or []}
+    for row in not_covered:
+        api = str(row.get("api") or "unknown")
+        pid = f"impact.not_covered.{api}"
+        if pid in existing:
+            continue
+        data.setdefault("proposals", []).append(
+            {
+                "id": pid,
+                "kind": "registry_case",
+                "api": api,
+                "reason": f"flow {api} impacted — NOT-COVERED",
+                "status": "draft",
+                "created_at": _utc(),
+            }
+        )
+        existing.add(pid)
+    PROPOSALS.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def mark_ran(plan: dict, *, result: str = "pass") -> None:
+    """Record impact run keyed by repo HEAD sha (never working-tree mtime)."""
     RAN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    pending = load_pending() if load_pending else {}
+    repos = primary_ship_repos(pending) if primary_ship_repos else []
+    primary_repo = repos[0][0] if repos else ""
+    primary_path = repos[0][1] if repos else ROOT
+    head = repo_head_sha(primary_path) if repo_head_sha else ""
+    shas = repo_head_shas(pending) if repo_head_shas else {}
     payload = {
         "ran_at": _utc(),
-        "files": plan.get("files") or [],
+        "repo": primary_repo,
+        "head_sha": head,
+        "repo_head_shas": shas,
         "ordered_cases": plan.get("ordered_cases") or [],
-        "fingerprint": _files_fp(plan.get("files") or []),
+        "not_covered_flows": plan.get("not_covered_blocking") or plan.get("not_covered_flows") or [],
+        "result": result,
+        "shipped_files": plan.get("files") or [],
     }
     RAN_FILE.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def _files_fp(files: list[str]) -> str:
-    import hashlib
-
-    h = hashlib.sha256()
-    for f in sorted(files):
-        h.update(f.encode())
-        p = ROOT / f
-        if p.is_file():
-            st = p.stat()
-            h.update(f"{st.st_size}:{int(st.st_mtime)}".encode())
-    return h.hexdigest()[:16]
-
-
 def impact_ran_satisfied(files: list[str] | None = None) -> tuple[bool, str]:
-    """True if impact plan was run this session for current file set."""
+    """True when recorded head_sha matches current HEAD for shipped repo(s)."""
+    from ship_fingerprint import human_waiver_active  # noqa: WPS433
+
+    waived, wmsg = human_waiver_active()
+    if waived:
+        return True, f"ok ({wmsg})"
     if not RAN_FILE.is_file():
-        return False, "no .impact-tests-ran.json"
+        return False, "no .impact-tests-ran.json — run ship-loop after tests pass"
     try:
         data = json.loads(RAN_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return False, "corrupt impact-tests-ran"
-    want = files
-    if want is None and PENDING.is_file():
-        try:
-            want = json.loads(PENDING.read_text(encoding="utf-8")).get("files") or []
-        except Exception:
-            want = []
-    want = want or []
-    if not want:
-        # no pending files — treat as N/A satisfied for workspace-only
-        return True, "no pending ship files"
-    fp = _files_fp(want)
-    if data.get("fingerprint") != fp:
-        return False, f"fingerprint mismatch (ran={data.get('fingerprint')} now={fp})"
-    # freshness: same calendar day / 12h window
+        return False, "corrupt impact-tests-ran.json"
+    pending = load_pending() if load_pending else {}
+    repos = primary_ship_repos(pending) if primary_ship_repos else []
+    if not repos:
+        return True, "no service repos in pending — workspace-only N/A"
+    recorded = data.get("repo_head_shas") or {}
+    if not recorded and data.get("head_sha") and data.get("repo"):
+        recorded = {data["repo"]: data["head_sha"]}
+    mismatches: list[str] = []
+    for name, path in repos:
+        current = repo_head_sha(path) if repo_head_sha else ""
+        if not current:
+            mismatches.append(f"{name}:no_head")
+            continue
+        if recorded.get(name) != current:
+            mismatches.append(
+                f"{name}: recorded={str(recorded.get(name, '?'))[:12]} current={current[:12]}"
+            )
+    if mismatches:
+        return False, f"head_sha mismatch — re-run impact tests: {'; '.join(mismatches)}"
+    if (data.get("result") or "") not in ("pass", "planned"):
+        return False, f"impact result not pass (result={data.get('result')})"
     ran_at = data.get("ran_at") or ""
-    if ran_at < _utc()[:10]:  # crude: require same UTC day or newer stamp within session
-        # allow if ran_at within last 12 hours
-        try:
-            from datetime import datetime, timezone, timedelta
-
-            t = datetime.strptime(ran_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) - t > timedelta(hours=12):
-                return False, f"impact run stale ({ran_at})"
-        except Exception:
-            pass
-    return True, f"ok ran_at={ran_at} cases={len(data.get('ordered_cases') or [])}"
+    return True, (
+        f"ok head_sha match ran_at={ran_at} cases={len(data.get('ordered_cases') or [])} "
+        f"repos={','.join(n for n, _ in repos)}"
+    )
 
 
-def log_waiver(reason: str, actor: str = "agent") -> None:
+def log_human_waiver(reason: str, actor: str = "human") -> None:
+    """Explicit human-only waiver — recorded file, not env escape hatch."""
+    wp = ROOT / ".cursor/.impact-tests-human-waiver.json"
+    wp.parent.mkdir(parents=True, exist_ok=True)
+    pending = load_pending() if load_pending else {}
+    repos = primary_ship_repos(pending) if primary_ship_repos else []
+    repo = repos[0][0] if repos else ""
+    head_sha = repo_head_sha(ROOT / repo) if repo and repo_head_sha else ""
+    # Waiver scope is time-bounded to prevent silent carry-forward.
+    expiry = _utc()
+    try:
+        from datetime import datetime, timezone, timedelta
+
+        expiry = (
+            datetime.now(timezone.utc) + timedelta(days=7)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        pass
+    wp.write_text(
+        json.dumps(
+            {
+                "reason": reason,
+                "actor": actor,
+                "at": _utc(),
+                "repo": repo,
+                "head_sha": head_sha,
+                "expiry": expiry,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     WAIVER_LOG.parent.mkdir(parents=True, exist_ok=True)
     with WAIVER_LOG.open("a", encoding="utf-8") as f:
         f.write(f"{_utc()} actor={actor} reason={reason}\n")
@@ -1148,8 +1381,20 @@ def format_banner(plan: dict) -> str:
         lines.append(f"  {tl}")
     if len(plan.get("selection_tier_lines") or []) > 25:
         lines.append(f"  … +{len(plan['selection_tier_lines']) - 25} tier lines")
-    for m in (plan.get("missing_flows") or [])[:10]:
-        lines.append(f"  MISSING_CASE api={m.get('api')} (stub draftable)")
+    for m in (plan.get("not_covered_flows") or [])[:10]:
+        api = m.get("api") or "?"
+        blocking = m.get("api") in {b.get("api") for b in (plan.get("not_covered_blocking") or [])}
+        tag = "NOT-COVERED-BLOCK" if blocking else "NOT-COVERED-info"
+        lines.append(f"  {tag} flow {api} impacted — NOT-COVERED")
+    for ts in (plan.get("train_skipped") or [])[:8]:
+        lines.append(f"  {ts}")
+    if plan.get("changed_symbols"):
+        sym = plan["changed_symbols"][:12]
+        lines.append(
+            f"  SYMBOL_IMPACT n={len(plan['changed_symbols'])} sample={','.join(sym)}"
+        )
+    if plan.get("repo_head_shas"):
+        lines.append(f"  SHIP_HEAD {plan['repo_head_shas']}")
     if plan.get("drafted_stubs"):
         lines.append(f"  stubs_drafted={plan['drafted_stubs']}")
     if not plan.get("files"):
@@ -1278,12 +1523,16 @@ def main() -> int:
         action="store_true",
         help="Deprecated no-op (stubs already off by default)",
     )
-    ap.add_argument("--waiver", default="", help="Log explicit waiver reason and exit 0")
+    ap.add_argument(
+        "--human-waiver",
+        default="",
+        help="Human-only: record explicit waiver file with reason (not an agent escape hatch)",
+    )
     args = ap.parse_args()
 
-    if args.waiver:
-        log_waiver(args.waiver)
-        print(f"impact-tests WAIVER logged: {args.waiver}")
+    if args.human_waiver:
+        log_human_waiver(args.human_waiver)
+        print(f"impact-tests human waiver recorded: {args.human_waiver}")
         return 0
 
     if args.check_ran:
