@@ -206,6 +206,12 @@ else
   ok "grep-leak (WARN)"
 fi
 
+if python3 -c "from pathlib import Path; t=Path('cursor-bundle/kg/mcp/kg_mcp_server.py').read_text(); assert 'workspace_status' in t and 'ship_plan' in t" 2>/dev/null; then
+  ok "trustt-kg MCP registry includes workspace_status + ship_plan"
+else
+  die "trustt-kg MCP registry missing workspace_status/ship_plan"
+fi
+
 echo ""
 if [[ "$fail" -eq 0 ]]; then
   echo "=== DOCTOR: HEALTHY ==="

@@ -56,6 +56,12 @@ _run_close_if_needed() {
 
 _run_close_if_needed
 
+if ! python3 "$ROOT/scripts/lib/ship_push_gate.py" --satisfied 2>/dev/null; then
+  echo "push-origin: BLOCKED — ship loop gate not satisfied for current HEAD." >&2
+  echo "Run: bash scripts/bin/workspace-close.sh --from-pending" >&2
+  exit 1
+fi
+
 if [[ $# -eq 0 ]]; then
   set -- -u origin HEAD
 fi

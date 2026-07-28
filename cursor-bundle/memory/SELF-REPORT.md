@@ -25,7 +25,7 @@ Generated: 2026-07-27T14:13:14Z · post GAP-G / FINAL SYNC
 | f2_money_plan_2 | 43 | 2000 | OK |
 
 ## KG
-- grep-leak shell counter (cumulative jsonl lines): **39** (baseline sessions 172 grep / 50 kg — 2026-07-27)
+- grep-leak shell counter (cumulative jsonl lines): **117** (baseline sessions 172 grep / 50 kg — 2026-07-27)
 - **Footnote (SU-KG-003 CLOSED):** IDE/agent Grep tool is **not** hookable via `beforeShellExecution` — only shell `rg`/`grep` count. Prefer MCP `trustt-kg` for LOOKUPs.
 - map-completeness: consumer=44/44 (unique beans excl BeanName placeholders)
 - stale docs: **0/393** (was 108/393)
@@ -42,3 +42,11 @@ Generated: 2026-07-27T14:13:14Z · post GAP-G / FINAL SYNC
 
 ## Red flags
 - Only high-value waves + known flow blockers remain (see open list)
+
+## 2026-07-28 Pipeline overhaul close
+- One-brain ship path is active: `resolve_ship_impact` + `register_pending_ship` consume `impact_tests.build_plan` ordered cases (fallback prints `FALLBACK: no selection`).
+- Watchdog discipline: `run-guarded` enforces step timeout; `chain_budgets` derives case/chain budgets; `stack-doctor` runs pre-ship to fail fast on dirty stack.
+- Push discipline tightened: `push-origin.sh` now blocks if `ship_push_gate --satisfied` fails for current HEAD.
+- MCP self-awareness: trustt-kg exposes read-only `workspace_status` and `ship_plan` (≤10K with provenance header).
+
+# dirty 1785221894.7081027

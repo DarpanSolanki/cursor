@@ -41,6 +41,24 @@ PASSED="$ROOT/.cursor/.ship-loop-passed.json"
 CHANGELOG="$ROOT/cursor-bundle/brain/changelog/CHANGELOG.md"
 PENDING_KG="$ROOT/.cursor/.pending-kg-rebuild"
 
+_changelog_covers_pending_kg() {
+  [[ ! -f "$PENDING_KG" ]] && return 0
+  [[ ! -f "$CHANGELOG" ]] && return 1
+  python3 - <<'PY' "$PENDING_KG" "$CHANGELOG"
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+pending_kg, changelog = Path(sys.argv[1]), Path(sys.argv[2])
+pend_iso = pending_kg.read_text(encoding="utf-8").strip()
+try:
+    pend = datetime.strptime(pend_iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+except Exception:
+    raise SystemExit(1)
+cl_mtime = changelog.stat().st_mtime
+raise SystemExit(0 if cl_mtime >= pend.timestamp() - 2 else 1)
+PY
+}
+
 # 0 — skip when pending work already closed (fingerprints + tier; not wall-clock alone)
 if [[ "$FROM_PENDING" -eq 1 && "$FORCE" -eq 0 && "$TESTS_ONLY" -eq 0 ]]; then
   if [[ -f "$PENDING" ]] && python3 "$GATE" --satisfied 2>/dev/null; then
@@ -92,9 +110,9 @@ fi
 
 # 2 — brain changelog if commit pending (merge/sync commits exempt)
 if [[ -f "$PENDING_KG" && -f "$CHANGELOG" ]]; then
-  cl_mtime=$(stat -c %Y "$CHANGELOG" 2>/dev/null || echo 0)
-  pend_mtime=$(stat -c %Y "$PENDING_KG" 2>/dev/null || echo 0)
-  if [[ "$cl_mtime" -lt "$pend_mtime" ]]; then
+  if _changelog_covers_pending_kg; then
+    echo "OK: brain CHANGELOG covers last commit"
+  else
     if [[ "${SHIP_CLOSE_ALLOW_MERGE:-}" == "1" ]] \
         || python3 "$GATE" --is-merge-head 2>/dev/null; then
       echo "OK: merge/sync commit — brain CHANGELOG gate skipped"
@@ -102,12 +120,18 @@ if [[ -f "$PENDING_KG" && -f "$CHANGELOG" ]]; then
     else
       die "brain CHANGELOG not updated after commit — run: cursor-bundle/kg/bin/changelog-add.sh --kg-flow"
     fi
-  else
-    echo "OK: brain CHANGELOG covers last commit"
   fi
+elif [[ -f "$PENDING_KG" ]]; then
+  echo "WARN: pending-kg-rebuild but no CHANGELOG file"
 fi
 
-# 2b — impact-tests gate READ-ONLY (never write records — ship-loop writes after tests)
+# 2b — stack preflight (Phase D)
+if [[ -f "$PENDING" ]]; then
+  echo "→ stack-doctor (workspace-close preflight)"
+  bash "$ROOT/scripts/bin/stack-doctor.sh" --remediate || die "stack-doctor failed — fix stack before ship-loop"
+fi
+
+# 2c — impact-tests gate READ-ONLY (never write records — ship-loop writes after tests)
 CLOSE_TIER_CHECK="$(python3 -c "
 import json
 from pathlib import Path
@@ -174,9 +198,9 @@ fi
 # 9 — clear pending flags on full pass
 rm -f "$ROOT/.cursor/.pending-ship-nudge" "$PENDING" 2>/dev/null || true
 if [[ -f "$PENDING_KG" && -f "$CHANGELOG" ]]; then
-  cl_mtime=$(stat -c %Y "$CHANGELOG" 2>/dev/null || echo 0)
-  pend_mtime=$(stat -c %Y "$PENDING_KG" 2>/dev/null || echo 0)
-  [[ "$cl_mtime" -ge "$pend_mtime" ]] && rm -f "$PENDING_KG" 2>/dev/null || true
+  if _changelog_covers_pending_kg; then
+    rm -f "$PENDING_KG" 2>/dev/null || true
+  fi
 fi
 
 echo "=== workspace-close: PASS ==="

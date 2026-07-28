@@ -132,7 +132,19 @@ class ResolveImpactTest(unittest.TestCase):
             self.assertNotIn("batch.penal_interest_accrual_calc", refreshed.get("registry_cases") or [])
 
 
-class FingerprintGateTest(unittest.TestCase):
+    def test_resolve_uses_impact_tests_selection(self) -> None:
+        from impact_tests import build_plan  # noqa: WPS433
+
+        if not (ROOT / ".cursor/.pending-ship-work.json").is_file():
+            self.skipTest("no pending ship work")
+        plan = build_plan(from_pending=True, shipped_only=True)
+        out = resolve(ROOT, ROOT / ".cursor/.pending-ship-work.json", "", [], True)
+        self.assertEqual(
+            sorted(out.get("ntest_cases") or []),
+            sorted(plan.get("ordered_cases") or []),
+        )
+        self.assertEqual(out.get("selection_source"), "impact_tests")
+
     def test_head_sha_mismatch_unsatisfies(self) -> None:
         acc = ROOT / "trustt-platform-accounting"
         if not (acc / ".git").is_dir():

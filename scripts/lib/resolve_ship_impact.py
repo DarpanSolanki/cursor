@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Single-call ship impact resolution for ship-loop-gate (tier, apis, ntest cases)."""
+"""Single-call ship impact resolution for ship-loop-gate (tier, apis, ntest cases).
+
+Selection source of truth: impact_tests.build_plan() ordered_cases.
+resolve_ship_cases / ntest_cases_for_impact are FALLBACK only when plan is empty.
+"""
 from __future__ import annotations
 
 import argparse
@@ -21,6 +25,31 @@ from infer_ship_apis import (  # noqa: E402
     strip_money_cases_for_workspace,
 )
 from ship_fingerprint import repo_head_shas  # noqa: E402
+
+
+def _cases_from_impact_tests(
+    rel_paths: list[str],
+    *,
+    tier: str,
+    from_pending: bool,
+) -> tuple[list[str], dict, str, list[str]]:
+    """Return (cases, plan, source_label, why_lines)."""
+    from impact_tests import build_plan  # noqa: WPS433
+
+    plan: dict = {}
+    try:
+        if rel_paths:
+            plan = build_plan(from_pending=False, paths=rel_paths, shipped_only=True)
+        elif from_pending:
+            plan = build_plan(from_pending=True, shipped_only=True)
+        ordered = list(plan.get("ordered_cases") or [])
+        ordered = strip_money_cases_for_workspace(ordered, tier)
+        if ordered:
+            why = list(plan.get("why_lines") or []) + list(plan.get("selection_tier_lines") or [])
+            return ordered, plan, "impact_tests", why
+    except Exception:
+        plan = {}
+    return [], plan, "", []
 
 
 def resolve(
@@ -52,6 +81,9 @@ def resolve(
     apis = list(dict.fromkeys(cli_apis or []))
     cases: list[str] = []
     tier = cli_tier or pending.get("tier") or "workspace"
+    selection_source = "pending"
+    why_lines: list[str] = []
+    impact_plan: dict = {}
 
     if paths:
         impact = build_impact(paths)
@@ -61,35 +93,53 @@ def resolve(
         accounting_scoped = bool(impact.get("accounting_scoped"))
         repos = impact.get("repos") or repos
         if not cli_apis:
-            # Fresh path→api resolution wins over stale pending apis
             apis = list(impact.get("apis") or [])
+
+        rel_paths = [f for f in pending.get("files") or [] if f]
         if honor_explicit and explicit_cases and not cli_apis:
             cases = strip_money_cases_for_workspace(list(explicit_cases), tier)
+            selection_source = "explicit_cases"
         else:
-            cases = strip_money_cases_for_workspace(
-                filter_dpi_batch_cases(
-                    ntest_cases_for_impact(paths, apis, tier),
-                    apis,
-                    paths,
-                    tier,
-                ),
-                tier,
+            cases, impact_plan, src, why_lines = _cases_from_impact_tests(
+                rel_paths, tier=tier, from_pending=from_pending
             )
-        # Persist re-resolved impact so afterFileEdit freeze cannot stick
+            if cases:
+                selection_source = src
+            else:
+                cases = strip_money_cases_for_workspace(
+                    filter_dpi_batch_cases(
+                        ntest_cases_for_impact(paths, apis, tier),
+                        apis,
+                        paths,
+                        tier,
+                    ),
+                    tier,
+                )
+                selection_source = "FALLBACK: no selection"
+                why_lines = [f"FALLBACK {c}: resolve_ship_cases" for c in cases]
+
         if from_pending and pending_path and not honor_explicit:
             pending["tier"] = tier
             pending["apis"] = apis
             pending["repos"] = repos
             pending["registry_cases"] = cases
             pending["ntest_cases"] = cases
-            pending["resolution"] = "resolve_ship_impact"
+            pending["resolution"] = selection_source
+            pending["selection_source"] = selection_source
             pending["repo_head_shas"] = repo_head_shas(pending)
             try:
                 pending_path.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
             except OSError:
                 pass
     else:
-        cases = ntest_cases_for_impact(paths, apis, tier)
+        cases, impact_plan, src, why_lines = _cases_from_impact_tests(
+            [], tier=tier, from_pending=from_pending
+        )
+        if cases:
+            selection_source = src
+        else:
+            cases = ntest_cases_for_impact(paths, apis, tier)
+            selection_source = "FALLBACK: no selection"
 
     if not apis and not from_pending:
         for repo in git_dirty_repos():
@@ -98,7 +148,16 @@ def resolve(
                 apis.extend(resolve_apis_smart(api_paths))
         apis = list(dict.fromkeys(apis))
         if apis and not cases:
-            cases = ntest_cases_for_impact(paths, apis, tier)
+            cases, impact_plan, src, why_lines = _cases_from_impact_tests(
+                [str(root / repo / p) for repo in git_dirty_repos() for p in git_diff_paths(repo)],
+                tier=tier,
+                from_pending=False,
+            )
+            if cases:
+                selection_source = src
+            else:
+                cases = ntest_cases_for_impact(paths, apis, tier)
+                selection_source = "FALLBACK: no selection"
 
     if not tier and paths:
         impact = build_impact(paths)
@@ -115,6 +174,14 @@ def resolve(
         for f in pending.get("files") or []
     )
 
+    case_why: dict[str, str] = {}
+    for line in why_lines:
+        if ": " in line:
+            cid, rest = line.split(": ", 1)
+            case_why.setdefault(cid.strip(), rest.strip())
+    for cid in cases:
+        case_why.setdefault(cid, selection_source)
+
     return {
         "tier": tier,
         "apis": apis,
@@ -125,6 +192,10 @@ def resolve(
         "dpi_scoped": dpi_scoped,
         "impact_scoped": impact_scoped,
         "accounting_scoped": accounting_scoped,
+        "selection_source": selection_source,
+        "case_why": case_why,
+        "selection_tier_stats": impact_plan.get("selection_tier_stats") or {},
+        "not_covered_blocking": impact_plan.get("not_covered_blocking") or [],
         "test_plan": _test_plan_summary(paths, apis, tier),
     }
 
@@ -165,10 +236,12 @@ def main() -> int:
         print(json.dumps(out, indent=2))
     else:
         print(out["tier"])
+        print(f"SOURCE:{out.get('selection_source')}")
         for a in out["apis"]:
             print(f"API:{a}")
         for c in out["ntest_cases"]:
-            print(f"CASE:{c}")
+            why = (out.get("case_why") or {}).get(c, "")
+            print(f"CASE:{c}\t{why}")
         for r in out["repos"]:
             print(f"REPO:{r}")
         print(f"FILES:{out['pending_files']}")

@@ -68,13 +68,16 @@ dpi_ensure_masterdata() {
     nohup ./gradlew bootRun >>"$bl" 2>&1 &
     echo $! >"$DPI_FIXTURE_ROOT/scripts/scratch/services/masterdata.pid"
   )
+  # Fixed cap: 36 tries × 5s = 180s (override via env but bounded).
+  local settle_s="${MASTERDATA_PROBE_SLEEP_S:-5}"
+  local max_tries="${MASTERDATA_PROBE_TRIES:-36}"
   local i
-  for i in $(seq 1 36); do
+  for i in $(seq 1 "$max_tries"); do
     if dpi_probe_masterdata; then
-      echo "  masterdata: ready (${i}*5s)"
+      echo "  masterdata: ready (${i}*${settle_s}s)"
       return 0
     fi
-    sleep 5
+    sleep "$settle_s"
   done
   echo "FAIL: masterdata not ready on :8014" >&2
   tail -20 "$bl" >&2 || true

@@ -68,6 +68,32 @@ fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="
 
+_SELECTION_SRC="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('selection_source') or '?')" 2>/dev/null || echo '?')"
+echo "→ selection source: $_SELECTION_SRC (${#_SMART_CASES[@]} case(s))"
+if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+  echo "$_IMPACT_JSON" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for cid in d.get('ntest_cases') or []:
+    why = (d.get('case_why') or {}).get(cid, d.get('selection_source', ''))
+    print(f'  PLAN {cid}: {why}')
+"
+fi
+export SHIP_LOOP_CASES="${_SMART_CASES[*]:-}"
+export RUN_GUARDED_CHAIN_STARTED="$(date +%s)"
+if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
+  export RUN_GUARDED_CHAIN_CEILING="$(python3 "$ROOT/scripts/lib/chain_budgets.py" ship-loop-total \
+    $(for c in "${_SMART_CASES[@]}"; do printf ' --case %q' "$c"; done) 2>/dev/null || echo 5400)"
+fi
+
+# Stack hygiene before any tests (Phase D)
+echo "→ stack-doctor (preflight)"
+bash "$ROOT/scripts/bin/stack-doctor.sh" --remediate || {
+  echo "ship-loop-gate: FAIL — stack-doctor (dirty stack)" >&2
+  bash "$ROOT/scripts/bin/stack-doctor.sh" 2>&1 | tail -20 >&2 || true
+  exit 1
+}
+
 # Query plan gate — only when pending touches @Query/native SQL/repo methods (conditional).
 if [[ "$FROM_PENDING" -eq 1 || "$PENDING_FILES" -gt 0 ]]; then
   if bash "$ROOT/scripts/bin/query-plan-gate.sh" --check-touched >/dev/null 2>&1; then
@@ -83,29 +109,12 @@ fi
 
 # Impact-tests gate: service/money ships require impact record keyed to HEAD sha.
 # Record is written at END of ship-loop after tests pass — never by workspace-close.
+# Selection is NOT expanded from cache — impact_tests.build_plan is sole case list.
 if [[ "$TIER" == "money" || "$TIER" == "service" ]]; then
-  _IMPACT_CACHE_OK=0
   if python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran >/dev/null 2>&1; then
-    _IMPACT_CACHE_OK=1
     echo "→ impact-tests cache HIT: $(python3 "$ROOT/scripts/lib/impact_tests.py" --check-ran 2>/dev/null || true)"
   else
     echo "→ impact-tests cache MISS — will record after tests pass"
-  fi
-  if [[ "$_IMPACT_CACHE_OK" -eq 1 ]]; then
-    mapfile -t _IMPACT_CASES < <(python3 -c "
-import json
-from pathlib import Path
-p=Path('$ROOT')/'.cursor/.impact-tests-ran.json'
-if p.is_file():
-  d=json.loads(p.read_text())
-  for c in d.get('ordered_cases') or []:
-    print(c)
-" 2>/dev/null || true)
-    if [[ ${#_IMPACT_CASES[@]} -gt 0 ]]; then
-      _UNION="$(printf '%s\n' "${_SMART_CASES[@]}" "${_IMPACT_CASES[@]}" | awk 'NF && !seen[$0]++')"
-      mapfile -t _SMART_CASES <<< "$_UNION"
-      echo "→ impact cases union: ${_IMPACT_CASES[*]}"
-    fi
   fi
 fi
 
@@ -229,8 +238,15 @@ fi
 _run_ntest() {
   local case_id="$1"
   local label="${2:-}"
-  echo "→ ntest run $case_id${label:+ ($label)}"
-  bash "$ROOT/scripts/bin/ntest.sh" run "$case_id" || return 1
+  local budget
+  budget="$(python3 "$ROOT/scripts/lib/chain_budgets.py" ntest-case --case "$case_id" 2>/dev/null || echo 300)"
+  echo "→ ntest run $case_id${label:+ ($label)} budget=${budget}s"
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=TERM --kill-after=30 "${budget}s" \
+      bash "$ROOT/scripts/bin/ntest.sh" run "$case_id" || return 1
+  else
+    bash "$ROOT/scripts/bin/ntest.sh" run "$case_id" || return 1
+  fi
 }
 
 _run_api_tests() {
@@ -381,19 +397,6 @@ for r in repos:
       echo "ship-loop-gate: FAIL — money tier empty cases/apis (no health/smoke fallback)" >&2
       exit 1
     fi
-  # Auto-escalation: deep phase (path-aware, not manual verify-dpi)
-  mapfile -t _DEEP_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase deep --list 2>/dev/null || true)
-  if [[ ${#_DEEP_CASES[@]} -gt 0 ]]; then
-    echo "→ auto deep phase: ${_DEEP_CASES[*]}"
-    _run_case_list "deep" "${_DEEP_CASES[@]}" || exit 1
-  fi
-  if [[ "${SHIP_CLOSE_RELEASE_TESTS:-}" == "1" ]]; then
-    mapfile -t _RELEASE_CASES < <(python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --phase release --list 2>/dev/null || true)
-    if [[ ${#_RELEASE_CASES[@]} -gt 0 ]]; then
-      echo "→ auto release phase (push gate): ${_RELEASE_CASES[*]}"
-      SHIP_TEST_PHASES=release python3 "$ROOT/scripts/lib/ship_test_plan.py" --from-pending --run --phases release || exit 1
-    fi
-  fi
     ;;
   *)
     echo "Unknown tier: $TIER" >&2
