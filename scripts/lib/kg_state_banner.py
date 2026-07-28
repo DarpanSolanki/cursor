@@ -177,6 +177,44 @@ def provenance_header() -> str:
     return base
 
 
+def compute_kg_state_cached() -> dict:
+    """Watermark-only KG banner — no live per-repo git (autopilot question fast path)."""
+    wm = _load_wm()
+    stored = _stored_key()
+    built = wm.get("built_at") or "?"
+    repos_n = len(wm.get("repos") or {})
+    wip = _wip_repos(wm)
+    provisional = bool(wip) or not wm
+    tag = " [PROVISIONAL]" if provisional else " [ALIGNED]"
+    wip_s = ",".join(wip[:6]) if wip else "-"
+    if len(wip) > 6:
+        wip_s += f"+{len(wip) - 6}"
+    key_short = (stored or "?")[:8]
+    line = (
+        f"KG STATE: built@{built} set={key_short} repos={repos_n} "
+        f"WIP: {wip_s}{tag}"
+    )
+    return {
+        "line": line,
+        "built_at": built,
+        "key_short": key_short,
+        "repos_n": repos_n,
+        "wip": wip,
+        "wip_n": len(wip),
+        "provisional": provisional,
+    }
+
+
+def banner_and_stop_cached(
+    task_text: str = "", classification: str = ""
+) -> tuple[str, str | None]:
+    st = compute_kg_state_cached()
+    stop = None
+    if st["provisional"] and money_or_cross_service(task_text, classification):
+        stop = HARD_STOP
+    return st["line"], stop
+
+
 def banner_and_stop(task_text: str = "", classification: str = "") -> tuple[str, str | None]:
     st = compute_kg_state()
     stop = None

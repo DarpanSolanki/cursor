@@ -51,6 +51,7 @@ class Plan:
     skills: list[str]
     task_shift: bool = False
     shift_reason: str = ""
+    question_fast: bool = False
     steps: list[Step] = field(default_factory=list)
     end_steps: list[Step] = field(default_factory=list)
     agent_directives: list[str] = field(default_factory=list)
@@ -137,8 +138,14 @@ def _enhance_kind(text: str, base: dict) -> dict:
     if re.search(r"\b(explain|how does|what is|walk me|understand)\b", t) and kind == "GENERAL":
         base["classification"] = "INVESTIGATION"
     if re.search(
-        r"\b(improve workspace|workspace max|setup yourself|autopilot|performant|automate|full workspace|super machine|super agent|disappointed|manual)\b",
+        r"\b(improve workspace|workspace max|setup yourself|performant|automate workspace|"
+        r"full workspace|super machine|super agent|disappointed|manual)\b",
         t,
+    ):
+        if not re.search(r"\b(explain|what is|how does|describe|walk me|how do)\b", t):
+            base["classification"] = "WORKSPACE"
+    elif re.search(r"\bautopilot\b", t) and re.search(
+        r"\b(improve|fix|enhance|performant|automate|diet|speed)\b", t
     ):
         base["classification"] = "WORKSPACE"
     if re.search(r"\b(release details|release mail)\b", t):
@@ -182,12 +189,46 @@ def _kg_stale() -> bool:
     return r.returncode != 0
 
 
+def _question_fast_eligible(text: str, classification: str) -> bool:
+    """Cheap read-only questions skip heavy autopilot steps (<1s path)."""
+    t = (text or "").lower()
+    kind = (classification or "GENERAL").upper()
+    if kind not in ("INVESTIGATION", "GENERAL", "COMMS"):
+        return False
+    try:
+        from process_router import MONEY_WORDS  # type: ignore
+    except Exception:
+        MONEY_WORDS = ("disburse", "repay", "money", "accounting", "dpi")
+    if any(w in t for w in MONEY_WORDS):
+        return False
+    if re.search(
+        r"\b(implement|fix|ship|commit|push|patch|mutate|workspace-close|ntest run|"
+        r"deploy|flyway|schema|prod\s+sql|ops\s+sql)\b",
+        t,
+    ):
+        return False
+    # RCA/incident wording without explicit explain → heavy path (fail-closed on doubt)
+    if re.search(r"\b(bug|fail|error|stuck|rca|root.?cause|broken)\b", t) and not re.search(
+        r"\b(explain|how|what is|what kind|where|which|describe|map)\b",
+        t,
+    ):
+        return False
+    return bool(
+        re.search(
+            r"\b(explain|how does|what is|what kind|where is|which|describe|walk me|"
+            r"map the|inventory|list the)\b",
+            t,
+        )
+    )
+
+
 def build_plan(
     text: str,
     *,
     task_shift: bool = False,
     shift_reason: str = "",
     light_preflight: bool = False,
+    question_fast: bool = False,
 ) -> Plan:
     base = _enhance_kind(text, classify(text))
     kind = base["classification"]
@@ -207,7 +248,9 @@ def build_plan(
             skills.append("capture-proof")
 
     steps: list[Step] = []
-    if not light_preflight:
+    if question_fast:
+        light_preflight = True
+    if not light_preflight and not question_fast:
         steps.append(
             Step("preflight", "bash scripts/bin/agent-ops.sh preflight", auto=True, tier="fast")
         )
@@ -451,7 +494,10 @@ def build_plan(
 
     # KG watermark / provisional gate (Upgrade 6)
     try:
-        from kg_state_banner import banner_and_stop as kg_banner_and_stop  # type: ignore
+        if question_fast:
+            from kg_state_banner import banner_and_stop_cached as kg_banner_and_stop  # type: ignore
+        else:
+            from kg_state_banner import banner_and_stop as kg_banner_and_stop  # type: ignore
 
         kg_line, kg_stop = kg_banner_and_stop(text, kind)
         # Insert after train banner block
@@ -468,33 +514,36 @@ def build_plan(
         directives.insert(0, f"KG STATE: (banner failed: {exc})")
 
     # Process router PLAN (Upgrade 8) — speed by selection
-    try:
-        from process_router import compute_plan as proc_plan  # type: ignore
+    if question_fast:
+        directives.insert(0, "PLAN [question] validation=skip kg_sync=skip trace=skip (cached banners)")
+    else:
+        try:
+            from process_router import compute_plan as proc_plan  # type: ignore
 
-        pp = proc_plan(kind, text, api_hint=api)
-        directives.insert(0, pp["line"])
-        # Honor SKIP/CACHED: drop matching auto steps (never weaken money required — those stay RUN)
-        skip_names = {n for n, _ in pp.get("skip") or []}
-        cached_names = {n for n, _ in pp.get("cached") or []}
-        step_map = {
-            "kg_validate": "kg_validate",
-            "kg_fresh": "kg_fresh_sync",
-            "hot_path_scan": "hot_path_scan",
-            "ship_test_plan": "ship_discipline",
-            "before_test": "services_probe",
-            "dpi_sanity": "dpi_sanity",
-        }
-        filtered: list[Step] = []
-        for s in steps:
-            pname = step_map.get(s.id)
-            if pname and pname in skip_names:
-                continue
-            if pname and pname in cached_names:
-                continue
-            filtered.append(s)
-        steps = filtered
-    except Exception as exc:  # noqa: BLE001
-        directives.insert(0, f"PLAN: (router failed: {exc})")
+            pp = proc_plan(kind, text, api_hint=api)
+            directives.insert(0, pp["line"])
+            # Honor SKIP/CACHED: drop matching auto steps (never weaken money required — those stay RUN)
+            skip_names = {n for n, _ in pp.get("skip") or []}
+            cached_names = {n for n, _ in pp.get("cached") or []}
+            step_map = {
+                "kg_validate": "kg_validate",
+                "kg_fresh": "kg_fresh_sync",
+                "hot_path_scan": "hot_path_scan",
+                "ship_test_plan": "ship_discipline",
+                "before_test": "services_probe",
+                "dpi_sanity": "dpi_sanity",
+            }
+            filtered: list[Step] = []
+            for s in steps:
+                pname = step_map.get(s.id)
+                if pname and pname in skip_names:
+                    continue
+                if pname and pname in cached_names:
+                    continue
+                filtered.append(s)
+            steps = filtered
+        except Exception as exc:  # noqa: BLE001
+            directives.insert(0, f"PLAN: (router failed: {exc})")
 
     return Plan(
         classification=kind,
@@ -504,6 +553,7 @@ def build_plan(
         skills=skills,
         task_shift=task_shift,
         shift_reason=shift_reason,
+        question_fast=question_fast,
         steps=steps,
         end_steps=end_steps,
         agent_directives=directives,
@@ -638,12 +688,25 @@ def cmd_task(args: argparse.Namespace) -> int:
         plan.api_hint = state.get("last_api_hint")
         plan.input = text
     else:
-        draft = build_plan(text)
-        shifted, reason = detect_task_shift(draft, state)
-        light = (
+        base = _enhance_kind(text, classify(text))
+        api = base.get("api_hint") or _fallback_api_hint(text)
+        draft_stub = Plan(
+            classification=base["classification"],
+            risk=base.get("risk", "Medium"),
+            input=text,
+            api_hint=api,
+            skills=[],
+        )
+        shifted, reason = detect_task_shift(draft_stub, state)
+        qfast = (
             not shifted
-            and state.get("last_classification") == draft.classification
-            and (state.get("last_api_hint") or "") == (draft.api_hint or "")
+            and _question_fast_eligible(text, draft_stub.classification)
+            and not re.search(r"\b(implement|ship it|go ahead|fix)\b", text, re.I)
+        )
+        light = qfast or (
+            not shifted
+            and state.get("last_classification") == draft_stub.classification
+            and (state.get("last_api_hint") or "") == (draft_stub.api_hint or "")
             and (time.time() - float(state.get("last_task_at") or 0)) < 120
         )
         plan = build_plan(
@@ -651,9 +714,13 @@ def cmd_task(args: argparse.Namespace) -> int:
             task_shift=shifted,
             shift_reason=reason,
             light_preflight=light,
+            question_fast=qfast,
         )
 
-    results = execute_steps(plan.steps, quiet=args.quiet, dry_run=args.dry_run)
+    if plan.agent_directives and plan.question_fast:
+        results = [{"id": "question_fast", "ok": True, "elapsed_s": 0.0, "dry_run": args.dry_run}]
+    else:
+        results = execute_steps(plan.steps, quiet=args.quiet, dry_run=args.dry_run)
 
     state = load_state()
     if not continuation:
@@ -693,6 +760,8 @@ def cmd_task(args: argparse.Namespace) -> int:
         print(f"**TASK SHIFT:** {plan.shift_reason}")
     elif light or continuation:
         print("**Light preflight** (same task / continuation)")
+    elif plan.question_fast:
+        print("**Question fast path** (cached banners only)")
     print(f"**Classification:** {plan.classification}  **Risk:** {plan.risk}")
     if plan.api_hint:
         print(f"**API hint:** `{plan.api_hint}`")

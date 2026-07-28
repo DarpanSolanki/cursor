@@ -7,6 +7,8 @@
 #   novopay-service.sh restart <service> [--compile]
 #   novopay-service.sh ensure <service> [--compile]   # restart if probe fails
 #   novopay-service.sh wait   <service> [timeout_sec]
+#   novopay-service.sh stack-up   dpi|dcf|analysis
+#   novopay-service.sh stack-down dpi|dcf|analysis
 #
 # Agents: run `ensure accounting --compile` before DPI/batch ntest; never skip sanity because port is down.
 set -euo pipefail
@@ -85,6 +87,56 @@ case "$cmd" in
     timeout="${2:-180}"
     [[ -n "$svc" ]] || usage 1
     nps_wait_service "$svc" "$timeout"
+    ;;
+  stack-up)
+    profile="${1:-dpi}"
+    _stack_ensure() {
+      local svc="$1"
+      if nps_probe_service "$svc"; then
+        echo "  $svc: probe OK — no restart"
+      else
+        echo "=== ensure $svc (probe failed — starting) ==="
+        nps_stop_service "$svc" 2>/dev/null || true
+        sleep 1
+        nps_start_service "$svc" 0
+      fi
+    }
+    case "$profile" in
+      dpi)
+        echo "=== stack-up dpi: yb@127.0.0.1 + accounting + actor + masterdata ==="
+        for svc in accounting actor masterdata; do
+          _stack_ensure "$svc" || exit 1
+        done
+        ;;
+      dcf)
+        echo "=== stack-up dcf: yb@127.0.0.1 + accounting + actor ==="
+        for svc in accounting actor; do
+          _stack_ensure "$svc" || exit 1
+        done
+        ;;
+      analysis)
+        echo "=== stack-up analysis: DB only (no app services) ==="
+        ;;
+      *)
+        echo "unknown stack profile: $profile (use dpi|dcf|analysis)" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  stack-down)
+    profile="${1:-analysis}"
+    case "$profile" in
+      dpi|dcf|analysis)
+        echo "=== stack-down $profile: stop local app services (YB left running) ==="
+        for svc in accounting actor masterdata task los simulators payments; do
+          nps_stop_service "$svc" 2>/dev/null || true
+        done
+        ;;
+      *)
+        echo "unknown stack profile: $profile (use dpi|dcf|analysis)" >&2
+        exit 1
+        ;;
+    esac
     ;;
   "")
     usage 0

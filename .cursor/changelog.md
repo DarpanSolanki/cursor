@@ -1,3 +1,5 @@
+[2026-07-28] | WORKSPACE DIET PASS 2 | Autopilot question fast path (<1s cached banners); stack-up/down profiles in novopay-service.sh; YB duplicate cluster destroyed; correctness rails re-proved (STALE/orient/invariants) | scripts/testing/workspace_autopilot.py, scripts/lib/kg_state_banner.py, scripts/bin/novopay-service.sh
+
 [2026-07-28] | WORKSPACE DIET | Session-start and edit-path hook slim-down: removed redundant startup hooks + kg-after-edit hook; switched KG startup to cache/write-state only; cleaned orphan scratch logs | .cursor/hooks.json, kg-session-{start,watermark}.sh, removed {intel-session-sync,workspace-autopilot-session,kg-after-file-edit}.sh
 
 [2026-07-28] | BOOTSTRAP FIX | Universal invariants gate = real sweep (not r0 ii/iii); commit hook light / full close push-only; pre-push matcher no longer fires on commit messages | flowtest/run_universal_invariants_gate.py, registry.json, .cursor/hooks.json, pre-push-checklist.sh
