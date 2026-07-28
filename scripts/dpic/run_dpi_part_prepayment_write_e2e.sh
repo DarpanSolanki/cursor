@@ -9,7 +9,7 @@ source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
 source "$ROOT/scripts/dpic/demo/lib/common.sh"
 
 # shellcheck disable=SC1091
-source "$ROOT/scripts/dpic/lib/dpi_harness_lib.sh"
+source "$ROOT/scripts/dpic/lib/dpic_harness_lib.sh"
 NET="${PART_PREP_NET:-5000}"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 

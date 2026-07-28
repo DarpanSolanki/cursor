@@ -50,7 +50,7 @@ dpic_assert_lapd_dpi_paid_gt() {
     -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -t -A -v ON_ERROR_STOP=1)
   local got
   got="$("${pg_cmd[@]}" -c \
-    "SELECT COALESCE(MAX(dpi_amount),0)::text FROM mfi_accounting.loan_account_payments_details WHERE loan_account_id=${loan_id} AND COALESCE(is_deleted,false)=false")"
+    "SELECT COALESCE(MAX(dpi_amount),0)::text FROM mfi_accounting.loan_account_payments_details WHERE loan_account_id=${loan_id}")"
   python3 - "$got" "$min" <<'PY'
 import sys
 g, m = float(sys.argv[1] or 0), float(sys.argv[2])

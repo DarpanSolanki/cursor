@@ -2,6 +2,7 @@
 - [DPIC harness gotchas](feedback_dpic_harness_gotchas.md) — two clocks (JOB_TIME vs platform date); 132280/134243/130241 = harness first; `dpic_harness_lib.sh`; never fail ship on overview optional keys. (2026-07-28)
 
 # Memory Index
+- [Harness push = origin/main only](feedback_harness_push_origin_main_only.md) — `scripts/dpic` / dpi-sanity / agent-ops DPI prep → commit+push **main** only; never train branch as harness SoT. (2026-07-28)
 - [Child CG* vs parent named GL](feedback_child_cg_gl_vs_parent_named.md) — never strip CG / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored (CG13336…). (TDPQA-72 2026-07-24)
 - [TDPQA-72 EXCESS GL vs LAPD](feedback_tdpqa72_excess_gl_vs_lapd.md) — restore Sheet15 EXCESS_* on child+parent; keep lapd.excess=0 for 390372 ₹54 UI; Darpan `9b6454df6` was that UI fix. (2026-07-24)
 - [No harness-driven money hacks](feedback_no_harness_driven_money_hacks.md) — never patch due/IAD/labd to green e2e Obs3/adversarial; understand product path; QA/fixture can be wrong. Reverted absorb-into-INT-due. (Darpan 2026-07-24)

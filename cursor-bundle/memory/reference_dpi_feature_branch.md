@@ -16,7 +16,7 @@ metadata:
 |------|--------|-----|
 | `novopay-platform-accounting-v2` | **`mfi_integration_v3.7.1`** | DPI calc/booking/billing product rules + booking fix `77921d275f` |
 | `novopay-platform-initial-setup` | match release train / task | Flyway + go-live seeds |
-| Workspace harness | `scripts/dpic/` on workspace `main` | Quick regression + column audit |
+| Workspace harness | `scripts/dpic/` on workspace **`main`** only (`origin/main`) | Quick regression + column audit — **never push harness to train branches** |
 
 Confirm booking fix in HEAD:
 
@@ -52,3 +52,8 @@ Quick: `DPI_REGRESSION_PROFILE=quick bash scripts/dpic/run_dpi_full_regression.s
 2. `kg orient dpiAccrualCalculation` / `kg cases dpiAccrualBooking` after `kg-switch`
 3. Orchestration: `loans_orc.xml` — `dpiAccrualCalculation`, `dpiAccrualBooking`, `dpiBilling`
 4. Local: `scripts/dpic/`, `ntest run dpic.full_regression`
+
+
+## Harness git branch (mandatory)
+
+Push harness changes only to **`origin/main`**. If a fix landed on `mfi_integration_v*`, cherry-pick onto `main` and push `main`. Memory: `feedback_harness_push_origin_main_only.md`.

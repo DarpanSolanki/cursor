@@ -19,13 +19,11 @@ fi
 export JOB_TIME="$DPI_MULTI_EMI_JOB_TIME"
 PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}")
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
-NTEST="$ROOT/scripts/bin/ntest.sh"
-WAIT_BATCH="$ROOT/scripts/dpic/lib/wait_batch_job.sh"
 
 echo "=== DPI multi-EMI installment_id E2E ==="
 echo "  loan_account_id=$LOAN_ACCOUNT_ID grace=$GRACE_DAYS job_time=$JOB_TIME"
 
-bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compile}
+dpi_prep_before_batch
 
 dpi_set_go_live_and_refresh "$GO_LIVE_DDMM" "$PRODUCT_CODE"
 
@@ -43,9 +41,7 @@ dpi_set_go_live_and_refresh "$GO_LIVE_DDMM" "$PRODUCT_CODE"
   -f "$ROOT/scripts/dpic/sql/helpers/sync_demo_past_due.sql" >/dev/null
 
 echo ">>> dpiAccrualCalculation (multi-EMI window)"
-run_started="$(date +%s)"
-JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$run_started"
+dpi_call_batch dpiAccrualCalculation "$JOB_TIME"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 

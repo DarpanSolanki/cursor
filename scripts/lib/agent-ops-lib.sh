@@ -94,9 +94,25 @@ aops_run_ensure() {
   bash "$_AOPS_ROOT/scripts/bin/novopay-service.sh" ensure "$svc" "${flag[@]}"
 }
 
+aops_prep_dpi_harness() {
+  local fixture="$_AOPS_ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
+  [[ -f "$fixture" ]] || return 0
+  # shellcheck disable=SC1091
+  source "$fixture"
+  dpi_prep_before_batch
+}
+
 aops_before_test() {
   local api="$1" svc="${2:-$(aops_service_for_api "$api")}"
   local ensure compile
+  if aops_is_dpi_api "$api" || aops_is_batch_api "$api"; then
+    compile="$(aops_decide_compile "$api" "$svc")"
+    [[ "$compile" == "yes" ]] && compile=1 || compile=0
+    echo "agent-ops: dpi prep (abandon hung batches + ensure $svc) api=$api"
+    export COMPILE="$compile"
+    aops_prep_dpi_harness
+    return 0
+  fi
   ensure="$(aops_decide_ensure "$api" "$svc")"
   [[ "$ensure" == "skip" ]] && return 0
   compile="$(aops_decide_compile "$api" "$svc")"

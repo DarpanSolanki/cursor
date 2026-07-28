@@ -6,11 +6,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/dpic/lib/dpi_fixture_constants.sh"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/dpic/lib/dpi_demo_fixture.sh"
 COMPILE_FLAG=""
 [[ "${COMPILE:-1}" == "1" ]] && COMPILE_FLAG="--compile"
+export COMPILE="${COMPILE:-1}"
 
-echo "=== DPI sanity — ensure accounting ==="
-bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting $COMPILE_FLAG
+echo "=== DPI sanity — prep (abandon hung batches + ensure accounting) ==="
+dpi_prep_before_batch
 
 echo ""
 echo "=== DPI sanity — multi-EMI installment_id E2E (grace-chain LAN $DPI_GRACE_CHAIN_LAN) ==="

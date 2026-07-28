@@ -42,6 +42,24 @@ SQL `UPDATE mfi_masterdata.configuration SET prop_value=...` for `current.busine
 
 Demo E2E scripts reference `demo_*` functions in `scripts/dpic/demo/lib/demo_runtime.sh` (sourced via `common.sh`). If you see `command not found` for `demo_require_reversal_services`, the harness is incomplete — not a product failure.
 
+## Batch wait stuck (fixed 2026-07-28)
+
+If accounting JVM dies mid-batch (`EntityManagerFactory is closed`), Spring Batch rows stay `STARTED` and `wait_batch_job.sh` used to poll until `TIMEOUT_S` (~154s).
+
+**Harness fixes:**
+- `dpi_prep_before_batch` — abandon hung `dpi*` rows + restart accounting if needed (called from `dpi_call_batch`, `dpi-sanity`, `agent-ops before-test` for dpi/batch APIs).
+- `wait_batch_job.sh` **FAIL-FAST** when `accounting` probe fails for `BATCH_SERVICE_DOWN_FAIL_FAST_S` (default 12s) while job is `STARTED` — abandons row + restarts JVM instead of silent hang.
+
+```bash
+bash scripts/bin/novopay-service.sh restart accounting   # if suite already wedged
+bash scripts/bin/agent-ops.sh verify-dpi
+```
+
+## Harness SQL / path gotchas (fixed 2026-07-28)
+
+- `loan_account_payments_details` has **no** `is_deleted` — `dpic_assert_lapd_dpi_paid_gt` / `demo_load_last_repayment_for_reversal` must not filter on it (was aborting after successful `loanRepayment`).
+- Part-prep write script must source `dpic_harness_lib.sh` (not `dpi_harness_lib.sh`).
+
 ## Preflight (run before money E2E)
 
 ```bash

@@ -1,3 +1,5 @@
+[2026-07-28] | TEST harness | Fail-fast batch wait + dpi_prep_before_batch; harness SoT on origin/main (cherry-pick from 3.4.2.4 + overlay) | scripts/dpic/lib/wait_batch_job.sh, dpi_demo_fixture.sh, dpi-sanity.sh, agent-ops-lib.sh, feedback_harness_push_origin_main_only.md
+
 [2026-07-28] | TEST harness | DPIC overview registry asserts; demo_runtime helpers; repayment wall-clock platform date; part-prep JTF nest | scripts/testing/registry.json, scripts/dpic/demo/lib/demo_runtime.sh
 
 [2026-07-28] | TEST harness upgrade | DPIC harness lib (two clocks, safe repay, preflight, learnings); feedback_dpic_harness_gotchas.md | scripts/dpic/lib/dpic_harness_lib.sh, demo_runtime.sh, registry, learnings.jsonl

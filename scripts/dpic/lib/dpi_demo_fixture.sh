@@ -68,13 +68,16 @@ dpi_ensure_masterdata() {
     nohup ./gradlew bootRun >>"$bl" 2>&1 &
     echo $! >"$DPI_FIXTURE_ROOT/scripts/scratch/services/masterdata.pid"
   )
+  # Fixed cap: 36 tries × 5s = 180s (override via env but bounded).
+  local settle_s="${MASTERDATA_PROBE_SLEEP_S:-5}"
+  local max_tries="${MASTERDATA_PROBE_TRIES:-36}"
   local i
-  for i in $(seq 1 36); do
+  for i in $(seq 1 "$max_tries"); do
     if dpi_probe_masterdata; then
-      echo "  masterdata: ready (${i}*5s)"
+      echo "  masterdata: ready (${i}*${settle_s}s)"
       return 0
     fi
-    sleep 5
+    sleep "$settle_s"
   done
   echo "FAIL: masterdata not ready on :8014" >&2
   tail -20 "$bl" >&2 || true
@@ -201,12 +204,21 @@ dpi_restart_accounting_if_abandoned() {
   fi
 }
 
+# Pre-batch hygiene: abandon hung dpi* rows + restart JVM if needed + ensure accounting UP.
+dpi_prep_before_batch() {
+  local abandoned
+  abandoned="$(dpi_abandon_stuck_batches "${DPI_ABANDON_STUCK_SECONDS:-180}" || true)"
+  dpi_restart_accounting_if_abandoned "${abandoned:-0}"
+  dpi_ensure_accounting
+}
+
 # Usage: dpi_call_batch dpiAccrualCalculation [job_time_ms] [purge=1]
 # QA path: ntest batch API + wait_batch_job.sh (same as registry batch.dpi_* intent).
 dpi_call_batch() {
   local api="$1" job_time="${2:-$JOB_TIME}" purge="${3:-1}"
   local rs wait="$DPI_FIXTURE_ROOT/scripts/dpic/lib/wait_batch_job.sh"
   local ntest="$DPI_FIXTURE_ROOT/scripts/bin/ntest.sh"
+  dpi_prep_before_batch
   # Matrix hops can exceed 25s under YB contention — default higher for harness fires.
   export BATCH_POLL_TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-90}"
   # Purge same job_time only — do NOT abandon other in-flight dpi jobs (that kills siblings).

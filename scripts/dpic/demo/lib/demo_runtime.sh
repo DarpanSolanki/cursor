@@ -366,7 +366,6 @@ FROM mfi_accounting.loan_account_payments_details lapd
 JOIN mfi_accounting.transaction_master tm ON tm.reference_number = lapd.transaction_reference_number
 WHERE lapd.loan_account_id = :loan_account_id::bigint
   AND COALESCE(tm.reversed, false) = false
-  AND COALESCE(lapd.is_deleted, false) = false
 ORDER BY lapd.id DESC
 LIMIT 1;
 SQL
