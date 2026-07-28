@@ -1,0 +1,23 @@
+---
+description: >-
+  Workspace harness (scripts/dpic, dpi-sanity, agent-ops DPI prep) — commit and
+  push only to origin/main, never to mfi_integration_v* train branches.
+alwaysApply: false
+---
+
+# Harness git branch = `main` only
+
+When editing or shipping workspace harness / DPI test tooling:
+
+| Paths | Branch |
+|-------|--------|
+| `scripts/dpic/**` | **`main`** → `origin/main` |
+| `scripts/bin/dpi-sanity.sh` | **`main`** |
+| DPI prep in `scripts/lib/agent-ops-lib.sh` | **`main`** |
+| `cursor-bundle/memory/feedback_dpic_harness_gotchas.md` | **`main`** |
+
+**Do not** push harness-only commits to `mfi_integration_v3.4.2.4` (or any train). If a harness fix landed on a train branch by mistake → cherry-pick onto `main` and push `main`.
+
+Before push: `git rev-parse --abbrev-ref HEAD` must be **`main`**.
+
+Memory: `cursor-bundle/memory/feedback_harness_push_origin_main_only.md`
