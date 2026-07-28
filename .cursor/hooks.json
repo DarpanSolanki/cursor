@@ -30,7 +30,7 @@
       },
       {
         "command": ".cursor/hooks/pre-push-checklist.sh",
-        "matcher": "git\\s+push"
+        "matcher": "(^|&&|;|\\|\\|)\\s*git\\s+push(\\s|$)"
       },
       {
         "command": ".cursor/hooks/kg-grep-leak-log.sh",

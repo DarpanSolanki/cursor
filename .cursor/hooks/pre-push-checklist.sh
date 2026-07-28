@@ -4,7 +4,7 @@ set -euo pipefail
 input=$(cat)
 command=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('command',''))" <<<"$input")
 
-if [[ ! "$command" =~ git[[:space:]]+push ]]; then
+if [[ ! "$command" =~ (^|&&|;|\|\|)[[:space:]]*git[[:space:]]+push([[:space:]]|$) ]]; then
   echo '{"permission":"allow"}'
   exit 0
 fi

@@ -1964,7 +1964,7 @@
       "mandatory"
     ],
     "title": "Universal money invariants \u2014 mandatory post-scenario layer (R0/G1)",
-    "cmd": "python3 scripts/testing/flowtest/r0_invariant_proofs.py",
+    "cmd": "python3 scripts/testing/flowtest/run_universal_invariants_gate.py",
     "expect": {
       "status": "PASS"
     },
@@ -1974,6 +1974,32 @@
         "happy_path"
       ],
       "note": "Ship-gate marker: every money flowtest must run snapshot_invariants + run_universal_invariants"
+    }
+  },
+  "flowtest.invariants_r0_weekly": {
+    "type": "flow",
+    "api": "postTransaction",
+    "smoke_tier": "workspace",
+    "verify_mode": "RUNTIME_VERIFIED",
+    "tags": [
+      "flowtest",
+      "invariants",
+      "r0",
+      "weekly",
+      "selftest"
+    ],
+    "title": "R0 invariant detector self-tests (ii/iii) — weekly, non-gate",
+    "quarantine": true,
+    "cmd": "python3 scripts/testing/flowtest/r0_invariant_proofs.py ii && python3 scripts/testing/flowtest/r0_invariant_proofs.py iii",
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "RUNTIME_VERIFIED",
+      "dimensions": [
+        "happy_path"
+      ],
+      "note": "Detector self-proof only; not part of ship gate."
     }
   },
   "flowtest.penal_accrual": {

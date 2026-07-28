@@ -1,3 +1,5 @@
+[2026-07-28] | BOOTSTRAP FIX | Universal invariants gate = real sweep (not r0 ii/iii); commit hook light / full close push-only; pre-push matcher no longer fires on commit messages | flowtest/run_universal_invariants_gate.py, registry.json, .cursor/hooks.json, pre-push-checklist.sh
+
 [2026-07-28] | WORKSPACE OVERHAUL CLOSE | One-brain ship selection (`impact_tests`→`resolve_ship_impact`/register), stack preflight (`stack-doctor`), watchdog budgets (`chain_budgets` + guarded push), push gate hard-require satisfied HEAD, MCP `workspace_status` + `ship_plan` tools, doctor registry check | scripts/bin/{ship-loop-gate,workspace-close,run-guarded,push-origin,stack-doctor,workspace-doctor}.sh, scripts/lib/{resolve_ship_impact,register_pending_ship,chain_budgets,pipeline_chain_audit}.py, cursor-bundle/kg/mcp/kg_mcp_server.py
 
 [2026-07-28] | TEST harness | DPIC overview registry asserts; demo_runtime helpers; repayment wall-clock platform date; part-prep JTF nest | scripts/testing/registry.json, scripts/dpic/demo/lib/demo_runtime.sh

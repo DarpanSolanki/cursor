@@ -42,7 +42,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `git-fetch-all.sh` | Fetch origin + upstream for all service repos (no checkout/rebase). Updates workspace stat | scripts/bin/sync-branches.sh |
 | `git-workspace-status.sh` | Refresh cross-session git workspace state (local only, no fetch — fast). | scripts/lib/train_banner.py |
 | `hot-path-scan.sh` | Workspace hot-path perf heuristic (DAO-in-loop, stream-in-loop). Agents only. | scripts/bin/ship-loop-gate.sh, scripts/testing/workspace_autopilot.py |
-| `impact-tests.sh` | Dynamic impact-tests — git diff → KG blast radius → registry cases + WHY. | .cursor/hooks/kg-session-watermark.sh, scripts/bin/ship-loop-gate.sh, scripts/bin/workspace-close.sh |
+| `impact-tests.sh` | Dynamic impact-tests — git diff → KG blast radius → registry cases + WHY. | .cursor/hooks/kg-session-watermark.sh, scripts/bin/ship-loop-gate.sh |
 | `initial-setup-local.sh` | (no header) | — |
 | `install-kg-git-hooks.sh` | Install post-checkout hook in each service repo → kg-session-sync on branch change. | scripts/bin/install-user-cursor-gates.sh |
 | `install-user-cursor-gates.sh` | Install / verify Cursor hooks + git gates for sliProd. | scripts/bin/workspace-max-pass.sh |
@@ -52,19 +52,19 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `jira-fix-handoff.sh` | Build ADF JSON for SDCP fix handoff fields. No API calls — pipe into editJiraIssue. | — |
 | `jira-handoff.sh` | Jira handoff bridge — validates Dev-Test ADF BEFORE any post (Upgrade 7). | scripts/bin/capture-flow.sh |
 | `kg-enrich.sh` | Tiered KG enrich — see scripts/bin/enrichment-sync.sh and 20-ship-gates.mdc. | .cursor/hooks/kg-write-state.sh, .cursor/hooks/pre-commit-kg-reminder.sh, scripts/bin/enrichment-audit.sh, scripts/bin/smoke-workspace.sh, scripts/bin/workspace-close.sh |
-| `kg-ensure-fresh.sh` | Ensure KG matches live multi-repo branch-set before money-path analysis. | .cursor/hooks/kg-session-watermark.sh, scripts/bin/enrichment-audit.sh, scripts/bin/setup-local.sh, scripts/bin/ship-knowledge-gate.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-health.sh, scripts/bin/workspace-sanity.sh |
+| `kg-ensure-fresh.sh` | Ensure KG matches live multi-repo branch-set before money-path analysis. | .cursor/hooks/kg-session-watermark.sh, .cursor/hooks/kg-write-state.sh, scripts/bin/enrichment-audit.sh, scripts/bin/setup-local.sh, scripts/bin/ship-knowledge-gate.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-health.sh |
 | `kg-quick-check.sh` | Cheap branch-set check — no sync. Exit 0=fresh, 1=stale/missing. | scripts/bin/kg-ensure-fresh.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-health.sh, scripts/testing/workspace_autopilot.py |
-| `kg-session-sync.sh` | Cache-first KG sync — multi-repo branch-set aware (LRU cache per composite key). | .cursor/hooks/kg-session-watermark.sh, scripts/bin/install-kg-git-hooks.sh, scripts/bin/kg-ensure-fresh.sh, scripts/bin/kg-quick-check.sh, scripts/bin/sync-branches.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-doctor.sh, scripts/bin/workspace-sanity.sh |
+| `kg-session-sync.sh` | Cache-first KG sync — multi-repo branch-set aware (LRU cache per composite key). | .cursor/hooks/kg-session-watermark.sh, .cursor/hooks/kg-write-state.sh, scripts/bin/install-kg-git-hooks.sh, scripts/bin/kg-ensure-fresh.sh, scripts/bin/kg-quick-check.sh, scripts/bin/sync-branches.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-doctor.sh |
 | `kg-switch.sh` | Sync KG to current multi-repo branch checkout (cache-restore or rebuild). | .cursor/hooks/kg-write-state.sh, .cursor/hooks/post-checkout-kg.sh, scripts/bin/enrichment-audit.sh, scripts/bin/ensure-dpi-branches.sh, scripts/bin/kg-session-sync.sh, scripts/bin/smoke-workspace.sh, scripts/bin/sync-branches.sh, scripts/bin/sync-intelligence.sh |
 | `novopay-logs.sh` | Local log discovery — agents never guess paths; use on stuck boot/batch/API. | scripts/bin/workspace-disk-clean.sh, scripts/lib/agent-ops-lib.sh, scripts/lib/novopay-logs-lib.sh, scripts/testing/ntest.py |
 | `novopay-service.sh` | Local Novopay microservice lifecycle — stop stale processes, compile, bootRun, wait for pr | scripts/bin/dpi-sanity.sh, scripts/bin/foreclosure-local-setup.sh, scripts/lib/agent-ops-lib.sh, scripts/lib/novopay-service-lib.sh, scripts/testing/ntest.py |
-| `ntest.sh` | (no header) | scripts/bin/accounting-flow-proof.sh, scripts/bin/flow-onboard.sh, scripts/bin/ship-loop-gate.sh, scripts/bin/workspace-smoke.sh, scripts/lib/ship_test_plan.py, scripts/testing/agent_router.py, scripts/testing/flow_scaffold.py |
+| `ntest.sh` | Canonical ntest entry (SU-STITCH-001): always prefer scripts/bin/ntest.sh over | scripts/bin/accounting-flow-proof.sh, scripts/bin/flow-onboard.sh, scripts/bin/ship-loop-gate.sh, scripts/bin/workspace-smoke.sh, scripts/lib/ship_test_plan.py, scripts/testing/agent_router.py, scripts/testing/flow_scaffold.py |
 | `open-final.sh` | Resolve workspace path(s) for a forwardable final file. | — |
 | `ops-bin-hygiene.sh` | Fail if a NEW scripts/bin/*.sh has zero references (pre-U5 orphans grandfathered). | scripts/bin/ship-loop-gate.sh |
 | `platform-scan.sh` | Parallel platform scan — map + contracts + chains in one pass. | scripts/bin/intel-automation.sh, scripts/testing/agent_router.py, scripts/testing/intelligence_hub.py |
 | `pr-review.sh` | Read-only GitHub PR evidence collector. Never checks out, comments, or mutates a PR. | scripts/testing/agent_router.py |
 | `purge-local-dpi.sh` | Wipe all local DPI accruals/dues/GL txns + drop agent backup tables. Local only. | — |
-| `push-origin.sh` | Push to origin after ship-loop gate (auto workspace-close if pending). | .cursor/hooks/pre-push-checklist.sh, scripts/lib/ship_push_gate.py, scripts/testing/workspace_autopilot.py |
+| `push-origin.sh` | Push to origin after ship-loop gate (auto workspace-close if pending; raw `git push` is human emergency-only). | .cursor/hooks/pre-push-checklist.sh, scripts/lib/ship_push_gate.py, scripts/testing/workspace_autopilot.py |
 | `query-index-perf-audit.sh` | Index + EXPLAIN audit for native @Query / batch reader SQL profiles. | — |
 | `query-plan-gate.sh` | Query plan gate — DETECT query_touched → EXPLAIN local YB → PASS/WARN/FAIL. | scripts/bin/ship-loop-gate.sh, scripts/lib/impact_tests.py, scripts/lib/test_query_plan_gate.py |
 | `run-guarded.sh` | Minimal wrapper used by ship-loop tooling. | scripts/bin/ship-loop-gate.sh |

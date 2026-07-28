@@ -12,6 +12,8 @@
 #   push-origin.sh                    # push current branch: git push -u origin HEAD
 #   push-origin.sh origin my-branch   # pass through to git push
 #   SHIP_PUSH_NO_AUTO_CLOSE=1 push-origin.sh …  # skip auto-close (fail if stale)
+#
+# Raw `git push` is human emergency-only (break-glass). Agents must use this gate.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PENDING="$ROOT/.cursor/.pending-ship-work.json"
