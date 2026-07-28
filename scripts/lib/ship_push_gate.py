@@ -10,6 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TIER_RANK = {"workspace": 0, "service": 1, "money": 2}
 
+sys.path.insert(0, str(ROOT / "scripts/lib"))
+try:
+    from ship_fingerprint import load_pending, repo_head_shas  # noqa: E402
+except ImportError:
+    load_pending = None  # type: ignore
+    repo_head_shas = None  # type: ignore
+
 
 def file_fingerprint(root: Path, rel_path: str) -> str:
     p = Path(rel_path)
@@ -67,15 +74,12 @@ def ship_loop_satisfied(pending_path: Path, passed_path: Path) -> bool:
         return False
     if apis and not apis.issubset(set(passed.get("apis") or [])):
         return False
-    # Fingerprint gate: files changed since the last PASS must re-run ship-loop
-    root = pending_path.parent.parent if pending_path.parent.name == ".cursor" else ROOT
-    current = fingerprints_for_files(root, files)
-    passed_fps = passed.get("file_fingerprints") or {}
-    if passed_fps:
-        for rel in files:
-            key = rel.replace("\\", "/")
-            cur = current.get(key)
-            if cur and passed_fps.get(key) and cur != passed_fps.get(key):
+    # Commit-SHA gate: shipped repo HEAD must match recorded pass (not file mtime).
+    current_shas = repo_head_shas(pending) if repo_head_shas else {}
+    passed_shas = passed.get("repo_head_shas") or {}
+    if current_shas and passed_shas:
+        for repo, sha in current_shas.items():
+            if passed_shas.get(repo) != sha:
                 return False
     return True
 

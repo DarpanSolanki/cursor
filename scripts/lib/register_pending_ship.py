@@ -19,7 +19,7 @@ from infer_ship_apis import (  # noqa: E402
     is_ship_path,
     merge_tier,
 )
-from ship_push_gate import file_fingerprint, fingerprints_for_files  # noqa: E402
+from ship_fingerprint import repo_head_shas  # noqa: E402
 
 PENDING_DEFAULT = ROOT / ".cursor/.pending-ship-work.json"
 LAST_COMMIT = ROOT / ".cursor/.last-ship-commit"
@@ -116,7 +116,8 @@ def register_paths(
     data["smoke_service_cases"] = impact["smoke_service_cases"]
     data["health_cases"] = impact["health_cases"]
     data["resolution"] = impact.get("resolution", "heuristic")
-    data["file_fingerprints"] = fingerprints_for_files(root, data["files"])
+    pending_for_shas = {"repos": data.get("repos") or [], "files": data.get("files") or []}
+    data["repo_head_shas"] = repo_head_shas(pending_for_shas)
     data["close_command"] = "bash scripts/bin/workspace-close.sh --from-pending"
     data["updated_at"] = now
     data.pop("ship_loop_passed_at", None)

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/lib"))
@@ -17,10 +18,8 @@ from infer_ship_apis import build_impact  # noqa: E402
 from kg_ship_resolve import resolve_apis_for_path  # noqa: E402
 from register_pending_ship import register_paths  # noqa: E402
 from resolve_ship_impact import resolve  # noqa: E402
-from ship_push_gate import (  # noqa: E402
-    fingerprints_for_files,
-    ship_loop_satisfied,
-)
+from ship_push_gate import ship_loop_satisfied  # noqa: E402
+from ship_fingerprint import repo_head_sha  # noqa: E402
 
 
 class ChangeTestMapTest(unittest.TestCase):
@@ -134,36 +133,41 @@ class ResolveImpactTest(unittest.TestCase):
 
 
 class FingerprintGateTest(unittest.TestCase):
-    def test_fingerprint_mismatch_unsatisfies(self) -> None:
+    def test_head_sha_mismatch_unsatisfies(self) -> None:
+        acc = ROOT / "trustt-platform-accounting"
+        if not (acc / ".git").is_dir():
+            self.skipTest("accounting repo missing")
+        head = repo_head_sha(acc)
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cursor = root / ".cursor"
             cursor.mkdir()
-            f = root / "scripts" / "lib" / "dummy_ship_fp.txt"
-            f.parent.mkdir(parents=True)
-            f.write_text("v1\n", encoding="utf-8")
-            rel = "scripts/lib/dummy_ship_fp.txt"
-            fps = fingerprints_for_files(root, [rel])
             pending = {
-                "tier": "workspace",
-                "files": [rel],
+                "tier": "service",
+                "files": ["trustt-platform-accounting/src/main/java/x.java"],
                 "apis": [],
+                "repos": ["trustt-platform-accounting"],
                 "updated_at": "2020-01-01T00:00:00Z",
-                "file_fingerprints": fps,
             }
             passed = {
                 "passed_at": "2020-01-02T00:00:00Z",
-                "tier": "workspace",
+                "tier": "service",
                 "apis": [],
-                "file_fingerprints": fps,
+                "repo_head_shas": {"trustt-platform-accounting": head},
             }
             pp = cursor / ".pending-ship-work.json"
             pas = cursor / ".ship-loop-passed.json"
             pp.write_text(json.dumps(pending), encoding="utf-8")
             pas.write_text(json.dumps(passed), encoding="utf-8")
-            self.assertTrue(ship_loop_satisfied(pp, pas))
-            f.write_text("v2-changed\n", encoding="utf-8")
-            self.assertFalse(ship_loop_satisfied(pp, pas))
+            with mock.patch("ship_push_gate.repo_head_shas", return_value={"trustt-platform-accounting": head}):
+                self.assertTrue(ship_loop_satisfied(pp, pas))
+            passed["repo_head_shas"]["trustt-platform-accounting"] = "deadbeef" * 5
+            pas.write_text(json.dumps(passed), encoding="utf-8")
+            with mock.patch(
+                "ship_push_gate.repo_head_shas",
+                return_value={"trustt-platform-accounting": head},
+            ):
+                self.assertFalse(ship_loop_satisfied(pp, pas))
 
 
 class RegisterPendingUsesSmartCases(unittest.TestCase):

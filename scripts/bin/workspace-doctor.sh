@@ -59,6 +59,14 @@ else
 fi
 
 echo ""
+echo "--- mapping vs KG (change_test_map drift) ---"
+if python3 scripts/lib/mapping_kg_drift.py 2>&1; then
+  ok "mapping_kg_drift"
+else
+  echo "  WARN mapping_kg_drift — hand-maintained table diverges from KG (see above)"
+fi
+
+echo ""
 echo "--- KG freshness ---"
 if bash scripts/bin/kg-ensure-fresh.sh --check-only --quiet 2>/dev/null; then
   ok "KG FRESH (branch-set)"

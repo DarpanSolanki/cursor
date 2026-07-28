@@ -20,7 +20,7 @@ from infer_ship_apis import (  # noqa: E402
     resolve_apis_smart,
     strip_money_cases_for_workspace,
 )
-from ship_push_gate import fingerprints_for_files  # noqa: E402
+from ship_fingerprint import repo_head_shas  # noqa: E402
 
 
 def resolve(
@@ -83,9 +83,7 @@ def resolve(
             pending["registry_cases"] = cases
             pending["ntest_cases"] = cases
             pending["resolution"] = "resolve_ship_impact"
-            pending["file_fingerprints"] = fingerprints_for_files(
-                root, pending.get("files") or []
-            )
+            pending["repo_head_shas"] = repo_head_shas(pending)
             try:
                 pending_path.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
             except OSError:

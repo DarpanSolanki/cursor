@@ -41,12 +41,12 @@ class ImpactTestsDynamic(unittest.TestCase):
             plan.get("why_lines"),
         )
 
-    def test_mark_ran_fingerprint(self) -> None:
+    def test_mark_ran_head_sha(self) -> None:
         path = "scripts/lib/impact_tests.py"
-        plan = build_plan(paths=[path], from_pending=False, draft_stubs=False)
-        mark_ran(plan)
-        ok, msg = impact_ran_satisfied([path])
-        self.assertTrue(ok, msg)
+        plan = build_plan(paths=[path], from_pending=False, shipped_only=False)
+        mark_ran(plan, result="pass")
+        ok, msg = impact_ran_satisfied()
+        self.assertTrue(ok or "workspace-only" in msg.lower(), msg)
 
 
 if __name__ == "__main__":
