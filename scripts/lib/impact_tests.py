@@ -1279,8 +1279,33 @@ def log_human_waiver(reason: str, actor: str = "human") -> None:
     """Explicit human-only waiver — recorded file, not env escape hatch."""
     wp = ROOT / ".cursor/.impact-tests-human-waiver.json"
     wp.parent.mkdir(parents=True, exist_ok=True)
+    pending = load_pending() if load_pending else {}
+    repos = primary_ship_repos(pending) if primary_ship_repos else []
+    repo = repos[0][0] if repos else ""
+    head_sha = repo_head_sha(ROOT / repo) if repo and repo_head_sha else ""
+    # Waiver scope is time-bounded to prevent silent carry-forward.
+    expiry = _utc()
+    try:
+        from datetime import datetime, timezone, timedelta
+
+        expiry = (
+            datetime.now(timezone.utc) + timedelta(days=7)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        pass
     wp.write_text(
-        json.dumps({"reason": reason, "actor": actor, "at": _utc()}, indent=2) + "\n",
+        json.dumps(
+            {
+                "reason": reason,
+                "actor": actor,
+                "at": _utc(),
+                "repo": repo,
+                "head_sha": head_sha,
+                "expiry": expiry,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     WAIVER_LOG.parent.mkdir(parents=True, exist_ok=True)

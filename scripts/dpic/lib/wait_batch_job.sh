@@ -5,7 +5,7 @@ set -euo pipefail
 JOB_NAME="${1:?job name required}"
 JOB_TIME="${2:-}"
 RUN_STARTED="${3:-}"
-TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-25}"
+TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-}"
 INTERVAL_S="${BATCH_POLL_INTERVAL_S:-0.5}"
 PROGRESS_S="${BATCH_PROGRESS_S:-5}"
 
@@ -16,6 +16,48 @@ PG=(psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyt
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 
 started_epoch="$(date +%s)"
+
+if [[ -z "$TIMEOUT_S" ]]; then
+  # Derive timeout from recorded history (avoid hard-coded too-short budgets).
+  # Budget = max(120s, ceil(3×p50)) from last 10 COMPLETED durations.
+  durations="$(
+    "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name="$JOB_NAME" <<'SQL'
+SELECT ROUND(EXTRACT(EPOCH FROM (bje.end_time - bje.start_time))::numeric, 2)::text AS duration_s
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = :'job_name'
+  AND bje.status = 'COMPLETED'
+  AND bje.start_time IS NOT NULL
+  AND bje.end_time IS NOT NULL
+ORDER BY bje.job_execution_id DESC
+LIMIT 10;
+SQL
+  )"
+
+  TIMEOUT_S="$(
+    printf '%s\n' "$durations" | python3 - <<'PY'
+import math,sys
+lines=[x.strip() for x in sys.stdin.read().splitlines() if x.strip()]
+ds=[]
+for x in lines:
+    try:
+        v=float(x)
+        if v>0:
+            ds.append(v)
+    except Exception:
+        pass
+if not ds:
+    print(120)
+else:
+    ds=sorted(ds)
+    n=len(ds)
+    p50 = ds[n//2] if n%2==1 else (ds[n//2-1]+ds[n//2])/2.0
+    print(int(max(120, math.ceil(3.0*p50))))
+PY
+  )"
+  echo ">>> batch wait budget (derived) JOB_NAME=$JOB_NAME TIMEOUT_S=${TIMEOUT_S}s" >&2
+fi
+
 deadline=$((started_epoch + TIMEOUT_S))
 next_progress=$((started_epoch + PROGRESS_S))
 last_status=""

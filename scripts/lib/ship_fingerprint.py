@@ -159,7 +159,12 @@ def load_pending(path: Path | None = None) -> dict:
 
 
 def human_waiver_active() -> tuple[bool, str]:
-    """Explicit human waiver file only — no env escape hatch."""
+    """True only when human waiver targets the recorded HEAD-sha set.
+
+    Contract: waiver must include `head_sha` + `expiry` and match current
+    pending ship HEAD for the relevant repo. Missing/expired/mismatched waivers
+    are treated as inactive and are archived with a notice line.
+    """
     wp = ROOT / ".cursor/.impact-tests-human-waiver.json"
     if not wp.is_file():
         return False, ""
@@ -167,8 +172,63 @@ def human_waiver_active() -> tuple[bool, str]:
         data = json.loads(wp.read_text(encoding="utf-8"))
     except Exception:
         return False, "corrupt human waiver file"
+
     reason = str(data.get("reason") or "").strip()
     actor = str(data.get("actor") or "human").strip()
+    waiver_head_sha = str(data.get("head_sha") or "").strip()
+    waiver_expiry = str(data.get("expiry") or "").strip()
+    waiver_repo = str(data.get("repo") or "").strip()
+
     if not reason:
         return False, "human waiver missing reason"
+    if not waiver_head_sha or not waiver_expiry:
+        return False, "human waiver requires head_sha+expiry (schema incomplete)"
+
+    try:
+        from datetime import datetime, timezone
+
+        exp = datetime.strptime(waiver_expiry, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+    except Exception:
+        return False, "human waiver expiry parse failed"
+
+    if now > exp:
+        return False, "human waiver expired"
+
+    pending = load_pending() if "load_pending" in globals() else {}
+    repos = primary_ship_repos(pending) if "primary_ship_repos" in globals() else []
+    current_shas = repo_head_shas(pending) if "repo_head_shas" in globals() else {}
+
+    if not repos:
+        return False, "human waiver: no service repos in pending"
+
+    # If waiver specifies repo, enforce that repo match; otherwise allow any.
+    active = False
+    mismatches: list[str] = []
+    for repo_name, _ in repos:
+        cur = current_shas.get(repo_name) or ""
+        if waiver_repo and repo_name != waiver_repo:
+            continue
+        if not cur:
+            mismatches.append(f"{repo_name}:no_head")
+            continue
+        if cur == waiver_head_sha:
+            active = True
+            break
+        mismatches.append(
+            f"{repo_name}: waiver_head={waiver_head_sha[:12]} current={cur[:12]}"
+        )
+
+    if not active:
+        # Archive ignored waiver for auditability (no silent carry-forward).
+        WAIVER_LOG = ROOT / ".cursor/.impact-tests-waivers.log"
+        WAIVER_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with WAIVER_LOG.open("a", encoding="utf-8") as f:
+            f.write(
+                f"{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} actor={actor} "
+                f"WAIVER-IGNORED reason={reason[:120]} head_sha={waiver_head_sha[:12]} "
+                f"expiry={waiver_expiry} mismatches={'|'.join(mismatches)[:120]}\n"
+            )
+        return False, "human waiver ignored (head_sha mismatch/archived)"
+
     return True, f"human waiver actor={actor} reason={reason}"
