@@ -23,7 +23,7 @@
     "DeathForeclosureSettlementSupport": "deathForeclosureInsuranceJob",
     "ForceBillBillingSupport": "loanPrepayment",
     "RegularForeclosureForceBillService": "loanPrepayment",
-    "ChildLoanForeclosureProcessor": "individualChildLoanForeclosure",
+    "ChildLoanForeclosureProcessor": "childLoanForeclosure",
     "ChildLoanForeclosureEventGenerationProcessor": "loanPrepayment",
     "ValidateForChildLoanPrepaymentProcessor": "loanPrepayment",
     "ForceBillPartialCycleInterestForForeclosureProcessor": "loanPrepayment"

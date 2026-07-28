@@ -1,3 +1,5 @@
+[2026-07-28] | FIX (L1) | Align `ChildLoanForeclosureProcessor` mapping to KG request `childLoanForeclosure` (C1 selection truth) | scripts/lib/change_test_map.json
+
 [2026-07-28] | FIX TDPQA-180/184/186/187/188 | Seal DPI accrual on AID rate change; accept scheme days_in_month 30; LIQ_INSTL installment-before-charge; LAPD-sourced reversal DPI; part-prep due_amount excludes unbilled BPD | trustt-platform-accounting @ mfi_integration_v3.7.1 852f72097
 
 
