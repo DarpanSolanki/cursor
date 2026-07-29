@@ -633,8 +633,12 @@ def cmd_fresh(c,a):
 def cmd_validate(c,a):
     """Integrity + min size guard — delegates to kg_validate.py (exit 1 on fail)."""
     import subprocess, sys as _s
+    # Capture stdout — MCP stdio must stay JSON-RPC-only (never inherit fd1).
     p=subprocess.run([_s.executable,os.path.join(HERE,"kg_validate.py")]+list(a),
-                     cwd=os.path.dirname(HERE))
+                     cwd=os.path.dirname(HERE),
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if p.stdout:
+        print(p.stdout, end="" if p.stdout.endswith("\n") else "\n")
     if p.returncode!=0:
         raise SystemExit(p.returncode)
 
@@ -680,7 +684,11 @@ def cmd_fixed_elsewhere(c,a):
     import subprocess
     root=os.path.abspath(os.path.join(HERE,"../../.."))
     tool=os.path.join(root,"scripts","lib","branch_train.py")
-    p=subprocess.run([sys.executable,tool,"fixed-elsewhere",*a])
+    # Capture stdout — MCP stdio must stay JSON-RPC-only (never inherit fd1).
+    p=subprocess.run([sys.executable,tool,"fixed-elsewhere",*a],
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if p.stdout:
+        print(p.stdout, end="" if p.stdout.endswith("\n") else "\n")
     if p.returncode:
         raise SystemExit(p.returncode)
 

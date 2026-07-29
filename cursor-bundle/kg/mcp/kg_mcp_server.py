@@ -20,7 +20,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = 10_000
 TRUNC_MARK = "\n\n… [truncated — refine query / narrower args; max 10000 chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.1.0"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.3.1"}
 PROTOCOL = "2024-11-05"
 
 TOOLS = {
@@ -99,6 +99,24 @@ TOOLS = {
         "description": "Who writes a table.",
         "args": ["writes"],
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    },
+    "kg_map_audit": {
+        "description": "LMS change_test_map vs KG audit — CRITICAL + soft gaps (mismatch/bare/orphan/missing). Run before money ship / after map edits.",
+        "args": [],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "fail_on_mismatch": {
+                    "type": "boolean",
+                    "description": "If true, mark isError when CRITICAL or soft_gap_count > 0",
+                }
+            },
+        },
+    },
+    "mcp_auth": {
+        "description": "No-op for trustt-kg (local stdio SQLite). Always succeeds — no OAuth/credentials required.",
+        "args": [],
+        "schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     "workspace_status": {
         "description": "Workspace health snapshot: KG freshness/watermark, ship gate status, stack-doctor summary, flow coverage, backlog SU, speed, waivers.",
@@ -188,11 +206,14 @@ def run_kg(argv: list[str]) -> str:
 
 
 def tool_argv(name: str, arguments: dict) -> list[str]:
+    """Build kg.py argv for a tool. Only forward args declared on the tool schema."""
     meta = TOOLS[name]
     argv = list(meta["args"])
-    q = arguments.get("query")
-    if q is not None and str(q).strip():
-        argv.append(str(q).strip())
+    props = (meta.get("schema") or {}).get("properties") or {}
+    if "query" in props:
+        q = arguments.get("query")
+        if q is not None and str(q).strip():
+            argv.append(str(q).strip())
     if name == "kg_impact" and arguments.get("depth") is not None:
         argv.extend(["--depth", str(arguments["depth"])])
     if name == "kg_fixed_elsewhere":
@@ -278,7 +299,8 @@ def _active_waivers() -> list[dict]:
 
 
 def _stack_doctor_summary() -> dict:
-    rc, out = _run_cmd(["bash", str(ROOT / "scripts/bin/stack-doctor.sh"), "--json"], timeout_s=12)
+    # 12s was too tight (workspace_status regularly timed out → false "ok:false").
+    rc, out = _run_cmd(["bash", str(ROOT / "scripts/bin/stack-doctor.sh"), "--json"], timeout_s=45)
     if not out:
         return {"ok": False, "error": "no output"}
     try:
@@ -315,6 +337,32 @@ def _workspace_status_payload() -> dict:
         "speed_p50": _speed_p50_from_self_report(),
         "active_waivers": _active_waivers(),
     }
+
+
+def _map_audit_payload(arguments: dict | None = None) -> dict:
+    """LMS change_test_map vs KG — wraps scripts/lib/lms_flow_map_audit.py.
+
+    Always reload map modules so Cursor's long-lived MCP process picks up
+    change_test_map / audit edits without a full server restart.
+    """
+    arguments = arguments or {}
+    try:
+        import importlib
+
+        import change_test_map as ctm_mod  # noqa: WPS433
+        import lms_flow_map_audit as audit_mod  # noqa: WPS433
+
+        importlib.reload(ctm_mod)
+        ctm_mod.load_map.cache_clear()
+        if hasattr(ctm_mod, "known_batch_apis"):
+            ctm_mod.known_batch_apis.cache_clear()
+        audit_mod = importlib.reload(audit_mod)
+        result = audit_mod.audit()
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"map audit failed: {exc}", "verdict": "ERROR"}
+    result["provenance"] = _header()
+    result["fail_on_mismatch"] = bool(arguments.get("fail_on_mismatch"))
+    return result
 
 
 def _ship_plan_payload(arguments: dict) -> dict:
@@ -387,11 +435,39 @@ def handle(msg: dict) -> dict | None:
             }
         if name == "workspace_status":
             text = truncate(_header() + "\n" + json.dumps(_workspace_status_payload(), indent=2))
+            is_err = False
         elif name == "ship_plan":
             text = truncate(_header() + "\n" + json.dumps(_ship_plan_payload(arguments), indent=2))
+            is_err = False
+        elif name == "kg_map_audit":
+            payload = _map_audit_payload(arguments)
+            text = truncate(_header() + "\n" + json.dumps(payload, indent=2))
+            is_err = bool(arguments.get("fail_on_mismatch")) and (
+                int(payload.get("critical_mismatch_count") or 0) > 0
+                or int(payload.get("soft_gap_count") or 0) > 0
+                or str(payload.get("verdict") or "") in {"FAIL", "ERROR"}
+            )
+        elif name == "mcp_auth":
+            text = truncate(
+                _header()
+                + "\n"
+                + json.dumps(
+                    {
+                        "ok": True,
+                        "auth_required": False,
+                        "message": "trustt-kg is local stdio over SQLite — no authentication.",
+                    },
+                    indent=2,
+                )
+            )
+            is_err = False
         else:
             text = run_kg(tool_argv(name, arguments))
-        return {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
+            is_err = False
+        out: dict = {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
+        if is_err:
+            out["result"]["isError"] = True
+        return out
     if method == "ping":
         return {"jsonrpc": "2.0", "id": mid, "result": {}}
     if mid is None:
@@ -400,8 +476,14 @@ def handle(msg: dict) -> dict | None:
 
 
 def main() -> None:
-    # warm DB open once
-    _db()
+    # MCP stdio: ONLY JSON-RPC on fd1. Subprocess/print leaks (kg_validate "OK: N nodes",
+    # branch_train "REUSE_FORBIDDEN") previously corrupted the stream → Cursor
+    # "Unexpected token … is not valid JSON" → serverStatus=error.
+    mcp_fd = os.dup(1)
+    os.dup2(2, 1)  # Python stdout / child inherit → stderr
+    mcp_out = os.fdopen(mcp_fd, "w", buffering=1, encoding="utf-8", errors="replace")
+
+    # Lazy DB: do not block initialize / tools/list on SQLite open.
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -412,8 +494,8 @@ def main() -> None:
             continue
         resp = handle(msg)
         if resp is not None:
-            sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
-            sys.stdout.flush()
+            mcp_out.write(json.dumps(resp, ensure_ascii=False) + "\n")
+            mcp_out.flush()
 
 
 if __name__ == "__main__":

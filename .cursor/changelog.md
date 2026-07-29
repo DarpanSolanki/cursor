@@ -1,3 +1,7 @@
+## 2026-07-29 — trustt-kg MCP close (1.3.1)
+- Verified 16/16 tools: JSON-RPC smoke + semantic needles + live Cursor MCP (validate/why/map_audit/mcp_auth).
+- Shipped: stdout capture (kg.py), dup2+reload map_audit, mcp_auth no-op, kg_map_audit soft_gap, kg-mcp-smoke.sh semantic gate.
+
 ## 2026-07-29 — Ship-loop: stop BY_LATEST harness → full FC+DCF suite
 - Root: `_foreclosure_path_touch` matched `scripts/testing/foreclosure/*` + selection force-promoted domain cases to full (~1h17m on push-origin).
 - Fix: write-path-only fc_touch; domain_added stay smoke; foreclosure `read_impact_cases`; `SHIP_CLOSE_REPO` scopes push-origin close. Plan for by_latest ≈ 4 cases / ~145s.
