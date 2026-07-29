@@ -783,17 +783,40 @@ def _direct_apis_from_nodes(
 
 
 def _foreclosure_path_touch(changed: list[str]) -> bool:
-    blob = " ".join(p.replace("\\", "/").lower() for p in (changed or []))
-    return any(
-        tok in blob
-        for tok in (
-            "forcebill",
-            "foreclos",
-            "/loan/foreclosure",
-            "loanprepayment",
-            "individualchildloanforeclosure",
-        )
-    )
+    """True when product foreclosure *write* paths change.
+
+    Must NOT fire for:
+    - harness ``scripts/testing/foreclosure/*`` (esp. by-latest read API tests)
+    - ``loan/prepayment`` DAO/read paths (BY_LATEST / getLoanForeclosureDetails)
+    - workspace map/registry edits
+
+    Those used to set fc_touch and force-promote the entire FC+DCF suite to
+    full E2E on push-origin (TDPQA-207 / 2026-07-29).
+    """
+    for p in changed or []:
+        low = p.replace("\\", "/").lower()
+        if low.startswith("scripts/testing/") or low.startswith("scripts/lib/"):
+            continue
+        if low.startswith(".cursor/") or "cursor-bundle/" in low:
+            continue
+        if any(
+            tok in low
+            for tok in (
+                "forcebill",
+                "/loan/foreclosure/",
+                "individualchildloanforeclosure",
+                "deathforeclosure",
+                "loanforeclosureprocessor",
+                "childloanforeclosure",
+            )
+        ):
+            return True
+        # Broad "foreclos" only on accounting *service* paths under a foreclosure package
+        if ("trustt-platform-accounting" in low or "novopay-platform-accounting" in low) and (
+            "/foreclos" in low or "/deathforeclos" in low
+        ):
+            return True
+    return False
 
 
 def _case_wall_s(cid: str, reg: dict) -> int:
@@ -887,42 +910,48 @@ def _apply_selection_tiering(
     full_cases: list[str] = []
     skipped_smoke: list[str] = []
 
+    domain_added_set = set(domain_added or [])
     for cid in ordered:
         if cid in (INVARIANTS_CASE, SMOKE_READ_CASE):
             continue
         meta = reg.get(cid) or {}
         api = str(meta.get("api") or "")
         tier = case_tier.get(cid)
-        if tier == "smoke" and fc_touch and (
-            cid.startswith("foreclosure.")
-            or cid.startswith("dcf.")
-            or cid.startswith("flowtest.loan_prepayment")
-        ):
-            tier = "full"
+        # Domain-mandatory siblings stay smoke unless this case's api is direct
+        # OR product write-path foreclosure touched (not harness/read-only).
+        # Never escalate domain_added → full solely because a by-latest harness
+        # path contains the substring "foreclos".
         if tier is None:
-            if api in direct_apis:
+            if api and api in direct_apis:
                 tier = "full"
-            elif fc_touch and any(
+            elif cid in domain_added_set:
+                tier = "smoke"
+            elif fc_touch and api and api in direct_apis:
+                tier = "full"
+            elif fc_touch and cid not in domain_added_set and any(
                 tok in cid
                 for tok in (
                     "foreclosure.",
                     "dcf.",
                     "flowtest.loan_prepayment",
-                    "flowtest.loan_prepayment_fc",
                 )
             ):
+                # Product FC write touch: keep non-domain-added FC cases full
                 tier = "full"
-            elif cid in domain_added:
-                tier = "smoke"
             elif cid.startswith("health.") or cid == SMOKE_READ_CASE:
                 tier = "smoke"
             else:
                 tier = "smoke"
-        why = case_tier.get(cid) and "KG case map" or f"api={api or 'domain'}"
+        elif tier == "smoke" and fc_touch and cid not in domain_added_set and (
+            api in direct_apis
+        ):
+            tier = "full"
+        why = "KG case map" if case_tier.get(cid) else f"api={api or 'domain'}"
         if tier == "full":
             if cid not in full_cases:
                 full_cases.append(cid)
-                tier_lines.append(f"TIER full {cid}: direct-impact ({why})")
+                label = "direct-impact" if (api in direct_apis or case_tier.get(cid) == "full") else "fc-write-path"
+                tier_lines.append(f"TIER full {cid}: {label} ({why})")
         else:
             skipped_smoke.append(cid)
             tier_lines.append(f"TIER smoke-skip {cid}: sibling/domain blast ({why})")

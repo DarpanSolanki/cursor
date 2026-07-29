@@ -1,3 +1,7 @@
+## 2026-07-29 — Ship-loop: stop BY_LATEST harness → full FC+DCF suite
+- Root: `_foreclosure_path_touch` matched `scripts/testing/foreclosure/*` + selection force-promoted domain cases to full (~1h17m on push-origin).
+- Fix: write-path-only fc_touch; domain_added stay smoke; foreclosure `read_impact_cases`; `SHIP_CLOSE_REPO` scopes push-origin close. Plan for by_latest ≈ 4 cases / ~145s.
+
 ## 2026-07-29 — TDPQA-207 train push + JIRA sequencing
 - Correction: fix was only on `origin/fix/tdpqa-207-foreclosure-by-latest`; now also on **`origin/mfi_integration_v3.5.2.2` @ c7657a07df** (upstream tip + cherry-pick). Never call feature-branch-only “pushed for QA”.
 - Rules: jira-fix-update Push gate; `jira-tdpqa-qa-test-fields.mdc`; memory `feedback_jira_push_train_before_enrich.md`.

@@ -12,6 +12,7 @@
 #   push-origin.sh                    # push current branch: git push -u origin HEAD
 #   push-origin.sh origin my-branch   # pass through to git push
 #   SHIP_PUSH_NO_AUTO_CLOSE=1 push-origin.sh …  # skip auto-close (fail if stale)
+#   SHIP_CLOSE_REPO=trustt-platform-accounting   # scope pending → that repo only
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PENDING="$ROOT/.cursor/.pending-ship-work.json"
@@ -21,6 +22,26 @@ GATE="$ROOT/scripts/lib/ship_push_gate.py"
 if [[ ! -x "$GATE" ]]; then
   GATE="python3 $ROOT/scripts/lib/ship_push_gate.py"
 fi
+
+# When invoked from a service repo checkout, scope auto-close to that repo so a
+# train-branch push does not re-run the entire accumulated money pending suite.
+_detect_ship_close_repo() {
+  if [[ -n "${SHIP_CLOSE_REPO:-}" ]]; then
+    echo "$SHIP_CLOSE_REPO"
+    return 0
+  fi
+  local top base
+  top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "$top" ]] || return 0
+  base="$(basename "$top")"
+  case "$base" in
+    trustt-*|novopay-*)
+      if [[ "$top" == "$ROOT/$base" ]]; then
+        echo "$base"
+      fi
+      ;;
+  esac
+}
 
 _run_close_if_needed() {
   if [[ "${SHIP_PUSH_NO_AUTO_CLOSE:-}" == "1" ]]; then
@@ -40,6 +61,12 @@ _run_close_if_needed() {
   fi
   if python3 "$ROOT/scripts/lib/ship_push_gate.py" --is-knowledge-head 2>/dev/null; then
     echo "=== push-origin: HEAD is knowledge-only but pending has service/money — auto-close required ===" >&2
+  fi
+  local close_repo
+  close_repo="$(_detect_ship_close_repo || true)"
+  if [[ -n "$close_repo" ]]; then
+    export SHIP_CLOSE_REPO="$close_repo"
+    echo "=== push-origin: scoping ship-close to repo=$close_repo ===" >&2
   fi
   echo "=== push-origin: auto workspace-close (pending ship work) ===" >&2
   local -a close_args=(--from-pending)

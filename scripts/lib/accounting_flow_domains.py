@@ -145,6 +145,36 @@ def domain_cases(
     return list(meta.get(key) or [])
 
 
+def _domain_read_only(meta: dict, apis: set[str], paths: list[str] | None) -> bool:
+    """True when touch is read-API / BY_LATEST harness only — not write foreclosure."""
+    read_apis = {str(a) for a in (meta.get("read_apis") or []) if a}
+    if not read_apis:
+        return False
+    # Product write paths under foreclosure packages → not read-only
+    for p in paths or []:
+        low = p.replace("\\", "/").lower()
+        if low.startswith("scripts/") or low.startswith(".cursor/") or "cursor-bundle/" in low:
+            continue
+        if any(
+            tok in low
+            for tok in (
+                "/loan/foreclosure/",
+                "forcebill",
+                "individualchildloanforeclosure",
+                "deathforeclosure",
+                "loanforeclosureprocessor",
+            )
+        ):
+            return False
+    relevant = {a for a in apis if a and _api_matches(a, list(meta.get("api_hints") or []) + list(read_apis))}
+    if not relevant:
+        # Path-only hit (e.g. PrepaymentDetailsRepository → getLoanForeclosureDetails via map)
+        # Treat as read-only when no write APIs present.
+        writeish = apis - read_apis
+        return not writeish or writeish <= read_apis
+    return relevant <= read_apis
+
+
 def resolve_accounting_domain_cases(
     blob: str,
     apis: set[str],
@@ -179,7 +209,14 @@ def resolve_accounting_domain_cases(
     merged = list(base)
     all_domains = load_domains()
     for did in domains:
-        if (all_domains.get(did) or {}).get("scope") == "out":
+        meta = all_domains.get(did) or {}
+        if meta.get("scope") == "out":
+            continue
+        read_only = _domain_read_only(meta, apis, paths)
+        if read_only and meta.get("read_impact_cases"):
+            for cid in domain_cases(did, phase="read_impact", reg=reg):
+                add(cid, merged)
+            # Skip write impact + deep for read-only BY_LATEST / details API ships
             continue
         for cid in domain_cases(did, phase="impact", reg=reg):
             add(cid, merged)

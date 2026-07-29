@@ -117,10 +117,19 @@
         "getLoanForeclosureDetails",
         "loanPrepayment"
       ],
+      "read_apis": [
+        "getLoanForeclosureDetails",
+        "fetchLoanForeclosureSimulationDetails"
+      ],
+      "read_impact_cases": [
+        "foreclosure.by_latest_details_api",
+        "dpic.foreclosure_details_api"
+      ],
       "impact_cases": [
         "flowtest.loan_prepayment_fc",
         "foreclosure.individual_child",
         "foreclosure.shg_bpi_parity",
+        "foreclosure.by_latest_details_api",
         "dcf.vikram_fc_rstcre_dfc_e2e"
       ],
       "deep_cases": [
@@ -132,7 +141,8 @@
       ],
       "release_cases": [
         "foreclosure.individual_child",
-        "foreclosure.shg_bpi_parity"
+        "foreclosure.shg_bpi_parity",
+        "foreclosure.by_latest_details_api"
       ]
     },
     "death_foreclosure": {

@@ -11,8 +11,9 @@
 4. **Map SoT** → `scripts/lib/change_test_map.json` + `change_test_map.py` (class/path → registry apiName). Never invent `disburseLoan` or raw `*BatchService` stems.
 5. **Domains** → penal / advance / installment-notification are separate; token-boundary matching so `penalinterest*` ≠ interest accrual.
 6. **Fingerprints** → `ship-loop-passed.json` fingerprints vs current files; edit after PASS requires re-close.
-7. **push-origin** → knowledge-only HEAD skips auto-close **only if pending is also knowledge-only** (`--skip-auto-close-knowledge`).
+7. **push-origin** → knowledge-only HEAD skips auto-close **only if pending is also knowledge-only** (`--skip-auto-close-knowledge`). From a service repo, sets `SHIP_CLOSE_REPO` so close scopes pending (no full-workspace money suite on a train push).
 8. **post-commit** → writes `.last-ship-commit` + re-registers HEAD ship paths + queues `ship-test-auto` for service/money.
+9. **fc_touch / BY_LATEST** → harness `scripts/testing/foreclosure/*` and prepayment **read** DAO must not force-full FC+DCF (`feedback_ship_loop_fc_touch_harness_blast.md`). Use foreclosure `read_impact_cases`.
 
 ## Agent rule
 

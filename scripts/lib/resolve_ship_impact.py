@@ -71,6 +71,36 @@ def resolve(
         for f in pending.get("files") or []
         if f and not f.startswith(".cursor/") and not f.startswith("scripts/scratch/")
     ]
+    # Scope to one service repo when push-origin sets SHIP_CLOSE_REPO (train push).
+    # Avoids re-running unrelated money suites accumulated in pending from other work.
+    close_repo = (os.environ.get("SHIP_CLOSE_REPO") or "").strip()
+    if close_repo:
+        scoped = []
+        for f in pending.get("files") or []:
+            if not f:
+                continue
+            fl = f.replace("\\", "/")
+            if fl == close_repo or fl.startswith(f"{close_repo}/"):
+                scoped.append(str(root / f))
+            # Keep harness tightly coupled to this ship: by-latest / map for same API only
+            elif fl.startswith("scripts/testing/foreclosure/") or fl.startswith(
+                "scripts/testing/map_coverage/"
+            ):
+                scoped.append(str(root / f))
+        if scoped:
+            paths = scoped
+            pending = dict(pending)
+            pending["files"] = [
+                f for f in (pending.get("files") or [])
+                if f
+                and (
+                    f.replace("\\", "/").startswith(f"{close_repo}/")
+                    or f.replace("\\", "/") == close_repo
+                    or f.replace("\\", "/").startswith("scripts/testing/foreclosure/")
+                    or f.replace("\\", "/").startswith("scripts/testing/map_coverage/")
+                )
+            ]
+            pending["repos"] = [close_repo]
     honor_explicit = os.environ.get("SHIP_HONOR_EXPLICIT_CASES", "") == "1"
     explicit_cases = pending.get("registry_cases") or pending.get("ntest_cases") or []
 
