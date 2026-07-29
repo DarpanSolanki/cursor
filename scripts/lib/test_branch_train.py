@@ -354,6 +354,24 @@ class BranchTrainTest(unittest.TestCase):
             self.assertLess(branch_train.fetch_age_hours(repo) or 99, 1.0)
             self.assertIsNone(branch_train.fetch_warning(repo))
 
+    def test_stale_stamp_does_not_hide_fresh_upstream_ref(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self._git(repo, "init", "-q")
+            tip = self._commit(repo, "tip")
+            upstream = repo / ".git/refs/remotes/upstream"
+            upstream.mkdir(parents=True)
+            ref = upstream / "mfi_integration_v3.5"
+            ref.write_text(f"{tip}\n")
+            # Stale stamp (2 days) must yield to fresh upstream ref mtime.
+            (repo / ".git/novopay-upstream-fetch.stamp").write_text(
+                f"{__import__('time').time() - 48 * 3600:.3f}\n"
+            )
+            age = branch_train.fetch_age_hours(repo)
+            self.assertIsNotNone(age)
+            self.assertLess(age or 99, 1.0)
+            self.assertIsNone(branch_train.fetch_warning(repo))
+
     def test_audit_matches_case_repo_without_touches_edge(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "trustt-platform-accounting"

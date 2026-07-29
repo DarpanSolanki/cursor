@@ -1,3 +1,4 @@
+- [Upstream fetch stamp](feedback_upstream_fetch_stamp.md) — stale stamp hid real fetch → false fixed-elsewhere STALE; git-fetch-all writes stamp; age=max(stamp,refs). (TDPQA-207 2026-07-29)
 - Ship-test autonomy (change→impact on push): `feedback_ship_test_autonomy_change_map.md` + `scripts/lib/change_test_map.json`.
 - [DPIC harness gotchas](feedback_dpic_harness_gotchas.md) — two clocks (JOB_TIME vs platform date); 132280/134243/130241 = harness first; `dpic_harness_lib.sh`; never fail ship on overview optional keys. (2026-07-28)
 

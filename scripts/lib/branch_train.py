@@ -86,19 +86,24 @@ def version_key(branch: str) -> tuple[int, ...]:
 
 
 def fetch_age_hours(repo: Path) -> float | None:
-    """Upstream freshness only — an origin fetch must not hide stale upstream refs."""
+    """Upstream freshness only — an origin fetch must not hide stale upstream refs.
+
+    Prefer the *freshest* signal among stamp + upstream ref mtimes. A stale
+    ``novopay-upstream-fetch.stamp`` must not override a newer real upstream
+    fetch (raw ``git fetch upstream`` does not rewrite the stamp).
+    """
+    candidates: list[float] = []
     stamp = repo / ".git/novopay-upstream-fetch.stamp"
     if stamp.is_file():
         try:
-            return (time.time() - float(stamp.read_text().strip())) / 3600
+            candidates.append(float(stamp.read_text().strip()))
         except ValueError:
             pass
     upstream_dir = repo / ".git/refs/remotes/upstream"
-    mtimes: list[float] = []
     if upstream_dir.is_dir():
         for path in upstream_dir.rglob("*"):
             if path.is_file():
-                mtimes.append(path.stat().st_mtime)
+                candidates.append(path.stat().st_mtime)
     packed = repo / ".git/packed-refs"
     if packed.is_file():
         try:
@@ -106,9 +111,7 @@ def fetch_age_hours(repo: Path) -> float | None:
         except OSError:
             text = ""
         if "refs/remotes/upstream/" in text:
-            mtimes.append(packed.stat().st_mtime)
-    if mtimes:
-        return (time.time() - max(mtimes)) / 3600
+            candidates.append(packed.stat().st_mtime)
     fetch_head = repo / ".git/FETCH_HEAD"
     if fetch_head.is_file():
         try:
@@ -116,8 +119,10 @@ def fetch_age_hours(repo: Path) -> float | None:
         except OSError:
             text = ""
         if re.search(r"\bupstream\b", text):
-            return (time.time() - fetch_head.stat().st_mtime) / 3600
-    return None
+            candidates.append(fetch_head.stat().st_mtime)
+    if not candidates:
+        return None
+    return (time.time() - max(candidates)) / 3600
 
 
 def fetch_warning(repo: Path) -> str | None:

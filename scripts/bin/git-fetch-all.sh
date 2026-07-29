@@ -23,7 +23,13 @@ for d in "$ROOT"/novopay-* "$ROOT"/trustt-*; do
     git fetch origin --prune >/dev/null 2>&1 || log "  WARN $repo: origin fetch failed"
   fi
   if git remote | grep -qx upstream; then
-    git fetch upstream --prune >/dev/null 2>&1 || log "  WARN $repo: upstream fetch failed"
+    if git fetch upstream --prune >/dev/null 2>&1; then
+      # Keep branch_train.fetch_age_hours honest — raw git fetch alone left
+      # .git/novopay-upstream-fetch.stamp stale and blocked fixed-elsewhere (TDPQA-207).
+      python3 -c "import time,pathlib; pathlib.Path(r'''$d/.git/novopay-upstream-fetch.stamp''').write_text(f'{time.time():.3f}\n')"
+    else
+      log "  WARN $repo: upstream fetch failed"
+    fi
   fi
   log "  ✓ $repo"
   cd "$ROOT"

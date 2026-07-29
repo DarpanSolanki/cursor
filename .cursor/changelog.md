@@ -1,3 +1,5 @@
+[2026-07-29] | WORKSPACE | fixed-elsewhere unblock: stale `novopay-upstream-fetch.stamp` no longer hides real upstream fetch; `git-fetch-all.sh` writes stamp after upstream fetch | branch_train.py, git-fetch-all.sh, test_branch_train.py
+
 [2026-07-29] | FIX TDPQA-192 L1 | Dual-code DIY/DIM hubs: accept raw 360/365/ACTUAL + DIY_*/DIM_* (DPIC masterdata); fix /0 in getDaywiseInterestRate + Days360 path | AssetsConstants.java, RepaymentScheduleUtil.java, InterestCalculationUtil.java @ mfi_integration_v3.7.1
 
 [2026-07-28] | FIX TDPQA-72 L1 | Parent FC mirror: force-post INTEREST slice (=child billAmount) then bill; stamp IAD only after TM; parent RSCH remap INT_AMT→BLD_INT_AMT (BI) + local TAR setup | ForceBillAccrualSliceSupport.java, RegularForeclosureForceBillService.java, PopulateAdditionalAmountForPartPrepaymentProcessor.java, local_setup_rsch_loan_prepayment_bld_int_tar.sql @ mfi_integration_v3.4.2.4
