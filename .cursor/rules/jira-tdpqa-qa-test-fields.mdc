@@ -1,0 +1,73 @@
+---
+description: >-
+  TDPQA JIRA QA Test handoff — fill mandatory RCA / Impact / Pre-Post / AI TDP
+  fields in simple language before status change. Use when enriching TDPQA-*,
+  releasing to QA Test, or filling RCA/Impact on TDPQA bugs.
+alwaysApply: false
+---
+
+# TDPQA → QA Test (mandatory fields)
+
+Moving a **TDPQA** bug to **QA Test** fails unless these ticket fields are filled
+(workflow popup). Do **not** put the only handoff in a comment anymore.
+
+| Display name | Field key | Notes |
+|--------------|-----------|-------|
+| RCA | `customfield_11999` | 3 short plain sentences: what happened / why / what we changed |
+| Impact Analysis Details | `customfield_12008` | 3 bullets: fixed / unchanged / how QA should retest |
+| Pre /Post Deployment Scripts | `customfield_12007` | `NA` / `NA` when no script |
+| AiTDP Dev Improvement Remarks | `customfield_12000` | How AI helped (analysis → fix → check) — no Cursor brand |
+| AiTDP Dev Accuracy | `customfield_12001` | **Whole percent** (e.g. `80`), not `0.80` |
+| JIRA As per AI TDP Temp | `customfield_12009` | Yes `12785` when AI assisted |
+| Micro Service | `customfield_12006` | Accounting `12770` (etc.) |
+| Dev / QA Owner | `11952` / `11953` | via `owners_tdpqa` |
+| **Dev Test Details** | *(no field)* | **Required in pack as `dev[]`** → companion comment headed **Dev Test Details** |
+
+## Language (hard)
+
+- Simple business words a QA person can read in 30 seconds.
+- No branch, SHA, class/processor names, harness, ntest, SQL dumps.
+- No `@darpan`. No other ticket keys unless the user asked.
+- Prefer "delayed payment interest" over DPIC jargon when the ticket uses plain words; match the ticket's own wording when QA already used a term.
+
+## Agent path (mandatory)
+
+```bash
+python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-NNN
+# → mode=tdpqa_field_handoff
+
+bash scripts/bin/jira-enrich.sh pack TDPQA-NNN payload.json > /tmp/pack.json
+bash scripts/bin/jira-enrich.sh post TDPQA-NNN payload.json
+```
+
+Payload shape (same helper as SDCP, TDPQA field IDs):
+
+```json
+{
+  "rca": { "situation": "…", "cause": "…", "resolution": "…" },
+  "impact": ["Fixes …", "Does not change …", "Please retest …"],
+  "pre": "NA",
+  "post": "NA",
+  "micro": ["accounting"],
+  "aitdp_percent": 0.80,
+  "aitdp_remarks": "Helped review the QA case, found …, fixed …, checked … before sending to QA.",
+  "dev": [
+    "Functional step QA can follow. Result: Pass."
+  ],
+  "qa_retest": [
+    "After the accounting build is shared, retest on the reported loan."
+  ],
+  "ping_comment": "@Srikant @Reema Fix is ready for QA. Dev Test Details below."
+}
+```
+
+Fields unblock **QA Test**. Pack **fails closed** without `dev[]` (no Dev Test field on TDPQA — companion comment is the product for retest steps). Existing long handoff comments may stay; do not invent a companion SDCP ticket.
+
+## Status
+
+After fields are non-null, transition toward **QA Test** when the workflow allows.
+Never use **QA:Traige** as a substitute for QA Retest. If the needed transition is missing, report available transitions and leave status as-is.
+
+Skill: `.cursor/skills/jira-fix-update/SKILL.md`  
+Fields: `.cursor/skills/jira-fix-update/fields-reference.md`  
+Memory: `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md`

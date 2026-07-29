@@ -1,34 +1,50 @@
 ---
 name: feedback_jira_tdpqa_comment_handoff
-description: TDPQA (and non-SDCP) JIRAs have no RCA/Impact/Dev fields — put full QA handoff in one structured comment; never invent companion SDCP tickets for fields
+description: >-
+  TDPQA bugs now require RCA/Impact/PrePost/AITDP custom fields for QA Test
+  transition; fill those in simple language via tdpqa_field_handoff (2026-07-28).
+  Older comment-only pattern is obsolete for TDPQA.
 ---
 
-# TDPQA JIRA = comment handoff (2026-07-15)
+# TDPQA JIRA = field handoff for QA Test (2026-07-28)
 
-## Mistake that triggered this
+## What changed
 
-On TDPQA-102 agents either (a) tried SDCP custom fields that do not exist, or (b) created an extra SDCP bug just to fill RCA/Impact/Dev, while the QA ticket only got a one-line “ready for QA” comment. That makes releasing to QA harder, not easier.
+TDPQA Bug (`11014`) gained mandatory custom fields. Transition to **QA Test**
+fails with: *"Please ensure add RCA / Impact Analysis / Pre or Post deployment
+Script / AI TDP Improvement Remarks"*.
+
+| Field | Key | Scale note |
+|-------|-----|------------|
+| RCA | `customfield_11999` | ADF |
+| Impact Analysis Details | `customfield_12008` | ADF |
+| Pre /Post Deployment Scripts | `customfield_12007` | ADF Pre/Post lines |
+| AiTDP Dev Improvement Remarks | `customfield_12000` | ADF |
+| AiTDP Dev Accuracy | `customfield_12001` | **whole percent** (`80`) — not SDCP's 0–1 fraction |
+| JIRA As per AI TDP Temp | `customfield_12009` | Yes=`12785` |
+| Micro Service | `customfield_12006` | Accounting=`12770` |
+| Dev / QA Owner | `11952` / `11953` | unchanged |
 
 ## Standing rule
 
-1. `python3 scripts/bin/jira-fix-adf.py project_mode <KEY>` first.
-2. **SDCP** → `field_handoff` (customfield_11137 / 11138 / 11901 + short ping).
-3. **TDPQA** (and other non-SDCP) → `comment_handoff`: one `handoff_comment` ADF with RCA + Impact + Dev + Pre/Post + **AITDP % + remarks**; set `owners_tdpqa` only. Helper **fail-closes** without `aitdp_percent` + `aitdp_remarks`.
+1. `python3 scripts/bin/jira-fix-adf.py project_mode <KEY>` → `tdpqa_field_handoff` for `TDPQA-*`.
+2. Fill the fields above in **simple language** (what broke / why / fix; impact bullets; Pre/Post NA; AITDP remarks + %).
+3. **Always include `dev[]`** — TDPQA has no Dev Test field; pack posts companion comment **Dev Test Details** (+ optional `qa_retest`). Pack fails closed without `dev[]`. See `feedback_jira_tdpqa_dev_test_comment.md`.
 4. Never invent a companion SDCP ticket unless the user asks.
-5. Edit the handoff comment in place only while it is still the latest relevant comment.
-6. If QA has posted newer observations, delete the stale developer handoff and POST a new structured handoff so it appears after the latest QA evidence.
-7. Rework fixes move to the exact **QA Retest** status, never **QA:Traige**. If Jira does not expose a QA Retest transition, report the available transitions and do not guess or chain through another status. TDPQA has no QA Retest transition (BA Clarification / To Do / Dev:Rework / QA:Traige / QA Tested→QA:Closed / "QA Tested Issue is Still There"→Dev:Rework / Product Team Validation) — report unavailable, leave status as-is.
+5. Do **not** send SDCP field IDs (`11137` / `11676` fraction, etc.) to TDPQA.
+6. Rework: exact **QA Retest** if exposed; never **QA:Traige** as substitute. If unavailable, report transitions and leave status.
 
-## Rework / QA-retest proof block (2026-07-17, TDPQA-72)
+## Language bar
 
-On a **reopened** ticket, prose-only Dev text is not proof. Use **simple ADF tables** QA can scan in ~30 seconds:
+QA must understand without opening code. No branch/SHA/processor/harness/SQL.
+Proven on TDPQA-180 / 184 / 186 / 187 / 188 (2026-07-28).
 
-- **Test data** — Parent / Child A / Child B
-- **Observation checks** — What QA checked | Account | Expected | Actual | Result (one check per row; numbers in Expected/Actual cells)
-- **UI checks** — Summary / Overview / Statement, one line each
-- **How to retest** — 3–4 bullets
+## History (obsolete for TDPQA)
 
-No commit IDs/SHAs in user-facing Dev Test. No dense multi-fact sentences. No jargon (`reconciled`, `labd`, harness flags). Exact SHA stays agent-internal. Developer proof must be the latest comment. Full template: SKILL.md § QA retest / rework proof block.
+Before 2026-07-28, TDPQA had **no** RCA/Impact fields and used one structured
+`handoff_comment`. That pattern remains for **HSQA / AUT / unknown** projects
+(`comment_handoff`). Do not regress TDPQA to comment-only when fields exist.
 
-Skill: `.cursor/skills/jira-fix-update/SKILL.md` Step 0 + § QA retest / rework proof block  
-Helper: `jira-fix-adf.py project_mode | owners_tdpqa | handoff_comment`
+Skill: `.cursor/skills/jira-fix-update/SKILL.md`  
+Rule: `.cursor/rules/jira-tdpqa-qa-test-fields.mdc`  
+Helper: `jira-fix-adf.py` mode `tdpqa_field_handoff`

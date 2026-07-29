@@ -2,9 +2,10 @@
 name: jira-fix-update
 description: >-
   Update JIRA after a fix for QA handoff. SDCP: fill RCA/Impact/Dev custom fields.
-  TDPQA (and other projects without those fields): put the same content in ONE
-  structured handoff comment. Use when user asks to update/enrich JIRA, fill RCA,
-  or release a TDPQA-* / SDCP-* ticket to QA.
+  TDPQA: fill RCA/Impact/PrePost/AITDP custom fields (mandatory for QA Test) in
+  simple language; optional short ping. Other non-SDCP: structured handoff comment.
+  Use when user asks to update/enrich JIRA, fill RCA, or release a TDPQA-* / SDCP-*
+  ticket to QA.
 requires:
   - release-details
 reads:
@@ -36,14 +37,14 @@ After a code fix is shipped (or ready for QA), update the ticket with **business
 **Do not** duplicate release mail Special notes (SQL, masterdata) into RCA/Impact/Dev unless the user asks.
 
 ## One-page: how to enrich JIRA correctly (fast + clean)
-1. Route by key: `SDCP-*` = SDCP field handoff; `TDPQA-*` / other non-SDCP = structured comment handoff.
-2. Draft functional text only (no branch/SHA/harness jargon). For comment payload, use `rca` + `impact` + `dev` (and optional `notes`).
+1. Route by key: `SDCP-*` = `field_handoff`; `TDPQA-*` = `tdpqa_field_handoff`; other non-SDCP = `comment_handoff`.
+2. Draft **simple** functional text (no branch/SHA/harness jargon). TDPQA/SDCP fields: `rca` + `impact` + `pre`/`post` + AITDP. Comment-only projects: also `dev`.
 3. Preflight scan (fail closed): run `python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-KEY>`.
 4. Build the pack once: `bash scripts/bin/jira-enrich.sh pack <ISSUE-KEY> payload.json` (single forbidden scan, single ADF build).
 5. Apply:
-   - SDCP: update RCA/Impact/Dev custom fields (short ping comment optional)
-   - TDPQA/other: update exactly one structured handoff comment (edit in place when `comment_id` exists)
-6. Verify: ensure the handoff comment shows the required sections and real ADF mentions; transition only when the workflow allows.
+   - SDCP / TDPQA: update custom fields (short ping optional). TDPQA fields unblock **QA Test**.
+   - HSQA/AUT/other: one structured handoff comment (edit in place when `comment_id` exists)
+6. Verify: TDPQA fields non-null (RCA/Impact/PrePost/AITDP); transition only when the workflow allows.
 
 ## Fast path (mandatory — avoids slow multi-step enrich)
 
@@ -73,79 +74,84 @@ First run once per machine: `bash scripts/bin/jira-enrich.sh ensure`
 ---
 
 ```bash
-python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-102
-# → mode=comment_handoff | field_handoff
+python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-180
+# → mode=tdpqa_field_handoff | field_handoff | comment_handoff
 ```
 
-| Mode | Projects | Where RCA / Impact / Dev Test live |
-|------|----------|-------------------------------------|
-| **`field_handoff`** | **SDCP** only | Custom fields (`customfield_11137` / `11138` / `11901` …). Comment = short ping only. |
-| **`comment_handoff`** | **TDPQA**, HSQA, AUT, and any non-SDCP | **One structured handoff comment** (those fields do not exist). Set only the owners the project has. |
+| Mode | Projects | Where RCA / Impact live |
+|------|----------|-------------------------|
+| **`field_handoff`** | **SDCP** | Custom fields (`11137` / `11138` / `11901` …). Comment = short ping only. |
+| **`tdpqa_field_handoff`** | **TDPQA** | Custom fields (`11999` RCA / `12008` Impact / `12007` PrePost / `12000` AITDP remarks / `12001` Accuracy **whole %**). **Mandatory for QA Test.** **No Dev Test field** — always include `dev[]` in the pack; helper posts a companion comment headed **Dev Test Details** (+ optional **How to retest**). Short ping can be the comment lead-in. |
+| **`comment_handoff`** | HSQA, AUT, other non-SDCP | **One structured handoff comment**. Set only the owners the project has. |
 
 **Hard rules for agents:**
 
-1. Call `project_mode` before drafting. Never assume SDCP fields exist on TDPQA.
-2. **Never invent a companion SDCP ticket** just to have somewhere to put RCA fields — enrich the ticket the user named (unless they explicitly ask for an SDCP tracker).
-3. On `comment_handoff`, the handoff **comment is the product** (like field values on SDCP). Edit that comment in place on re-handoff; do not leave a vague “ready for QA” one-liner as the only handoff. Pass `comment_id` / `existing_comment_id` in the pack payload so `apply-pack` updates instead of creating a duplicate.
-4. Still run `python3 scripts/bin/jira-fix-adf.py scan "<full draft text>" --issue-key <ISSUE-KEY>` on every draft. The scan is strict: no other JIRA keys besides the target ticket, no GitHub URLs, and (for TDPQA/other comment handoffs) no prod-ops SQL snippets. Never tag `@darpan` (enforced via `never_mention`). **Machine validation:** `pack` / `validate_mode_comment` — SDCP ping ≤4 sentences / no section headers (or omit comment); TDPQA requires rca+impact+dev structured handoff (not ping-only). Tests: `scripts/lib/test_jira_fix_adf.py`.
+1. Call `project_mode` before drafting. Never send **SDCP** field IDs to TDPQA (and vice versa).
+2. **Never invent a companion SDCP ticket** just to host fields — enrich the ticket the user named.
+3. On **TDPQA**, fill the mandatory **fields** first (RCA/Impact/PrePost/AITDP). On `comment_handoff`, the handoff **comment** is the product — edit in place when `comment_id` exists.
+4. Still run `scan` on every draft. No other JIRA keys, no GitHub URLs, no `@darpan`. Comment-only projects: no prod-ops SQL. **Machine validation:** SDCP/TDPQA field modes allow omit/short ping; `comment_handoff` requires rca+impact+dev. Tests: `scripts/lib/test_jira_fix_adf.py`.
+5. **Strict ticket scope:** only the exact issue key. Do not cross-contaminate tickets.
+6. **Language:** simple words QA can understand in ~30 seconds. Rule: `.cursor/rules/jira-tdpqa-qa-test-fields.mdc`.
 
-5. **Strict ticket scope:** RCA/Root Cause/Fix/Impact/Dev Verification/QA Retest/Notes must only describe the concern for the exact issue key you’re enriching. Do not cross-contaminate with other tickets (e.g. CLB vs NEFT mixes).
+### TDPQA field handoff (canonical — QA Test)
 
-### TDPQA comment handoff (canonical)
+TDPQA Bug has mandatory fields for the **QA Test** transition. Fill them via `tdpqa_field_handoff` / `jira-enrich.sh pack|post`. Owners: `owners_tdpqa` (`11952` / `11953`).
 
-TDPQA has: assignee, Dev Owner (`customfield_11952`), QA Owner (`customfield_11953`), Fix Version labels, Bug Track, Environment. It does **not** have RCA / Impact / Dev Test / MICRO / Pre-Post / AITDP custom **fields** — so those go in the handoff **comment**, including **AITDP % + remarks** (mandatory).
+Accuracy (`12001`) = **whole percent** (`80`), not SDCP’s 0–1 fraction.
 
-The handoff comment must follow this template (clean, scan-friendly ADF sections):
-Summary, Root Cause, Fix, Impact, Dev Verification, QA Retest, Notes, Pre / Post deployment, AITDP.
-
-Common failure mode on TDPQA: agents attempted SDCP fields or created companion SDCP tickets. See `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md` for the correct pattern.
+Common failure mode: leaving fields empty and only commenting → **Transition failed** popup. See `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md`.
 
 ```bash
 python3 scripts/bin/jira-fix-adf.py owners_tdpqa
 # → customfield_11952 Dev Owner (Darpan), customfield_11953 QA Owner (Srikant)
 
-python3 scripts/bin/jira-fix-adf.py handoff_comment <<'EOF'
+# Preferred: field pack (unblocks QA Test)
+cat > /tmp/tdpqa-payload.json <<'EOF'
 {
-  "lead_in": "@Srikant Fix is ready for QA retest.",
   "rca": {
-    "situation": "...",
-    "cause": "...",
-    "resolution": "..."
+    "situation": "After rebooking, delayed payment interest was a little wrong.",
+    "cause": "The system kept using the old rate on an open interest window.",
+    "resolution": "When the rate changes, the old window is closed and a new one starts with the new rate."
   },
-  "impact": ["In scope …", "Unchanged …", "Edge: retest on fresh loans …"],
-  "dev": [
-    "Fresh … Result: Pass.",
-    "Regression … Result: Pass.",
-    "Note for QA — ticket LANs … use a fresh group."
+  "impact": [
+    "Fixes delayed payment interest after rebooking or rate change.",
+    "Does not change loans without a rate change.",
+    "Please retest on a fresh rebooked loan."
   ],
-  "result": "Developer scenarios: Pass.",
-  "service": "Accounting",
   "pre": "NA",
   "post": "NA",
-  "notes": "NA",
-  "aitdp_percent": 0.75,
-  "aitdp_remarks": "AI-assisted RCA using QA screenshots and loan data; traced root cause; implemented the functional fix; developer verified the scenarios."
+  "micro": ["accounting"],
+  "aitdp_percent": 0.80,
+  "aitdp_remarks": "Helped review the QA case and loan data, found the rate-window issue, applied the fix, and checked the result before sending to QA.",
+  "dev": [
+    "Fresh rebooked loan — delayed payment interest follows the new rate. Result: Pass.",
+    "Loan without a rate change — interest behaviour unchanged. Result: Pass."
+  ],
+  "qa_retest": [
+    "After the accounting build is shared, retest on a fresh rebooked loan."
+  ],
+  "ping_comment": "@Srikant @Reema Fix is ready for QA. Dev Test Details below."
 }
 EOF
-# → ADF; requires aitdp_percent + aitdp_remarks (exit 2 if missing); scan built-in
+bash scripts/bin/jira-enrich.sh post TDPQA-180 /tmp/tdpqa-payload.json
 ```
 
 Then:
 
-1. `editJiraIssue` — `assignee` + `owners_tdpqa` only (do **not** send SDCP customfield_11137 / 11676 etc.).
-2. `addCommentToJiraIssue(contentFormat=adf, commentBody=<handoff ADF>)` — or edit existing handoff comment id in place.
-3. Transition toward QA when workflow allows.
-4. Verify comment has **Summary / Root Cause / Fix / Impact / Dev Verification / QA Retest / Notes / Pre / Post / AITDP** sections and real mentions.
+1. `editJiraIssue` / `jira-enrich.sh post` — TDPQA fields `11999`/`12008`/`12007`/`12000`/`12001`/`12009`/`12006` + `assignee` + `owners_tdpqa`.
+2. **Companion comment (mandatory):** pack always posts **Dev Test Details** from `dev[]` (TDPQA has no Dev Test custom field). Optional `qa_retest` / `qa_retest_steps` → **How to retest**. `ping_comment` is the short lead-in with mentions.
+3. Transition toward **QA Test** when workflow allows.
+4. Verify fields non-null via `getJiraIssue`; comment shows Dev Test Details.
 
-**AITDP in TDPQA comment (mandatory):**
+**AITDP on TDPQA fields (mandatory):**
 
-| In comment | How to write |
-|------------|--------------|
-| JIRA as per AI TDP | `Yes` |
-| AITDP effectiveness | Human **percent** in the comment (`75%`). Pass `aitdp_percent` as **0–1 fraction** (`0.75`) to the helper — same as SDCP field scale |
-| AITDP remarks | 2–4 sentences: analysis + finding + fix + verify — **never** Cursor / IDE brand |
+| Field | How to write |
+|-------|--------------|
+| JIRA as per AI TDP (`12009`) | Yes `12785` |
+| AiTDP Dev Accuracy (`12001`) | **Whole percent** (`80`). Helper converts from `aitdp_percent` 0–1 |
+| AiTDP remarks (`12000`) | 2–4 simple sentences: analysis + finding + fix + verify — **never** Cursor / IDE brand |
 
-Helper rejects handoff JSON without `aitdp_percent` + `aitdp_remarks`.
+Helper rejects pack without `aitdp_percent` + `aitdp_remarks`.
 
 ### SDCP field handoff (unchanged)
 
@@ -254,13 +260,13 @@ Hard limits for SDCP ping comments:
 - **No build/branch/version** unless the user explicitly asked
 - Prefer edit-in-place over posting a second status dump
 
-### TDPQA handoff comment (comment_handoff) — structured, complete
+### TDPQA fields (tdpqa_field_handoff) — simple language
 
-On TDPQA there are **no** RCA/Impact/Dev/AITDP fields. The handoff comment **must** carry the same substance SDCP puts in fields, using `jira-fix-adf.py handoff_comment`.
-Required section headings: **Summary**, **Root Cause**, **Fix**, **Impact**, **Dev Verification**, **QA Retest**, **Notes**, **Pre / Post deployment**, **AITDP** (Yes + effectiveness % + remarks).
-Optional: **Service** / **Test result**.
+Fill **RCA / Impact / Pre-Post / AITDP remarks + Accuracy** on the ticket. Use short plain sentences QA can read in ~30 seconds.
 
-Still: no harness jargon, no branch/SHA/version in the body, real ADF `@mentions`. One comment — edit in place when content changes.
+**Dev Test Details:** TDPQA Bug has **no** Dev Test custom field (unlike SDCP `11901`). Always pass `dev[]` in the pack — helper posts a companion comment headed **Dev Test Details** (ordered functional steps; each ends with `Result: Pass` / `Result: Fail` when run by dev). Optional `qa_retest` → **How to retest**. Do **not** leave QA without retest steps. Do **not** invent an SDCP ticket just to host Dev Test.
+
+HSQA/AUT still use `comment_handoff` (structured comment) — see `handoff_comment` helper.
 
 ### Tone (all modes)
 
@@ -270,21 +276,21 @@ Write like a developer explaining to a teammate — natural, direct, confident. 
 - State what was wrong, what changed functionally, and what to retest — plainly
 
 <bad-example>
-Robotic SDCP ping (or TDPQA one-liner missing handoff):
+Robotic ping with empty mandatory fields:
 ```
 @Reema ready for QA.
 ```
 </bad-example>
 
 <good-example>
-SDCP ping (fields already filled):
+SDCP / TDPQA ping (fields already filled):
 ```
 @Sudheer @Srikant done as per your last comment. Interest Original now shows total billed interest and Outstanding = Original − (Paid + Waived + Written Off). @Reema pls retest once the build is shared.
 ```
 </good-example>
 
 <good-example>
-TDPQA handoff comment (via handoff_comment helper) — lead-in + Summary/Root Cause/Fix + Impact + Dev Verification/QA Retest + Notes + Pre/Post NA. QA can start without opening another ticket.
+TDPQA RCA field (simple): “After rebooking, delayed payment interest was a little wrong. The system kept the old rate on an open window. We close that window and start a new one with the new rate.”
 </good-example>
 
 **Minimal fix (mandatory):** Read `.cursor/skills/minimal-fix/SKILL.md`. Impact Analysis **must** include: what is **not** changed, whether read-path dedupe was **rejected**, and post-deploy SQL for existing poison rows (not code guards for dirty data).
@@ -351,7 +357,7 @@ python3 scripts/bin/jira-fix-adf.py assignee
 python3 scripts/bin/jira-fix-adf.py owners_tdpqa
 ```
 
-Do **not** send SDCP `customfield_11898` / `11137` / `11676` / AITDP keys to TDPQA — the edit will fail or silently ignore. Put **AITDP Yes + % + remarks inside the handoff comment** via `aitdp_percent` / `aitdp_remarks` on `handoff_comment` (helper fail-closes if missing).
+Do **not** send SDCP `customfield_11898` / `11137` / `11676` keys to TDPQA — use TDPQA IDs (`11999` / `12008` / `12007` / `12000` / `12001` whole %). Helper `tdpqa_field_handoff` maps the payload correctly.
 
 Override owners only when the user names different people.
 
@@ -365,12 +371,12 @@ Override owners only when the user names different people.
 
 ### Shared
 
-1. **`project_mode <KEY>`** — choose `field_handoff` vs `comment_handoff`.
-2. **Read ticket** — `getJiraIssue` (status, existing handoff comment id, owners).
-3. **Draft** — same business content (RCA / Impact / Dev) either way; scan forbidden tokens.
+1. **`project_mode <KEY>`** — `field_handoff` | `tdpqa_field_handoff` | `comment_handoff`.
+2. **Read ticket** — `getJiraIssue` (status, existing fields, owners).
+3. **Draft** — simple business RCA / Impact / Pre-Post / AITDP; scan forbidden tokens.
 4. **Owners + assignee** — `owners` or `owners_tdpqa` matching the mode.
-5. **Apply handoff** — fields (SDCP) **or** `handoff_comment` ADF (TDPQA).
-6. **QA transition** when available; verify read-back.
+5. **Apply handoff** — fields (SDCP / TDPQA) **or** `handoff_comment` ADF (HSQA/AUT).
+6. **QA Test transition** when available; verify field read-back.
 
 ### SDCP only (after step 3)
 
@@ -380,17 +386,17 @@ Override owners only when the user names different people.
 
 ### TDPQA only (after step 3)
 
-- `handoff_comment` JSON → ADF comment (canonical).
-- `editJiraIssue` with assignee + `owners_tdpqa` only.
+- Pack/post `rca` + `impact` + `pre`/`post` + AITDP + **`dev[]`** into TDPQA custom fields (`tdpqa_field_handoff`); pack fails closed without `dev[]`.
+- Companion comment always includes **Dev Test Details** from `dev[]` (no Dev Test field on TDPQA). Optional `qa_retest` + short `ping_comment` lead-in.
+- `editJiraIssue` also sets assignee + `owners_tdpqa` + Micro when known.
 - Do **not** create an SDCP bug “for fields” unless the user asks.
+- Empty mandatory fields → Transition failed; missing Dev Test comment → QA cannot retest cleanly.
 
-Optional: on **SDCP**, a short ping comment is enough when fields are filled. On **TDPQA**, the structured handoff comment is mandatory — do not leave QA with only “ready for QA”.
-
-**QA data caveat** (both modes): if earlier QA loans are already dirty from pre-fix builds, say so in Dev Test / handoff Dev section — retest on fresh loans; functional language only.
+**QA data caveat** (both modes): if earlier QA loans are already dirty from pre-fix builds, say so in Impact / retest bullet — retest on fresh loans; functional language only.
 
 ## Fields to update (every **SDCP** fix handoff)
 
-For **TDPQA**, skip this table — use Step 0 `comment_handoff` instead.
+For **TDPQA**, see [fields-reference.md](fields-reference.md) § TDPQA (IDs differ; Accuracy = whole %).
 
 | Field | Key | Content rules |
 |-------|-----|----------------|
@@ -637,19 +643,19 @@ editJiraIssue(
 
 ## Checklist before closing
 
-- [ ] **`project_mode` chosen** — SDCP=fields; TDPQA=handoff comment (no fake companion SDCP)
-- [ ] **Forbidden-token scan PASS** — including handoff comment / AITDP remarks
+- [ ] **`project_mode` chosen** — SDCP=`field_handoff`; TDPQA=`tdpqa_field_handoff`; other=`comment_handoff` (no fake companion SDCP)
+- [ ] **Forbidden-token scan PASS** — including AITDP remarks
 - [ ] **No version/branch** in RCA / Impact / Dev / comments
 - [ ] **No Cursor / IDE brand** in any JIRA text
-- [ ] **Dev Test / handoff Dev = functional QA steps** — not ntest/registry/e2e
+- [ ] **Simple language** — QA can read fields in ~30 seconds
 - [ ] **Assignee + project owners set** — SDCP `owners` **or** TDPQA `owners_tdpqa`
 - [ ] **SDCP only:** AiTDP Yes + 0–1 fraction + remarks; MICRO; Pre/Post; fields `11137`/`11138`/`11901`
-- [ ] **TDPQA only:** one `handoff_comment` with RCA + Impact + Dev + Pre/Post + **AITDP % + remarks**; edit-in-place while still newest, else new comment after latest QA observation
-- [ ] **Rework / reopened ticket:** simple ADF tables present (Test data, Observation checks with Expected/Actual per row, UI checks, How to retest) — no commit SHA; no dense multi-fact sentences; no "Pass" without Expected vs Actual
-- [ ] **QA Retest transition** used if exposed; otherwise reported unavailable (never guess QA:Traige)
+- [ ] **TDPQA only:** fields `11999`/`12008`/`12007`/`12000`/`12001`(whole %)/`12009` filled; **`dev[]` companion comment** with Dev Test Details (required — no Dev Test field)
+- [ ] **Rework / reopened ticket:** simple ADF tables in comment when useful (Test data, Expected/Actual); no commit SHA
+- [ ] **QA Test / QA Retest transition** used if exposed; otherwise reported unavailable (never guess QA:Traige)
 - [ ] **Human tone** — developer-to-QA
 - [ ] No empty ADF paragraphs
-- [ ] `getJiraIssue` / comment read-back confirms content + real mentions
+- [ ] `getJiraIssue` read-back confirms fields + real mentions if commented
 
 ## Related
 
@@ -657,7 +663,9 @@ editJiraIssue(
 - RCA email (Subject + body): `.cursor/skills/fix-rca-email/SKILL.md`
 - Field ids + repo map: [fields-reference.md](fields-reference.md)
 - Owners defaults: [owners-defaults.json](owners-defaults.json)
+- Rule: `.cursor/rules/jira-tdpqa-qa-test-fields.mdc`
 - Memory: `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md`
+- Memory: `cursor-bundle/memory/feedback_jira_tdpqa_dev_test_comment.md` — TDPQA has no Dev Test field; pack requires `dev[]` companion comment
 - Memory: `cursor-bundle/memory/feedback_jira_enrich_forbidden_scan_assignee.md`
 - Memory: `cursor-bundle/memory/feedback_jira_aitdp_remarks_no_cursor_brand.md`
-- Memory: `cursor-bundle/memory/feedback_jira_aitdp_effectiveness_fraction.md` — `%` write = 0–1 fraction
+- Memory: `cursor-bundle/memory/feedback_jira_aitdp_effectiveness_fraction.md` — SDCP `%` write = 0–1 fraction; TDPQA Accuracy = whole %

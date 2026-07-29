@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build ADF payloads for SDCP field handoff and TDPQA comment handoff. No API calls."""
+"""Build ADF payloads for SDCP / TDPQA field handoff and comment handoff. No API calls."""
 
 from __future__ import annotations
 
@@ -174,29 +174,46 @@ def comment_doc(text: str, mentions: dict[str, str] | None = None) -> dict[str, 
     return doc(*(blocks or [paragraph(text)]))
 
 
-# Projects without SDCP RCA/Impact/Dev custom fields → comment handoff mode.
-COMMENT_HANDOFF_PROJECTS = frozenset({"TDPQA", "HSQA", "AUT"})
+# Projects without SDCP RCA fields that still use comment-only handoff.
+COMMENT_HANDOFF_PROJECTS = frozenset({"HSQA", "AUT"})
+
+# TDPQA Bug (11014) — mandatory for QA Test transition (2026-07-28).
+TDPQA_RCA = "customfield_11999"
+TDPQA_IMPACT = "customfield_12008"
+TDPQA_PREPOST = "customfield_12007"
+TDPQA_AITDP_REMARKS = "customfield_12000"
+TDPQA_AITDP_ACCURACY = "customfield_12001"  # float — write whole percent (80), not 0.80
+TDPQA_AITDP_YESNO = "customfield_12009"
+TDPQA_AITDP_YES = [{"id": "12785"}]
+TDPQA_MICRO = "customfield_12006"
+TDPQA_MICRO_ACCOUNTING = [{"id": "12770"}]
 
 
 def project_mode(issue_key: str) -> dict[str, Any]:
-    """Route SDCP field handoff vs TDPQA-style comment handoff from issue key."""
+    """Route SDCP / TDPQA field handoff vs comment-only handoff from issue key."""
     key = (issue_key or "").strip().upper()
     prefix = key.split("-", 1)[0] if "-" in key else key
     if prefix == "SDCP":
         mode = "field_handoff"
+        note = "Fill customfield_11137/11138/11901 + short ping comment"
+        owners_cmd = "owners"
+    elif prefix == "TDPQA":
+        mode = "tdpqa_field_handoff"
+        note = (
+            "Fill TDPQA RCA/Impact/PrePost/AITDP fields (11999/12008/12007/12000) "
+            "+ owners; keep a short QA ping comment"
+        )
+        owners_cmd = "owners_tdpqa"
     else:
-        # TDPQA / HSQA / AUT / unknown: no SDCP RCA fields — comment is canonical.
         mode = "comment_handoff"
+        note = "Put RCA+Impact+Dev+Pre/Post in ONE handoff comment; set project owners only"
+        owners_cmd = "owners_tdpqa"
     return {
         "issue_key": key,
         "project": prefix,
         "mode": mode,
-        "owners_cmd": "owners" if mode == "field_handoff" else "owners_tdpqa",
-        "note": (
-            "Fill customfield_11137/11138/11901 + short ping comment"
-            if mode == "field_handoff"
-            else "Put RCA+Impact+Dev+Pre/Post in ONE handoff comment; set project owners only"
-        ),
+        "owners_cmd": owners_cmd,
+        "note": note,
     }
 
 
@@ -206,6 +223,31 @@ def load_tdpqa_owners() -> dict[str, Any]:
         "customfield_11952": [{"accountId": "5e9d51241067100c195f7b12"}],  # Dev Owner
         "customfield_11953": [{"accountId": "5efab45c61665e0b9ed294bd"}],  # QA Owner
     }
+
+
+def tdpqa_dev_test_comment_doc(
+    *,
+    lead_in: str,
+    dev: list[str],
+    qa_retest: list[str] | None = None,
+) -> dict[str, Any]:
+    """TDPQA companion comment — Dev Test Details (no Dev Test custom field on TDPQA).
+
+    Fields hold RCA/Impact/PrePost/AITDP. Dev scenarios go here as a structured
+    comment so QA still gets retest steps. Optional short lead_in with @mentions.
+    """
+    mentions = load_mentions()
+    blocks: list[dict[str, Any]] = []
+    lead = (lead_in or "").strip()
+    if lead:
+        blocks.append(_paragraph_with_mentions(lead, mentions))
+    blocks.append(heading_paragraph("Dev Test Details"))
+    blocks.append(ordered_list(dev))
+    retest = [str(x).strip() for x in (qa_retest or []) if str(x).strip()]
+    if retest:
+        blocks.append(heading_paragraph("How to retest"))
+        blocks.append(ordered_list(retest))
+    return doc(*blocks)
 
 
 def handoff_comment_doc(payload: dict[str, Any]) -> dict[str, Any]:
@@ -409,7 +451,7 @@ def flatten_handoff_text(payload: dict[str, Any]) -> str:
         v = rca.get(k) or payload.get(k)
         if v:
             flat_parts.append(str(v))
-    for lst_key in ("impact", "dev", "scenario_titles"):
+    for lst_key in ("impact", "dev", "scenario_titles", "qa_retest", "qa_retest_steps"):
         flat_parts.extend(str(x) for x in (payload.get(lst_key) or []))
     for k in ("test_result", "aitdp_remarks", "aitdp_remark"):
         if payload.get(k) is not None:
@@ -434,32 +476,33 @@ def _sentence_count(text: str) -> int:
 def validate_mode_comment(mode: str, payload: dict[str, Any]) -> None:
     """Project-aware comment shape — fail closed before ADF build.
 
-    SDCP (field_handoff): comment optional; if present → short retest ping only.
-    TDPQA (comment_handoff): one structured handoff (rca + impact + dev); no ping-only.
+    SDCP / TDPQA field modes: comment optional; if present → short retest ping only.
+    HSQA/AUT (comment_handoff): one structured handoff (rca + impact + dev).
     """
-    if mode == "field_handoff":
+    if mode in ("field_handoff", "tdpqa_field_handoff"):
+        label = "SDCP" if mode == "field_handoff" else "TDPQA"
         ping = (payload.get("ping_comment") or payload.get("comment") or "").strip()
         if not ping:
             return
         errors: list[str] = []
         if len(ping) > _SDCP_PING_MAX_CHARS:
-            errors.append(f"SDCP ping length {len(ping)} > {_SDCP_PING_MAX_CHARS}")
+            errors.append(f"{label} ping length {len(ping)} > {_SDCP_PING_MAX_CHARS}")
         sc = _sentence_count(ping)
         if sc > _SDCP_PING_MAX_SENTENCES:
-            errors.append(f"SDCP ping has {sc} sentences (max {_SDCP_PING_MAX_SENTENCES})")
+            errors.append(f"{label} ping has {sc} sentences (max {_SDCP_PING_MAX_SENTENCES})")
         if _SDCP_SECTION_HEADER.search(ping):
             errors.append(
-                "SDCP ping must not contain structured handoff section headers "
-                "(put RCA/Impact/Dev in custom fields)"
+                f"{label} ping must not contain structured handoff section headers "
+                "(put RCA/Impact in custom fields)"
             )
         hits = scan_forbidden(ping)
         if hits:
-            errors.append("FORBIDDEN in SDCP ping: " + ", ".join(hits))
+            errors.append(f"FORBIDDEN in {label} ping: " + ", ".join(hits))
         if errors:
             raise ValueError("; ".join(errors))
         return
 
-    # comment_handoff (TDPQA / HSQA / AUT / unknown)
+    # comment_handoff (HSQA / AUT / unknown)
     rca = payload.get("rca") or {}
     situation = (rca.get("situation") or payload.get("situation") or "").strip()
     cause = (rca.get("cause") or payload.get("cause") or "").strip()
@@ -475,16 +518,15 @@ def validate_mode_comment(mode: str, payload: dict[str, Any]) -> None:
         missing.append("dev[]")
     if missing:
         raise ValueError(
-            "TDPQA comment_handoff requires structured handoff ("
+            "comment_handoff requires structured handoff ("
             + ", ".join(missing)
             + ") — not a one-liner ping"
         )
-    # ping_comment alone is never enough on comment_handoff
     if (payload.get("ping_comment") or "").strip() and not (
         situation and cause and resolution and impact and dev
     ):
         raise ValueError(
-            "TDPQA comment_handoff ignores ping_comment as the handoff; "
+            "comment_handoff ignores ping_comment as the handoff; "
             "provide rca/impact/dev (edit existing comment in place)"
         )
 
@@ -581,6 +623,62 @@ def build_handoff_pack(issue_key: str, payload: dict[str, Any]) -> dict[str, Any
         ping = (payload.get("ping_comment") or payload.get("comment") or "").strip()
         if ping:
             comment_adf = comment_doc(ping)
+    elif mode == "tdpqa_field_handoff":
+        # Mandatory for QA Test transition: RCA, Impact, Pre/Post, AITDP remarks.
+        aitdp_frac = require_aitdp_fields(payload, label="TDPQA pack")
+        edit_fields.update(load_tdpqa_owners())
+
+        rca = payload.get("rca") or {}
+        situation = (rca.get("situation") or payload.get("situation") or "").strip()
+        cause = (rca.get("cause") or payload.get("cause") or "").strip()
+        resolution = (rca.get("resolution") or payload.get("resolution") or "").strip()
+        if not (situation and cause and resolution):
+            raise ValueError("TDPQA pack requires rca.situation/cause/resolution")
+        edit_fields[TDPQA_RCA] = rca_doc(situation, cause, resolution)
+
+        impact = [str(x).strip() for x in (payload.get("impact") or []) if str(x).strip()]
+        if not impact:
+            raise ValueError("TDPQA pack requires impact[]")
+        edit_fields[TDPQA_IMPACT] = impact_doc(impact)
+
+        pre = payload.get("pre", "NA")
+        post = payload.get("post", "NA")
+        edit_fields[TDPQA_PREPOST] = pre_post_doc(str(pre), str(post))
+
+        remarks = (
+            payload.get("aitdp_remarks") or payload.get("aitdp_remark") or ""
+        ).strip()
+        edit_fields[TDPQA_AITDP_REMARKS] = doc(paragraph(remarks))
+        edit_fields[TDPQA_AITDP_YESNO] = TDPQA_AITDP_YES
+        # TDPQA accuracy is a whole percent (80), unlike SDCP fraction field.
+        edit_fields[TDPQA_AITDP_ACCURACY] = float(round(aitdp_frac * 100))
+
+        micro_keys = [str(k).strip().lower() for k in (payload.get("micro") or ["accounting"])]
+        if "accounting" in micro_keys or not micro_keys:
+            edit_fields[TDPQA_MICRO] = TDPQA_MICRO_ACCOUNTING
+
+        # TDPQA has no Dev Test custom field — require functional `dev[]` and post
+        # as companion comment (optional short lead_in / ping + How to retest).
+        dev = [str(x).strip() for x in (payload.get("dev") or []) if str(x).strip()]
+        if not dev:
+            raise ValueError(
+                "TDPQA pack requires dev[] (Dev Test Details) — no Dev Test field on "
+                "TDPQA; posted as companion comment with heading Dev Test Details"
+            )
+        qa_retest = [
+            str(x).strip()
+            for x in (payload.get("qa_retest") or payload.get("qa_retest_steps") or [])
+            if str(x).strip()
+        ]
+        ping = (payload.get("ping_comment") or payload.get("comment") or payload.get("lead_in") or "").strip()
+        if not ping:
+            ping = (
+                "@Srikant @Reema Fix is ready for QA. Dev Test Details below — "
+                "please retest after the accounting build is shared."
+            )
+        comment_adf = tdpqa_dev_test_comment_doc(
+            lead_in=ping, dev=dev, qa_retest=qa_retest or None
+        )
     else:
         require_aitdp_in_handoff(payload)
         edit_fields.update(load_tdpqa_owners())
