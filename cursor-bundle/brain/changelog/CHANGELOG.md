@@ -1,3 +1,11 @@
+- **TDPQA-192** `a9bcc275a` accounting@mfi_integration_v3.7.1 — DIY/DIM dual-code hubs (`resolveDaysInYear`/`isDaysInYear360`): raw 360/ACTUAL + DIY_* for getDaywiseInterestRate + Days360; apiName fetchRestructuringRepaymentSchedule; tables product_scheme.interest_calculation_days_in_year
+
+## 2026-07-28 | acct (WIP) | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 parent FC force-post+bill slice + RSCH BLD_INT
+
+SHG parent mirror: INTEREST post exact child force-bill amount then BILLING; IAD posted stamped after TM only.
+Parent RSCH_LOAN_PREPAYMENT: remap inherited INT_AMT→BLD_INT_AMT (BI); TAR setup SQL for BLD_INT_AMT/ADV_BLD_INT_AMT.
+| kg-flow | loanPrepayment / parentLoanAccountPartPrepayment
+
 ## 2026-07-27 | acct `f377e6c80` | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 bpi_amount=0 after force-bill (all paths)
 - apiName: loanPrepayment, loanDeathForeclosure, individualChildLoanForeclosure; tables: transaction_partition_details, loan_account_billing_details
 - ForceBillBillingSupport.postPartialCycleBilling zeros bpi_amount after AIR→BI BILLING — INDL/JLG/SHG child FC + DFC child/parent
