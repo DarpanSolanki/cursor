@@ -1,3 +1,7 @@
+[2026-07-29] | FIX TDPQA-192 L1 | Dual-code DIY/DIM hubs: accept raw 360/365/ACTUAL + DIY_*/DIM_* (DPIC masterdata); fix /0 in getDaywiseInterestRate + Days360 path | AssetsConstants.java, RepaymentScheduleUtil.java, InterestCalculationUtil.java @ mfi_integration_v3.7.1
+
+[2026-07-28] | FIX TDPQA-72 L1 | Parent FC mirror: force-post INTEREST slice (=child billAmount) then bill; stamp IAD only after TM; parent RSCH remap INT_AMT→BLD_INT_AMT (BI) + local TAR setup | ForceBillAccrualSliceSupport.java, RegularForeclosureForceBillService.java, PopulateAdditionalAmountForPartPrepaymentProcessor.java, local_setup_rsch_loan_prepayment_bld_int_tar.sql @ mfi_integration_v3.4.2.4
+
 [2026-07-28] | SHIP-TIME | Live progress contract (ship_progress + run-guarded heartbeats); booking wait floor; exclude ship_scope=manual (full_regression+ud_compliance); invariants gate on main; stack-doctor/chain_budgets | scripts/lib/ship_progress.py, run-guarded.sh, ship-loop-gate.sh, wait_batch_job.sh, impact_tests.py, registry.json
 
 [2026-07-28] | TEST harness | Fail-fast batch wait + dpi_prep_before_batch; harness SoT on origin/main (cherry-pick from 3.4.2.4 + overlay) | scripts/dpic/lib/wait_batch_job.sh, dpi_demo_fixture.sh, dpi-sanity.sh, agent-ops-lib.sh, feedback_harness_push_origin_main_only.md
