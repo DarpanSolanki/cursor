@@ -1,8 +1,12 @@
+- [PlatformDate prod == system](feedback_platform_date_prod_equals_system.md) — valueDate≡systemDate in prod; TDPQA-207 L1 REJECTED demotion only, no system_created_on column. (2026-07-29)
+- [KG MCP stdout protocol](feedback_kg_mcp_stdout_protocol.md) — validate/fixed-elsewhere stdout leak broke Cursor JSON-RPC; capture + dup2; smoke `kg-mcp-smoke.sh`. (2026-07-29)
 - [Upstream fetch stamp](feedback_upstream_fetch_stamp.md) — stale stamp hid real fetch → false fixed-elsewhere STALE; git-fetch-all writes stamp; age=max(stamp,refs). (TDPQA-207 2026-07-29)
 - Ship-test autonomy (change→impact on push): `feedback_ship_test_autonomy_change_map.md` + `scripts/lib/change_test_map.json`.
 - [DPIC harness gotchas](feedback_dpic_harness_gotchas.md) — two clocks (JOB_TIME vs platform date); 132280/134243/130241 = harness first; `dpic_harness_lib.sh`; never fail ship on overview optional keys. (2026-07-28)
 
 # Memory Index
+- [LMS flow map audit](feedback_lms_flow_map_audit.md) — broad /loan/prepayment/ swallowed getLoanForeclosureDetails; run `lms_flow_map_audit.py` (CRITICAL fail-closed). (2026-07-29)
+- [TDPQA-207 real API mandatory](feedback_tdpqa207_real_api_test_mandatory.md) — money fix ≠ compile; map PrepaymentDetailsRepository→getLoanForeclosureDetails; run foreclosure.by_latest_details_api. (2026-07-29)
 - [Harness push = origin/main only](feedback_harness_push_origin_main_only.md) — `scripts/dpic` / dpi-sanity / agent-ops DPI prep → commit+push **main** only; never train branch as harness SoT. (2026-07-28)
 - [Child CG* vs parent named GL](feedback_child_cg_gl_vs_parent_named.md) — never strip CG / join parent `general_ledger.name` for child force-bill legs; quote `tpd.gl_code` as stored (CG13336…). (TDPQA-72 2026-07-24)
 - [TDPQA-72 EXCESS GL vs LAPD](feedback_tdpqa72_excess_gl_vs_lapd.md) — restore Sheet15 EXCESS_* on child+parent; keep lapd.excess=0 for 390372 ₹54 UI; Darpan `9b6454df6` was that UI fix. (2026-07-24)
@@ -27,6 +31,7 @@
 - [Local folders = GitHub trustt-*](feedback_local_folders_match_github_trustt.md) — disk dirs renamed 2026-07-15 to match GitHub; `includeBuild ../trustt-platform-lib`; Java `in.novopay.*` unchanged.
 - [TDPQA Dev Test = companion comment](feedback_jira_tdpqa_dev_test_comment.md) — no Dev Test field on TDPQA; pack requires `dev[]` → comment **Dev Test Details** (+ optional How to retest). (TDPQA-192 2026-07-29)
 - [TDPQA JIRA = field handoff for QA Test](feedback_jira_tdpqa_comment_handoff.md) — fill RCA/Impact/PrePost/AITDP fields (`tdpqa_field_handoff`); simple language; Accuracy = whole % (`80`); rule `.cursor/rules/jira-tdpqa-qa-test-fields.mdc`; never QA:Traige as substitute.
+- [Push reported train before JIRA enrich](feedback_jira_push_train_before_enrich.md) — prove `origin/<train>` has the fix before QA handoff; `origin/fix/…` alone is not enough (TDPQA-207 2026-07-29).
 - [Workspace once-and-for-all](feedback_workspace_once_and_for_all.md) — no daily re-setup; ship-discipline hard gate + path-absolute smoke/enrichment + workspace-contract; fix gates not essays when agents drift.
 - [Code-backed simulation testing](feedback_code_backed_simulation_testing.md) — prefer realtime ntest; if stage blocked use orch sibling / processor mirror from disk XML/Java in registry (`verify_mode`); never guess expects; TDPQA-102 case `reopening.child_payments_parity_sim`.
 - [Post-ship companions mandatory](feedback_post_ship_registry_runbook_gap_mandatory.md) — money fix DoD = registry/ntest note + runbook + gaps RESOLVED **with** code; compile/changelog alone is NOT enough (A2+B DFC 2026-07-15 miss).

@@ -364,13 +364,32 @@ Override owners only when the user names different people.
 ## When to run
 
 - User says update JIRA / fill RCA / hand off ticket / enrich for QA retest
-- After fix is on origin (or user asked handoff before push)
+- **Only after** the fix commit is on the correct **origin** train branch (see Push gate below) — unless the user explicitly asks for draft-only / no-push handoff
 - Ticket key `SDCP-*` **or** `TDPQA-*` (and similar non-SDCP keys)
+
+## Push gate (mandatory before QA handoff — TDPQA-207 lesson)
+
+Do **not** treat `origin/fix/<ticket>-…` alone as “pushed for QA” when the ticket’s reported train is an integration branch (e.g. `mfi_integration_v3.5.2.2`).
+
+**Hard sequence:**
+
+1. Identify the **reported train** from the ticket (Reported version / Environment tag / user ask) — e.g. `mfi_integration_v3.5.2.2`.
+2. Prove the fix is on **`origin/<train>`** (DarpanSolanki), not only on a personal `fix/*` branch:
+   ```bash
+   git -C <service-repo> fetch origin
+   git -C <service-repo> log -1 --oneline origin/<train>
+   # tip must include the fix commit (merge-base / show path with the change)
+   ```
+3. If missing: cherry-pick/rebase onto `upstream/<train>` tip → **`git push -u origin <train>`** (never upstream/trusttai) → re-verify `origin/<train>`.
+4. **Then** enrich JIRA / move to QA Test.
+
+A feature-branch push (`origin/fix/…`) is fine for WIP review, but **QA handoff requires the train branch on origin**.
 
 ## Workflow
 
 ### Shared
 
+0. **Push gate** — `origin/<reported-train>` contains the fix (or user waived).
 1. **`project_mode <KEY>`** — `field_handoff` | `tdpqa_field_handoff` | `comment_handoff`.
 2. **Read ticket** — `getJiraIssue` (status, existing fields, owners).
 3. **Draft** — simple business RCA / Impact / Pre-Post / AITDP; scan forbidden tokens.

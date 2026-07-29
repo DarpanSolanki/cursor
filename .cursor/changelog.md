@@ -1,3 +1,19 @@
+## 2026-07-29 — TDPQA-207 train push + JIRA sequencing
+- Correction: fix was only on `origin/fix/tdpqa-207-foreclosure-by-latest`; now also on **`origin/mfi_integration_v3.5.2.2` @ c7657a07df** (upstream tip + cherry-pick). Never call feature-branch-only “pushed for QA”.
+- Rules: jira-fix-update Push gate; `jira-tdpqa-qa-test-fields.mdc`; memory `feedback_jira_push_train_before_enrich.md`.
+
+## 2026-07-29 — TDPQA-207 L1 + MCP knowledge
+- L1 confirmed: PrepaymentDetailsRepository demotes REJECTED for BY_LATEST (sha 3a21599a1). ntest `foreclosure.by_latest_details_api` PASS on LAN 0000001440. No system_created_on (PlatformDateUtil prod valueDate==systemDate).
+- MCP genuine gaps: curated diags for BY_LATEST+PlatformDate; workspace_status stack-doctor timeout 12→45s; by-latest test harness fixes (LAN/payment_mode/python argv).
+
+## 2026-07-29 — trustt-kg MCP stdout protocol fix
+- Root cause: kg validate / fixed-elsewhere subprocess stdout polluted MCP JSON-RPC (`OK: N nodes`, `REUSE_FORBIDDEN`) → Cursor serverStatus=error.
+- Fix: capture in kg.py; MCP dup2 stdout→stderr; kg_map_audit tool; `scripts/bin/kg-mcp-smoke.sh` 15/15 PASS.
+
+[2026-07-29] | WORKSPACE | Full LMS map audit: change_test_map v2 (specific needles before broad packages); lms_flow_map_audit.py CRITICAL fail-closed; TDPQA-207 class misroutes fixed | change_test_map.json, lms_flow_map_audit.py
+
+[2026-07-29] | FIX TDPQA-207 L1 | BY_LATEST deprioritises REJECTED/REJECT in findLatestByLoanAccountNos (DISTINCT ON) + getIdAndLoanAccountIdByAcctNo; build green + QA3 proof | PrepaymentDetailsRepository.java @ mfi_integration_v3.5.2.2 3a21599a1
+
 [2026-07-29] | WORKSPACE | fixed-elsewhere unblock: stale `novopay-upstream-fetch.stamp` no longer hides real upstream fetch; `git-fetch-all.sh` writes stamp after upstream fetch | branch_train.py, git-fetch-all.sh, test_branch_train.py
 
 [2026-07-29] | FIX TDPQA-192 L1 | Dual-code DIY/DIM hubs: accept raw 360/365/ACTUAL + DIY_*/DIM_* (DPIC masterdata); fix /0 in getDaywiseInterestRate + Days360 path | AssetsConstants.java, RepaymentScheduleUtil.java, InterestCalculationUtil.java @ mfi_integration_v3.7.1

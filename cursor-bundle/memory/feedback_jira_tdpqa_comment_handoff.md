@@ -27,6 +27,7 @@ Script / AI TDP Improvement Remarks"*.
 
 ## Standing rule
 
+0. **Push gate first** — fix must be on `origin/<reported-train>` before enrich / QA Test. See `feedback_jira_push_train_before_enrich.md`.
 1. `python3 scripts/bin/jira-fix-adf.py project_mode <KEY>` → `tdpqa_field_handoff` for `TDPQA-*`.
 2. Fill the fields above in **simple language** (what broke / why / fix; impact bullets; Pre/Post NA; AITDP remarks + %).
 3. **Always include `dev[]`** — TDPQA has no Dev Test field; pack posts companion comment **Dev Test Details** (+ optional `qa_retest`). Pack fails closed without `dev[]`. See `feedback_jira_tdpqa_dev_test_comment.md`.

@@ -30,9 +30,14 @@ Moving a **TDPQA** bug to **QA Test** fails unless these ticket fields are fille
 - No `@darpan`. No other ticket keys unless the user asked.
 - Prefer "delayed payment interest" over DPIC jargon when the ticket uses plain words; match the ticket's own wording when QA already used a term.
 
+## Push before enrich (mandatory)
+
+Before filling fields / moving to **QA Test**: prove the fix is on **`origin/<reported-train>`** (e.g. `origin/mfi_integration_v3.5.2.2`), not only `origin/fix/…`. Feature-branch-only ≠ QA-ready. Skill: `jira-fix-update` § Push gate.
+
 ## Agent path (mandatory)
 
 ```bash
+# 0) Push gate — origin/<train> tip includes the fix (fetch + log/show)
 python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-NNN
 # → mode=tdpqa_field_handoff
 
