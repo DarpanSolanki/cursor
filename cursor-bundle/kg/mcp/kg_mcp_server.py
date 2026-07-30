@@ -20,7 +20,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = 10_000
 TRUNC_MARK = "\n\n… [truncated — refine query / narrower args; max 10000 chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.3.1"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.4.0"}
 PROTOCOL = "2024-11-05"
 
 TOOLS = {
@@ -44,12 +44,25 @@ TOOLS = {
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     "kg_impact": {
-        "description": "Reverse blast radius — who reaches this node (recursive CTE).",
+        "description": "Reverse blast radius — who reaches this node (recursive CTE). Supports Class#method after symbol index build.",
         "args": ["impact"],
         "schema": {
             "type": "object",
             "properties": {"query": {"type": "string"}, "depth": {"type": "integer", "description": "optional --depth N"}},
             "required": ["query"],
+        },
+    },
+    "kg_align": {
+        "description": "Fail-closed: KG watermark must match expected repo@branch (or domain@train) before money impact analysis. Exit mismatch = do not trust flow/impact for that train.",
+        "args": ["align"],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "repo": {"type": "string", "description": "e.g. trustt-platform-accounting"},
+                "branch": {"type": "string", "description": "e.g. mfi_integration_v3.4.2.4"},
+                "domain": {"type": "string", "description": "dfc|dpi|accounting|foreclosure|…"},
+                "train": {"type": "string", "description": "mfi_integration_vX.Y.Z for --domain"},
+            },
         },
     },
     "kg_fixed_elsewhere": {
@@ -194,10 +207,16 @@ def run_kg(argv: list[str]) -> str:
 
     buf = io.StringIO()
     t0 = time.perf_counter()
-    with contextlib.redirect_stdout(buf):
-        kg_mod.CMDS[cmd](_db(), args)
+    rc = 0
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        try:
+            kg_mod.CMDS[cmd](_db(), args)
+        except SystemExit as e:
+            rc = int(e.code) if isinstance(e.code, int) else 1
     ms = (time.perf_counter() - t0) * 1000
     body = buf.getvalue().strip() or "(empty)"
+    if rc:
+        body = f"(exit={rc})\n" + body
     if os.environ.get("KG_MCP_TIMING"):
         body = f"(mcp_inproc_ms={ms:.1f})\n" + body
     if body.startswith("[KG @"):
@@ -216,6 +235,15 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
             argv.append(str(q).strip())
     if name == "kg_impact" and arguments.get("depth") is not None:
         argv.extend(["--depth", str(arguments["depth"])])
+    if name == "kg_align":
+        if arguments.get("repo"):
+            argv.extend(["--repo", str(arguments["repo"])])
+        if arguments.get("branch"):
+            argv.extend(["--branch", str(arguments["branch"])])
+        if arguments.get("domain"):
+            argv.extend(["--domain", str(arguments["domain"])])
+        if arguments.get("train"):
+            argv.extend(["--train", str(arguments["train"])])
     if name == "kg_fixed_elsewhere":
         if arguments.get("repo"):
             argv.extend(["--repo", str(arguments["repo"])])

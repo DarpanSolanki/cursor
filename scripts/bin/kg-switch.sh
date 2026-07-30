@@ -20,11 +20,20 @@ if [[ -f "$LOG" ]] && [[ $(stat -c%s "$LOG" 2>/dev/null || echo 0) -gt 524288 ]]
 fi
 QUIET=0
 FORCE=0
+ASSERT_REPO=""
+ASSERT_BRANCH=""
 for a in "$@"; do
   case "$a" in
     --quiet|-q) QUIET=1 ;;
     --force|-f) FORCE=1 ;;
   esac
+done
+# Optional: --assert-repo NAME --assert-branch TRAIN (after sync; fail if KG watermark mismatches)
+_prev=""
+for a in "$@"; do
+  if [[ "$_prev" == "--assert-repo" ]]; then ASSERT_REPO="$a"; fi
+  if [[ "$_prev" == "--assert-branch" ]]; then ASSERT_BRANCH="$a"; fi
+  _prev="$a"
 done
 
 log() {
@@ -69,6 +78,12 @@ if [[ "$FORCE" == 0 ]] && restore_cache "$KEY"; then
 from kg_state_banner import append_telemetry
 append_telemetry('hit', float('$ELAPSED'), '$_TRIGGER', key_short='${KEY:0:8}')
 " 2>/dev/null || true
+  if [[ -n "$ASSERT_REPO" && -n "$ASSERT_BRANCH" ]]; then
+    if ! python3 "$BIN/kg.py" align --repo "$ASSERT_REPO" --branch "$ASSERT_BRANCH"; then
+      log "FATAL: KG watermark not aligned to asserted train (cache hit)"
+      exit 2
+    fi
+  fi
   exit 0
 fi
 
@@ -100,3 +115,11 @@ PYTHONPATH="$ROOT/scripts/lib" python3 -c "
 from kg_state_banner import append_telemetry
 append_telemetry('miss', float('$ELAPSED'), '$_TRIGGER', key_short='${KEY:0:8}')
 " 2>/dev/null || true
+
+if [[ -n "$ASSERT_REPO" && -n "$ASSERT_BRANCH" ]]; then
+  log "assert: $ASSERT_REPO @ $ASSERT_BRANCH"
+  if ! python3 "$BIN/kg.py" align --repo "$ASSERT_REPO" --branch "$ASSERT_BRANCH"; then
+    log "FATAL: KG watermark not aligned to asserted train"
+    exit 2
+  fi
+fi

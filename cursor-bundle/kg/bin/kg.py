@@ -62,13 +62,15 @@ def conn(readonly=False):
 
 def resolve(c, q):
     """Resolve a node id. Requests are repo-scoped (request:{repo}/{name}); bare
-    names resolve by unique label. Use repo/name when ambiguous."""
+    names resolve by unique label. Use repo/name when ambiguous.
+
+    Prefer unique request *label* before scheduler:/topic: prefixes — many EOD
+    jobs share the Request name as a scheduler id (e.g. interestAccrualCalculation)
+    and the bare prefix loop would otherwise return an empty scheduler spine.
+    """
     if c.execute("SELECT 1 FROM nodes WHERE id=?", (q,)).fetchone():
         return q
-    for pref in ("request:", "service:", "processor:", "api:", "doc:", "topic:", "scheduler:", "table:"):
-        if c.execute("SELECT 1 FROM nodes WHERE id=?", (pref + q,)).fetchone():
-            return pref + q
-    # request by label (Upgrade 10 repo-scope)
+    # Unique request label BEFORE scheduler:/topic: (same bare name collision).
     if "/" not in q and not q.startswith("request:"):
         hits = [r[0] for r in c.execute(
             "SELECT id FROM nodes WHERE kind='request' AND label=?", (q,)
@@ -79,6 +81,26 @@ def resolve(c, q):
             sys.stderr.write(f"ambiguous 'request:{q}' -> {hits[:12]}{' ...' if len(hits) > 12 else ''}\n")
             sys.stderr.write("  hint: use <repo>/<name> e.g. trustt-platform-api-gateway/deleteUser\n")
             return None
+    for pref in ("request:", "service:", "processor:", "api:", "doc:", "topic:", "scheduler:", "table:", "symbol:"):
+        if c.execute("SELECT 1 FROM nodes WHERE id=?", (pref + q,)).fetchone():
+            return pref + q
+    # Unique Java method: Class#method or bare method name → symbol:*
+    if q.startswith("symbol:"):
+        return None
+    sym_hits = [r[0] for r in c.execute(
+        "SELECT id FROM nodes WHERE kind='symbol' AND (label=? OR label LIKE ? OR id LIKE ?)",
+        (q, f"%#{q}", f"%#{q}"),
+    ).fetchall()]
+    if len(sym_hits) == 1:
+        return sym_hits[0]
+    if len(sym_hits) > 1:
+        if "#" in q:
+            exact = [r for r in sym_hits if r.endswith("/" + q) or r.endswith(":" + q)]
+            if len(exact) == 1:
+                return exact[0]
+        sys.stderr.write(f"ambiguous symbol '{q}' -> {sym_hits[:8]}{' ...' if len(sym_hits) > 8 else ''}\n")
+        sys.stderr.write("  hint: use Class#method e.g. InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual\n")
+        return None
     # repo/name shorthand → request:{repo}/{name}
     if "/" in q and not q.startswith("request:"):
         cand = "request:" + q
@@ -123,13 +145,21 @@ def cmd_flow(c,a):
     # Record orient-session touch so orient-before-edit gate is satisfied by kg flow too.
     if a:
         _touch_orient_session(a[0])
-    # bare name or repo/name — resolve() handles repo-scoped request ids
+    # bare name or repo/name — resolve() prefers unique request label over scheduler:
     nid=resolve(c, a[0]) or resolve(c, "request:"+a[0])
+    if nid and str(nid).startswith("scheduler:"):
+        bare = nid.split(":", 1)[1]
+        rhits = [r[0] for r in c.execute(
+            "SELECT id FROM nodes WHERE kind='request' AND label=?", (bare,)
+        ).fetchall()]
+        if len(rhits) == 1:
+            nid = rhits[0]
     if not nid or not str(nid).startswith("request:"):
-        # try label uniquely
         nid=resolve(c, a[0])
     if not nid:
         print("request not found"); return
+    if not str(nid).startswith("request:"):
+        print(f"not a request flow: {nid} (use request:<repo>/<name> or bare Request label)"); return
     rows=c.execute("SELECT seq,cond,dst_id,src,json FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
     print(f"FLOW {nid}  ({len(rows)} processors)")
     for e in rows:
@@ -189,8 +219,29 @@ def cmd_impact(c,a):
     while i<len(a):
         if a[i]=="--depth": depth=int(a[i+1]); i+=2
         else: pos.append(a[i]); i+=1
+    if not pos:
+        print("Usage: kg impact <node|Class#method|method> [--depth N]"); return
     nid=resolve(c,pos[0])
-    if not nid: print("not found"); return
+    if not nid:
+        # Retry as method-only symbol search (impact analysis entry)
+        hits=[r[0] for r in c.execute(
+            "SELECT id FROM nodes WHERE kind='symbol' AND (label LIKE ? OR id LIKE ?) LIMIT 12",
+            (f"%#{pos[0]}", f"%#{pos[0]}"),
+        ).fetchall()]
+        if len(hits)==1:
+            nid=hits[0]
+        elif hits:
+            print(f"ambiguous method '{pos[0]}' — pick one:")
+            for h in hits: print(" ", h)
+            return
+        else:
+            print("not found"); return
+    # Always show which accounting train this KG reflects (branch-wise impact hygiene)
+    wm=_load_watermark() or {}
+    acc=(wm.get("repos") or {}).get("trustt-platform-accounting") or {}
+    if acc:
+        print(f"IMPACT KG train: accounting={acc.get('branch','?')}@{acc.get('sha','?')} "
+              f"(built {wm.get('built_at','?')}) — misaligned? kg align --repo trustt-platform-accounting --branch <train>")
     rows=c.execute("""
       WITH RECURSIVE up(id,d) AS (
         VALUES(?,0)
@@ -572,7 +623,16 @@ def cmd_crud(c,a):
     aggregate read-set / write-set / delete-set — the map a test simulator needs."""
     if not a: print("usage: kg crud <request>"); return
     nid=resolve(c,a[0]) or resolve(c,"request:"+a[0])
+    if nid and str(nid).startswith("scheduler:"):
+        bare = nid.split(":", 1)[1]
+        rhits = [r[0] for r in c.execute(
+            "SELECT id FROM nodes WHERE kind='request' AND label=?", (bare,)
+        ).fetchall()]
+        if len(rhits) == 1:
+            nid = rhits[0]
     if not nid: print("request not found"); return
+    if not str(nid).startswith("request:"):
+        print(f"not a request flow: {nid}"); return
     procs=[r[0] for r in c.execute("SELECT DISTINCT dst_id FROM edges WHERE src_id=? AND rel='invokes'",(nid,)).fetchall()]
     if not procs: print(f"{nid}: no processors"); return
     qm=",".join("?"*len(procs))
@@ -642,6 +702,61 @@ def cmd_validate(c,a):
     if p.returncode!=0:
         raise SystemExit(p.returncode)
 
+def cmd_align(c,a):
+    """Fail-closed: KG watermark must match expected repo@branch for impact analysis.
+
+    Usage:
+      kg align --repo trustt-platform-accounting --branch mfi_integration_v3.4.2.4
+      kg align --domain accounting --train mfi_integration_v3.4.2.4
+    Exit 0 = aligned; exit 2 = mismatch (do not trust impact/flow for that train).
+    """
+    repo=None; branch=None; domain=None; train=None; i=0
+    while i<len(a):
+        if a[i]=="--repo" and i+1<len(a): repo=a[i+1]; i+=2
+        elif a[i]=="--branch" and i+1<len(a): branch=a[i+1]; i+=2
+        elif a[i]=="--domain" and i+1<len(a): domain=a[i+1]; i+=2
+        elif a[i]=="--train" and i+1<len(a): train=a[i+1]; i+=2
+        else: i+=1
+    expectations=[]
+    if repo and branch:
+        expectations.append((repo, branch))
+    if domain and train:
+        try:
+            import sys as _s
+            _lib=os.path.abspath(os.path.join(HERE,"../../../scripts/lib"))
+            if _lib not in _s.path: _s.path.insert(0,_lib)
+            from train_banner import DOMAIN_REPOS
+            for r in DOMAIN_REPOS.get(domain) or []:
+                expectations.append((r, train))
+        except Exception as e:
+            print(f"align: cannot load DOMAIN_REPOS ({e})")
+            raise SystemExit(2)
+    if not expectations:
+        print("Usage: kg align --repo <repo> --branch <train>")
+        print("   or: kg align --domain <dfc|dpi|accounting|foreclosure|…> --train <mfi_integration_vX.Y.Z>")
+        raise SystemExit(2)
+    wm=_load_watermark() or {}
+    repos=wm.get("repos") or {}
+    bad=[]
+    print(f"ALIGN check (KG built {wm.get('built_at','?')}):")
+    for r,b in expectations:
+        info=repos.get(r) or {}
+        got=info.get("branch")
+        live=_git(os.path.join(ROOT,r),"rev-parse","--abbrev-ref","HEAD")
+        ok = (got==b) and (not live or live==b)
+        mark="OK" if ok else "FAIL"
+        print(f"  [{mark}] {r}: expect={b}  kg_watermark={got or '?'}  live={live or '?'}")
+        if not ok:
+            bad.append(r)
+    if bad:
+        print("MISALIGNED — run:")
+        print(f"  bash scripts/bin/sync-branches.sh --domain {domain or 'accounting'} --train {train or branch} --yes")
+        print("  bash scripts/bin/kg-switch.sh --force")
+        print("Then re-run: kg align …")
+        raise SystemExit(2)
+    print("ALIGNED — safe to use kg impact/flow/orient for this train (still verify orch+Java).")
+
+
 def cmd_orient(c,a):
     """Evidence-only map for a request: flow spine + why surface + cases. Does not invent edges."""
     if not a:
@@ -649,6 +764,11 @@ def cmd_orient(c,a):
     # Record orient timestamp for orient-before-edit gate (X4).
     _touch_orient_session(a[0] if a else "")
     print("=== ORIENT (evidence only — verify orch XML + DB before claiming) ===")
+    wm=_load_watermark() or {}
+    acc=(wm.get("repos") or {}).get("trustt-platform-accounting") or {}
+    if acc:
+        print(f"--- kg train: accounting={acc.get('branch','?')}@{acc.get('sha','?')} "
+              f"WIP — use `kg align --repo trustt-platform-accounting --branch <train>` before money claims ---")
     print("--- flow ---")
     cmd_flow(c,a)
     print("--- why (silent failure surface) ---")
@@ -696,7 +816,7 @@ CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"dep
       "docs":cmd_docs,"neighbors":cmd_neighbors,"impact":cmd_impact,"path":cmd_path,"sql":cmd_sql,
       "cases":cmd_cases,"table":cmd_table,"error":cmd_error,"why":cmd_why,"config":cmd_why,"doctor":cmd_doctor,"stale":cmd_stale,
       "watermark":cmd_watermark,"crud":cmd_crud,"writes":cmd_writes,"reads":cmd_reads,"deletes":cmd_deletes,
-      "fresh":cmd_fresh,"validate":cmd_validate,"orient":cmd_orient,
+      "fresh":cmd_fresh,"validate":cmd_validate,"orient":cmd_orient,"align":cmd_align,
       "fixed-elsewhere":cmd_fixed_elsewhere}
 
 # Commands that READ knowledge (must be branch-correct). doctor/watermark/stats report drift
@@ -704,6 +824,7 @@ CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"dep
 _KNOWLEDGE_CMDS={"search","node","flow","deps","docs","neighbors","impact","path","sql",
                  "cases","table","error","why","config","crud","writes","reads","deletes",
                  "orient","fixed-elsewhere"}
+# align is intentionally NOT auto-rebuilding — it reports watermark mismatch for a named train
 
 def _auto_rebuild(built_at,drift):
     """On drift, rebuild the KG for the CURRENT checkout before serving the query, so analysis is

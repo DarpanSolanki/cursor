@@ -47,6 +47,8 @@ python3 "$BIN/build_orchestration.py" $REPOS      >> "$tmp"
 python3 "$BIN/build_services.py"                  >> "$tmp"
 python3 "$BIN/build_tables.py" $REPOS             >> "$tmp"
 python3 "$BIN/build_dataaccess.py" "$tmp" $REPOS  >> "$tmp"
+# Method-level symbols for kg impact (money-path packages; branch = live checkout)
+python3 "$BIN/build_java_symbols.py" $REPOS         >> "$tmp"
 python3 "$BIN/build_money_concepts.py" "$tmp" $REPOS >> "$tmp"
 python3 "$BIN/build_kafka.py" "$tmp" $REPOS       >> "$tmp"
 python3 "$BIN/build_schedulers.py" "$tmp"         >> "$tmp"

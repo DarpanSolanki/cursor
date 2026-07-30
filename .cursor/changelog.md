@@ -1,3 +1,17 @@
+## 2026-07-30 — trustt-kg: branch-wise align + Java symbol impact (system-wide)
+- `kg align` / `kg-align.sh` / `kg-switch --assert-repo/--assert-branch` / MCP `kg_align` — fail-closed watermark vs expected train before money impact.
+- `build_java_symbols.py` — method nodes (`symbol:repo/Class#method`) for `kg impact`; wired into `build.sh`.
+- Orient/impact print accounting train; curated diags for Accrued last-child pad + child→parent force-bill mirror; `kg-profiles.md` PARTIAL (align shipped, overlays deferred).
+
+## 2026-07-29 — SHG parent INT ₹1: mid-cycle proven; due-date seal (not month-end)
+- QA4: Vikram `6011424425` full EMI periods Accrued/Posted/Schedule Δ=0; partial `2026-12-21` posted 29 vs 15+15. Mid-cycle `6000000638` 2133 vs 2134 before first due. Cohort ±1 ACTIVE parents: 70 mid-cycle / 58 latest-on-due / 0 month-end-only.
+- Clarify: month-end = GL posting day; Accrued catch-up = due-date RPS seal. KG diag + changelog updated.
+
+## 2026-07-29 — trustt-kg: SHG parent INT ₹1 + resolve request>scheduler
+- Curated diags: `diag:rounding.shg_parent_child_interest_accrued_rupee` (SDCP-3245 forceful-only adjust; mid-cycle HALF_UP; QA4 fixtures 6011424425 / 6000000638), GAP-080 future INT, SDCP-11058 BPI, SDCP-11012 DPI.
+- `kg.py resolve` / flow / crud: prefer unique Request label over same-named `scheduler:` (fixes empty `interestAccrualCalculation` spine).
+- Promoted learning `diag:learn.shg_parent_int_accrued_rupee_tdpqa72` from TDPQA-72 Vikram + QA4 SQL.
+
 ## 2026-07-29 — trustt-kg MCP close (1.3.1)
 - Verified 16/16 tools: JSON-RPC smoke + semantic needles + live Cursor MCP (validate/why/map_audit/mcp_auth).
 - Shipped: stdout capture (kg.py), dup2+reload map_audit, mcp_auth no-op, kg_map_audit soft_gap, kg-mcp-smoke.sh semantic gate.
