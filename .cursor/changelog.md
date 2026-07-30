@@ -1,3 +1,15 @@
+## 2026-07-30 — trustt-kg MCP 1.8.0: close honest gaps (22 tools)
+- Added kg_reads, kg_error, kg_node, kg_doctor, kg_enhance; orient verify paths; fetch_if_stale default; MAX_CHARS 24k; E2E 24 tests PASS.
+
+## 2026-07-30 — trustt-kg MCP 1.7.0: 17-tool E2E audit + fixes
+- Fixed kg-mcp-smoke.sh branch detection; orient `brief` + why `auto_cap`; workspace_status summaries; E2E test `scripts/lib/test_kg_mcp_e2e.py`.
+
+## 2026-07-30 — trustt-kg L1+L2: event-queue dispatch + cross-service contracts in build
+- `build_event_dispatch.py` (EVENT_TYPE_ORC_API_MAP), ternary/callInternalAPI in internal_calls, `build_contracts.py` wired with repo-scoped `calls` edges.
+
+## 2026-07-30 — trustt-kg: generic orient/why reachability (internal calls + transitive why)
+- `build_internal_calls.py` indexes Java `api_name` dispatch → `calls` edges; `kg why`/`kg flow` walk nested Requests + related diags (no per-flow curated patches).
+
 ## 2026-07-30 — trustt-kg MCP 1.6.0: 17-tool audit patch
 - Per-tool timeouts; stack-doctor 12s+cache (workspace_status no longer blocks 45s); isError on align/misaligned exits; kg_align in smoke; version 1.6.0.
 

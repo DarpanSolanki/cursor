@@ -195,11 +195,17 @@ def cmd_flow(c,a):
     if not str(nid).startswith("request:"):
         print(f"not a request flow: {nid} (use request:<repo>/<name> or bare Request label)"); return
     rows=c.execute("SELECT seq,cond,dst_id,src,json FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
+    nested=c.execute("SELECT dst_id,note,src FROM edges WHERE src_id=? AND rel='calls'",(nid,)).fetchall()
     print(f"FLOW {nid}  ({len(rows)} processors)")
     for e in rows:
         cond="" if (e[1] or "*")=="*" else f"  [if function_code={e[1]}]"
         # prefer orch path repo over shared processor.repo (ATTR fix)
         print(f"  {e[0]:3}. {e[2].split(':',1)[1]}{cond}  [{e[3]}]")
+    if nested:
+        print(f"  nested internal Request(s) ({len(nested)}):")
+        for e in nested:
+            note = f" — {e[1]}" if e[1] else ""
+            print(f"     -> {e[0]}{note}  [{e[2]}]")
     apis=c.execute("SELECT dst_id,src FROM edges WHERE src_id=? AND rel='calls_api'",(nid,)).fetchall()
     if apis:
         print("  external API calls:")
@@ -347,6 +353,104 @@ def cmd_error(c,a):
     for r in rows:
         o=_j.loads(r[1]); print(f"  [{o.get('sha','?')}] {r[0]}  -> git show {o.get('sha','')}")
 
+def _request_aliases(c, nid):
+    """All request node ids sharing the same label (handles repo-scoped vs legacy ids)."""
+    if not nid or not str(nid).startswith("request:"):
+        return [nid] if nid else []
+    row = c.execute("SELECT label FROM nodes WHERE id=?", (nid,)).fetchone()
+    if not row or not row["label"]:
+        return [nid]
+    hits = [r[0] for r in c.execute(
+        "SELECT id FROM nodes WHERE kind='request' AND label=?", (row["label"],)
+    ).fetchall()]
+    return hits or [nid]
+
+
+def _resolve_api_to_requests(c, api_nid):
+    """Map api:{name} to request node(s) with the same label."""
+    row = c.execute("SELECT label FROM nodes WHERE id=?", (api_nid,)).fetchone()
+    if not row or not row["label"]:
+        return []
+    return [r[0] for r in c.execute(
+        "SELECT id FROM nodes WHERE kind='request' AND label=?", (row["label"],)
+    ).fetchall()]
+
+
+def _failure_modes_on(c, node_id):
+    return [e["dst_id"] for e in c.execute(
+        "SELECT dst_id FROM edges WHERE src_id=? AND rel='has_failure_mode'", (node_id,)
+    ).fetchall()]
+
+
+def _expand_related_diags(c, diags, hops=1):
+    """Follow curated diag `related` edges (bounded) so parent orient surfaces linked RCAs."""
+    curated = [d for d in diags if d.startswith("diag:") and not d.startswith("diag:auto.")]
+    for _ in range(max(0, hops)):
+        extra = []
+        for d in list(curated):
+            for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='related'", (d,)).fetchall():
+                dst = e["dst_id"]
+                if dst.startswith("diag:") and not dst.startswith("diag:auto."):
+                    extra.append(dst)
+        for d in extra:
+            if d not in curated:
+                curated.append(d)
+        diags.extend(extra)
+    return diags
+
+
+def _collect_flow_failure_diags(c, start_nid, *, related_hops=1):
+    """Transitive failure surface for a request: orch processors + nested internal calls + symbols."""
+    seeds = _request_aliases(c, start_nid)
+    visit_req = set(seeds)
+    visit_proc = set()
+    curated = []
+    auto = []
+
+    def _absorb(node_id):
+        for d in _failure_modes_on(c, node_id):
+            if d.startswith("diag:auto."):
+                auto.append(d)
+            elif d.startswith("diag:"):
+                curated.append(d)
+
+    queue = list(seeds)
+    while queue:
+        req = queue.pop(0)
+        _absorb(req)
+        for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='invokes'", (req,)).fetchall():
+            proc = e["dst_id"]
+            if proc in visit_proc:
+                continue
+            visit_proc.add(proc)
+            _absorb(proc)
+            for sym in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='implements'", (proc,)).fetchall():
+                _absorb(sym["dst_id"])
+            for e2 in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='calls'", (proc,)).fetchall():
+                dst = e2["dst_id"]
+                if dst.startswith("request:") and dst not in visit_req:
+                    visit_req.add(dst)
+                    queue.append(dst)
+        for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='calls_api'", (req,)).fetchall():
+            for rq in _resolve_api_to_requests(c, e["dst_id"]):
+                if rq not in visit_req:
+                    visit_req.add(rq)
+                    queue.append(rq)
+        for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='calls'", (req,)).fetchall():
+            dst = e["dst_id"]
+            if dst.startswith("request:") and dst not in visit_req:
+                visit_req.add(dst)
+                queue.append(dst)
+    all_diags = curated + auto
+    all_diags = _expand_related_diags(c, all_diags, related_hops)
+    seen = set()
+    curated = [d for d in all_diags if d.startswith("diag:") and not d.startswith("diag:auto.")
+               and not (d in seen or seen.add(d))]
+    seen_auto = set()
+    auto = [d for d in all_diags if d.startswith("diag:auto.") and not (d in seen_auto or seen_auto.add(d))]
+    return curated, auto, visit_proc, visit_req
+
+
 def _render_diag(c, cid):
     import json as _j
     n=c.execute("SELECT json FROM nodes WHERE id=?",(cid,)).fetchone()
@@ -368,6 +472,23 @@ def _render_diag(c, cid):
     chk=[e["dst_id"] for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='checks'",(cid,)).fetchall()]
     if chk: print("    inspect : "+", ".join(t.split(':',1)[-1] for t in chk))
 
+def _pop_auto_cap(a):
+    """Optional --auto-cap N limits auto silent-surface diags (MCP/orient use)."""
+    cap = None
+    rest = []
+    i = 0
+    while i < len(a):
+        if a[i] == "--auto-cap" and i + 1 < len(a):
+            cap = int(a[i + 1])
+            i += 2
+        else:
+            rest.append(a[i])
+            i += 1
+    if cap is not None:
+        cmd_why._auto_cap = cap  # type: ignore[attr-defined]
+    return rest
+
+
 def cmd_why(c,a):
     """WHY is this value/flow wrong? — the failure-mode catalog (the 'pinpoint any issue' entrypoint).
     Reads/writes show structure; this layer shows the SILENT decision-points where bugs hide
@@ -378,6 +499,8 @@ def cmd_why(c,a):
       kg why <processor|table>    failure modes attached to that node
       kg why <symptom-word>       e.g. zero | stuck | duplicate | missing | revert | null  -> matching diags"""
     a=_pop_require_align(a)
+    prev_cap = getattr(cmd_why, "_auto_cap", None)
+    a = _pop_auto_cap(a)
     import json as _j
     if not a:
         rows=c.execute("SELECT id,label,json FROM nodes WHERE kind='diag' AND id NOT LIKE 'diag:auto.%' ORDER BY id").fetchall()
@@ -388,46 +511,65 @@ def cmd_why(c,a):
             if cls!=cur: print(f"\n  [{cls}]"); cur=cls
             print(f"    {r['id']}\n        {r['label']}")
         print("\n  Add a verified one: append node+edges to claude/kg/curated/diagnostics.jsonl, then build.sh")
+        cmd_why._auto_cap = prev_cap  # type: ignore[attr-defined]
         return
-    q=a[0]
-    nid=resolve(c,q)
-    diags=[]
-    if nid:
-        row=c.execute("SELECT kind FROM nodes WHERE id=?",(nid,)).fetchone()
-        if row and row["kind"]=="diag": diags.append(nid)
-        # direct failure modes on this node (request/processor)
-        for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='has_failure_mode'",(nid,)).fetchall():
-            diags.append(e["dst_id"])
-        # if it's a request, walk the whole flow: invoked processors -> their failure surfaces
-        procs=[e["dst_id"] for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='invokes'",(nid,)).fetchall()]
-        for p in procs:
-            for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='has_failure_mode'",(p,)).fetchall():
-                diags.append(e["dst_id"])
-        # if it's a table, which diags inspect it
-        for e in c.execute("SELECT src_id FROM edges WHERE dst_id=? AND rel='checks'",(nid,)).fetchall():
-            diags.append(e["src_id"])
-    if not diags:
-        # symptom-word search across diag nodes (FTS)
-        try:
-            rows=c.execute("SELECT id FROM node_fts WHERE kind='diag' AND node_fts MATCH ? LIMIT 40",(q,)).fetchall()
-        except sqlite3.OperationalError:
-            rows=c.execute("SELECT id FROM nodes WHERE kind='diag' AND (id LIKE ? OR label LIKE ?)",(f"%{q}%",f"%{q}%")).fetchall()
-        diags=[r["id"] for r in rows]
-    seen=set(); diags=[d for d in diags if not (d in seen or seen.add(d))]
-    if not diags:
-        print(f"no failure-mode recorded for '{q}'.")
-        print("  Try: kg why <requestName> (walks the flow's processors), or a symptom word (zero/stuck/duplicate/missing/revert).")
-        print("  If this is a real new bug class, capture it: append to claude/kg/curated/diagnostics.jsonl + build.sh.")
-        return
-    # curated first, then auto surfaces
-    cur=[d for d in diags if not d.startswith("diag:auto.")]
-    auto=[d for d in diags if d.startswith("diag:auto.")]
-    hdr=nid if nid else f"'{q}'"
-    print(f"WHY {hdr} — {len(cur)} curated root-cause(s)"+(f" + {len(auto)} processor silent-surface(s)" if auto else "")+":")
-    for d in cur: _render_diag(c,d)
-    if auto:
-        print(f"\n  ── auto silent-failure surface across the flow ({len(auto)} processor(s)) ──")
-        for d in auto: _render_diag(c,d)
+    try:
+        q=a[0]
+        nid=resolve(c,q)
+        diags=[]
+        if nid:
+            row=c.execute("SELECT kind FROM nodes WHERE id=?",(nid,)).fetchone()
+            if row and row["kind"]=="diag": diags.append(nid)
+            if row and row["kind"]=="request":
+                cur, auto, _, nested = _collect_flow_failure_diags(c, nid)
+                diags.extend(cur)
+                diags.extend(auto)
+                if len(nested) > len(_request_aliases(c, nid)):
+                    nested_only = sorted(nested - set(_request_aliases(c, nid)))
+                    print(f"  (nested internal flow(s): {', '.join(r.split(':',1)[-1] for r in nested_only)})",
+                          file=sys.stderr)
+            elif row and row["kind"]=="processor":
+                diags.extend(_failure_modes_on(c, nid))
+                for sym in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='implements'", (nid,)).fetchall():
+                    diags.extend(_failure_modes_on(c, sym["dst_id"]))
+            elif row and row["kind"]=="symbol":
+                diags.extend(_failure_modes_on(c, nid))
+            else:
+                diags.extend(_failure_modes_on(c, nid))
+                procs=[e["dst_id"] for e in c.execute("SELECT dst_id FROM edges WHERE src_id=? AND rel='invokes'",(nid,)).fetchall()]
+                for p in procs:
+                    diags.extend(_failure_modes_on(c, p))
+            for e in c.execute("SELECT src_id FROM edges WHERE dst_id=? AND rel='checks'",(nid,)).fetchall():
+                diags.append(e["src_id"])
+        if not diags:
+            try:
+                rows=c.execute("SELECT id FROM node_fts WHERE kind='diag' AND node_fts MATCH ? LIMIT 40",(q,)).fetchall()
+            except sqlite3.OperationalError:
+                rows=c.execute("SELECT id FROM nodes WHERE kind='diag' AND (id LIKE ? OR label LIKE ?)",(f"%{q}%",f"%{q}%")).fetchall()
+            diags=[r["id"] for r in rows]
+        seen=set(); diags=[d for d in diags if not (d in seen or seen.add(d))]
+        if not diags:
+            print(f"no failure-mode recorded for '{q}'.")
+            print("  Try: kg why <requestName> (walks the flow's processors), or a symptom word (zero/stuck/duplicate/missing/revert).")
+            print("  If this is a real new bug class, capture it: append to claude/kg/curated/diagnostics.jsonl + build.sh.")
+            return
+        cur=[d for d in diags if not d.startswith("diag:auto.")]
+        auto=[d for d in diags if d.startswith("diag:auto.")]
+        auto_cap = getattr(cmd_why, "_auto_cap", None)
+        if auto_cap is not None:
+            auto = auto[: max(0, int(auto_cap))]
+        hdr=nid if nid else f"'{q}'"
+        print(f"WHY {hdr} — {len(cur)} curated root-cause(s)"+(f" + {len(auto)} processor silent-surface(s)" if auto else "")+":")
+        for d in cur: _render_diag(c,d)
+        if auto:
+            total_auto = len([d for d in diags if d.startswith("diag:auto.")])
+            omitted = total_auto - len(auto)
+            print(f"\n  ── auto silent-failure surface across the flow ({len(auto)} processor(s)"
+                  + (f"; {omitted} more omitted — use CLI `kg why` for full list)" if omitted else "")
+                  + ") ──")
+            for d in auto: _render_diag(c,d)
+    finally:
+        cmd_why._auto_cap = prev_cap  # type: ignore[attr-defined]
 
 def cmd_stale(c,a):
     """Find brain docs that have drifted from code: they cite a repo file (path[:line])
@@ -456,8 +598,11 @@ def _load_watermark():
     """The branch@sha the KG was built from, per repo (stamped by build.sh into stats.json)."""
     import json
     sf=os.path.join(os.path.dirname(DB),"stats.json")
-    try: return json.load(open(sf)).get("watermark")
-    except Exception: return None
+    try:
+        with open(sf, encoding="utf-8") as f:
+            return json.load(f).get("watermark")
+    except Exception:
+        return None
 
 def _git(d,*a):
     import subprocess
@@ -796,11 +941,56 @@ def cmd_align(c,a):
     print("ALIGNED — safe to use kg impact/flow/orient for this train (still verify orch+Java).")
 
 
+def _orient_verify_paths(c, query):
+    """Source-of-truth paths for runtime verification — orch XML, processors, money tables."""
+    nid = resolve(c, query) or resolve(c, "request:" + query)
+    if not nid or not str(nid).startswith("request:"):
+        return
+    orch = sorted({e[0] for e in c.execute(
+        "SELECT DISTINCT src FROM edges WHERE src_id=? AND rel='invokes' AND src IS NOT NULL", (nid,)
+    ).fetchall() if e[0]})
+    procs = sorted({e[0].split(":", 1)[-1] for e in c.execute(
+        "SELECT DISTINCT dst_id FROM edges WHERE src_id=? AND rel='invokes'", (nid,)
+    ).fetchall()})
+    nested = sorted({e[0] for e in c.execute(
+        "SELECT DISTINCT dst_id FROM edges WHERE src_id=? AND rel='calls'", (nid,)
+    ).fetchall()})
+    writes = set()
+    proc_ids = [r[0] for r in c.execute(
+        "SELECT DISTINCT dst_id FROM edges WHERE src_id=? AND rel='invokes'", (nid,)
+    ).fetchall()]
+    if proc_ids:
+        qm2 = ",".join("?" * len(proc_ids))
+        for row in c.execute(
+            f"SELECT DISTINCT dst_id FROM edges WHERE rel='writes' AND src_id IN ({qm2})",
+            proc_ids,
+        ).fetchall():
+            writes.add(row[0].split(":", 1)[-1])
+    print("--- verify (source-of-truth — KG index only; confirm in live orch/Java/DB) ---")
+    if orch:
+        print(f"  orch XML ({len(orch)}):")
+        for p in orch[:12]:
+            print(f"    {p}")
+        if len(orch) > 12:
+            print(f"    … +{len(orch) - 12} more")
+    if procs:
+        print(f"  processors ({len(procs)}): {', '.join(procs[:8])}" + (" …" if len(procs) > 8 else ""))
+    if nested:
+        print(f"  nested requests: {', '.join(n.split(':', 1)[-1] for n in nested)}")
+    if writes:
+        print(f"  assert tables (write-set): {', '.join(sorted(writes)[:10])}" + (" …" if len(writes) > 10 else ""))
+    print("  runtime: read orch XML above → grep processor .java → db-query canned SQL on assert tables")
+
+
 def cmd_orient(c,a):
     """Evidence-only map for a request: flow spine + why surface + cases. Does not invent edges."""
     a=_pop_require_align(a)
+    brief=False
+    if "--brief" in a:
+        brief=True
+        a=[x for x in a if x!="--brief"]
     if not a:
-        print("Usage: kg orient <request> [--require-repo R --require-branch B]  — flow + why + cases"); return
+        print("Usage: kg orient <request> [--brief] [--require-repo R --require-branch B]  — flow + why + cases"); return
     # Record orient timestamp for orient-before-edit gate (X4).
     _touch_orient_session(a[0] if a else "")
     print("=== ORIENT (evidence only — verify orch XML + DB before claiming) ===")
@@ -814,9 +1004,17 @@ def cmd_orient(c,a):
         print("--- flow ---")
         cmd_flow(c,a)
         print("--- why (silent failure surface) ---")
-        cmd_why(c,a)
+        prev_cap = getattr(cmd_why, "_auto_cap", None)
+        if brief:
+            cmd_why._auto_cap = 5  # type: ignore[attr-defined]
+        try:
+            cmd_why(c,a)
+        finally:
+            if brief:
+                cmd_why._auto_cap = prev_cap  # type: ignore[attr-defined]
         print("--- cases (CHANGELOG precedents only) ---")
         cmd_cases(c,a)
+        _orient_verify_paths(c, a[0])
     finally:
         _pop_require_align._nested = False  # type: ignore[attr-defined]
 
@@ -842,16 +1040,34 @@ def _touch_orient_session(api: str) -> None:
     except Exception:
         pass
 
+def _pop_fetch_if_stale(a):
+    """Pull --fetch-if-stale from argv for fixed-elsewhere."""
+    fetch = False
+    rest = []
+    i = 0
+    while i < len(a):
+        if a[i] == "--fetch-if-stale":
+            fetch = True
+            i += 1
+        else:
+            rest.append(a[i])
+            i += 1
+    return fetch, rest
+
+
 def cmd_fixed_elsewhere(c,a):
     """Delegate cross-branch lookup; KG remains the evidence source for flow files/case SHAs."""
     if not a:
-        print("Usage: kg fixed-elsewhere <apiName|processor|path|sha> [--repo R] [--base B]"); return
+        print("Usage: kg fixed-elsewhere <apiName|processor|path|sha> [--repo R] [--base B] [--fetch-if-stale]"); return
+    fetch_if_stale, a = _pop_fetch_if_stale(a)
     import subprocess
     root=os.path.abspath(os.path.join(HERE,"../../.."))
     tool=os.path.join(root,"scripts","lib","branch_train.py")
+    cmd = [sys.executable, tool, "fixed-elsewhere", *a]
+    if fetch_if_stale:
+        cmd.append("--fetch-if-stale")
     # Capture stdout — MCP stdio must stay JSON-RPC-only (never inherit fd1).
-    p=subprocess.run([sys.executable,tool,"fixed-elsewhere",*a],
-                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    p=subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     if p.stdout:
         print(p.stdout, end="" if p.stdout.endswith("\n") else "\n")
     if p.returncode:

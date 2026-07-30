@@ -372,6 +372,17 @@ def iter_all_contracts(result: ScanResult) -> Iterator[dict]:
 
 def emit_kg_jsonl(result: ScanResult) -> Iterator[dict]:
     """Emit KG nodes/edges for contract layer."""
+
+    def _req_node(service: str | None, label: str | None) -> str | None:
+        if not label or not service:
+            return None
+        owners = result.request_owners.get(label)
+        if owners and len(owners) == 1:
+            repo = next(iter(owners))
+        else:
+            repo = service
+        return f"request:{repo}/{label}"
+
     for c in iter_all_contracts(result):
         cid = c["id"]
         yield {
@@ -386,20 +397,42 @@ def emit_kg_jsonl(result: ScanResult) -> Iterator[dict]:
         }
         prod_req = c["producer"].get("request")
         cons_req = c["consumer"].get("request")
-        if prod_req:
+        prod_nid = _req_node(c["producer"].get("service"), prod_req)
+        cons_nid = _req_node(c["consumer"].get("service"), cons_req)
+        if prod_nid:
             yield {
                 "t": "edge",
-                "from": f"request:{prod_req}",
+                "from": prod_nid,
                 "to": cid,
                 "rel": "produces_contract",
                 "src": c.get("src", ""),
             }
-        if cons_req:
+        if cons_nid:
             yield {
                 "t": "edge",
                 "from": cid,
-                "to": f"request:{cons_req}",
+                "to": cons_nid,
                 "rel": "consumes_via",
+                "src": c.get("src", ""),
+            }
+        if prod_nid and cons_nid and c["protocol"] == "HTTP_INTERNAL":
+            yield {
+                "t": "edge",
+                "from": prod_nid,
+                "to": cons_nid,
+                "rel": "calls",
+                "note": f"cross-service HTTP {c['producer'].get('service')}→{c['consumer'].get('service')}",
+                "src": c.get("src", ""),
+            }
+        if c["protocol"] == "KAFKA" and cons_nid:
+            topic = c["producer"].get("topic_prefix") or "?"
+            bean = c["consumer"].get("bean") or "?"
+            yield {
+                "t": "edge",
+                "from": f"topic:{topic.rstrip('_')}",
+                "to": cons_nid,
+                "rel": "calls",
+                "note": f"kafka consumer {bean} → {cons_req}",
                 "src": c.get("src", ""),
             }
         ps = c["producer"].get("service")

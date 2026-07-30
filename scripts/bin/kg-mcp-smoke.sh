@@ -4,13 +4,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SRV="$ROOT/cursor-bundle/kg/mcp/kg_mcp_server.py"
 PY="${PYTHON:-python3}"
-ACC_BRANCH="$("$PY" - <<'PY' 2>/dev/null || echo mfi_integration_v3.5.2.2
+ACC_BRANCH="$("$PY" - <<'PY' 2>/dev/null || echo ""
 import subprocess
 from pathlib import Path
-r=subprocess.run(["git","-C",str(Path("/home/darpan/Documents/sliProd/trustt-platform-accounting"),"rev-parse","--abbrev-ref","HEAD"],capture_output=True,text=True)
-print(r.stdout.strip() or "mfi_integration_v3.5.2.2")
+repo = Path("/home/darpan/Documents/sliProd/trustt-platform-accounting")
+r = subprocess.run(
+    ["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
+    capture_output=True, text=True, check=False,
+)
+print((r.stdout or "").strip())
 PY
 )"
+if [[ -z "$ACC_BRANCH" ]]; then
+  ACC_BRANCH="$("$PY" "$ROOT/cursor-bundle/kg/bin/kg.py" watermark 2>/dev/null | awk '/trustt-platform-accounting/ {print $2; exit}' | cut -d@ -f1)"
+fi
+[[ -n "$ACC_BRANCH" ]] || ACC_BRANCH="mfi_integration_v3.4.2.4"
+MISALIGN_BRANCH="mfi_integration_v9.9.9.9"
 
 "$PY" - <<PY
 import json, subprocess, sys, time
@@ -18,6 +27,7 @@ from pathlib import Path
 
 srv = Path(${SRV@Q})
 acc_branch = ${ACC_BRANCH@Q}
+misalign_branch = ${MISALIGN_BRANCH@Q}
 tools = [
     ("kg_validate", {}),
     ("kg_fresh", {}),
@@ -31,6 +41,10 @@ tools = [
     ("kg_cases", {"query": "getLoanForeclosureDetails"}),
     ("kg_crud", {"query": "getLoanForeclosureDetails"}),
     ("kg_writes", {"query": "loan_account_part_prepayment_details"}),
+    ("kg_reads", {"query": "loan_account"}),
+    ("kg_error", {"query": "ACCT"}),
+    ("kg_doctor", {}),
+    ("kg_node", {"query": "request:trustt-platform-accounting/disburseLoan"}),
     ("kg_fixed_elsewhere", {
         "query": "getLoanForeclosureDetails",
         "repo": "trustt-platform-accounting",
@@ -42,7 +56,7 @@ tools = [
     ("ship_plan", {}),
 ]
 # Misalign probe — must set isError
-align_fail = ("kg_align", {"repo": "trustt-platform-accounting", "branch": "mfi_integration_v3.4.2.4"})
+align_fail = ("kg_align", {"repo": "trustt-platform-accounting", "branch": misalign_branch})
 msgs = [
     {"jsonrpc": "2.0", "id": 1, "method": "initialize",
      "params": {"protocolVersion": "2024-11-05", "capabilities": {},
@@ -91,14 +105,14 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.6.0":
-    print(f"WARN: expected server version 1.6.0 got {si.get('version')}")
+if si.get("version") != "1.8.0":
+    print(f"WARN: expected server version 1.8.0 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")
 expected_names = sorted(TOOLS_NAMES := [n for n, _ in tools] + [align_fail[0]])
-if len(listed) != 17:
-    print(f"FAIL: expected 17 tools, got {len(listed)}: {listed}")
+if len(listed) != 22:
+    print(f"FAIL: expected 22 tools, got {len(listed)}: {listed}")
     sys.exit(3)
 if "kg_align" not in listed:
     print("FAIL: kg_align missing from tools/list")
@@ -143,6 +157,10 @@ needles = {
     "kg_cases": ("PRECEDENT", "shipped"),
     "kg_crud": ("FOOTPRINT", "prepayment"),
     "kg_writes": ("WRITERS",),
+    "kg_reads": ("READERS",),
+    "kg_error": ("error", "seen in", "not seen"),
+    "kg_doctor": ("nodes/edges",),
+    "kg_node": ("OUT", "IN"),
     "kg_fixed_elsewhere": ("FIXED-ELSEWHERE", "REUSE_", "FILE_TOUCH"),
     "kg_map_audit": ("soft_gap_count", "verdict"),
     "mcp_auth": ("auth_required", "ok"),
@@ -173,6 +191,6 @@ if fails:
 if elapsed > 60:
     print(f"WARN: full smoke took {elapsed:.1f}s (>60s)")
 
-print(f"PASS: 17/17 tools + align misalign gate; elapsed={elapsed:.1f}s")
+print(f"PASS: 21/22 smoke calls + align misalign gate (kg_enhance in e2e only); elapsed={elapsed:.1f}s")
 sys.exit(0)
 PY

@@ -20,9 +20,9 @@ sys.path.insert(0, str(ROOT / "scripts" / "lib"))
 
 import kg as kg_mod  # noqa: E402
 
-MAX_CHARS = 10_000
-TRUNC_MARK = "\n\n… [truncated — refine query / narrower args; max 10000 chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.6.0"}
+MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
+TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
+SERVER_INFO = {"name": "trustt-kg", "version": "1.8.0"}
 PROTOCOL = "2024-11-05"
 
 # Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
@@ -31,13 +31,24 @@ TOOL_TIMEOUT_S: dict[str, float] = {
     "ship_plan": 12.0,
     "kg_map_audit": 25.0,
     "kg_orient": 20.0,
-    "kg_fixed_elsewhere": 20.0,
+    "kg_fixed_elsewhere": 25.0,
+    "kg_enhance": 180.0,
+    "kg_doctor": 15.0,
     "kg_align": 15.0,
 }
 DEFAULT_TOOL_TIMEOUT_S = 25.0
 
 _MONEY_LOOKUP_TOOLS = frozenset(
-    {"kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_crud", "kg_writes", "kg_cases"}
+    {
+        "kg_orient",
+        "kg_flow",
+        "kg_why",
+        "kg_impact",
+        "kg_crud",
+        "kg_writes",
+        "kg_reads",
+        "kg_cases",
+    }
 )
 
 TOOLS = {
@@ -50,6 +61,14 @@ TOOLS = {
                 "query": {"type": "string", "description": "apiName / request / partial id"},
                 "require_repo": {"type": "string"},
                 "require_branch": {"type": "string"},
+                "brief": {
+                    "type": "boolean",
+                    "description": "Cap auto silent-surfaces in why (default true — avoids MCP truncation).",
+                },
+                "full": {
+                    "type": "boolean",
+                    "description": "If true, disable brief cap (may truncate at KG_MCP_MAX_CHARS).",
+                },
             },
             "required": ["query"],
         },
@@ -76,6 +95,10 @@ TOOLS = {
                 "query": {"type": "string"},
                 "require_repo": {"type": "string"},
                 "require_branch": {"type": "string"},
+                "auto_cap": {
+                    "type": "integer",
+                    "description": "Max auto silent-surface diags (default 10). Use 0 for curated-only.",
+                },
             },
             "required": ["query"],
         },
@@ -116,6 +139,10 @@ TOOLS = {
                 "query": {"type": "string"},
                 "repo": {"type": "string"},
                 "base": {"type": "string", "description": "reported/base branch"},
+                "fetch_if_stale": {
+                    "type": "boolean",
+                    "description": "Auto git fetch upstream when refs stale (default true).",
+                },
             },
             "required": ["query"],
         },
@@ -178,6 +205,57 @@ TOOLS = {
             "required": ["query"],
         },
     },
+    "kg_reads": {
+        "description": "Who reads a table (complement to kg_writes).",
+        "args": ["reads"],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "require_repo": {"type": "string"},
+                "require_branch": {"type": "string"},
+            },
+            "required": ["query"],
+        },
+    },
+    "kg_error": {
+        "description": "Which shipped cases hit an error code (e.g. ACCT_xxx).",
+        "args": ["error"],
+        "schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    "kg_node": {
+        "description": "Inspect a KG node by id or label — JSON + inbound/outbound edges.",
+        "args": ["node"],
+        "schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    },
+    "kg_doctor": {
+        "description": "KG health: node/edge counts, source staleness vs kg.db, watermark drift, CRUD coverage.",
+        "args": ["doctor"],
+        "schema": {"type": "object", "properties": {}},
+    },
+    "kg_enhance": {
+        "description": "Self-heal: rebuild KG for current checkout (kg-switch) + validate + fresh. Invalidates MCP cache.",
+        "args": [],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "force": {
+                    "type": "boolean",
+                    "description": "Pass --force to kg-switch (full rebuild even if cache hit).",
+                },
+                "align_repo": {"type": "string"},
+                "align_branch": {"type": "string"},
+            },
+        },
+    },
     "kg_map_audit": {
         "description": "LMS change_test_map vs KG audit — CRITICAL + soft gaps (mismatch/bare/orphan/missing). Run before money ship / after map edits.",
         "args": [],
@@ -224,9 +302,11 @@ def _db():
 
 
 def truncate(s: str) -> str:
-    if len(s) <= MAX_CHARS:
+    total = len(s)
+    if total <= MAX_CHARS:
         return s
-    return s[: MAX_CHARS - len(TRUNC_MARK)] + TRUNC_MARK
+    mark = TRUNC_MARK.format(shown=MAX_CHARS - 80, total=total)
+    return s[: MAX_CHARS - len(mark)] + mark
 
 
 _HEADER_CACHE = None  # (mono, str)
@@ -322,6 +402,16 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
         rb = arguments.get("require_branch") or os.environ.get("KG_ALIGN_BRANCH")
         if rr and rb:
             argv.extend(["--require-repo", str(rr), "--require-branch", str(rb)])
+    if name == "kg_orient":
+        if arguments.get("full"):
+            pass  # brief disabled
+        elif arguments.get("brief", True):
+            argv.append("--brief")
+    if name == "kg_why":
+        cap = arguments.get("auto_cap")
+        if cap is None:
+            cap = 10
+        argv.extend(["--auto-cap", str(int(cap))])
     if name == "kg_align":
         if arguments.get("repo"):
             argv.extend(["--repo", str(arguments["repo"])])
@@ -336,6 +426,8 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
             argv.extend(["--repo", str(arguments["repo"])])
         if arguments.get("base"):
             argv.extend(["--base", str(arguments["base"])])
+        if arguments.get("fetch_if_stale", True):
+            argv.append("--fetch-if-stale")
     return argv
 
 
@@ -458,17 +550,78 @@ def _stack_doctor_summary() -> dict:
         return {"ok": rc == 0, "raw": out[:600], "cached": False}
 
 
+def _kg_fresh_summary() -> str:
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        try:
+            kg_mod.cmd_fresh(_db(), [])
+        except SystemExit:
+            pass
+    for line in buf.getvalue().splitlines():
+        s = line.strip()
+        if s and "KG " in s:
+            return s
+    return buf.getvalue().strip().split("\n")[-1][:300] if buf.getvalue().strip() else "?"
+
+
+def _kg_watermark_summary() -> str:
+    wm = kg_mod._load_watermark() or {}
+    acc = (wm.get("repos") or {}).get("trustt-platform-accounting") or {}
+    built = wm.get("built_at") or "?"
+    if acc:
+        return f"built={built} accounting={acc.get('branch','?')}@{acc.get('sha','?')}"
+    return f"built={built} repos={len(wm.get('repos') or {})}"
+
+
+def _invalidate_db_cache() -> None:
+    global _DB, _HEADER_CACHE
+    _DB = None
+    _HEADER_CACHE = None
+
+
+def _kg_enhance_payload(arguments: dict) -> dict:
+    force = bool(arguments.get("force"))
+    align_repo = str(arguments.get("align_repo") or "").strip()
+    align_branch = str(arguments.get("align_branch") or "").strip()
+    switch = ROOT / "scripts" / "bin" / "kg-switch.sh"
+    cmd = ["bash", str(switch)]
+    if force:
+        cmd.append("--force")
+    rc, out = _run_cmd(cmd, timeout_s=170)
+    _invalidate_db_cache()
+    result: dict[str, Any] = {
+        "provenance": _header(),
+        "kg_switch_rc": rc,
+        "kg_switch_tail": (out.splitlines()[-6:] if out else []),
+    }
+    if rc != 0:
+        result["error"] = f"kg-switch failed (rc={rc})"
+        return result
+    val_text, val_rc = run_kg(["validate"])
+    fresh_text, fresh_rc = run_kg(["fresh"])
+    result["validate_rc"] = val_rc
+    result["validate"] = val_text.split("\n", 1)[-1][:500] if val_text else ""
+    result["fresh_rc"] = fresh_rc
+    result["fresh"] = fresh_text.split("\n", 1)[-1][:300] if fresh_text else ""
+    if align_repo and align_branch:
+        align_text, align_rc = run_kg(
+            ["align", "--repo", align_repo, "--branch", align_branch]
+        )
+        result["align_rc"] = align_rc
+        result["align"] = align_text.split("\n", 1)[-1][:300] if align_text else ""
+    result["ok"] = val_rc == 0 and fresh_rc == 0
+    return result
+
+
 def _workspace_status_payload() -> dict:
     pending = _read_json(ROOT / ".cursor/.pending-ship-work.json")
     passed = _read_json(ROOT / ".cursor/.ship-loop-passed.json")
     impact_ran = _read_json(ROOT / ".cursor/.impact-tests-ran.json")
     close_state = _read_json(ROOT / ".cursor/.autopilot-state.json")
 
-    kg_fresh, _ = run_kg(["fresh"])
-    kg_watermark, _ = run_kg(["watermark"])
     return {
         "provenance": _header(),
-        "kg": {"fresh": kg_fresh, "watermark": kg_watermark},
+        "kg": {"fresh": _kg_fresh_summary(), "watermark": _kg_watermark_summary()},
         "ship": {
             "pending_repos": pending.get("repos") or [],
             "pending_tier": pending.get("tier"),
@@ -567,6 +720,10 @@ def _dispatch_tool(name: str, arguments: dict) -> tuple[str, bool]:
                 or int(payload.get("soft_gap_count") or 0) > 0
                 or str(payload.get("verdict") or "") in {"FAIL", "ERROR"}
             )
+            return truncate(_header() + "\n" + json.dumps(payload, indent=2)), is_err
+        if name == "kg_enhance":
+            payload = _kg_enhance_payload(arguments)
+            is_err = not payload.get("ok") and bool(payload.get("error"))
             return truncate(_header() + "\n" + json.dumps(payload, indent=2)), is_err
         if name == "mcp_auth":
             return (
