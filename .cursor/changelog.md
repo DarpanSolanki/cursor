@@ -1,3 +1,6 @@
+## 2026-07-31 — booking abort formalize
+- Defect LMS-DEFECT-accrual-booking-abort + child stuck tip probe; L2 skip log on accounting; QA blast UNKNOWN (DB down).
+
 ## 2026-07-30 — BONE AUDIT residuals
 - InterestAccrualBookingBatchService: continue on non-booking-day IAD (empty processDtos fix); shg stitch schedule-derived window; writeoff/penal out of suite15; _contract_scan restored; doctor HEALTHY; suite 10/15.
 
