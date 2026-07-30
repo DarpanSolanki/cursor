@@ -141,7 +141,41 @@ def cmd_node(c,a):
     print(f"\nIN ({len(ins)}):")
     for e in ins[:80]: print(f"  {e[1]} -{e[0]}->  [{e[3] or '?'}]")
 
+def _pop_require_align(a):
+    """Pull --require-repo/--require-branch (or env KG_ALIGN_*) and fail-closed if misaligned.
+
+    Returns remaining argv. Used by money look-ups so branch-wrong KG cannot silently answer.
+    Nested calls under orient set _pop_require_align._nested to avoid double-fail/hint.
+    """
+    repo=None; branch=None; rest=[]; i=0
+    while i<len(a):
+        if a[i]=="--require-repo" and i+1<len(a): repo=a[i+1]; i+=2
+        elif a[i]=="--require-branch" and i+1<len(a): branch=a[i+1]; i+=2
+        else: rest.append(a[i]); i+=1
+    if getattr(_pop_require_align, "_nested", False):
+        return rest
+    repo=repo or os.environ.get("KG_ALIGN_REPO") or ""
+    branch=branch or os.environ.get("KG_ALIGN_BRANCH") or ""
+    if repo and branch:
+        cmd_align(None, ["--repo", repo, "--branch", branch])
+    elif os.environ.get("KG_REQUIRE_ALIGN") in ("1", "true", "yes"):
+        print("ALIGN REQUIRED — pass --require-repo/--require-branch or set KG_ALIGN_REPO+KG_ALIGN_BRANCH "
+              "(or call `kg align` / MCP kg_align first).", file=sys.stderr)
+        raise SystemExit(2)
+    else:
+        if not getattr(_pop_require_align, "_hinted", False):
+            wm=_load_watermark() or {}
+            acc=(wm.get("repos") or {}).get("trustt-platform-accounting") or {}
+            if acc.get("branch"):
+                print(f"ALIGN HINT: KG accounting={acc.get('branch')} — for train-correct impact use "
+                      f"`kg align --repo trustt-platform-accounting --branch <train>` or "
+                      f"--require-repo/--require-branch", file=sys.stderr)
+            _pop_require_align._hinted = True  # type: ignore[attr-defined]
+    return rest
+
+
 def cmd_flow(c,a):
+    a=_pop_require_align(a)
     # Record orient-session touch so orient-before-edit gate is satisfied by kg flow too.
     if a:
         _touch_orient_session(a[0])
@@ -215,12 +249,13 @@ def cmd_neighbors(c,a):
             print(f"IN  {e[1]} -{e[0]}->")
 
 def cmd_impact(c,a):
+    a=_pop_require_align(a)
     depth=3; pos=[]; i=0
     while i<len(a):
         if a[i]=="--depth": depth=int(a[i+1]); i+=2
         else: pos.append(a[i]); i+=1
     if not pos:
-        print("Usage: kg impact <node|Class#method|method> [--depth N]"); return
+        print("Usage: kg impact <node|Class#method|method> [--depth N] [--require-repo R --require-branch B]"); return
     nid=resolve(c,pos[0])
     if not nid:
         # Retry as method-only symbol search (impact analysis entry)
@@ -342,6 +377,7 @@ def cmd_why(c,a):
       kg why <request>            failure surface of the whole flow: each processor's silent branches + curated diags
       kg why <processor|table>    failure modes attached to that node
       kg why <symptom-word>       e.g. zero | stuck | duplicate | missing | revert | null  -> matching diags"""
+    a=_pop_require_align(a)
     import json as _j
     if not a:
         rows=c.execute("SELECT id,label,json FROM nodes WHERE kind='diag' AND id NOT LIKE 'diag:auto.%' ORDER BY id").fetchall()
@@ -621,7 +657,8 @@ def cmd_doctor(c,a):
 def cmd_crud(c,a):
     """The full DB footprint of a flow: every processor's reads/writes/deletes, then the
     aggregate read-set / write-set / delete-set — the map a test simulator needs."""
-    if not a: print("usage: kg crud <request>"); return
+    a=_pop_require_align(a)
+    if not a: print("usage: kg crud <request> [--require-repo R --require-branch B]"); return
     nid=resolve(c,a[0]) or resolve(c,"request:"+a[0])
     if nid and str(nid).startswith("scheduler:"):
         bare = nid.split(":", 1)[1]
@@ -668,7 +705,9 @@ def _reverse_db(c,a,rel,label):
         fl=("  <- "+", ".join(flows[:4])+(" ..." if len(flows)>4 else "")) if flows else ""
         print(f"  {sid.split(':',1)[1]:<46} {op:<14}{fl}  [{src}]")
 
-def cmd_writes(c,a):  _reverse_db(c,a,'writes','WRITERS of')
+def cmd_writes(c,a):
+    a=_pop_require_align(a)
+    _reverse_db(c,a,'writes','WRITERS of')
 def cmd_reads(c,a):   _reverse_db(c,a,'reads','READERS of')
 def cmd_deletes(c,a): _reverse_db(c,a,'deletes','DELETERS of')
 
@@ -759,8 +798,9 @@ def cmd_align(c,a):
 
 def cmd_orient(c,a):
     """Evidence-only map for a request: flow spine + why surface + cases. Does not invent edges."""
+    a=_pop_require_align(a)
     if not a:
-        print("Usage: kg orient <request>  — flow + why + cases (evidence only)"); return
+        print("Usage: kg orient <request> [--require-repo R --require-branch B]  — flow + why + cases"); return
     # Record orient timestamp for orient-before-edit gate (X4).
     _touch_orient_session(a[0] if a else "")
     print("=== ORIENT (evidence only — verify orch XML + DB before claiming) ===")
@@ -769,12 +809,17 @@ def cmd_orient(c,a):
     if acc:
         print(f"--- kg train: accounting={acc.get('branch','?')}@{acc.get('sha','?')} "
               f"WIP — use `kg align --repo trustt-platform-accounting --branch <train>` before money claims ---")
-    print("--- flow ---")
-    cmd_flow(c,a)
-    print("--- why (silent failure surface) ---")
-    cmd_why(c,a)
-    print("--- cases (CHANGELOG precedents only) ---")
-    cmd_cases(c,a)
+    _pop_require_align._nested = True  # type: ignore[attr-defined]
+    try:
+        print("--- flow ---")
+        cmd_flow(c,a)
+        print("--- why (silent failure surface) ---")
+        cmd_why(c,a)
+        print("--- cases (CHANGELOG precedents only) ---")
+        cmd_cases(c,a)
+    finally:
+        _pop_require_align._nested = False  # type: ignore[attr-defined]
+
 
 
 def _touch_orient_session(api: str) -> None:

@@ -45,12 +45,21 @@ bash scripts/bin/sync-branches.sh --domain accounting --train mfi_integration_v3
 bash scripts/bin/kg-align.sh --repo trustt-platform-accounting --branch mfi_integration_v3.4.2.4
 # or: bash scripts/bin/kg-switch.sh --force --assert-repo trustt-platform-accounting --assert-branch mfi_integration_v3.4.2.4
 
-# 3) Impact (method-level after build_java_symbols)
-python3 cursor-bundle/kg/bin/kg.py impact 'InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual'
-python3 cursor-bundle/kg/bin/kg.py align --domain foreclosure --train mfi_integration_v3.4.2.4
+# 3) Impact with fail-closed require (L2)
+python3 cursor-bundle/kg/bin/kg.py impact 'InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual' \
+  --require-repo trustt-platform-accounting --require-branch mfi_integration_v3.4.2.4
+# env form: KG_ALIGN_REPO=… KG_ALIGN_BRANCH=… kg impact …
+# hard fail without pair: KG_REQUIRE_ALIGN=1 kg impact …
+
+# 4) After curated/diag edits — self-enhance
+bash scripts/bin/kg-self-enhance.sh --repo trustt-platform-accounting --branch mfi_integration_v3.4.2.4
 ```
 
-MCP: `kg_align` (repo/branch or domain/train) before `kg_impact` / `kg_orient` on money work.
+MCP: `kg_align` then `kg_impact`/`kg_orient` with `require_repo` + `require_branch` (v1.5.0+).
+
+### Ship routing (L1)
+
+`scripts/bin/kg-*.sh` + `scripts/lib/kg_*.py` + `cursor-bundle/kg/**` are **knowledge-only**. A knowledge-only HEAD skips money/DPIC auto-close even if sticky pending still lists foreclosure APIs.
 
 **Do not** answer INT/FC money questions from a KG stamped on `3.5.2.2` while reading `origin/3.4.2.4` via git — that is the failure mode this align gate closes.
 

@@ -1,3 +1,8 @@
+## 2026-07-30 — trustt-kg L1+L2: knowledge ship routing + require-align
+- L1: `scripts/bin/kg-*` / `scripts/lib/kg_*` are knowledge-only; knowledge HEAD skips sticky money/DPIC auto-close (`ship_push_gate`).
+- L2: `--require-repo/--require-branch` + `KG_ALIGN_*` / `KG_REQUIRE_ALIGN` on impact/flow/orient/why/crud/writes; MCP v1.5.0; `kg-self-enhance.sh`; post-checkout align when env set.
+- Tests: `scripts/lib/test_kg_knowledge_ship_routing.py`.
+
 ## 2026-07-30 — trustt-kg: branch-wise align + Java symbol impact (system-wide)
 - `kg align` / `kg-align.sh` / `kg-switch --assert-repo/--assert-branch` / MCP `kg_align` — fail-closed watermark vs expected train before money impact.
 - `build_java_symbols.py` — method nodes (`symbol:repo/Class#method`) for `kg impact`; wired into `build.sh`.

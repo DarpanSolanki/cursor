@@ -15,4 +15,10 @@ fi
 if [[ -x "$ROOT/scripts/bin/kg-switch.sh" ]]; then
   timeout 600 bash "$ROOT/scripts/bin/kg-switch.sh" --quiet 2>&1 | tail -3 >&2 || true
 fi
+# Self-aware: if agent set target train, fail-closed align (do not analyze wrong branch KG).
+if [[ -n "${KG_ALIGN_REPO:-}" && -n "${KG_ALIGN_BRANCH:-}" ]]; then
+  python3 "$ROOT/cursor-bundle/kg/bin/kg.py" align --repo "$KG_ALIGN_REPO" --branch "$KG_ALIGN_BRANCH" >&2 || {
+    echo "post-checkout: KG MISALIGNED to $KG_ALIGN_REPO@$KG_ALIGN_BRANCH — run kg-align.sh / sync-branches" >&2
+  }
+fi
 exit 0

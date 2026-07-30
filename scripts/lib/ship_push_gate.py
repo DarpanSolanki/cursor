@@ -81,17 +81,48 @@ def ship_loop_satisfied(pending_path: Path, passed_path: Path) -> bool:
 
 
 def should_skip_auto_close_for_knowledge_head(repo_dir: Path | None = None) -> bool:
-    """Skip money E2E only when HEAD is knowledge-only AND pending has no service/money code."""
+    """Skip money/DPIC ship-loop when HEAD commit is knowledge/KG-harness only.
+
+    Sticky pending money files from earlier tasks must NOT force DPIC on a
+    knowledge-only push. Money pending remains for the next product-code push.
+    """
     if not is_knowledge_only_head(repo_dir or ROOT):
         return False
-    pending = load_json(ROOT / ".cursor/.pending-ship-work.json")
-    files = pending.get("files") or []
-    if not files:
-        return True
-    sys.path.insert(0, str(ROOT / "scripts/lib"))
-    from infer_ship_apis import is_knowledge_only_paths  # noqa: WPS433
+    # Prune knowledge paths from pending so sticky money list stays accurate.
+    try:
+        _prune_knowledge_paths_from_pending()
+    except Exception:
+        pass
+    return True
 
-    return is_knowledge_only_paths(files)
+
+def _prune_knowledge_paths_from_pending() -> None:
+    """Drop knowledge-only files from pending; keep service/money for later close."""
+    sys.path.insert(0, str(ROOT / "scripts/lib"))
+    from infer_ship_apis import is_knowledge_path, build_impact  # noqa: WPS433
+
+    pending_path = ROOT / ".cursor/.pending-ship-work.json"
+    pending = load_json(pending_path)
+    files = list(pending.get("files") or [])
+    if not files:
+        return
+    kept = [f for f in files if not is_knowledge_path(str(f))]
+    if kept == files:
+        return
+    if not kept:
+        pending_path.unlink(missing_ok=True)
+        return
+    pending["files"] = kept
+    abs_paths = [
+        str(ROOT / x) if not str(x).startswith("/") else str(x) for x in kept
+    ]
+    impact = build_impact(abs_paths)
+    pending["tier"] = impact.get("tier") or pending.get("tier") or "workspace"
+    pending["apis"] = impact.get("apis") or []
+    pending["repos"] = impact.get("repos") or pending.get("repos") or []
+    pending["registry_cases"] = impact.get("ntest_cases") or impact.get("registry_cases") or []
+    pending["ntest_cases"] = pending["registry_cases"]
+    pending_path.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
 
 
 def pending_apis(pending_path: Path) -> list[str]:

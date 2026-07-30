@@ -1,29 +1,30 @@
 # Decision: multi-profile / domain-scoped KG overlays
 
-**Status:** PARTIAL (2026-07-30) — light **align gate** shipped; full domain overlays still deferred.  
+**Status:** PARTIAL (2026-07-30) — **align gate + L1 ship routing + L2 require-align** shipped; full domain overlays still deferred.  
 **Owner:** workspace KG (`cursor-bundle/kg/`)  
-**Related:** `BRANCH-SAFETY.md`, `scripts/bin/kg-align.sh`, `kg.py align`, MCP `kg_align`, telemetry in `.cursor/workspace-kg-state.md`
+**Related:** `BRANCH-SAFETY.md`, `scripts/bin/kg-align.sh`, `kg-self-enhance.sh`, `kg.py align` / `--require-repo`, MCP `kg_align` v1.5.0
 
 ## Why not full overlays yet
 
 One live KG already blends mixed trains; the failure mode is agents **sailing past** PROVISIONAL warnings *and* analyzing train A from git while KG is stamped on train B. Composite-key LRU already restores a full branch-set in ~1s.
 
-## Shipped (2026-07-30) — align + symbols
+## Shipped (2026-07-30) — align + symbols + L1/L2
 
 | Piece | Purpose |
 |-------|---------|
 | `kg align --repo/--branch` or `--domain/--train` | Fail-closed watermark vs expected train |
-| `scripts/bin/kg-align.sh` | `kg-switch` then align |
-| `kg-switch.sh --assert-repo/--assert-branch` | Same assert after restore/build |
+| `--require-repo/--require-branch` on impact/flow/orient/why/crud/writes | Same gate inline on money look-ups |
+| `KG_ALIGN_REPO` + `KG_ALIGN_BRANCH` / `KG_REQUIRE_ALIGN=1` | Env-driven fail-closed |
+| `scripts/bin/kg-align.sh` / `kg-self-enhance.sh` | Switch+align; validate+rebuild after curated edits |
+| Knowledge-only ship paths include `scripts/bin/kg-*` | Knowledge HEAD skips sticky money/DPIC auto-close |
+| MCP `require_repo`/`require_branch` on look-ups | Cursor agents pass train under study |
 | `build_java_symbols.py` | Method nodes for `kg impact Class#method` |
-| MCP `kg_align` | Same gate from Cursor MCP |
-| Orient/impact banners | Print accounting train from watermark |
 
 ## Guardrail in force (meanwhile)
 
 Money / cross-service tasks with WIP watermark or key mismatch → autopilot **HARD STOP** (`KG STATE` + options: kg-switch / `KG_STRICT=1` / explicit user ack). Every trigger logs `trigger=gate` in telemetry. MCP/CLI answers carry `[KG @… set=… WIP:n]`.
 
-**Plus:** before money impact claims, agents must run `kg align` for the train under study (or document explicit ack of misalignment).
+**Plus:** before money impact claims, agents must run `kg align` **or** pass `--require-repo/--require-branch` for the train under study (or document explicit ack of misalignment).
 
 ## Trigger criteria to revisit (build profiles)
 

@@ -98,28 +98,59 @@ KNOWLEDGE_ONLY_PREFIXES = (
     ".cursorrules",
 )
 
+# Harness scripts that ship with KG/docs — must NOT force money/DPIC ship-loop.
+_KNOWLEDGE_SCRIPT_PREFIXES = (
+    "scripts/bin/kg-",
+    "scripts/bin/kg_",
+    "scripts/lib/kg_",
+    "scripts/lib/kg-",
+    "scripts/lib/ship_push_gate.py",
+    "scripts/lib/infer_ship_apis.py",
+    "scripts/lib/resolve_ship_impact.py",
+    "scripts/lib/register_pending_ship.py",
+    "scripts/lib/ship_fingerprint.py",
+    "scripts/lib/kg_state_banner.py",
+    "scripts/lib/kg_watermark_gate.py",
+    "scripts/lib/test_kg_",
+    "scripts/lib/test_ship_",
+)
+
+
+def is_knowledge_path(path: str) -> bool:
+    """Single path: docs/KG/brain or KG ship-harness scripts (safe without money E2E)."""
+    s = path.replace("\\", "/")
+    while s.startswith("./"):
+        s = s[2:]
+    # Absolute paths outside repo (IDE assets) — ignore as non-ship noise
+    if s.startswith("/") and "sliProd/" not in s and not any(
+        s.startswith(p) for p in KNOWLEDGE_ONLY_PREFIXES[:4]
+    ):
+        # allow absolute under workspace if it contains knowledge prefixes
+        for p in (".cursor/", "cursor-bundle/", "system_brain/", "docs/"):
+            if f"/{p}" in s or s.endswith(p.rstrip("/")):
+                return True
+        if "/scripts/bin/kg-" in s or "/scripts/lib/kg_" in s:
+            return True
+        return False
+    if s in ("AGENTS.md", "WORKSPACE.md", ".cursorrules"):
+        return True
+    if any(s.startswith(p) for p in (".cursor/", "cursor-bundle/", "system_brain/", "docs/")):
+        return True
+    if any(s.startswith(p) for p in _KNOWLEDGE_SCRIPT_PREFIXES):
+        return True
+    # test modules for the above gates
+    if s.startswith("scripts/lib/test_") and any(
+        x in s for x in ("kg_", "ship_", "infer_ship", "resolve_ship")
+    ):
+        return True
+    return False
+
 
 def is_knowledge_only_paths(paths: list[str]) -> bool:
-    """True when every path is workspace knowledge/docs (safe to push without money E2E)."""
+    """True when every path is workspace knowledge/docs/KG harness (safe to push without money E2E)."""
     if not paths:
         return False
-    for rel in paths:
-        s = rel.replace("\\", "/")
-        while s.startswith("./"):
-            s = s[2:]
-        if s in ("AGENTS.md", "WORKSPACE.md", ".cursorrules"):
-            continue
-        if not any(
-            s.startswith(p)
-            for p in (
-                ".cursor/",
-                "cursor-bundle/",
-                "system_brain/",
-                "docs/",
-            )
-        ):
-            return False
-    return True
+    return all(is_knowledge_path(rel) for rel in paths)
 
 
 def head_commit_paths(repo: Path | None = None) -> list[str]:
