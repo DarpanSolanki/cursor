@@ -1,3 +1,8 @@
+## 2026-07-30 — D2 postTransaction length validators + harness STAN≤64
+- accounting `90ed78ab0`: product_transaction_orc postTransaction mandatory cref (130121) + stringLength≤64 cref/stan (132181).
+- harness `6ba1b7e`: stop STAN double-append; reclassify NPA varchar defect; residual 132160 evidence.
+- Proof: flowtest.dpd_npa PASS (slab 31-500 is_npa=true; invariants PASS).
+
 ## 2026-07-30 — MCP hang fix (trustt-kg 1.9.1)
 - Handler watchdog: daemon `join` + structured `TIMEOUT` (reads≤2s, heavy≤15s, enhance≤45s); no `shutdown(wait=True)`.
 - SQLite: `check_same_thread=False` + serial lock; TIMEOUT invalidates without close (avoid abandon deadlock).
