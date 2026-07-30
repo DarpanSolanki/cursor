@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-07-30",
-  "source": "FLOWTEST F1\u2013F5",
+  "source": "FLOWTEST F1–F5",
   "notes": "harness_ready YES only after green fresh run + registry expect PASS/PARTIAL. Enforced: scripts/lib/flow_coverage_gate.py (doctor WARN).",
   "flows": [
     {
@@ -24,7 +24,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.repayment_reversal",
-      "note": "F2 \u2014 covered by repayment_reversal spine"
+      "note": "F2 — covered by repayment_reversal spine"
     },
     {
       "flow": "childLoanRepayment",
@@ -69,7 +69,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.loan_prepayment_fc",
-      "note": "F2 \u2014 ICF on DCF bak child (maturity window hygiene)"
+      "note": "F2 — ICF on DCF bak child (maturity window hygiene)"
     },
     {
       "flow": "childLoanForeclosure",
@@ -98,15 +98,19 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.rstcre_spine",
-      "note": "F1 pilot \u2014 RSTCRE via childLoanEventProcessingBatchJob"
+      "note": "F1 pilot — RSTCRE via childLoanEventProcessingBatchJob"
     },
     {
       "flow": "childLoanEventProcessingBatchJob",
       "verify_mode": "runtime",
       "harness_ready": "PARTIAL",
-      "blocker": "alias: shared registry with childLoanRestructuring \u2014 event batch not independently YES",
+      "blocker": "wont-do: kg_crud WRITE-SET empty (0 tables); money schedule writes covered by childLoanRestructuring via flowtest.rstcre_spine",
       "registry": "flowtest.rstcre_spine",
-      "alias_downgrade_at": "2026-07-30T15:03:30Z"
+      "alias_downgrade_at": "2026-07-30T15:03:30Z",
+      "covering_case": "flowtest.rstcre_spine",
+      "wont_do_reason": "No unique money write-set in KG; inventing an event-batch-only scenario adds no money-risk coverage",
+      "write_set": [],
+      "decision_at": "2026-07-30T16:02:00Z"
     },
     {
       "flow": "loanAccountReschedule",
@@ -128,7 +132,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.loan_reopening",
-      "note": "F5 \u2014 ICF compose + document_details stub; ACTIVE + dues reinstated"
+      "note": "F5 — ICF compose + document_details stub; ACTIVE + dues reinstated"
     },
     {
       "flow": "childLoanReopening",
@@ -136,7 +140,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "via-parent-reopen",
       "registry": "flowtest.loan_reopening",
-      "note": "F5 \u2014 parent Request loanAccountReopening green; child async event path not separately asserted"
+      "note": "F5 — parent Request loanAccountReopening green; child async event path not separately asserted"
     },
     {
       "flow": "waiveLoanAccountCharges",
@@ -144,7 +148,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.waiver_charges",
-      "note": "F5 \u2014 age+waive INT due with document_details stub"
+      "note": "F5 — age+waive INT due with document_details stub"
     },
     {
       "flow": "loanWriteoff",
@@ -160,7 +164,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "SU-FLOW-EXCESS-RAILS",
       "registry": "flowtest.proactive_excess_refund",
-      "note": "F4 \u2014 staging+refund COMPLETED; excess unchanged (writer/rails)"
+      "note": "F4 — staging+refund COMPLETED; excess unchanged (writer/rails)"
     },
     {
       "flow": "loanAccountExcessAmountRefund",
@@ -173,10 +177,24 @@
       "flow": "loanAccountTransactionReversal",
       "verify_mode": "runtime",
       "harness_ready": "PARTIAL",
-      "blocker": "alias: shared registry with loanRepayment \u2014 reverse path not independently YES",
+      "blocker": "wont-do invent parallel case: unique write-set vs loanRepayment already targeted by flowtest.repayment_reversal (flaky — green that case, do not duplicate)",
       "registry": "flowtest.repayment_reversal",
-      "note": "F2 \u2014 repay+rev on DCF child (NPA slab hygiene)",
-      "alias_downgrade_at": "2026-07-30T15:03:30Z"
+      "note": "F2 — repay+rev on DCF child (NPA slab hygiene)",
+      "alias_downgrade_at": "2026-07-30T15:03:30Z",
+      "covering_case": "flowtest.repayment_reversal",
+      "wont_do_reason": "WRITE-SET has reverse-only tables not in loanRepayment; case already exists — fix flaky, do not invent a second scenario",
+      "write_set_unique_vs_loanRepayment": [
+        "transaction_reversal_details",
+        "transaction_reversal__document",
+        "transaction_master",
+        "transaction_details",
+        "transaction_partition_details",
+        "account_entry",
+        "document",
+        "document_file",
+        "waiver_details"
+      ],
+      "decision_at": "2026-07-30T16:02:00Z"
     },
     {
       "flow": "childLoanTransactionReversal",
@@ -191,16 +209,23 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.shg_int_accrual_stitch",
-      "note": "SHG parent-SoT window Accrued distribute + calc\u2192posting\u2192billing stitch; also flowtest.accrual_billing (F3)"
+      "note": "SHG parent-SoT window Accrued distribute + calc→posting→billing stitch; also flowtest.accrual_billing (F3)"
     },
     {
       "flow": "interestAccrualPosting",
       "verify_mode": "runtime",
       "harness_ready": "PARTIAL",
-      "blocker": "alias-lie: posting must not claim YES via flowtest.shg_int_accrual_stitch; batch.interest_accrual_posting last FAIL \u2014 needs own green",
+      "blocker": "wont-do own YES: WRITE-SET {interest_accrual_details} exercised by green flowtest.shg_int_accrual_stitch (REAL posting + Posted delta). Standalone batch.interest_accrual_posting RED = LMS-DEFECT SkipListener ClassCast",
       "registry": "flowtest.shg_int_accrual_stitch",
       "note": "SHG stitch + flowtest.accrual_billing (F3 FLOW A)",
-      "alias_downgrade_at": "2026-07-30T15:03:30Z"
+      "alias_downgrade_at": "2026-07-30T15:03:30Z",
+      "covering_case": "flowtest.shg_int_accrual_stitch",
+      "wont_do_reason": "Money write-set fully covered by stitch; portfolio-wide batch RED is LMS SkipListener defect not missing harness scenario",
+      "write_set": [
+        "interest_accrual_details"
+      ],
+      "lms_defect": "scripts/testing/defects/LMS-DEFECT-accrual-posting-2026-07-30.md",
+      "decision_at": "2026-07-30T16:02:00Z"
     },
     {
       "flow": "penalInterestAccrualCalculation",
@@ -209,7 +234,7 @@
       "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "SU-FLOW-PENAL-READER-ELIG \u2014 WONT-DO per user scope cut"
+      "note": "SU-FLOW-PENAL-READER-ELIG — WONT-DO per user scope cut"
     },
     {
       "flow": "penalInterestAccrualBooking",
@@ -218,7 +243,7 @@
       "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "blocked with calc \u2014 scope=out permanently"
+      "note": "blocked with calc — scope=out permanently"
     },
     {
       "flow": "loanAccountBillingJob",
@@ -226,7 +251,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.accrual_billing",
-      "note": "F3 FLOW A \u2014 labd gap SEEDED; SHG stitch: flowtest.shg_int_accrual_stitch"
+      "note": "F3 FLOW A — labd gap SEEDED; SHG stitch: flowtest.shg_int_accrual_stitch"
     },
     {
       "flow": "loanAccountDpdCalcJob",
@@ -234,7 +259,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.dpd_npa",
-      "note": "F3 FLOW C \u2014 aging SEEDED, DpdCalc REAL"
+      "note": "F3 FLOW C — aging SEEDED, DpdCalc REAL"
     },
     {
       "flow": "loanAccountAssetCriteriaJob",
@@ -242,7 +267,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "SU-FLOW-NPA-CRITERIA-FLIP",
       "registry": "flowtest.dpd_npa",
-      "note": "F4 triage: fixture selected REGULAR_TO_NPA; postTransaction fails varchar(64)/code 333 then SkipListener CCE \u2014 is_npa not flipped"
+      "note": "F4 triage: fixture selected REGULAR_TO_NPA; postTransaction fails varchar(64)/code 333 then SkipListener CCE — is_npa not flipped"
     },
     {
       "flow": "loanAccountAssetClassificationJob",

@@ -3903,6 +3903,14 @@
     "expect": {
       "status": "SUCCESS",
       "batch_completed": true
+    },
+    "known_defect": {
+      "class": "LMS-DEFECT",
+      "at": "2026-07-30",
+      "summary": "SkipListener ClassCastException FutureTask→List (GenericListenerV3.onSkipInWrite); fixture stitch posting still PASS",
+      "evidence": "scripts/testing/defects/LMS-DEFECT-accrual-posting-2026-07-30.md",
+      "evidence_scratch": "scripts/scratch/LMS-DEFECT-accrual-posting-2026-07-30.md",
+      "file_line": "trustt-platform-lib/infra-batch/.../GenericListenerV3.java:135"
     }
   },
   "batch.loan_account_billing": {

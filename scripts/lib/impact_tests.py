@@ -1181,12 +1181,37 @@ def build_plan(
             )
 
     red: list[dict] = []
+    ordered_red: list[dict] = []
     try:
-        from ntest_telemetry import red_cases  # type: ignore
+        from ntest_telemetry import red_cases, last_result, _known_defect  # type: ignore
 
-        red = red_cases(list(ordered))
+        ordered_red = red_cases(list(ordered))
+        red = list(ordered_red)
+        # Honest: impacted smoke-skipped cases with registry known_defect still surface RED+reason
+        seen = {r.get("case") for r in red}
+        impacted_ids = {c.get("case") for c in cases if c.get("case")} | set(ordered)
+        for cid in sorted(impacted_ids):
+            if not cid or cid in seen:
+                continue
+            row = last_result(cid)
+            if row.get("result") != "fail":
+                continue
+            kd = _known_defect(cid)
+            if not kd:
+                continue
+            red.append(
+                {
+                    **row,
+                    "defect_class": kd.get("class"),
+                    "defect_summary": kd.get("summary"),
+                    "defect_evidence": kd.get("evidence"),
+                    "selected": False,
+                    "note": "impacted but smoke-skipped — defect attached",
+                }
+            )
     except Exception:
         red = []
+        ordered_red = []
 
     q_files = []
     try:
@@ -1231,7 +1256,7 @@ def build_plan(
         "query_files": q_files,
         "path_not_covered": path_not_covered,
         "red_cases": red,
-        "telemetry_red_block": bool(red),
+        "telemetry_red_block": bool(ordered_red),
     }
     if q_files:
         plan["why_lines"] = [
@@ -1456,10 +1481,19 @@ def format_banner(plan: dict) -> str:
         f = pnc.get("file") or "?"
         lines.append(f"  NOT-COVERED: {f} — invariants only")
     for row in plan.get("red_cases") or []:
+        sel = "" if row.get("selected", True) else " [not selected]"
         lines.append(
             f"  RED must-fix-first {row.get('case')} last={row.get('result')} "
-            f"at={row.get('at')} ({row.get('duration_s')}s)"
+            f"at={row.get('at')} ({row.get('duration_s')}s){sel}"
         )
+        if row.get("defect_class"):
+            lines.append(
+                f"    defect={row.get('defect_class')}: {row.get('defect_summary')}"
+            )
+            if row.get("defect_evidence"):
+                lines.append(f"    evidence={row.get('defect_evidence')}")
+        if row.get("note"):
+            lines.append(f"    note={row.get('note')}")
     if plan.get("telemetry_red_block"):
         lines.append(
             "  TELEMETRY_RED_BLOCK money ship blocked until green or human waiver"

@@ -106,12 +106,35 @@ def last_result(case_id: str) -> dict:
     return last or {"case": case_id, "result": "unknown", "at": None, "duration_s": None}
 
 
+def _known_defect(case_id: str) -> dict | None:
+    """Optional registry.known_defect for honest RED (LMS-DEFECT etc.)."""
+    try:
+        from pathlib import Path
+        import json
+
+        reg = json.loads(
+            (Path(__file__).resolve().parent / "registry.json").read_text(encoding="utf-8")
+        )
+        kd = (reg.get(case_id) or {}).get("known_defect")
+        return kd if isinstance(kd, dict) else None
+    except Exception:
+        return None
+
+
 def red_cases(case_ids: list[str]) -> list[dict]:
     """Cases whose last run is fail — must-fix-first before money ship."""
     out = []
     for cid in case_ids:
         row = last_result(cid)
         if row.get("result") == "fail":
+            kd = _known_defect(cid)
+            if kd:
+                row = {
+                    **row,
+                    "defect_class": kd.get("class"),
+                    "defect_summary": kd.get("summary"),
+                    "defect_evidence": kd.get("evidence"),
+                }
             out.append(row)
     return out
 
