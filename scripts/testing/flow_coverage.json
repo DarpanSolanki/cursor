@@ -353,6 +353,33 @@
       "registry": "flowtest.w4_midmonth_repay_then_me",
       "note": "W4-c STOP \u2014 stuck-tip reproduced; defect extended",
       "axis": "W4-multiday-reversal"
+    },
+    {
+      "flow": "interestAccrualPosting",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.w5_skip_poison_among_healthy",
+      "note": "W5-a",
+      "axis": "W5-batch-scale-skip"
+    },
+    {
+      "flow": "interestAccrualPosting",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.w5_batch_refire_idempotent",
+      "note": "W5-b",
+      "axis": "W5-batch-scale-skip"
+    },
+    {
+      "flow": "loanAccountBillingJob",
+      "verify_mode": "runtime",
+      "harness_ready": "YES",
+      "blocker": null,
+      "registry": "flowtest.w5_quarantine_scale_census",
+      "note": "W5-c",
+      "axis": "W5-batch-scale-skip"
     }
   ],
   "self_report": "GAP-CLOSE 2026-07-30: YES 13/35 after alias downgrades; PARTIAL=12; posting/reversal/event-batch no longer alias-YES",
@@ -403,6 +430,40 @@
       "honest_counts": {
         "executable": 3,
         "wont_do": 2
+      }
+    },
+    "W5-batch-scale-skip": {
+      "name": "W5-batch-scale-skip",
+      "status": "EXERCISED",
+      "exercised_at": "2026-07-31",
+      "cases": [
+        "flowtest.w5_skip_poison_among_healthy",
+        "flowtest.w5_batch_refire_idempotent",
+        "flowtest.w5_quarantine_scale_census"
+      ],
+      "wont_do": [
+        {
+          "item": "full ~6k dirty portfolio batch",
+          "reason": "FREEZE/Invalid amount noise without quarantine"
+        },
+        {
+          "item": "JVM kill mid-chunk resume",
+          "reason": "flaky on laptop; covered by re-fire idempotency"
+        },
+        {
+          "item": "chunk-edge poison control",
+          "reason": "Spring chunk boundary not harness-controllable"
+        },
+        {
+          "item": "multi-node / Kafka lag",
+          "reason": "env"
+        }
+      ],
+      "honest_counts": {
+        "executable": 3,
+        "wont_do": 4,
+        "green": 3,
+        "red": 0
       }
     }
   }

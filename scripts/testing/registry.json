@@ -5219,5 +5219,201 @@
       "summary": "SHG child IAD tip stuck mid-month (distribute); tip end_date not advanced to ME",
       "evidence": "scripts/testing/defects/LMS-DEFECT-child-iad-stuck-tip.md"
     }
+  },
+  "flowtest.w5_skip_poison_among_healthy": {
+    "type": "flow",
+    "api": "interestAccrualPosting",
+    "apis": [
+      "interestAccrualPosting"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w5-batch-scale-skip",
+      "skip",
+      "poison",
+      "accrual"
+    ],
+    "title": "W5-a \u2014 mid-month poison among quarantined healthy \u2192 L2 skip + COMPLETED",
+    "cmd": "bash scripts/testing/flowtest/run_w5_skip_poison_among_healthy.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "dirty_path",
+        "replay_idempotency"
+      ],
+      "db_asserts": [
+        {
+          "table": "interest_accrual_details",
+          "assert": "poison mid-month remains unposted",
+          "checked_by": "w5_a"
+        },
+        {
+          "table": "batch_failure_audit",
+          "assert": "no CCE/FutureTask mask",
+          "checked_by": "w5_a"
+        }
+      ],
+      "note": "af52abe3d soft-skip + L2 log"
+    },
+    "ship_baseline": {
+      "wall_s": 180,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-31",
+      "note": "W5-a measured ~177s (a2)"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak"
+        },
+        {
+          "key": "iad_sql_scale",
+          "reason": "mid-month tip unposted poison seed — skip-path only, not calc correctness"
+        },
+        {
+          "key": "labd_gap_for_billing_boundary",
+          "reason": "n/a poison IAD"
+        }
+      ],
+      "out_of_scope": []
+    }
+  },
+  "flowtest.w5_batch_refire_idempotent": {
+    "type": "flow",
+    "api": "interestAccrualPosting",
+    "apis": [
+      "interestAccrualPosting"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w5-batch-scale-skip",
+      "idempotent",
+      "refire"
+    ],
+    "title": "W5-b \u2014 re-fire accrual posting \u2192 zero posted delta",
+    "cmd": "bash scripts/testing/flowtest/run_w5_batch_refire_idempotent.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "replay_idempotency"
+      ],
+      "db_asserts": [
+        {
+          "table": "interest_accrual_details",
+          "assert": "refire posted delta=0",
+          "checked_by": "w5_b"
+        }
+      ],
+      "note": "re-fire not JVM kill"
+    },
+    "ship_baseline": {
+      "wall_s": 170,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-31",
+      "note": "W5-b measured ~160s"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak"
+        },
+        {
+          "key": "iad_sql_scale",
+          "reason": "W5-b may leave mid-month tip state from prior W5-a; claims refire delta=0 not calc"
+        }
+      ],
+      "out_of_scope": [
+        "jvm_kill_mid_chunk"
+      ]
+    }
+  },
+  "flowtest.w5_quarantine_scale_census": {
+    "type": "flow",
+    "api": "loanAccountBillingJob",
+    "apis": [
+      "interestAccrualCalculation",
+      "interestAccrualPosting",
+      "loanAccountBillingJob"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w5-batch-scale-skip",
+      "scale",
+      "quarantine",
+      "census"
+    ],
+    "title": "W5-c \u2014 quarantined fixture EOD wall + skip census (not full 6k)",
+    "cmd": "bash scripts/testing/flowtest/run_w5_quarantine_scale_census.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "dirty_path"
+      ],
+      "db_asserts": [
+        {
+          "table": "batch_job_execution",
+          "assert": "chain COMPLETED under budget",
+          "checked_by": "w5_c"
+        }
+      ],
+      "note": "full portfolio WONT-DO"
+    },
+    "ship_baseline": {
+      "wall_s": 170,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-31",
+      "note": "W5-c measured ~158s; job wall~4.7s"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "labd_gap_for_billing_boundary",
+          "reason": "billing work"
+        }
+      ],
+      "out_of_scope": [
+        "full_6k_dirty_portfolio",
+        "multi_node"
+      ]
+    }
   }
 }

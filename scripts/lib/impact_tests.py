@@ -73,6 +73,18 @@ _MULTIDAY_AXIS_FRAGMENTS = (
     "w4_",
 )
 
+_BATCH_SCALE_AXIS_FRAGMENTS = (
+    "genericlistenerv3",
+    "skiplistener",
+    "batchfail",
+    "interestaccrualbooking",
+    "force_async",
+    "w5_",
+    "skip_poison",
+    "refire_idempotent",
+    "quarantine_scale",
+)
+
 try:
     from change_test_map import api_from_class_stem, api_from_path  # noqa: E402
 except ImportError:  # pragma: no cover
@@ -763,6 +775,10 @@ def _w4_multiday_cases(reg: dict | None) -> list[str]:
     return _tagged_axis_cases(reg, "w4-multiday-reversal")
 
 
+def _w5_batch_scale_cases(reg: dict | None) -> list[str]:
+    return _tagged_axis_cases(reg, "w5-batch-scale-skip")
+
+
 def _replay_axis_flags(changed: list[str], *, reg: dict | None = None, ordered: list[str] | None = None) -> dict[str, str]:
     blob = " ".join(p.replace("\\", "/").lower() for p in changed)
     flags: dict[str, str] = {}
@@ -786,6 +802,18 @@ def _replay_axis_flags(changed: list[str], *, reg: dict | None = None, ordered: 
             flags["multiday_eod_reversal"] = "SELECTABLE"
         else:
             flags["multiday_eod_reversal"] = "NOT-EXERCISED"
+    btouch = any(f in blob for f in _BATCH_SCALE_AXIS_FRAGMENTS)
+    w5 = _w5_batch_scale_cases(reg)
+    selected5 = [c for c in (ordered or []) if c in w5]
+    if btouch or w5:
+        # Axis-path touch counts EXERCISED even when smoke-tier demotes cases
+        # out of post-tier ordered (harness-only W5 diffs have no Java FLOW hit).
+        if selected5 or (btouch and w5):
+            flags["batch_scale_skip"] = "EXERCISED"
+        elif w5:
+            flags["batch_scale_skip"] = "SELECTABLE"
+        else:
+            flags["batch_scale_skip"] = "NOT-EXERCISED"
     return flags
 
 
@@ -1198,6 +1226,13 @@ def build_plan(
             if cid not in ordered:
                 ordered.append(cid)
                 w4_injected.append(cid)
+    batch_scale_touch = any(f in blob for f in _BATCH_SCALE_AXIS_FRAGMENTS)
+    w5_injected: list[str] = []
+    if batch_scale_touch:
+        for cid in _w5_batch_scale_cases(reg):
+            if cid not in ordered:
+                ordered.append(cid)
+                w5_injected.append(cid)
     ordered, tier_lines, tier_stats = _apply_selection_tiering(
         ordered,
         cases=cases,
@@ -1218,6 +1253,11 @@ def build_plan(
         tier_lines.extend(
             f"TIER multiday-axis {c}: W4-multiday-reversal selectable"
             for c in w4_injected
+        )
+    if w5_injected:
+        tier_lines.extend(
+            f"TIER batch-scale-axis {c}: W5-batch-scale-skip selectable"
+            for c in w5_injected
         )
     replay_axes = _replay_axis_flags(changed, reg=reg, ordered=ordered)
 
