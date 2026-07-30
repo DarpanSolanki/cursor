@@ -393,6 +393,10 @@ case "$TIER" in
       echo "→ kg validate skipped (already done in workspace-close)"
     fi
     python3 "$ROOT/scripts/testing/ntest.py" validate
+    if [[ -x "$ROOT/scripts/bin/kg-mcp-smoke.sh" ]]; then
+      echo "→ kg-mcp-smoke (trustt-kg MCP stdio)"
+      bash "$ROOT/scripts/bin/kg-mcp-smoke.sh" || exit 1
+    fi
     if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
       mapfile -t _WS_CASES < <(python3 - <<'PY' "$ROOT" "${_SMART_CASES[@]}"
 import json, sys

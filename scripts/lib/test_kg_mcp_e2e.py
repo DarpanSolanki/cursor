@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""E2E audit for all trustt-kg MCP tools — timing, semantics, isError, no hang."""
+"""E2E audit for all trustt-kg MCP tools — timing, semantics, isError, no hang.
+
+Companion JSON-RPC smoke (stdio protocol): scripts/bin/kg-mcp-smoke.sh
+"""
 from __future__ import annotations
 
 import importlib.util
