@@ -152,11 +152,13 @@
     },
     {
       "flow": "loanWriteoff",
-      "verify_mode": "runtime",
-      "harness_ready": "NO",
-      "blocker": "SU-FLOW-WRITEOFF-GAP062",
+      "verify_mode": "none",
+      "harness_ready": "NOT-DEVELOPED",
+      "blocker": "wont-do: LOAN_WRITE_OFF/FINAL_WRITE_OFF catalogue absent this train (user 2026-07-30); out of suite+coverage denominators",
       "registry": "flowtest.loan_writeoff",
-      "note": "F5 L1 amount 2dp IAD scale PASS; DEFAULT NPE PrepaymentApproppriationProcessor:85 GAP-062"
+      "note": "GAP-062 appropriation alias guard remains (live prepayment callers). Writeoff E2E not developed on mfi_integration_v3.4.2.4 local catalogue set.",
+      "decision_at": "2026-07-30T18:15:00Z",
+      "wont_do_reason": "feature/catalogue absent this train — user decision NOT-DEVELOPED"
     },
     {
       "flow": "proactiveExcessAmountRefund",

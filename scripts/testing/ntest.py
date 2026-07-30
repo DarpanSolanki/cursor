@@ -370,10 +370,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not case:
         print(f"unknown case: {args.id}", file=sys.stderr)
         return 2
-    q = case.get("quarantine") or {}
+    q = case.get("quarantine")
     if q and not getattr(args, "include_quarantine", False):
-        label = q.get("label") or "QUARANTINE"
-        reason = q.get("reason") or "quarantined in registry"
+        # quarantine may be bool true OR {label, reason} — both mean skip
+        if isinstance(q, dict):
+            label = q.get("label") or "QUARANTINE"
+            reason = q.get("reason") or "quarantined in registry"
+        else:
+            label = "QUARANTINE"
+            reason = "quarantined in registry (bool flag)"
         print(
             f"=== {args.id} SKIP [{label}] — {reason}\n"
             f"    (re-run with --include-quarantine to force)"

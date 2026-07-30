@@ -1,3 +1,6 @@
+## 2026-07-30 — BONE AUDIT residuals
+- InterestAccrualBookingBatchService: continue on non-booking-day IAD (empty processDtos fix); shg stitch schedule-derived window; writeoff/penal out of suite15; _contract_scan restored; doctor HEALTHY; suite 10/15.
+
 ## 2026-07-30 — FINISH: validators length-only + partprep PTC + GAP-062
 - accounting `93be08eaa` length-only postTransaction validators; `896c02a56` GAP-062 appropriation EC normalize.
 - harness: product-44 PART_PREPAYMENT DPI_BILLED_INTEREST seed; flowtest.part_prepayment TRIAL PASS; coverage YES.
