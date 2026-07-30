@@ -1,3 +1,6 @@
+## 2026-07-30 — trustt-kg MCP 1.6.0: 17-tool audit patch
+- Per-tool timeouts; stack-doctor 12s+cache (workspace_status no longer blocks 45s); isError on align/misaligned exits; kg_align in smoke; version 1.6.0.
+
 ## 2026-07-30 — trustt-kg L1+L2: knowledge ship routing + require-align
 - L1: `scripts/bin/kg-*` / `scripts/lib/kg_*` are knowledge-only; knowledge HEAD skips sticky money/DPIC auto-close (`ship_push_gate`).
 - L2: `--require-repo/--require-branch` + `KG_ALIGN_*` / `KG_REQUIRE_ALIGN` on impact/flow/orient/why/crud/writes; MCP v1.5.0; `kg-self-enhance.sh`; post-checkout align when env set.

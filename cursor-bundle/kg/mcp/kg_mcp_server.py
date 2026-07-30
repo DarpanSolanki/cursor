@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import concurrent.futures
 import io
 import json
 import os
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[3]  # sliProd
 BIN = ROOT / "cursor-bundle" / "kg" / "bin"
@@ -20,8 +22,19 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = 10_000
 TRUNC_MARK = "\n\n… [truncated — refine query / narrower args; max 10000 chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.5.0"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.6.0"}
 PROTOCOL = "2024-11-05"
+
+# Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
+TOOL_TIMEOUT_S: dict[str, float] = {
+    "workspace_status": 18.0,
+    "ship_plan": 12.0,
+    "kg_map_audit": 25.0,
+    "kg_orient": 20.0,
+    "kg_fixed_elsewhere": 20.0,
+    "kg_align": 15.0,
+}
+DEFAULT_TOOL_TIMEOUT_S = 25.0
 
 _MONEY_LOOKUP_TOOLS = frozenset(
     {"kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_crud", "kg_writes", "kg_cases"}
@@ -82,7 +95,7 @@ TOOLS = {
         },
     },
     "kg_align": {
-        "description": "Fail-closed: KG watermark must match expected repo@branch (or domain@train) before money impact analysis. Exit mismatch = do not trust flow/impact for that train.",
+        "description": "Fail-closed: KG watermark must match expected repo@branch (or domain@train) before money impact analysis. isError when misaligned.",
         "args": ["align"],
         "schema": {
             "type": "object",
@@ -184,7 +197,7 @@ TOOLS = {
         "schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     "workspace_status": {
-        "description": "Workspace health snapshot: KG freshness/watermark, ship gate status, stack-doctor summary, flow coverage, backlog SU, speed, waivers.",
+        "description": "Workspace health snapshot (KG fresh/watermark, ship gate, cached stack-doctor). Fast path — no 45s block.",
         "args": [],
         "schema": {"type": "object", "properties": {}},
     },
@@ -197,6 +210,10 @@ TOOLS = {
 
 _DB = None
 os.environ.setdefault("KG_NO_AUTO_REBUILD", "1")
+
+_STACK_DOCTOR_CACHE: tuple[float, dict] | None = None
+_STACK_DOCTOR_TTL_S = 90.0
+_STACK_DOCTOR_TIMEOUT_S = 12
 
 
 def _db():
@@ -214,10 +231,10 @@ def truncate(s: str) -> str:
 
 _HEADER_CACHE = None  # (mono, str)
 
+
 def _header() -> str:
     global _HEADER_CACHE
-    import time as _time
-    now = _time.monotonic()
+    now = time.monotonic()
     if _HEADER_CACHE and (now - _HEADER_CACHE[0]) < 5.0:
         return _HEADER_CACHE[1]
     try:
@@ -230,32 +247,45 @@ def _header() -> str:
     return h
 
 
-def run_kg(argv: list[str]) -> str:
+def _infer_is_error(text: str, rc: int = 0) -> bool:
+    """Fail-closed: align/misaligned and non-zero kg exits surface as MCP isError."""
+    if rc != 0:
+        return True
+    if "MISALIGNED" in text or "ALIGN REQUIRED" in text:
+        return True
+    if text.startswith("(exit=") and not text.startswith("(exit=0)"):
+        return True
+    return False
+
+
+def run_kg(argv: list[str]) -> tuple[str, int]:
+    """Run kg command in-process. Returns (body_text, exit_code)."""
     cmd = argv[0]
     args = argv[1:]
     if cmd not in kg_mod.CMDS:
-        return f"ERROR: unknown kg cmd {cmd}"
-    # validate still shells to kg_validate for integrity PRAGMA (rare)
+        return f"ERROR: unknown kg cmd {cmd}", 1
     if cmd == "validate":
         buf = io.StringIO()
+        rc = 0
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             try:
                 kg_mod.CMDS[cmd](_db(), args)
             except SystemExit as e:
-                if e.code not in (0, None):
-                    return truncate((_header() + "\n" + buf.getvalue()).strip() or f"ERROR: validate exit {e.code}")
+                rc = int(e.code) if isinstance(e.code, int) else 1
         body = buf.getvalue().strip()
-        return truncate(_header() + "\n" + (body or "OK"))
+        if rc:
+            return truncate((_header() + "\n" + body).strip() or f"ERROR: validate exit {rc}"), rc
+        return truncate(_header() + "\n" + (body or "OK")), 0
     if cmd == "fixed-elsewhere":
-        # keeps branch_train subprocess (rare path)
         buf = io.StringIO()
+        rc = 0
         with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
             try:
                 kg_mod.CMDS[cmd](_db(), args)
-            except SystemExit:
-                pass
+            except SystemExit as e:
+                rc = int(e.code) if isinstance(e.code, int) else 1
         body = buf.getvalue().strip()
-        return truncate(_header() + "\n" + (body or "(empty)"))
+        return truncate(_header() + "\n" + (body or "(empty)")), rc
 
     buf = io.StringIO()
     t0 = time.perf_counter()
@@ -272,8 +302,8 @@ def run_kg(argv: list[str]) -> str:
     if os.environ.get("KG_MCP_TIMING"):
         body = f"(mcp_inproc_ms={ms:.1f})\n" + body
     if body.startswith("[KG @"):
-        return truncate(body)
-    return truncate(_header() + "\n" + body)
+        return truncate(body), rc
+    return truncate(_header() + "\n" + body), rc
 
 
 def tool_argv(name: str, arguments: dict) -> list[str]:
@@ -322,8 +352,20 @@ def _run_cmd(cmd: list[str], *, timeout_s: int = 8) -> tuple[int, str]:
     try:
         cp = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, check=False)
         return cp.returncode, (cp.stdout or cp.stderr or "").strip()
+    except subprocess.TimeoutExpired:
+        return 124, f"timeout after {timeout_s}s"
     except Exception as exc:  # noqa: BLE001
         return 1, f"error: {exc}"
+
+
+def _run_timed(label: str, fn: Callable[[], Any], timeout_s: float) -> Any:
+    """Run fn with wall-clock cap; raise TimeoutError on exceed."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        fut = pool.submit(fn)
+        try:
+            return fut.result(timeout=timeout_s)
+        except concurrent.futures.TimeoutError as exc:
+            raise TimeoutError(f"{label} exceeded {timeout_s}s") from exc
 
 
 def _flow_coverage_pct() -> str:
@@ -384,16 +426,36 @@ def _active_waivers() -> list[dict]:
 
 
 def _stack_doctor_summary() -> dict:
-    # 12s was too tight (workspace_status regularly timed out → false "ok:false").
-    rc, out = _run_cmd(["bash", str(ROOT / "scripts/bin/stack-doctor.sh"), "--json"], timeout_s=45)
+    """Cached, short-timeout stack-doctor — must not block workspace_status for 45s."""
+    global _STACK_DOCTOR_CACHE
+    now = time.monotonic()
+    if _STACK_DOCTOR_CACHE and (now - _STACK_DOCTOR_CACHE[0]) < _STACK_DOCTOR_TTL_S:
+        cached = dict(_STACK_DOCTOR_CACHE[1])
+        cached["cached"] = True
+        return cached
+
+    rc, out = _run_cmd(
+        ["bash", str(ROOT / "scripts/bin/stack-doctor.sh"), "--json"],
+        timeout_s=_STACK_DOCTOR_TIMEOUT_S,
+    )
+    if rc == 124:
+        result = {
+            "ok": None,
+            "skipped": True,
+            "reason": f"stack-doctor timeout ({_STACK_DOCTOR_TIMEOUT_S}s) — run scripts/bin/stack-doctor.sh manually",
+        }
+        _STACK_DOCTOR_CACHE = (now, result)
+        return dict(result)
     if not out:
         return {"ok": False, "error": "no output"}
     try:
         j = json.loads(out)
         j["rc"] = rc
+        j["cached"] = False
+        _STACK_DOCTOR_CACHE = (now, j)
         return j
     except Exception:
-        return {"ok": rc == 0, "raw": out[:600]}
+        return {"ok": rc == 0, "raw": out[:600], "cached": False}
 
 
 def _workspace_status_payload() -> dict:
@@ -402,8 +464,8 @@ def _workspace_status_payload() -> dict:
     impact_ran = _read_json(ROOT / ".cursor/.impact-tests-ran.json")
     close_state = _read_json(ROOT / ".cursor/.autopilot-state.json")
 
-    kg_fresh = run_kg(["fresh"])
-    kg_watermark = run_kg(["watermark"])
+    kg_fresh, _ = run_kg(["fresh"])
+    kg_watermark, _ = run_kg(["watermark"])
     return {
         "provenance": _header(),
         "kg": {"fresh": kg_fresh, "watermark": kg_watermark},
@@ -425,11 +487,6 @@ def _workspace_status_payload() -> dict:
 
 
 def _map_audit_payload(arguments: dict | None = None) -> dict:
-    """LMS change_test_map vs KG — wraps scripts/lib/lms_flow_map_audit.py.
-
-    Always reload map modules so Cursor's long-lived MCP process picks up
-    change_test_map / audit edits without a full server restart.
-    """
     arguments = arguments or {}
     try:
         import importlib
@@ -490,6 +547,61 @@ def tools_list_payload():
     }
 
 
+def _dispatch_tool(name: str, arguments: dict) -> tuple[str, bool]:
+    """Returns (text, isError)."""
+    timeout_s = TOOL_TIMEOUT_S.get(name, DEFAULT_TOOL_TIMEOUT_S)
+
+    def _work() -> tuple[str, bool]:
+        if name == "workspace_status":
+            payload = _workspace_status_payload()
+            return truncate(_header() + "\n" + json.dumps(payload, indent=2)), False
+        if name == "ship_plan":
+            payload = _ship_plan_payload(arguments)
+            if payload.get("error"):
+                return truncate(_header() + "\n" + json.dumps(payload, indent=2)), True
+            return truncate(_header() + "\n" + json.dumps(payload, indent=2)), False
+        if name == "kg_map_audit":
+            payload = _map_audit_payload(arguments)
+            is_err = bool(arguments.get("fail_on_mismatch")) and (
+                int(payload.get("critical_mismatch_count") or 0) > 0
+                or int(payload.get("soft_gap_count") or 0) > 0
+                or str(payload.get("verdict") or "") in {"FAIL", "ERROR"}
+            )
+            return truncate(_header() + "\n" + json.dumps(payload, indent=2)), is_err
+        if name == "mcp_auth":
+            return (
+                truncate(
+                    _header()
+                    + "\n"
+                    + json.dumps(
+                        {
+                            "ok": True,
+                            "auth_required": False,
+                            "message": "trustt-kg is local stdio over SQLite — no authentication.",
+                        },
+                        indent=2,
+                    )
+                ),
+                False,
+            )
+        text, rc = run_kg(tool_argv(name, arguments))
+        if name == "kg_fixed_elsewhere":
+            # exit 3 = NOT_VERIFIED_STALE_REFS advisory (still useful); not an MCP failure
+            return text, bool(rc and rc not in (0, 3))
+        return text, _infer_is_error(text, rc)
+
+    try:
+        return _run_timed(name, _work, timeout_s)
+    except TimeoutError as exc:
+        return (
+            truncate(
+                _header()
+                + f"\nMCP TIMEOUT — {exc}. Retry with a narrower query or increase KG_MCP_TOOL_TIMEOUT."
+            ),
+            True,
+        )
+
+
 def handle(msg: dict) -> dict | None:
     mid = msg.get("id")
     method = msg.get("method")
@@ -518,37 +630,7 @@ def handle(msg: dict) -> dict | None:
                 "id": mid,
                 "result": {"content": [{"type": "text", "text": f"Unknown tool: {name}"}], "isError": True},
             }
-        if name == "workspace_status":
-            text = truncate(_header() + "\n" + json.dumps(_workspace_status_payload(), indent=2))
-            is_err = False
-        elif name == "ship_plan":
-            text = truncate(_header() + "\n" + json.dumps(_ship_plan_payload(arguments), indent=2))
-            is_err = False
-        elif name == "kg_map_audit":
-            payload = _map_audit_payload(arguments)
-            text = truncate(_header() + "\n" + json.dumps(payload, indent=2))
-            is_err = bool(arguments.get("fail_on_mismatch")) and (
-                int(payload.get("critical_mismatch_count") or 0) > 0
-                or int(payload.get("soft_gap_count") or 0) > 0
-                or str(payload.get("verdict") or "") in {"FAIL", "ERROR"}
-            )
-        elif name == "mcp_auth":
-            text = truncate(
-                _header()
-                + "\n"
-                + json.dumps(
-                    {
-                        "ok": True,
-                        "auth_required": False,
-                        "message": "trustt-kg is local stdio over SQLite — no authentication.",
-                    },
-                    indent=2,
-                )
-            )
-            is_err = False
-        else:
-            text = run_kg(tool_argv(name, arguments))
-            is_err = False
+        text, is_err = _dispatch_tool(name, arguments)
         out: dict = {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
         if is_err:
             out["result"]["isError"] = True
@@ -561,14 +643,10 @@ def handle(msg: dict) -> dict | None:
 
 
 def main() -> None:
-    # MCP stdio: ONLY JSON-RPC on fd1. Subprocess/print leaks (kg_validate "OK: N nodes",
-    # branch_train "REUSE_FORBIDDEN") previously corrupted the stream → Cursor
-    # "Unexpected token … is not valid JSON" → serverStatus=error.
     mcp_fd = os.dup(1)
-    os.dup2(2, 1)  # Python stdout / child inherit → stderr
+    os.dup2(2, 1)
     mcp_out = os.fdopen(mcp_fd, "w", buffering=1, encoding="utf-8", errors="replace")
 
-    # Lazy DB: do not block initialize / tools/list on SQLite open.
     for line in sys.stdin:
         line = line.strip()
         if not line:
