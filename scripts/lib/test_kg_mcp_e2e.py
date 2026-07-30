@@ -45,18 +45,20 @@ class McpE2ETests(unittest.TestCase):
 
     def test_tools_list_count(self):
         names = [t["name"] for t in mcp.tools_list_payload()["tools"]]
-        self.assertEqual(len(names), 22)
+        self.assertEqual(len(names), 19)
         self.assertEqual(sorted(names), sorted(mcp.TOOLS.keys()))
+        for gone in ("kg_validate", "kg_fresh", "kg_error"):
+            self.assertNotIn(gone, names)
 
-    def test_01_validate(self):
-        text, err, _ = self._call("kg_validate", max_ms=5000)
+    def test_01_doctor_includes_validate_fresh(self):
+        text, err, _ = self._call("kg_doctor", max_ms=15_000)
         self.assertFalse(err)
-        self.assertIn("OK:", text)
-
-    def test_02_fresh(self):
-        text, err, _ = self._call("kg_fresh", max_ms=5000)
-        self.assertFalse(err)
-        self.assertTrue("KG FRESH" in text or "STALE" in text or "PROVISIONAL" in text)
+        self.assertIn("nodes/edges", text)
+        self.assertTrue("OK:" in text or "VALIDATE" in text)
+        self.assertTrue(
+            any(x in text for x in ("KG FRESH", "STALE", "PROVISIONAL", "WATERMARK")),
+            text[:400],
+        )
 
     def test_03_watermark(self):
         text, err, _ = self._call("kg_watermark", max_ms=5000)
@@ -144,20 +146,20 @@ class McpE2ETests(unittest.TestCase):
         self.assertIn("PRECEDENT", text)
 
     def test_14_fixed_elsewhere(self):
-        text, err, _ = self._call(
-            "kg_fixed_elsewhere",
-            {
-                "query": "getLoanForeclosureDetails",
-                "repo": "trustt-platform-accounting",
-                "base": self.acc_branch,
-            },
-            max_ms=25_000,
-        )
-        # exit 3 advisory is not MCP error — output may be REUSE_FORBIDDEN when upstream stale
+        args = {
+            "query": "getLoanForeclosureDetails",
+            "repo": "trustt-platform-accounting",
+            "base": self.acc_branch,
+            "fetch_if_stale": False,
+        }
+        text, err, ms1 = self._call("kg_fixed_elsewhere", args, max_ms=25_000)
         self.assertTrue(
             any(x in text for x in ("FIXED-ELSEWHERE", "RESULT:", "REUSE_", "NOT_VERIFIED")),
             text[:200],
         )
+        text2, err2, ms2 = self._call("kg_fixed_elsewhere", args, max_ms=2000)
+        self.assertIn("cache=HIT", text2)
+        self.assertLess(ms2, 1000, f"warm fixed_elsewhere {ms2:.0f}ms")
 
     def test_15_map_audit(self):
         text, err, _ = self._call("kg_map_audit", {"fail_on_mismatch": False}, max_ms=30_000)
@@ -189,10 +191,13 @@ class McpE2ETests(unittest.TestCase):
         self.assertFalse(err)
         self.assertIn("READERS", text)
 
-    def test_20_error(self):
-        text, err, _ = self._call("kg_error", {"query": "ACCT"})
+    def test_20_error_via_search(self):
+        text, err, _ = self._call("kg_search", {"query": "134497"})
         self.assertFalse(err)
-        self.assertTrue("error" in text.lower() or "seen in" in text.lower() or "not seen" in text.lower())
+        self.assertTrue(
+            "error" in text.lower() or "134497" in text or "match" in text.lower(),
+            text[:200],
+        )
 
     def test_21_doctor(self):
         text, err, _ = self._call("kg_doctor", max_ms=15_000)

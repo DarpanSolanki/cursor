@@ -22,7 +22,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.8.3"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.9.0"}
 PROTOCOL = "2024-11-05"
 _SERVER_FILE = Path(__file__).resolve()
 # Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
@@ -134,7 +134,11 @@ TOOLS = {
         },
     },
     "kg_fixed_elsewhere": {
-        "description": "Verified higher-branch fixes + file-touch candidates (read-only). Use before proposing ports.",
+        "description": (
+            "Verified higher-branch fixes + file-touch candidates (read-only). "
+            "Watermark-keyed cache; STALE when KG watermark drifts. "
+            "Default fetch_if_stale=false (opt-in git fetch)."
+        ),
         "args": ["fixed-elsewhere"],
         "schema": {
             "type": "object",
@@ -144,29 +148,22 @@ TOOLS = {
                 "base": {"type": "string", "description": "reported/base branch"},
                 "fetch_if_stale": {
                     "type": "boolean",
-                    "description": "Auto git fetch upstream when refs stale (default true).",
+                    "description": "Auto git fetch upstream when refs stale (default false).",
                 },
             },
             "required": ["query"],
         },
-    },
-    "kg_validate": {
-        "description": "KG integrity + min nodes/edges check.",
-        "args": ["validate"],
-        "schema": {"type": "object", "properties": {}},
     },
     "kg_watermark": {
         "description": "Per-repo branch@sha the KG was built from vs live HEAD.",
         "args": ["watermark"],
         "schema": {"type": "object", "properties": {}},
     },
-    "kg_fresh": {
-        "description": "One-line verdict: is KG branch-correct for current checkout?",
-        "args": ["fresh"],
-        "schema": {"type": "object", "properties": {}},
-    },
     "kg_search": {
-        "description": "Full-text node search (FTS5). Smallest query first.",
+        "description": (
+            "Full-text node search (FTS5). Smallest query first. "
+            "Numeric/ACCT_* queries also deepen error-code precedents (ex-kg_error)."
+        ),
         "args": ["search"],
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
@@ -221,15 +218,6 @@ TOOLS = {
             "required": ["query"],
         },
     },
-    "kg_error": {
-        "description": "Which shipped cases hit an error code (e.g. ACCT_xxx).",
-        "args": ["error"],
-        "schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
-    },
     "kg_node": {
         "description": "Inspect a KG node by id or label — JSON + inbound/outbound edges.",
         "args": ["node"],
@@ -240,7 +228,10 @@ TOOLS = {
         },
     },
     "kg_doctor": {
-        "description": "KG health: node/edge counts, source staleness vs kg.db, watermark drift, CRUD coverage.",
+        "description": (
+            "KG health (replaces kg_validate + kg_fresh): validate OK, fresh/PROVISIONAL, "
+            "node/edge counts, source staleness, watermark drift, CRUD coverage."
+        ),
         "args": ["doctor"],
         "schema": {"type": "object", "properties": {}},
     },
@@ -508,7 +499,8 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
             argv.extend(["--repo", str(arguments["repo"])])
         if arguments.get("base"):
             argv.extend(["--base", str(arguments["base"])])
-        if arguments.get("fetch_if_stale", True):
+        # Default false — network fetch was the 10s sink; opt-in only.
+        if arguments.get("fetch_if_stale", False):
             argv.append("--fetch-if-stale")
     return argv
 
@@ -733,19 +725,104 @@ def _kg_enhance_payload(arguments: dict) -> dict:
 
 _WS_STATUS_CACHE: dict[str, Any] | None = None
 _WS_STATUS_CACHE_AT = 0.0
+_WS_STATUS_CACHE_KEY = ""
 _MAP_AUDIT_CACHE: dict[str, Any] | None = None
 _MAP_AUDIT_CACHE_AT = 0.0
 _MAP_AUDIT_CACHE_KEY = ""
 _STATUS_TTL_S = 20.0
 _MAP_AUDIT_TTL_S = 60.0
+_FIXED_ELSEWHERE_MEM: dict[str, str] = {}
+_FIXED_CACHE_DIR = ROOT / "cursor-bundle" / "kg" / "cache" / "fixed_elsewhere"
+
+
+def _wm_cache_key() -> str:
+    wm = kg_mod._load_watermark() or {}
+    return str(wm.get("branch_set_key") or wm.get("built_at") or "none")
+
+
+def _fixed_elsewhere_lookup(arguments: dict) -> tuple[str, str | None]:
+    """Return (HIT|STALE|MISS, body_or_None). Never caches fetch_if_stale=true."""
+    q = str(arguments.get("query") or "").strip()
+    if not q:
+        return "MISS", None
+    if bool(arguments.get("fetch_if_stale", False)):
+        return "MISS", None
+    repo = str(arguments.get("repo") or "").strip()
+    base = str(arguments.get("base") or "").strip()
+    key = f"{_wm_cache_key()}|{q}|{repo}|{base}"
+    if key in _FIXED_ELSEWHERE_MEM:
+        return "HIT", _FIXED_ELSEWHERE_MEM[key]
+    _FIXED_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    import hashlib
+
+    h = hashlib.sha1(key.encode()).hexdigest()
+    fp = _FIXED_CACHE_DIR / f"{h}.txt"
+    meta = _FIXED_CACHE_DIR / f"{h}.meta"
+    if fp.is_file() and meta.is_file():
+        try:
+            stamped = meta.read_text(encoding="utf-8").strip()
+            body = fp.read_text(encoding="utf-8")
+            if stamped != _wm_cache_key():
+                return "STALE", body
+            _FIXED_ELSEWHERE_MEM[key] = body
+            return "HIT", body
+        except OSError:
+            return "MISS", None
+    return "MISS", None
+
+
+def _fixed_elsewhere_store(arguments: dict, body: str) -> None:
+    q = str(arguments.get("query") or "").strip()
+    if not q or arguments.get("fetch_if_stale"):
+        return
+    repo = str(arguments.get("repo") or "").strip()
+    base = str(arguments.get("base") or "").strip()
+    key = f"{_wm_cache_key()}|{q}|{repo}|{base}"
+    lines = body.splitlines()
+    if lines and lines[0].startswith("[KG @"):
+        body = "\n".join(lines[1:]).lstrip("\n")
+    # drop prior cache= lines
+    body = "\n".join(ln for ln in body.splitlines() if not ln.startswith("cache="))
+    _FIXED_ELSEWHERE_MEM[key] = body
+    try:
+        _FIXED_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        import hashlib
+
+        h = hashlib.sha1(key.encode()).hexdigest()
+        (_FIXED_CACHE_DIR / f"{h}.txt").write_text(body, encoding="utf-8")
+        (_FIXED_CACHE_DIR / f"{h}.meta").write_text(_wm_cache_key(), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _mtime_key(*paths: Path) -> str:
+    parts = []
+    for p in paths:
+        try:
+            parts.append(f"{p.name}:{p.stat().st_mtime_ns}")
+        except OSError:
+            parts.append(f"{p.name}:missing")
+    return "|".join(parts)
 
 
 def _workspace_status_payload() -> dict:
-    global _WS_STATUS_CACHE, _WS_STATUS_CACHE_AT
+    global _WS_STATUS_CACHE, _WS_STATUS_CACHE_AT, _WS_STATUS_CACHE_KEY
     now = time.monotonic()
-    if _WS_STATUS_CACHE is not None and (now - _WS_STATUS_CACHE_AT) < _STATUS_TTL_S:
+    key = _mtime_key(
+        ROOT / ".cursor/.pending-ship-work.json",
+        ROOT / ".cursor/.ship-loop-passed.json",
+        ROOT / ".cursor/.impact-tests-ran.json",
+        ROOT / ".cursor/.autopilot-state.json",
+        ROOT / "cursor-bundle/kg/data/stats.json",
+        ROOT / "scripts/testing/flow_coverage.json",
+    )
+    if (
+        _WS_STATUS_CACHE is not None
+        and key == _WS_STATUS_CACHE_KEY
+        and (now - _WS_STATUS_CACHE_AT) < _STATUS_TTL_S
+    ):
         out = dict(_WS_STATUS_CACHE)
-        out["cache"] = {"hit": True, "ttl_s": _STATUS_TTL_S}
+        out["cache"] = {"hit": True, "ttl_s": _STATUS_TTL_S, "key": key[:48]}
         return out
     pending = _read_json(ROOT / ".cursor/.pending-ship-work.json")
     passed = _read_json(ROOT / ".cursor/.ship-loop-passed.json")
@@ -760,6 +837,7 @@ def _workspace_status_payload() -> dict:
             "pending_tier": pending.get("tier"),
             "pending_head_shas": pending.get("repo_head_shas") or {},
             "gate_passed_at": passed.get("passed_at"),
+            "gate_note": passed.get("note"),
             "gate_repo_head_shas": passed.get("repo_head_shas") or {},
             "impact_ran_at": impact_ran.get("ran_at"),
             "last_close_result": close_state.get("last_end_result") or close_state.get("last_result"),
@@ -769,10 +847,11 @@ def _workspace_status_payload() -> dict:
         "backlog_su_open": _backlog_su_open(),
         "speed_p50": _speed_p50_from_self_report(),
         "active_waivers": _active_waivers(),
-        "cache": {"hit": False, "ttl_s": _STATUS_TTL_S},
+        "cache": {"hit": False, "ttl_s": _STATUS_TTL_S, "key": key[:48]},
     }
     _WS_STATUS_CACHE = dict(out)
     _WS_STATUS_CACHE_AT = now
+    _WS_STATUS_CACHE_KEY = key
     return out
 
 
@@ -780,14 +859,12 @@ def _map_audit_payload(arguments: dict | None = None) -> dict:
     global _MAP_AUDIT_CACHE, _MAP_AUDIT_CACHE_AT, _MAP_AUDIT_CACHE_KEY
     arguments = arguments or {}
     fail = bool(arguments.get("fail_on_mismatch"))
-    # Cache key: map+kg mtimes
-    try:
-        key = (
-            f"{(ROOT / 'scripts/lib/change_test_map.json').stat().st_mtime_ns}:"
-            f"{(ROOT / 'cursor-bundle/kg/data/kg.db').stat().st_mtime_ns}:{fail}"
-        )
-    except OSError:
-        key = f"nofile:{fail}"
+    key = _mtime_key(
+        ROOT / "scripts/lib/change_test_map.json",
+        ROOT / "scripts/lib/lms_flow_map_audit.py",
+        ROOT / "cursor-bundle/kg/data/kg.db",
+        ROOT / "scripts/testing/registry.json",
+    ) + f"|fail={fail}"
     now = time.monotonic()
     if (
         _MAP_AUDIT_CACHE is not None
@@ -914,10 +991,23 @@ def _dispatch_tool(name: str, arguments: dict) -> tuple[str, bool]:
                 ),
                 False,
             )
-        text, rc = run_kg(tool_argv(name, arguments))
         if name == "kg_fixed_elsewhere":
-            # exit 3 = NOT_VERIFIED_STALE_REFS advisory (still useful); not an MCP failure
+            kind, cached_body = _fixed_elsewhere_lookup(arguments)
+            if kind == "HIT" and cached_body is not None:
+                return truncate(_header() + "\n" + f"cache=HIT\n{cached_body}"), False
+            text, rc = run_kg(tool_argv(name, arguments))
+            _fixed_elsewhere_store(arguments, text)
+            prefix = "cache=MISS\n"
+            if kind == "STALE":
+                prefix = "STALE: watermark drifted — recomputed\n"
+            # prepend cache status inside body after header
+            lines = text.splitlines()
+            if lines and lines[0].startswith("[KG @"):
+                text = lines[0] + "\n" + prefix + "\n".join(lines[1:])
+            else:
+                text = truncate(_header() + "\n" + prefix + text)
             return text, bool(rc and rc not in (0, 3))
+        text, rc = run_kg(tool_argv(name, arguments))
         return text, _infer_is_error(text, rc)
 
     try:

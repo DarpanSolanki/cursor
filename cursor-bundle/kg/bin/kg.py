@@ -121,6 +121,11 @@ def cmd_stats(c,a):
 
 def cmd_search(c,a):
     q=" ".join(a)
+    # Error-code fold (MCP kg_error removed): numeric / ACCT_* → deepen via cmd_error first.
+    bare = q.strip()
+    if bare and (bare.isdigit() or bare.upper().startswith("ACCT") or bare.upper().startswith("NOV-")):
+        cmd_error(c, [bare])
+        print("--")
     try:
         rows=c.execute("SELECT n.kind,n.id,n.role,n.repo FROM node_fts f JOIN nodes n ON n.id=f.id "
                        "WHERE node_fts MATCH ? LIMIT 50", (q+"*",)).fetchall()
@@ -344,15 +349,51 @@ def cmd_table(c,a):
     for d in docs[:8]: print("  doc:", d[0])
 
 def cmd_error(c,a):
-    eid=resolve(c,"error:"+a[0]) or resolve(c,a[0])
-    if not eid: print("error code not seen in any case"); return
-    rows=c.execute("SELECT n.label,n.json FROM edges e JOIN nodes n ON n.id=e.src_id "
-                   "WHERE e.dst_id=? AND e.rel='hit_error'",(eid,)).fetchall()
-    print(f"error {eid.split(':',1)[1]} — seen in {len(rows)} case(s):")
+    """Deep error lookup: node src + hit_error cases + FTS/file hints (MCP folded into kg_search)."""
+    if not a:
+        print("usage: kg error <code>"); return
+    code = str(a[0]).strip()
+    eid = resolve(c, "error:" + code) or resolve(c, code)
     import json as _j
-    for r in rows:
-        o=_j.loads(r[1]); print(f"  [{o.get('sha','?')}] {r[0]}  -> git show {o.get('sha','')}")
-
+    if eid:
+        nrow = c.execute("SELECT id,label,json FROM nodes WHERE id=?", (eid,)).fetchone()
+        src = ""
+        if nrow and nrow[2]:
+            try:
+                src = (_j.loads(nrow[2]) or {}).get("src") or ""
+            except Exception:
+                src = ""
+        print(f"error {eid.split(':',1)[1]}  src={src or '?'}")
+        rows = c.execute(
+            "SELECT n.label,n.json FROM edges e JOIN nodes n ON n.id=e.src_id "
+            "WHERE e.dst_id=? AND e.rel='hit_error'",
+            (eid,),
+        ).fetchall()
+        print(f"  hit_error cases: {len(rows)}")
+        for r in rows:
+            o = _j.loads(r[1]) if r[1] else {}
+            print(f"  [{o.get('sha','?')}] {r[0]}  -> git show {o.get('sha','')}")
+            for k in ("files", "paths", "touched"):
+                if o.get(k):
+                    print(f"    {k}: {o.get(k)}")
+                    break
+    else:
+        print(f"error code {code!r} — no error: node")
+    # FTS / label scan for throw sites & diags mentioning the code
+    hits = []
+    try:
+        hits = c.execute(
+            "SELECT id,kind,label FROM nodes WHERE label LIKE ? OR id LIKE ? LIMIT 12",
+            (f"%{code}%", f"%{code}%"),
+        ).fetchall()
+    except Exception:
+        hits = []
+    if hits:
+        print(f"  related nodes ({len(hits)}):")
+        for nid, kind, lab in hits:
+            print(f"    [{kind}] {nid}  {lab}")
+    elif not eid:
+        print("error code not seen in any case")
 def _request_aliases(c, nid):
     """All request node ids sharing the same label (handles repo-scoped vs legacy ids)."""
     if not nid or not str(nid).startswith("request:"):
@@ -751,7 +792,18 @@ def cmd_watermark(c,a):
     print("   only the base..HEAD delta is in-development. Apply the WIP-vs-stable gate (feedback_keep_knowledge_current).")
 
 def cmd_doctor(c,a):
+    """Health: validate + fresh + node/edge + source/watermark staleness (MCP kg_fresh/kg_validate folded here)."""
     import os, glob
+    # --- former MCP kg_validate / kg_fresh ---
+    try:
+        cmd_validate(c, [])
+    except SystemExit as exc:
+        print(f"VALIDATE_EXIT: {exc.code}")
+    try:
+        cmd_fresh(c, [])
+    except SystemExit as exc:
+        print(f"FRESH_EXIT: {exc.code}")
+    print("---")
     print("nodes/edges:", c.execute("SELECT count(*) FROM nodes").fetchone()[0],
           "/", c.execute("SELECT count(*) FROM edges").fetchone()[0])
     print("kinds:", dict(c.execute("SELECT kind,count(*) FROM nodes GROUP BY kind").fetchall()))

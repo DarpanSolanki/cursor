@@ -30,15 +30,15 @@ For LOOKUP questions (apiName flow, impact, cross-service path, fixed-elsewhere,
 2. **Do not** start with `.cursor/knowledge-graph.md`, `cross-service-transactions.md`, or repo-wide grep for those lookups
 3. File reads remain for **narrative + verification** (orch XML, processors, DB) after the KG points you
 
-Always `kg_validate` / `kg_fresh` (or watermark) when branch drift possible — KG must never drive implementation alone.
+Always `kg_doctor` (or CLI `kg.py validate` / `kg.py fresh` / watermark) when branch drift possible — KG must never drive implementation alone.
 
 ## Hard rule — KG must never drive implementation alone
 
 KG indexes structure + opt-in precedents. It does **not** know runtime DB/config/cache/WIP.
 
 Before money/Kafka/contract/multi-service fix/feature/RCA:
-1. `kg.py validate` / MCP `kg_validate` — must pass
-2. `kg.py fresh` / MCP `kg_fresh` — if STALE → `kg-switch.sh` before trusting flow/crud/why
+1. `kg.py validate` / MCP `kg_doctor` (includes validate) — must pass
+2. `kg.py fresh` / MCP `kg_doctor` (includes fresh) — if STALE → `kg-switch.sh` before trusting flow/crud/why
 3. Prefer MCP `kg_orient` / `kg_why` (smallest query first) — with disclaimer
 4. **Verify in source of truth:** orch XML → processor `.java` → `scripts/db-local.sh`
 

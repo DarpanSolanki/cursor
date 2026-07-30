@@ -29,8 +29,7 @@ srv = Path(${SRV@Q})
 acc_branch = ${ACC_BRANCH@Q}
 misalign_branch = ${MISALIGN_BRANCH@Q}
 tools = [
-    ("kg_validate", {}),
-    ("kg_fresh", {}),
+    ("kg_doctor", {}),
     ("kg_watermark", {}),
     ("kg_align", {"repo": "trustt-platform-accounting", "branch": acc_branch}),
     ("kg_search", {"query": "getLoanForeclosureDetails"}),
@@ -42,13 +41,13 @@ tools = [
     ("kg_crud", {"query": "getLoanForeclosureDetails"}),
     ("kg_writes", {"query": "loan_account_part_prepayment_details"}),
     ("kg_reads", {"query": "loan_account"}),
-    ("kg_error", {"query": "ACCT"}),
-    ("kg_doctor", {}),
+    ("kg_search", {"query": "134497"}),
     ("kg_node", {"query": "request:trustt-platform-accounting/disburseLoan"}),
     ("kg_fixed_elsewhere", {
         "query": "getLoanForeclosureDetails",
         "repo": "trustt-platform-accounting",
         "base": acc_branch,
+        "fetch_if_stale": False,
     }),
     ("kg_map_audit", {"fail_on_mismatch": False}),
     ("mcp_auth", {}),
@@ -105,15 +104,19 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.8.2":
-    print(f"WARN: expected server version 1.8.2 got {si.get('version')}")
+if si.get("version") != "1.9.0":
+    print(f"WARN: expected server version 1.9.0 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")
 expected_names = sorted(TOOLS_NAMES := [n for n, _ in tools] + [align_fail[0]])
-if len(listed) != 22:
-    print(f"FAIL: expected 22 tools, got {len(listed)}: {listed}")
+if len(listed) != 19:
+    print(f"FAIL: expected 19 tools, got {len(listed)}: {listed}")
     sys.exit(3)
+for gone in ("kg_validate", "kg_fresh", "kg_error"):
+    if gone in listed:
+        print(f"FAIL: {gone} should be removed (folded into kg_doctor/kg_search)")
+        sys.exit(3)
 if "kg_align" not in listed:
     print("FAIL: kg_align missing from tools/list")
     sys.exit(3)
@@ -145,11 +148,9 @@ else:
     print("  PASS kg_align_misalign: isError=True")
 
 needles = {
-    "kg_validate": ("OK:", "nodes"),
-    "kg_fresh": ("KG FRESH", "KG STALE", "PROVISIONAL"),
     "kg_watermark": ("KG built",),
     "kg_align": ("ALIGNED",),
-    "kg_search": ("request", "getLoanForeclosureDetails", "diag:"),
+    "kg_search": ("request", "getLoanForeclosureDetails", "diag:", "error", "134497", "match"),
     "kg_orient": ("ORIENT", "getLoanForeclosureDetails"),
     "kg_flow": ("FLOW", "getLoanForeclosureDetails"),
     "kg_why": ("WHY",),
@@ -158,10 +159,9 @@ needles = {
     "kg_crud": ("FOOTPRINT", "prepayment"),
     "kg_writes": ("WRITERS",),
     "kg_reads": ("READERS",),
-    "kg_error": ("error", "seen in", "not seen"),
-    "kg_doctor": ("nodes/edges",),
+    "kg_doctor": ("nodes/edges", "OK:", "KG FRESH", "PROVISIONAL", "STALE"),
     "kg_node": ("OUT", "IN"),
-    "kg_fixed_elsewhere": ("FIXED-ELSEWHERE", "REUSE_", "FILE_TOUCH"),
+    "kg_fixed_elsewhere": ("FIXED-ELSEWHERE", "REUSE_", "FILE_TOUCH", "cache="),
     "kg_map_audit": ("soft_gap_count", "verdict"),
     "mcp_auth": ("auth_required", "ok"),
     "workspace_status": ("provenance", "kg"),
@@ -191,7 +191,7 @@ if fails:
 if elapsed > 60:
     print(f"WARN: full smoke took {elapsed:.1f}s (>60s)")
 
-print(f"PASS: 21/22 smoke calls + align misalign gate (kg_enhance in e2e only); elapsed={elapsed:.1f}s")
+print(f"PASS: smoke calls + align misalign gate (kg_enhance in e2e only); tools={len(listed)}; elapsed={elapsed:.1f}s")
 
 # Train routing gate — detect-only vs sync (honest contract)
 sys.path.insert(0, ${ROOT@Q} + "/scripts/lib")
