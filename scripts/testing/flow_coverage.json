@@ -51,10 +51,10 @@
     {
       "flow": "loanAccountPartPrepayment",
       "verify_mode": "runtime",
-      "harness_ready": "NO",
-      "blocker": "SU-FLOW-PARTPREP-PTC-GLAD",
+      "harness_ready": "YES",
+      "blocker": null,
       "registry": "flowtest.part_prepayment",
-      "note": "REAL blocked getLoanAccountDetails/200065; TRIAL posts PTC/placeholder missing product-70"
+      "note": "TRIAL 30485 + DPI_BILLED_INTEREST placeholder seed (product 44 / loan_product 70). REAL DEFAULT→approval still 200065 on task/glad path (SU-FLOW-PARTPREP-REAL-GLAD)."
     },
     {
       "flow": "parentLoanAccountPartPrepayment",

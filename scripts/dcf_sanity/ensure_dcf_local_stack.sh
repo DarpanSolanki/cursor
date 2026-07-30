@@ -47,6 +47,12 @@ PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PO
   -f "$ROOT/scripts/sql/setup/local_setup_rsch_loan_prepayment_dpi_ptc_placeholders.sql" >/dev/null
 echo "  sql: RSCH_LOAN_PREPAYMENT DPI PTC placeholders applied"
 
+# product 44 PART_PREPAYMENT missing DPI_BILLED_INTEREST → 134207 on flowtest.part_prepayment
+PGPASSWORD="${PGPASSWORD:-yugabyte}" psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" \
+  -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" -v ON_ERROR_STOP=1 \
+  -f "$ROOT/scripts/sql/setup/local_setup_product_44_partprep_dpi_placeholder.sql" >/dev/null
+echo "  sql: product-44 PART_PREPAYMENT DPI_BILLED_INTEREST placeholder applied"
+
 if [[ "${DCF_STACK_SKIP_ACCOUNTING_RESTART:-}" != "1" ]]; then
   bash "$ROOT/scripts/bin/novopay-service.sh" restart accounting --compile
 else

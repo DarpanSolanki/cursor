@@ -292,33 +292,46 @@ WHERE la.la_account_number='{CHILD}';
     )
     print(f"  labd count before={labd_before} after={labd_after}")
 
-    # Prefer txn ref from response; else catalogue lookup
+    # Prefer txn ref from response; else receipt→tm; else TRIAL transaction_details components
     ref = (
         resp.get("transaction_reference_number")
         or (resp.get("response") or {}).get("transaction_reference_number")
         or ""
     )
     if not ref:
-        ref = psql(
+        cref_row = psql(
             f"""
-SELECT DISTINCT tm.reference_number
+SELECT COALESCE(tm.reference_number,'') || '|' || COALESCE(tm.client_reference_number,'')
 FROM mfi_accounting.transaction_master tm
 JOIN mfi_accounting.transaction_catalogue tc ON tc.id = tm.transaction_catalogue_id
-JOIN mfi_accounting.transaction_details td ON td.transaction_id = tm.id
-WHERE td.account_number = '{CHILD}'
+WHERE tm.client_reference_number = '{receipt}'
   AND tc.type ILIKE '%PART%PREP%'
-ORDER BY tm.reference_number DESC
+ORDER BY tm.id DESC
 LIMIT 1;
 """
         ).strip()
+        if cref_row and "|" in cref_row:
+            ref, cref_found = cref_row.split("|", 1)
+            print(f"  cref@postTransaction PRESENT client_reference_number={cref_found!r} ref={ref!r}")
     if ref:
         assert_gl_balanced_txn(ref, f"{CHILD}/part-prep")
     else:
-        # TRIAL may still return overall_transaction_details without durable tm on some products
-        otd = resp.get("overall_transaction_details") or []
-        if not otd and run_mode == "TRIAL":
-            raise AssertionError("TRIAL PASS code but no txn ref / overall_transaction_details for GL")
-        print(f"  GL INFO: response legs={len(otd) if isinstance(otd, list) else 'n/a'} ref={ref!r}")
+        td = resp.get("transaction_details") or {}
+        comps = td.get("transaction_components") if isinstance(td, dict) else []
+        if run_mode == "TRIAL" and comps:
+            # TRIAL posts rules + returns components; no durable tm (30485). Cref putLocal=receipt.
+            prin = next((c for c in comps if c.get("component_name") == "Principal Amount"), None)
+            print(
+                f"  TRIAL components PASS: n={len(comps)} prin={prin.get('amount') if prin else None} "
+                f"cref_putLocal=receipt={receipt!r}"
+            )
+        else:
+            otd = resp.get("overall_transaction_details") or []
+            if not otd:
+                raise AssertionError(
+                    "PASS code but no txn ref / transaction_details / overall_transaction_details"
+                )
+            print(f"  GL INFO: response legs={len(otd) if isinstance(otd, list) else 'n/a'} ref={ref!r}")
 
     print("=== PASS: flowtest.part_prepayment ===")
     finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.part_prepayment")

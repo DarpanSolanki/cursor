@@ -1,3 +1,8 @@
+## 2026-07-30 — FINISH: validators length-only + partprep PTC + GAP-062
+- accounting `93be08eaa` length-only postTransaction validators; `896c02a56` GAP-062 appropriation EC normalize.
+- harness: product-44 PART_PREPAYMENT DPI_BILLED_INTEREST seed; flowtest.part_prepayment TRIAL PASS; coverage YES.
+- writeoff local still 132223 (no LOAN_WRITE_OFF catalogue) after NPE cleared.
+
 ## 2026-07-30 — D2 postTransaction length validators + harness STAN≤64
 - accounting `90ed78ab0`: product_transaction_orc postTransaction mandatory cref (130121) + stringLength≤64 cref/stan (132181).
 - harness `6ba1b7e`: stop STAN double-append; reclassify NPA varchar defect; residual 132160 evidence.
