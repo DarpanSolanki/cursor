@@ -102,6 +102,11 @@ KNOWLEDGE_ONLY_PREFIXES = (
 _KNOWLEDGE_SCRIPT_PREFIXES = (
     "scripts/bin/kg-",
     "scripts/bin/kg_",
+    "scripts/bin/push-origin.sh",
+    "scripts/bin/workspace-close.sh",
+    "scripts/bin/workspace-autopilot.sh",
+    "scripts/bin/ship-loop-gate.sh",
+    "scripts/bin/ship-knowledge-gate.sh",
     "scripts/lib/kg_",
     "scripts/lib/kg-",
     "scripts/lib/ship_push_gate.py",

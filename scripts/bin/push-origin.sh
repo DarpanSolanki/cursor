@@ -56,7 +56,7 @@ _run_close_if_needed() {
   fi
   # Knowledge-only HEAD skip only when pending also has no service/money code paths.
   if python3 "$ROOT/scripts/lib/ship_push_gate.py" --skip-auto-close-knowledge 2>/dev/null; then
-    echo "=== push-origin: HEAD+pending knowledge-only — skip auto workspace-close ===" >&2
+    echo "=== push-origin: knowledge-only HEAD — skip auto workspace-close (sticky money pending kept) ===" >&2
     return 0
   fi
   if python3 "$ROOT/scripts/lib/ship_push_gate.py" --is-knowledge-head 2>/dev/null; then
