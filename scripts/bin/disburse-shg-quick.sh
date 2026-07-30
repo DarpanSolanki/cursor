@@ -28,7 +28,9 @@ PY
 
 rm -f /tmp/disburse_loan_sanity.lock
 
-echo "=== disburse-shg-quick — disburseLoan SHG ($STAGE_SUITE) ==="
+# SHG default path is MFT (ACCTWB) via simulator miscFundTransfer — not real bank.
+# If a payload uses OTHBACCT/NEFT, set NEFT_VERSION=v2 and run neft_v2_local_prepare.sh first.
+echo "=== disburse-shg-quick — disburseLoan SHG ($STAGE_SUITE) simulator=:8018 ==="
 echo "Payload: $REQUEST_FILE"
 exec python3 "$ROOT/scripts/disburse_loan_sanity.py" \
   --request-file "$REQUEST_FILE" \

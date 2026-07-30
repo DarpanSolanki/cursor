@@ -178,81 +178,143 @@ GENERIC_TXN_INQ_SUCCESS_JSON = {
     ],
 }
 
-NEFT_V2_NEF_SUCCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<root>
-    <responseString>2026105354951370</responseString>
-    <status>
-      <replyCode>0</replyCode>
-      <errorCode>0</errorCode>
-      <externalReferenceNo>600005177520301</externalReferenceNo>
-      <extendedReply><messages></messages></extendedReply>
-    </status>
-</root>
-"""
+# Gold-standard JSON (UAT CRR / scripts/mfi_simulator_neft_v2_seed.sql) — not XML.
+# Accounting NEFTv2 posts isXMLRequest=true then converts; Chameleon JSON stubs must be nested JSON.
+NEFT_V2_NEF_SUCCESS_JSON = {
+    "root": {
+        "responseString": 2026105354951370,
+        "configVersionId": None,
+        "maintenanceType": None,
+        "status": {
+            "isOverriden": False,
+            "replyText": None,
+            "internalReferenceNumber": 2026105354951370,
+            "replyCode": 0,
+            "memo": None,
+            "errorCode": 0,
+            "validationErrors": None,
+            "externalReferenceNo": 600005177520301,
+            "postingDate": None,
+            "extendedReply": {"messages": None},
+            "userReferenceNumber": None,
+        },
+    }
+}
 
-NEFT_V2_NEI_SUCCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<root>
-    <responseString>2026105355021396</responseString>
-    <status>
-      <replyCode>0</replyCode>
-      <errorCode>0</errorCode>
-      <externalReferenceNo>600005177520301</externalReferenceNo>
-      <extendedReply><messages></messages></extendedReply>
-    </status>
-</root>
-"""
+NEFT_V2_NEI_SUCCESS_JSON = {
+    "root": {
+        "responseString": 2026105355021396,
+        "configVersionId": None,
+        "maintenanceType": None,
+        "status": {
+            "isOverriden": False,
+            "replyText": None,
+            "internalReferenceNumber": 2026105355021396,
+            "replyCode": 0,
+            "memo": None,
+            "errorCode": 0,
+            "validationErrors": None,
+            "externalReferenceNo": 600005177520301,
+            "postingDate": None,
+            "extendedReply": {"messages": None},
+            "userReferenceNumber": None,
+        },
+    }
+}
 
-NEFT_V2_NEF_FAIL_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<root>
-    <responseString>2026105354951370</responseString>
-    <status>
-      <replyCode>1</replyCode>
-      <errorCode>1</errorCode>
-      <externalReferenceNo>600005177520301</externalReferenceNo>
-      <extendedReply><messages>Failure (suite)</messages></extendedReply>
-    </status>
-</root>
-"""
+NEFT_V2_NEF_FAIL_JSON = {
+    "root": {
+        "responseString": 2026105354951370,
+        "configVersionId": None,
+        "maintenanceType": None,
+        "status": {
+            "isOverriden": False,
+            "replyText": "Failure (suite)",
+            "internalReferenceNumber": 2026105354951370,
+            "replyCode": 1,
+            "memo": None,
+            "errorCode": 1,
+            "validationErrors": None,
+            "externalReferenceNo": 600005177520301,
+            "postingDate": None,
+            "extendedReply": {"messages": "Failure (suite)"},
+            "userReferenceNumber": None,
+        },
+    }
+}
 
-NEFT_V2_NEI_FAIL_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<root>
-    <responseString>2026105355021396</responseString>
-    <status>
-      <replyCode>1</replyCode>
-      <errorCode>1</errorCode>
-      <externalReferenceNo>600005177520301</externalReferenceNo>
-      <extendedReply><messages>Failure (suite)</messages></extendedReply>
-    </status>
-</root>
-"""
+NEFT_V2_NEI_FAIL_JSON = {
+    "root": {
+        "responseString": 2026105355021396,
+        "configVersionId": None,
+        "maintenanceType": None,
+        "status": {
+            "isOverriden": False,
+            "replyText": "Failure (suite)",
+            "internalReferenceNumber": 2026105355021396,
+            "replyCode": 1,
+            "memo": None,
+            "errorCode": 1,
+            "validationErrors": None,
+            "externalReferenceNo": 600005177520301,
+            "postingDate": None,
+            "extendedReply": {"messages": "Failure (suite)"},
+            "userReferenceNumber": None,
+        },
+    }
+}
 
-NEFT_V2_INQUIRY_SUCCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<faxml>
-    <header><txtstatus>PROCESSED</txtstatus><idtxn>ST_NEF</idtxn></header>
-    <paymentlist>
-      <payment>
-        <errorcode>0</errorcode>
-        <errorMessage>Success</errorMessage>
-        <referenceno>HDFCH00009930438</referenceno>
-        <paymentrefno>600005177510301</paymentrefno>
-      </payment>
-    </paymentlist>
-</faxml>
-"""
+NEFT_V2_INQUIRY_SUCCESS_JSON = {
+    "faxml": {
+        "summary": {"countpmt": 1, "sumpmt": 48750},
+        "header": {
+            "dattxn": "2026-04-15T19:18:13",
+            "batchnumext": 600005177510301,
+            "iduser": "NOVSL_USER",
+            "codcurr": "INR",
+            "batchnum": 123456,
+            "datvalue": "2026-04-15",
+            "txtstatus": "PROCESSED",
+            "codpriority": 8,
+            "extsysname": "NOVSL",
+            "idcust": 296355427,
+            "idtxn": "ST_NEF",
+            "datpost": "2026-04-15",
+            "partnerid": "HDFCNOVSL",
+            "codstatus": 3,
+        },
+        "paymentlist": {
+            "payment": {
+                "referenceno": "HDFCH00009930438",
+                "errorcode": 0,
+                "errorMessage": "Success",
+                "paymentrefno": 600005177510301,
+            }
+        },
+    }
+}
 
-NEFT_V2_INQUIRY_FAIL_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<faxml>
-    <header><txtstatus>FAILED</txtstatus><idtxn>ST_NEF</idtxn></header>
-    <paymentlist>
-      <payment>
-        <errorcode>1</errorcode>
-        <errorMessage>Failure (suite)</errorMessage>
-        <referenceno></referenceno>
-        <paymentrefno>600005177510301</paymentrefno>
-      </payment>
-    </paymentlist>
-</faxml>
-"""
+NEFT_V2_INQUIRY_FAIL_JSON = {
+    "faxml": {
+        "header": {"txtstatus": "FAILED", "idtxn": "ST_NEF"},
+        "paymentlist": {
+            "payment": {
+                "errorcode": 1,
+                "errorMessage": "Failure (suite)",
+                "referenceno": "",
+                "paymentrefno": 600005177510301,
+            }
+        },
+    }
+}
+
+# Back-compat aliases (tests/docs that still say XML)
+NEFT_V2_NEF_SUCCESS_XML = NEFT_V2_NEF_SUCCESS_JSON
+NEFT_V2_NEI_SUCCESS_XML = NEFT_V2_NEI_SUCCESS_JSON
+NEFT_V2_NEF_FAIL_XML = NEFT_V2_NEF_FAIL_JSON
+NEFT_V2_NEI_FAIL_XML = NEFT_V2_NEI_FAIL_JSON
+NEFT_V2_INQUIRY_SUCCESS_XML = NEFT_V2_INQUIRY_SUCCESS_JSON
+NEFT_V2_INQUIRY_FAIL_XML = NEFT_V2_INQUIRY_FAIL_JSON
 
 _ACTIVE_NEFT_VERSION = "v1"
 
@@ -308,27 +370,27 @@ def _simulator_apply_profile(profile: str, neft_version: str = "v1") -> list[dic
                 api_name="doGenericSyncSTPNEF",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_NEF_SUCCESS_XML,
+                response=_json_dumps_compact(NEFT_V2_NEF_SUCCESS_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
-                validation="ST_NEF|GenericSyncSTPRequestDTO",
+                validation="ST_NEF",
             )
             _set_simulator_response(
                 api_name="doGenericSyncSTPNEI",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_NEI_SUCCESS_XML,
+                response=_json_dumps_compact(NEFT_V2_NEI_SUCCESS_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
-                validation="ST_NEI|GenericSyncSTPRequestDTO",
+                validation="ST_NEI",
             )
             _set_simulator_response(
                 api_name="doGenericSyncSTPInquiry",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_INQUIRY_SUCCESS_XML,
+                response=_json_dumps_compact(NEFT_V2_INQUIRY_SUCCESS_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
@@ -344,27 +406,27 @@ def _simulator_apply_profile(profile: str, neft_version: str = "v1") -> list[dic
                 api_name="doGenericSyncSTPNEF",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_NEF_FAIL_XML,
+                response=_json_dumps_compact(NEFT_V2_NEF_FAIL_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
-                validation="ST_NEF|GenericSyncSTPRequestDTO",
+                validation="ST_NEF",
             )
             _set_simulator_response(
                 api_name="doGenericSyncSTPNEI",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_NEI_FAIL_XML,
+                response=_json_dumps_compact(NEFT_V2_NEI_FAIL_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
-                validation="ST_NEI|GenericSyncSTPRequestDTO",
+                validation="ST_NEI",
             )
             _set_simulator_response(
                 api_name="doGenericSyncSTPInquiry",
                 request_type="JSON",
                 response_code=200,
-                response=NEFT_V2_INQUIRY_FAIL_XML,
+                response=_json_dumps_compact(NEFT_V2_INQUIRY_FAIL_JSON),
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
@@ -395,7 +457,7 @@ def _simulator_apply_profile(profile: str, neft_version: str = "v1") -> list[dic
                 timeout_period=0,
                 dynamic_response=False,
                 is_callback_enabled=False,
-                validation="ST_NEF|GenericSyncSTPRequestDTO",
+                validation="ST_NEF",
             )
         else:
             _set_simulator_response(api_name="NEFTPayment", request_type="XML", response_code=200, response=_neft_v1_xml_with(reply_code="0", reply_text="0", error_code="0", out_txn_id=None), timeout_period=0, dynamic_response=False, is_callback_enabled=False, validation="<SOAP-ENV:Envelope")
@@ -421,11 +483,11 @@ def _simulator_force_neft_fail_only() -> None:
             api_name="doGenericSyncSTPNEF",
             request_type="JSON",
             response_code=200,
-            response=NEFT_V2_NEF_FAIL_XML,
+            response=_json_dumps_compact(NEFT_V2_NEF_FAIL_JSON),
             timeout_period=0,
             dynamic_response=False,
             is_callback_enabled=False,
-            validation="ST_NEF|GenericSyncSTPRequestDTO",
+            validation="ST_NEF",
         )
     else:
         _set_simulator_response(
@@ -4004,7 +4066,7 @@ def _simulator_force_neft_v1_unknown() -> None:
             timeout_period=0,
             dynamic_response=False,
             is_callback_enabled=False,
-            validation="ST_NEF|GenericSyncSTPRequestDTO",
+            validation="ST_NEF",
         )
         return
     # NEFT v1: return valid SOAP XML but without outTransactionId.
@@ -4073,27 +4135,27 @@ def _simulator_restore_success_profile() -> None:
             api_name="doGenericSyncSTPNEF",
             request_type="JSON",
             response_code=200,
-            response=NEFT_V2_NEF_SUCCESS_XML,
+            response=_json_dumps_compact(NEFT_V2_NEF_SUCCESS_JSON),
             timeout_period=0,
             dynamic_response=False,
             is_callback_enabled=False,
-            validation="ST_NEF|GenericSyncSTPRequestDTO",
+            validation="ST_NEF",
         )
         _set_simulator_response(
             api_name="doGenericSyncSTPNEI",
             request_type="JSON",
             response_code=200,
-            response=NEFT_V2_NEI_SUCCESS_XML,
+            response=_json_dumps_compact(NEFT_V2_NEI_SUCCESS_JSON),
             timeout_period=0,
             dynamic_response=False,
             is_callback_enabled=False,
-            validation="ST_NEI|GenericSyncSTPRequestDTO",
+            validation="ST_NEI",
         )
         _set_simulator_response(
             api_name="doGenericSyncSTPInquiry",
             request_type="JSON",
             response_code=200,
-            response=NEFT_V2_INQUIRY_SUCCESS_XML,
+            response=_json_dumps_compact(NEFT_V2_INQUIRY_SUCCESS_JSON),
             timeout_period=0,
             dynamic_response=False,
             is_callback_enabled=False,

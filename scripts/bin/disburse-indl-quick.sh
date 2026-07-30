@@ -34,6 +34,7 @@ ARGS=(
   --request-file "$REQUEST_FILE"
   --stage-suite "$STAGE_SUITE"
   --simulator-profile success
+  --neft-version "${NEFT_VERSION:-v2}"
   --reset-before
   --reset-target-disb-status LAN_CREATED
   --http-timeout-s 30
@@ -42,6 +43,8 @@ ARGS=(
 )
 [[ -n "$REPORT_JSON" ]] && ARGS+=(--report-json "$REPORT_JSON")
 
-echo "=== disburse-indl-quick — disburseLoan INDL ($STAGE_SUITE) ==="
+echo "=== disburse-indl-quick — disburseLoan INDL ($STAGE_SUITE) NEFT=${NEFT_VERSION:-v2} (simulator :8018) ==="
 echo "Payload: $REQUEST_FILE"
+# Ensure gold NEFTv2 stubs exist (idempotent)
+bash "$ROOT/scripts/bin/db-local-write.sh" --file "$ROOT/scripts/mfi_simulator_neft_v2_seed.sql" >/dev/null
 exec python3 "$ROOT/scripts/disburse_loan_sanity.py" "${ARGS[@]}" "$@"

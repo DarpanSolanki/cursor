@@ -60,6 +60,9 @@ scripts/*
 !scripts/dcf_sanity/**
 !scripts/disburse_loan_sanity.py
 !scripts/run_disbursement_full_matrix.sh
+!scripts/complete_neft_v2_via_callbacks.py
+!scripts/neft_v2_local_prepare.sh
+!scripts/mfi_simulator_neft_v2_seed.sql
 !scripts/db-local.sh
 !scripts/db-qa*.sh
 !scripts/disbursement/

@@ -1,3 +1,8 @@
+## 2026-07-30 — NEFTv2 local simulator (Chameleon) enrichment for 3.4.2.4
+- Gold JSON stubs: `scripts/mfi_simulator_neft_v2_seed.sql` + `neft_v2_local_prepare.sh` (probe NEF/NEI/Inquiry on :8018).
+- `disburse_loan_sanity` v2 profile writes nested JSON (not XML) + single-token validation `ST_NEF`/`ST_NEI`.
+- `disburse-indl-quick.sh` defaults `--neft-version v2`; callbacks: `complete_neft_v2_via_callbacks.py` (no real bank).
+
 ## 2026-07-30 — Harness fidelity gate (ntest ≈ prod/QA real flow)
 - New `scripts/lib/harness_fidelity_gate.py`: money runtime cases must declare `fidelity.entry`; undeclared audit truncate / Accrued SQL mutate / soft_fail / ACCEPTANCE_STRICT=0 fail closed.
 - Wired into `ntest validate` + `registry_companion_gate`; inventory `scripts/testing/harness_fidelity_inventory.json`.
