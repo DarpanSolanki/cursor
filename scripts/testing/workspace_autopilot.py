@@ -207,10 +207,35 @@ def build_plan(
             skills.append("capture-proof")
 
     steps: list[Step] = []
+    train_plan: dict | None = None
     if not light_preflight:
         steps.append(
             Step("preflight", "bash scripts/bin/agent-ops.sh preflight", auto=True, tier="fast")
         )
+
+    if not light_preflight:
+        try:
+            from train_sync import sync_plan  # type: ignore
+
+            train_plan = sync_plan(text)
+            if train_plan.get("train") and train_plan.get("needs_sync"):
+                tr = train_plan["train"]
+                dom = train_plan["domain"]
+                steps.append(
+                    Step(
+                        "train_sync",
+                        "python3 scripts/lib/train_sync.py apply "
+                        f"--train {shlex.quote(tr)} --domain {shlex.quote(dom)}",
+                        auto=True,
+                        tier="slow",
+                        note=(
+                            f"User train {tr} ≠ live {train_plan.get('live_branch')} "
+                            f"on {train_plan.get('primary_repo')}"
+                        ),
+                    )
+                )
+        except Exception:
+            train_plan = None
 
     state = load_state()
     skip_kg = (
@@ -277,17 +302,21 @@ def build_plan(
                     note=f"API `{api}` (cross-repo)",
                 )
             )
-        if kind in ("BUG/RCA", "FIX+SHIP"):
-            branch_match = re.search(
-                r"\b(?:mfi_(?:integration|release)_v)?(\d+(?:\.\d+){1,4})\b",
-                text,
-                re.I,
-            )
-            base_arg = (
-                f" --base {shlex.quote('mfi_integration_v' + branch_match.group(1))}"
-                if branch_match
-                else ""
-            )
+        branch_match = re.search(
+            r"\b(?:mfi_(?:integration|release)_v)?(\d+(?:\.\d+){1,4})\b",
+            text,
+            re.I,
+        ) or re.search(r"\b(mfi_(?:integration|release)_v\d+(?:\.\d+)+)\b", text, re.I)
+        if kind in ("BUG/RCA", "FIX+SHIP") or branch_match:
+            if branch_match:
+                base_branch = (
+                    branch_match.group(1)
+                    if branch_match.group(1).startswith("mfi_")
+                    else f"mfi_integration_v{branch_match.group(1)}"
+                )
+            else:
+                base_branch = ""
+            base_arg = f" --base {shlex.quote(base_branch)}" if base_branch else ""
             steps.append(
                 Step(
                     "fixed_elsewhere",
@@ -417,6 +446,21 @@ def build_plan(
         directives.append("Read gaps-and-risks.md for this area before proposing fixes.")
     if kind == "TEST" and api:
         directives.append(f"Run `ntest auto {api}`; on PASS hook queues push automatically.")
+    if train_plan and train_plan.get("train"):
+        tr = train_plan["train"]
+        if train_plan.get("needs_sync"):
+            directives.insert(
+                0,
+                f"TRAIN SYNC: message names {tr} — autopilot runs scoped sync-branches "
+                f"(domain={train_plan.get('domain')}) before KG analysis. "
+                "kg_align alone does NOT checkout branches.",
+            )
+        elif train_plan.get("aligned"):
+            directives.insert(
+                0,
+                f"TRAIN: already on {tr} ({train_plan.get('primary_repo')}); "
+                "kg_align/fresh apply to this checkout — not a branch switch.",
+            )
     if kind == "OPS_SQL":
         directives.append(
             "OPS_SQL: run prod-ops-sql-impact skill; answer “is contract-native FAIL enough?” "
@@ -888,6 +932,24 @@ def cmd_verify(args: argparse.Namespace) -> int:
         and "--base mfi_integration_v3.7.1" in fixed_steps[0].cmd
         and "|| echo" not in fixed_steps[0].cmd,
         fixed_steps[0].cmd if fixed_steps else "missing",
+    )
+    sys.path.insert(0, str(ROOT / "scripts/lib"))
+    import train_sync as _train_sync_mod
+
+    train_plan_msg = build_plan("parent-child INT ±1 on branch 3.4.2.4")
+    train_steps = [s for s in train_plan_msg.steps if s.id == "train_sync"]
+    add(
+        "train_sync_module",
+        _train_sync_mod.sync_plan("branch 3.4.2.4")["train"] == "mfi_integration_v3.4.2.4",
+    )
+    add(
+        "plan_train_sync_step",
+        len(train_steps) == 1
+        or bool(
+            train_plan_msg.agent_directives
+            and any("TRAIN:" in d or "TRAIN SYNC:" in d for d in train_plan_msg.agent_directives)
+        ),
+        train_steps[0].cmd if train_steps else "aligned-or-missing",
     )
 
     # Ship gate import

@@ -22,7 +22,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.8.1"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.8.2"}
 PROTOCOL = "2024-11-05"
 
 # Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
@@ -242,7 +242,12 @@ TOOLS = {
         "schema": {"type": "object", "properties": {}},
     },
     "kg_enhance": {
-        "description": "Self-heal: rebuild KG for current checkout (kg-switch) + validate + fresh. Invalidates MCP cache.",
+        "description": (
+            "Scoped train sync + KG rebuild. If train is set: runs sync-branches "
+            "(scoped by sync_domain) then kg-switch + validate + fresh. "
+            "Without train: kg-switch only for current checkout. "
+            "kg_align is detect-only — it does not checkout branches."
+        ),
         "args": [],
         "schema": {
             "type": "object",
@@ -250,6 +255,18 @@ TOOLS = {
                 "force": {
                     "type": "boolean",
                     "description": "Pass --force to kg-switch (full rebuild even if cache hit).",
+                },
+                "train": {
+                    "type": "string",
+                    "description": "Integration branch to checkout (e.g. mfi_integration_v3.4.2.4 or 3.4.2.4).",
+                },
+                "sync_domain": {
+                    "type": "string",
+                    "description": "Scoped sync domain (default accounting). See train_banner.DOMAIN_REPOS.",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "If true with train: SYNC_DRY_RUN=1 on sync-branches (smoke/tests).",
                 },
                 "align_repo": {"type": "string"},
                 "align_branch": {"type": "string"},
@@ -589,19 +606,48 @@ def _invalidate_db_cache() -> None:
 
 def _kg_enhance_payload(arguments: dict) -> dict:
     force = bool(arguments.get("force"))
+    dry_run = bool(arguments.get("dry_run"))
     align_repo = str(arguments.get("align_repo") or "").strip()
     align_branch = str(arguments.get("align_branch") or "").strip()
+    train_raw = str(arguments.get("train") or "").strip()
+    sync_domain = str(arguments.get("sync_domain") or "accounting").strip().lower()
+
+    result: dict[str, Any] = {"provenance": _header()}
+
+    if train_raw:
+        try:
+            from train_sync import normalize_train, primary_repo, live_branch, run_sync  # noqa: WPS433
+
+            train = normalize_train(train_raw)
+            repo = primary_repo(sync_domain)
+            live = live_branch(repo)
+            result["train"] = train
+            result["sync_domain"] = sync_domain
+            result["primary_repo"] = repo
+            result["live_branch_before"] = live
+            if live and live != train:
+                sync_rc, sync_out = run_sync(train, sync_domain, dry_run=dry_run)
+                result["sync_branches_rc"] = sync_rc
+                result["sync_dry_run"] = dry_run
+                result["sync_tail"] = sync_out.splitlines()[-8:] if sync_out else []
+                if sync_rc != 0:
+                    result["error"] = f"sync-branches failed (rc={sync_rc})"
+                    return result
+            else:
+                result["sync_skipped"] = True
+                result["sync_reason"] = "already on train" if live == train else "live branch unknown"
+        except Exception as exc:  # noqa: BLE001
+            result["error"] = f"train sync failed: {exc}"
+            return result
+
     switch = ROOT / "scripts" / "bin" / "kg-switch.sh"
     cmd = ["bash", str(switch)]
     if force:
         cmd.append("--force")
     rc, out = _run_cmd(cmd, timeout_s=170)
     _invalidate_db_cache()
-    result: dict[str, Any] = {
-        "provenance": _header(),
-        "kg_switch_rc": rc,
-        "kg_switch_tail": (out.splitlines()[-6:] if out else []),
-    }
+    result["kg_switch_rc"] = rc
+    result["kg_switch_tail"] = (out.splitlines()[-6:] if out else [])
     if rc != 0:
         result["error"] = f"kg-switch failed (rc={rc})"
         return result

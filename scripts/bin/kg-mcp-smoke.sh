@@ -105,8 +105,8 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.8.1":
-    print(f"WARN: expected server version 1.8.1 got {si.get('version')}")
+if si.get("version") != "1.8.2":
+    print(f"WARN: expected server version 1.8.2 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")
@@ -192,5 +192,36 @@ if elapsed > 60:
     print(f"WARN: full smoke took {elapsed:.1f}s (>60s)")
 
 print(f"PASS: 21/22 smoke calls + align misalign gate (kg_enhance in e2e only); elapsed={elapsed:.1f}s")
+
+# Train routing gate — detect-only vs sync (honest contract)
+sys.path.insert(0, ${ROOT@Q} + "/scripts/lib")
+import train_sync as ts
+live_acc = ts.live_branch("trustt-platform-accounting")
+if not live_acc:
+    print("WARN: train_routing: accounting repo branch unknown — skip")
+else:
+    mis = ts.sync_plan("work on branch mfi_integration_v9.9.9.9 INT")
+    if not mis.get("needs_sync"):
+        print("FAIL train_routing: fake v9.9.9.9 must need_sync vs live", live_acc)
+        sys.exit(6)
+    aligned = ts.sync_plan(f"on branch {live_acc} interest accrual")
+    if aligned.get("needs_sync"):
+        print("FAIL train_routing: message matching live branch must not need_sync", live_acc)
+        sys.exit(6)
+    print(f"  PASS train_routing: needs_sync detection (live={live_acc})")
+
+# kg_enhance schema must expose train + sync_domain
+enh = next((t for t in listed if t == "kg_enhance"), None)
+if not enh:
+    print("FAIL: kg_enhance missing from tools/list")
+    sys.exit(7)
+enh_tool = next(t for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or [] if t.get("name") == "kg_enhance")
+props = ((enh_tool or {}).get("inputSchema") or {}).get("properties") or {}
+for key in ("train", "sync_domain", "dry_run"):
+    if key not in props:
+        print(f"FAIL kg_enhance schema missing {key}")
+        sys.exit(7)
+print("  PASS kg_enhance schema: train + sync_domain + dry_run")
+
 sys.exit(0)
 PY

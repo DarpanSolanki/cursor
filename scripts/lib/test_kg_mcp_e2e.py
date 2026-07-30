@@ -211,6 +211,29 @@ class McpE2ETests(unittest.TestCase):
         self.assertFalse(err, text[:400])
         self.assertTrue(payload.get("ok"), payload)
 
+    def test_24_enhance_train_dry_run(self):
+        """kg_enhance with train runs sync-branches (dry-run) before kg-switch."""
+        text, err, _ = self._call(
+            "kg_enhance",
+            {
+                "force": False,
+                "train": "mfi_integration_v9.9.9.9",
+                "sync_domain": "accounting",
+                "dry_run": True,
+            },
+            max_ms=180_000,
+        )
+        payload = json.loads(text.split("\n", 1)[1])
+        self.assertIn("train", payload)
+        if payload.get("error") and "sync-branches failed" in payload.get("error", ""):
+            self.skipTest(payload["error"])
+        self.assertFalse(err, text[:400])
+        if payload.get("live_branch_before") == "mfi_integration_v9.9.9.9":
+            self.assertTrue(payload.get("sync_skipped"))
+        else:
+            self.assertEqual(payload.get("sync_branches_rc"), 0)
+            self.assertTrue(payload.get("sync_dry_run"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

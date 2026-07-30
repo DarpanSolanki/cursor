@@ -1,3 +1,9 @@
+## 2026-07-30 — trustt-kg train routing: autopilot sync + honest kg_enhance (v1.8.2)
+- `train_sync.py`: parse user train from message → scoped `sync-branches --domain … --yes` when live ≠ requested.
+- Autopilot: auto `train_sync` step + directive when message names a train (e.g. 3.4.2.4).
+- MCP `kg_enhance`: optional `train` + `sync_domain` + `dry_run` — sync then kg-switch. **kg_align remains detect-only.**
+- Smoke: train-routing gate + kg_enhance schema; E2E 25 tests.
+
 ## 2026-07-30 — DPIC harness: exec-id batch wait + local single-node registration (3.7.1 verified)
 - wait_batch_job binds job_execution_id; dpi_demo_fixture single-node SQL; suite quarantine; test-map + TDPQA-207; MCP 1.8.1 KG cache refresh on watermark drift.
 
