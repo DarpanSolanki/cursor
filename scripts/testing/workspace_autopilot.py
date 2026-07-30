@@ -772,6 +772,12 @@ def cmd_session(_: argparse.Namespace) -> int:
 
 def cmd_end(args: argparse.Namespace) -> int:
     steps = [
+        Step(
+            "human_edit_fp",
+            "python3 scripts/lib/human_edit_detect.py close",
+            auto=True,
+            tier="fast",
+        ),
         Step("kg_fresh", "bash scripts/bin/kg-ensure-fresh.sh --quiet", auto=True, tier="medium"),
         Step(
             "kg_watermark",

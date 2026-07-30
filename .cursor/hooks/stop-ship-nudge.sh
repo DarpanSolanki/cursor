@@ -2,6 +2,8 @@
 # stop — nudge only when this session touched ship paths; never auto-run money-tier close.
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+# Always stamp human-edit close fingerprint (warn-only detector on next sessionStart).
+python3 "$ROOT/scripts/lib/human_edit_detect.py" close >/dev/null 2>&1 || true
 PENDING="$ROOT/.cursor/.pending-ship-work.json"
 FLAG="$ROOT/.cursor/.pending-ship-nudge"
 GATE="$ROOT/scripts/lib/ship_push_gate.py"

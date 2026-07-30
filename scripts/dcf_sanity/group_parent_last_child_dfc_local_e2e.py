@@ -431,6 +431,15 @@ def assert_product_gl_air_bi_balanced(lan: str, *, tol: Decimal = Decimal("0.01"
     if not ACCEPTANCE_STRICT:
         print(f"  FC settlement AIR/BI SKIP: ACCEPTANCE_STRICT=0 ({lan})")
         return
+    # Require force-bill CRN — LOAN_PREPAYMENT alone (sticky Vikram ICF on already-CLOSED child)
+    # credits BI/INT_AMT via TRMN and is NOT an FC settlement bundle (false BI D=0 C>0).
+    fb_row = psql(_dfc_force_bill_tm_sql(lan))
+    if not fb_row:
+        print(
+            f"  FC settlement AIR/BI SKIP: {lan} no force-bill CRN — not FC settlement bundle "
+            f"(ignore sticky LOAN_PREPAYMENT-only)"
+        )
+        return
     refs = _fc_settlement_txn_refs(lan)
     if not refs:
         print(f"  FC settlement AIR/BI SKIP: {lan} no force-bill / FC txn refs")

@@ -13,6 +13,10 @@
       {
         "command": "python3 scripts/bin/with-budget.py --budget 20 --label hook:workspace-autopilot-session -- bash .cursor/hooks/workspace-autopilot-session.sh",
         "timeout": 20
+      },
+      {
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:human-edit-session-start -- bash .cursor/hooks/human-edit-session-start.sh",
+        "timeout": 15
       }
     ],
     "afterFileEdit": [
