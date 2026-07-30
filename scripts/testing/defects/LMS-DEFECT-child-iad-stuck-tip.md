@@ -57,3 +57,12 @@ No product edit in this formalize round (user instruction). Fix options for a la
 ## Not confused with
 
 `LMS-DEFECT-accrual-booking-abort.md` (`af52abe3d`) — parent/batch walk abort. This defect is **child tip end_date never reaches ME/due**.
+
+
+## W4-c evidence 2026-07-31 (`flowtest.w4_midmonth_repay_then_me`)
+LAN=6000137440 mid=2026-05-01 ME=2026-05-31
+tip_before=2026-05-01|1.000000|1.000000
+tip_mid=2026-05-01|1.000000|1.000000
+tip_me=2026-05-01|1.000000|1.000000
+end_date_advanced=False ended_on_me=False
+VERDICT=DEFECT_STUCK_TIP (reproduced on DCF ACTIVE child after mid-repay→ME)

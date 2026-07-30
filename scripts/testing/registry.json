@@ -5018,5 +5018,206 @@
         "multi-node batch"
       ]
     }
+  },
+  "flowtest.w4_reversal_after_billing": {
+    "type": "flow",
+    "api": "loanAccountTransactionReversal",
+    "apis": [
+      "loanRepayment",
+      "loanAccountBillingJob",
+      "loanAccountTransactionReversal"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w4-multiday-reversal",
+      "reversal",
+      "billing",
+      "eod"
+    ],
+    "title": "W4-a \u2014 repay \u2192 EOD billing \u2192 reverse (dues restore, no orphan)",
+    "cmd": "bash scripts/testing/flowtest/run_w4_reversal_after_billing.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "dirty_path",
+        "replay_idempotency"
+      ],
+      "db_asserts": [
+        {
+          "table": "transaction_master",
+          "assert": "tm.reversed=true after APPROVE",
+          "checked_by": "w4_reversal_after_billing"
+        },
+        {
+          "table": "loan_due_details",
+          "assert": "no orphan/negative paid after reverse",
+          "checked_by": "w4_reversal_after_billing"
+        },
+        {
+          "table": "loan_account_billing_details",
+          "assert": "labd retained after reverse",
+          "checked_by": "w4_reversal_after_billing"
+        }
+      ],
+      "note": "W4-multiday-reversal axis"
+    },
+    "ship_baseline": {
+      "wall_s": 315,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-30",
+      "note": "W4-a recorded"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [
+        {
+          "key": "labd_gap_for_billing_boundary",
+          "reason": "billing after repay"
+        }
+      ],
+      "out_of_scope": []
+    }
+  },
+  "flowtest.w4_repay_before_vs_after_eod": {
+    "type": "flow",
+    "api": "loanRepayment",
+    "apis": [
+      "loanRepayment",
+      "loanAccountBillingJob"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w4-multiday-reversal",
+      "eod",
+      "order"
+    ],
+    "title": "W4-b \u2014 repay BEFORE vs AFTER same billing EOD (both coherent)",
+    "cmd": "bash scripts/testing/flowtest/run_w4_repay_before_vs_after_eod.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "dirty_path"
+      ],
+      "db_asserts": [
+        {
+          "table": "loan_due_details",
+          "assert": "both arms no orphan dues",
+          "checked_by": "w4_repay_before_vs_after_eod"
+        },
+        {
+          "table": "loan_account_billing_details",
+          "assert": "labd present both arms",
+          "checked_by": "w4_repay_before_vs_after_eod"
+        }
+      ],
+      "note": "orders need not equal paid splits"
+    },
+    "ship_baseline": {
+      "wall_s": 443,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-30",
+      "note": "W4-b recorded"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [
+        {
+          "key": "labd_gap_for_billing_boundary",
+          "reason": "both arms"
+        }
+      ],
+      "out_of_scope": []
+    }
+  },
+  "flowtest.w4_midmonth_repay_then_me": {
+    "type": "flow",
+    "api": "interestAccrualPosting",
+    "apis": [
+      "loanRepayment",
+      "interestAccrualCalculation",
+      "interestAccrualPosting"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "w4-multiday-reversal",
+      "accrual",
+      "month-end",
+      "stuck-tip"
+    ],
+    "title": "W4-c \u2014 mid repay then ME accrual/post (watch stuck-tip)",
+    "cmd": "bash scripts/testing/flowtest/run_w4_midmonth_repay_then_me.sh",
+    "defaults": {
+      "PARENT_LAN": "6000137433",
+      "CHILD1_LAN": "6000137440",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1"
+    },
+    "expect": {
+      "status": "FAIL"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path",
+        "dirty_path"
+      ],
+      "db_asserts": [
+        {
+          "table": "interest_accrual_details",
+          "assert": "child tip not stuck before ME (or defect STOP)",
+          "checked_by": "w4_midmonth_repay_then_me"
+        }
+      ],
+      "note": "af52abe3d skip-continue product truth; stuck-tip extends defect"
+    },
+    "ship_baseline": {
+      "wall_s": 250,
+      "invariants": "PASS_UNTIL_STOP",
+      "exit": 1,
+      "updated": "2026-07-30",
+      "note": "W4-c STOP stuck-tip \u2014 no product edit"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak"
+        }
+      ],
+      "out_of_scope": [
+        "full-month day-by-day EOD"
+      ]
+    },
+    "known_defect": {
+      "class": "LMS-DEFECT",
+      "summary": "SHG child IAD tip stuck mid-month (distribute); tip end_date not advanced to ME",
+      "evidence": "scripts/testing/defects/LMS-DEFECT-child-iad-stuck-tip.md"
+    }
   }
 }

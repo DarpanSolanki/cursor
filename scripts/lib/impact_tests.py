@@ -61,6 +61,18 @@ _REPLAY_AXIS_FRAGMENTS = (
     "lmsmessagebroker",
 )
 
+_MULTIDAY_AXIS_FRAGMENTS = (
+    "dateroll",
+    "transactionreversal",
+    "loanaccounttransactionreversal",
+    "interestaccrual",
+    "loanaccountbilling",
+    "billingbatch",
+    "eod",
+    "multiday",
+    "w4_",
+)
+
 try:
     from change_test_map import api_from_class_stem, api_from_path  # noqa: E402
 except ImportError:  # pragma: no cover
@@ -732,16 +744,23 @@ def _money_path_touched(changed: list[str], flows: list[dict], cases: list[dict]
     )
 
 
-def _w3_replay_cases(reg: dict | None) -> list[str]:
-    """Registry cases tagged W3-replay-concurrency (selectable reality axis)."""
+def _tagged_axis_cases(reg: dict | None, tag: str) -> list[str]:
     out: list[str] = []
     for cid, meta in (reg or {}).items():
         if not isinstance(meta, dict):
             continue
         tags = meta.get("tags") or []
-        if "w3-replay-concurrency" in tags and not meta.get("quarantine"):
+        if tag in tags and not meta.get("quarantine"):
             out.append(cid)
     return sorted(out)
+
+
+def _w3_replay_cases(reg: dict | None) -> list[str]:
+    return _tagged_axis_cases(reg, "w3-replay-concurrency")
+
+
+def _w4_multiday_cases(reg: dict | None) -> list[str]:
+    return _tagged_axis_cases(reg, "w4-multiday-reversal")
 
 
 def _replay_axis_flags(changed: list[str], *, reg: dict | None = None, ordered: list[str] | None = None) -> dict[str, str]:
@@ -757,6 +776,16 @@ def _replay_axis_flags(changed: list[str], *, reg: dict | None = None, ordered: 
             flags["replay_dedup_callback"] = "SELECTABLE"
         else:
             flags["replay_dedup_callback"] = "NOT-EXERCISED"
+    mtouch = any(f in blob for f in _MULTIDAY_AXIS_FRAGMENTS)
+    w4 = _w4_multiday_cases(reg)
+    selected4 = [c for c in (ordered or []) if c in w4]
+    if mtouch or w4:
+        if selected4:
+            flags["multiday_eod_reversal"] = "EXERCISED"
+        elif w4:
+            flags["multiday_eod_reversal"] = "SELECTABLE"
+        else:
+            flags["multiday_eod_reversal"] = "NOT-EXERCISED"
     return flags
 
 
@@ -1154,16 +1183,21 @@ def build_plan(
         ordered.insert(0, INVARIANTS_CASE)
     ordered, scope_dropped = _exclude_scope_out(ordered)
     # Inject W3-replay-concurrency cases when dedup/replay/callback paths change
-    replay_touch = any(
-        f in " ".join(p.replace("\\", "/").lower() for p in changed)
-        for f in _REPLAY_AXIS_FRAGMENTS
-    )
+    blob = " ".join(p.replace("\\", "/").lower() for p in changed)
+    replay_touch = any(f in blob for f in _REPLAY_AXIS_FRAGMENTS)
     w3_injected: list[str] = []
     if replay_touch:
         for cid in _w3_replay_cases(reg):
             if cid not in ordered:
                 ordered.append(cid)
                 w3_injected.append(cid)
+    multiday_touch = any(f in blob for f in _MULTIDAY_AXIS_FRAGMENTS)
+    w4_injected: list[str] = []
+    if multiday_touch:
+        for cid in _w4_multiday_cases(reg):
+            if cid not in ordered:
+                ordered.append(cid)
+                w4_injected.append(cid)
     ordered, tier_lines, tier_stats = _apply_selection_tiering(
         ordered,
         cases=cases,
@@ -1179,6 +1213,11 @@ def build_plan(
         tier_lines.extend(
             f"TIER replay-axis {c}: W3-replay-concurrency selectable"
             for c in w3_injected
+        )
+    if w4_injected:
+        tier_lines.extend(
+            f"TIER multiday-axis {c}: W4-multiday-reversal selectable"
+            for c in w4_injected
         )
     replay_axes = _replay_axis_flags(changed, reg=reg, ordered=ordered)
 
