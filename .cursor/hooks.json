@@ -3,66 +3,77 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": ".cursor/hooks/kg-session-start.sh",
-        "timeout": 600
+        "command": "python3 scripts/bin/with-budget.py --budget 30 --label hook:kg-session-start -- bash .cursor/hooks/kg-session-start.sh",
+        "timeout": 30
       },
       {
-        "command": ".cursor/hooks/intel-session-sync.sh",
-        "timeout": 60
+        "command": "python3 scripts/bin/with-budget.py --budget 30 --label hook:intel-session-sync -- bash .cursor/hooks/intel-session-sync.sh",
+        "timeout": 30
       },
       {
-        "command": ".cursor/hooks/workspace-autopilot-session.sh",
+        "command": "python3 scripts/bin/with-budget.py --budget 20 --label hook:workspace-autopilot-session -- bash .cursor/hooks/workspace-autopilot-session.sh",
         "timeout": 20
       }
     ],
     "afterFileEdit": [
       {
-        "command": ".cursor/hooks/after-ship-path-edit.sh"
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:after-ship-path-edit -- bash .cursor/hooks/after-ship-path-edit.sh",
+        "timeout": 15
       },
       {
-        "command": ".cursor/hooks/kg-after-file-edit.sh"
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:kg-after-file-edit -- bash .cursor/hooks/kg-after-file-edit.sh",
+        "timeout": 15
       }
     ],
     "beforeShellExecution": [
       {
-        "command": ".cursor/hooks/pre-commit-kg-reminder.sh",
-        "matcher": "git\\s+commit"
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:pre-commit-kg-reminder -- bash .cursor/hooks/pre-commit-kg-reminder.sh",
+        "matcher": "git\\s+commit",
+        "timeout": 15
       },
       {
-        "command": ".cursor/hooks/pre-push-checklist.sh",
-        "matcher": "git\\s+push"
+        "command": "python3 scripts/bin/with-budget.py --budget 30 --label hook:pre-push-checklist -- bash .cursor/hooks/pre-push-checklist.sh",
+        "matcher": "git\\s+push",
+        "timeout": 30
       },
       {
-        "command": ".cursor/hooks/kg-grep-leak-log.sh",
-        "matcher": "(rg|grep)\\s"
+        "command": "python3 scripts/bin/with-budget.py --budget 10 --label hook:kg-grep-leak-log -- bash .cursor/hooks/kg-grep-leak-log.sh",
+        "matcher": "(rg|grep)\\s",
+        "timeout": 10
       }
     ],
     "afterShellExecution": [
       {
-        "command": ".cursor/hooks/post-commit-kg-flag.sh",
-        "matcher": "git\\s+commit"
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:post-commit-kg-flag -- bash .cursor/hooks/post-commit-kg-flag.sh",
+        "matcher": "git\\s+commit",
+        "timeout": 15
       },
       {
-        "command": ".cursor/hooks/post-commit-ship-test.sh",
-        "matcher": "git\\s+commit"
+        "command": "python3 scripts/bin/with-budget.py --budget 60 --label hook:post-commit-ship-test -- bash .cursor/hooks/post-commit-ship-test.sh",
+        "matcher": "git\\s+commit",
+        "timeout": 60
       },
       {
-        "command": ".cursor/hooks/post-push-enrichment.sh",
-        "matcher": "git\\s+push"
+        "command": "python3 scripts/bin/with-budget.py --budget 90 --label hook:post-push-enrichment -- bash .cursor/hooks/post-push-enrichment.sh",
+        "matcher": "git\\s+push",
+        "timeout": 90
       },
       {
-        "command": ".cursor/hooks/post-checkout-kg.sh",
-        "matcher": "git\\s+(checkout|switch)"
+        "command": "python3 scripts/bin/with-budget.py --budget 45 --label hook:post-checkout-kg -- bash .cursor/hooks/post-checkout-kg.sh",
+        "matcher": "git\\s+(checkout|switch)",
+        "timeout": 45
       },
       {
-        "command": ".cursor/hooks/post-ntest-intel-sync.sh",
-        "matcher": "(ntest|super-agent|super-machine|capture-flow|ship-loop-gate|agent-ops|sync_engine\\.py|gradlew)"
+        "command": "python3 scripts/bin/with-budget.py --budget 90 --label hook:post-ntest-intel-sync -- bash .cursor/hooks/post-ntest-intel-sync.sh",
+        "matcher": "(ntest|super-agent|super-machine|capture-flow|ship-loop-gate|agent-ops|sync_engine\\.py|gradlew)",
+        "timeout": 90
       }
     ],
     "stop": [
       {
-        "command": ".cursor/hooks/stop-ship-nudge.sh",
-        "loop_limit": 3
+        "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:stop-ship-nudge -- bash .cursor/hooks/stop-ship-nudge.sh",
+        "loop_limit": 3,
+        "timeout": 15
       }
     ]
   }

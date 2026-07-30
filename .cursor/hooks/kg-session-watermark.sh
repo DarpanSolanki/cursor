@@ -10,21 +10,27 @@ PENDING=".cursor/.pending-kg-rebuild"
 mkdir -p .cursor scripts/scratch/logs
 
 MODE="--fast"
-[[ "${1:-}" == "sessionStart" ]] && MODE=""
+# sessionStart: state-only by default (≤3s). Set KG_SESSION_SYNC_ON_START=1 for full sync.
+# Money paths still call kg-ensure-fresh / kg-session-sync explicitly.
 
-if [[ -x "$ROOT/scripts/bin/kg-session-sync.sh" ]]; then
-  timeout 540 bash "$ROOT/scripts/bin/kg-session-sync.sh" $MODE --quiet \
-    >>"$ROOT/scripts/scratch/logs/kg-session-sync.log" 2>&1 || true
+if [[ "${KG_SESSION_SYNC_ON_START:-0}" == "1" ]]; then
+  if [[ -x "$ROOT/scripts/bin/kg-session-sync.sh" ]]; then
+    if [[ -x "$ROOT/scripts/bin/with-budget.py" ]]; then
+      python3 "$ROOT/scripts/bin/with-budget.py" --budget 12 --label kg-session-sync -- \
+        bash "$ROOT/scripts/bin/kg-session-sync.sh" $MODE --quiet \
+        >>"$ROOT/scripts/scratch/logs/kg-session-sync.log" 2>&1 || true
+    else
+      bash "$ROOT/scripts/bin/kg-session-sync.sh" $MODE --quiet \
+        >>"$ROOT/scripts/scratch/logs/kg-session-sync.log" 2>&1 || true
+    fi
+  fi
 fi
 
 bash "$ROOT/.cursor/hooks/kg-write-state.sh"
 
-# Human-edit impact plan banner (reads git dirty/unpushed — never agent memory)
+# Impact banner deferred — was dominating sessionStart wall (~impact_tests import+KG).
+# Agents run: bash scripts/bin/impact-tests.sh --banner when needed.
 export IMPACT_BANNER=""
-if [[ "${1:-}" == "sessionStart" ]]; then
-  IMPACT_BANNER="$(python3 "$ROOT/scripts/lib/impact_tests.py" --banner --no-stubs 2>/dev/null || true)"
-  export IMPACT_BANNER
-fi
 
 if [[ "${1:-}" == "workspaceOpen" ]]; then
   exit 0
