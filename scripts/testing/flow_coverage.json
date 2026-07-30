@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-25",
+  "updated": "2026-07-30",
   "source": "FLOWTEST F1\u2013F5",
   "notes": "harness_ready YES only after green fresh run + registry expect PASS/PARTIAL. Enforced: scripts/lib/flow_coverage_gate.py (doctor WARN).",
   "flows": [
@@ -103,9 +103,10 @@
     {
       "flow": "childLoanEventProcessingBatchJob",
       "verify_mode": "runtime",
-      "harness_ready": "YES",
-      "blocker": null,
-      "registry": "flowtest.rstcre_spine"
+      "harness_ready": "PARTIAL",
+      "blocker": "alias: shared registry with childLoanRestructuring \u2014 event batch not independently YES",
+      "registry": "flowtest.rstcre_spine",
+      "alias_downgrade_at": "2026-07-30T15:03:30Z"
     },
     {
       "flow": "loanAccountReschedule",
@@ -171,10 +172,11 @@
     {
       "flow": "loanAccountTransactionReversal",
       "verify_mode": "runtime",
-      "harness_ready": "YES",
-      "blocker": null,
+      "harness_ready": "PARTIAL",
+      "blocker": "alias: shared registry with loanRepayment \u2014 reverse path not independently YES",
       "registry": "flowtest.repayment_reversal",
-      "note": "F2 \u2014 repay+rev on DCF child (NPA slab hygiene)"
+      "note": "F2 \u2014 repay+rev on DCF child (NPA slab hygiene)",
+      "alias_downgrade_at": "2026-07-30T15:03:30Z"
     },
     {
       "flow": "childLoanTransactionReversal",
@@ -194,10 +196,11 @@
     {
       "flow": "interestAccrualPosting",
       "verify_mode": "runtime",
-      "harness_ready": "YES",
-      "blocker": null,
+      "harness_ready": "PARTIAL",
+      "blocker": "alias-lie: posting must not claim YES via flowtest.shg_int_accrual_stitch; batch.interest_accrual_posting last FAIL \u2014 needs own green",
       "registry": "flowtest.shg_int_accrual_stitch",
-      "note": "SHG stitch + flowtest.accrual_billing (F3 FLOW A)"
+      "note": "SHG stitch + flowtest.accrual_billing (F3 FLOW A)",
+      "alias_downgrade_at": "2026-07-30T15:03:30Z"
     },
     {
       "flow": "penalInterestAccrualCalculation",
@@ -271,5 +274,5 @@
       "registry": "dpic.two_emi_full_chain"
     }
   ],
-  "self_report": "FLOWTEST coverage YES 16/33 = 48.5% (penal scope=out excluded from denominator; F5 unlocked reopen+waiver; writeoff GAP-062 blocks YES)"
+  "self_report": "GAP-CLOSE 2026-07-30: YES 13/35 after alias downgrades; PARTIAL=12; posting/reversal/event-batch no longer alias-YES"
 }

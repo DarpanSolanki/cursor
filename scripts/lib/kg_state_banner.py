@@ -160,6 +160,9 @@ def provenance_header() -> str:
     """One-line header for every KG answer (MCP + CLI). Includes STALE when KG-paths drifted."""
     st = compute_kg_state()
     base = f"[KG @{st['built_at']} set={st['key_short']} WIP:{st['wip_n']}]"
+    if st.get("provisional") and st.get("wip"):
+        repos = ",".join(st["wip"][:8])
+        base += f" PROVISIONAL:{repos}"
     try:
         sys.path.insert(0, str(ROOT / "cursor-bundle" / "kg" / "bin"))
         import kg as _kg  # type: ignore

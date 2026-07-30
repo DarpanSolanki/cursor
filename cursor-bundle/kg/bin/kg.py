@@ -34,7 +34,7 @@ Commands:
 Node ids are typed: request:  processor:  service:  api:  doc:  table:  case:  error:  diag:
 Partial ids resolve when unambiguous (e.g. `flow disburseLoan`, `deps accounting`).
 """
-import os, sys, sqlite3
+import os, sys, sqlite3, re
 
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
@@ -859,13 +859,28 @@ def cmd_deletes(c,a): _reverse_db(c,a,'deletes','DELETERS of')
 def cmd_fresh(c,a):
     """Compact freshness verdict: fail-closed on dirty/advanced java/xml/orc KG paths."""
     built_at,drift,docs_stale,stale_files=_drift_check()
+    # Always surface WIP provisional repos on money-safe answers
+    wm=_load_watermark() or {}
+    wip=[]
+    for repo,meta in (wm.get("repos") or {}).items():
+        br=(meta or {}).get("branch") or ""
+        if br.startswith("feature/") or (meta or {}).get("wip") or "WIP" in str((meta or {}).get("note") or ""):
+            wip.append(f"{repo.split('trustt-platform-')[-1].split('novopay-platform-')[-1]}={br[:24]}")
+    # Also detect from watermark tags written at build
+    if not wip:
+        for repo,meta in (wm.get("repos") or {}).items():
+            br=(meta or {}).get("branch") or ""
+            if br and not re.match(r"^mfi_(integration|release)_v", br):
+                short=repo.replace("trustt-platform-","").replace("novopay-platform-","")
+                wip.append(f"{short}={br[:24]}")
+    prov = f" PROVISIONAL:{','.join(wip)}" if wip else ""
     if built_at is None:
         print("KG: no watermark — run claude/kg/bin/build.sh"); return
     if not drift and not docs_stale:
-        print(f"KG FRESH — reflects the live checkout of every repo (built {built_at}). `kg watermark` for per-repo detail.")
+        print(f"KG FRESH — reflects the live checkout of every repo (built {built_at}). `kg watermark` for per-repo detail.{prov}")
         return
     if drift:
-        print(f"KG STALE — built {built_at}; {len(drift)} repo(s) drifted from the live checkout:")
+        print(f"KG STALE — built {built_at}; {len(drift)} repo(s) drifted from the live checkout:{prov}")
         for x in drift: print("   "+x)
         if stale_files:
             print(f"STALE KG-path files ({len(stale_files)}):")

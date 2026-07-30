@@ -84,6 +84,37 @@ def emit_quarantine_proposals(money_ids: set[str] | None = None) -> list[str]:
     return added
 
 
+
+def last_result(case_id: str) -> dict:
+    """Latest telemetry row for case_id: {result, at, duration_s} or result=unknown."""
+    if not LOG.is_file():
+        return {"case": case_id, "result": "unknown", "at": None, "duration_s": None}
+    last = None
+    for ln in LOG.read_text(encoding="utf-8").splitlines():
+        parts = [x.strip() for x in ln.split("|")]
+        if len(parts) < 3:
+            continue
+        if parts[1] != case_id:
+            continue
+        dur = None
+        if len(parts) >= 4 and parts[3].endswith("s"):
+            try:
+                dur = float(parts[3][:-1])
+            except ValueError:
+                dur = None
+        last = {"case": case_id, "result": parts[2], "at": parts[0], "duration_s": dur}
+    return last or {"case": case_id, "result": "unknown", "at": None, "duration_s": None}
+
+
+def red_cases(case_ids: list[str]) -> list[dict]:
+    """Cases whose last run is fail — must-fix-first before money ship."""
+    out = []
+    for cid in case_ids:
+        row = last_result(cid)
+        if row.get("result") == "fail":
+            out.append(row)
+    return out
+
 def doctor_report() -> str:
     flaky = flaky_cases()
     if not flaky:

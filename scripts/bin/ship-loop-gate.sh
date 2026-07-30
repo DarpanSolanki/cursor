@@ -170,6 +170,40 @@ sys.exit(0 if w.is_file() and json.loads(w.read_text()).get('reason') else 1)
   fi
 fi
 
+# Fail-closed: money tier blocks when selected cases last-ran FAIL (telemetry RED).
+if [[ "$TIER" == "money" && ${#_SMART_CASES[@]} -gt 0 ]]; then
+  _RED="$(python3 -c "
+import sys
+sys.path.insert(0, '$ROOT/scripts/testing')
+sys.path.insert(0, '$ROOT/scripts/lib')
+from ntest_telemetry import red_cases
+cases = '''${_SMART_CASES[*]}'''.split()
+for row in red_cases(cases):
+    print(f\"{row.get('case')}|{row.get('at')}|{row.get('duration_s')}\")
+" 2>/dev/null || true)"
+  if [[ -n "$_RED" ]]; then
+    _RED_WAIVER=0
+    python3 -c "
+import json
+from pathlib import Path
+w=Path('$ROOT')/'.cursor/.impact-tests-human-waiver.json'
+import sys
+if not w.is_file():
+    sys.exit(1)
+d=json.loads(w.read_text())
+sys.exit(0 if d.get('reason') and (d.get('allow_red_cases') or d.get('allow_telemetry_red')) else 1)
+" 2>/dev/null && _RED_WAIVER=1
+    if [[ "$_RED_WAIVER" -eq 0 ]]; then
+      echo "ship-loop-gate: FAIL — selected cases RED (last ntest fail) — must-fix-first:" >&2
+      while IFS= read -r row; do
+        [[ -n "$row" ]] && echo "  RED $row" >&2
+      done <<< "$_RED"
+      echo "  Re-run green or waiver with allow_red_cases:true + reason" >&2
+      exit 1
+    fi
+  fi
+fi
+
 # Fail-closed: money/service ships must resolve at least one impacted ntest case (or api→case).
 # Health/smoke-only fallback for money is forbidden (compile-adjacent push).
 if [[ "$TIER" == "money" ]]; then

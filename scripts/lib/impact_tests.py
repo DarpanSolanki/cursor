@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/lib"))
+sys.path.insert(0, str(ROOT / "scripts/testing"))
 
 KG_DB = ROOT / "cursor-bundle/kg/data/kg.db"
 REGISTRY = ROOT / "scripts/testing/registry.json"
@@ -1167,6 +1168,26 @@ def build_plan(
     if not_covered_all:
         _draft_not_covered_proposals(not_covered_all)
 
+    # Zero KG flow/case for a changed path → explicit NOT-COVERED (invariants-only is not coverage)
+    path_not_covered: list[dict] = []
+    if changed and not flows:
+        for pth in changed:
+            path_not_covered.append(
+                {
+                    "file": pth,
+                    "reason": "zero KG flows/cases — invariants only",
+                    "blocking": money_touch or _money_path_touched([pth], [], []),
+                }
+            )
+
+    red: list[dict] = []
+    try:
+        from ntest_telemetry import red_cases  # type: ignore
+
+        red = red_cases(list(ordered))
+    except Exception:
+        red = []
+
     q_files = []
     try:
         from query_plan_gate import collect_query_touches
@@ -1208,6 +1229,9 @@ def build_plan(
         + [f"{cid}: domain_mandatory_suite" for cid in domain_added],
         "query_touched": bool(q_files),
         "query_files": q_files,
+        "path_not_covered": path_not_covered,
+        "red_cases": red,
+        "telemetry_red_block": bool(red),
     }
     if q_files:
         plan["why_lines"] = [
@@ -1428,6 +1452,18 @@ def format_banner(plan: dict) -> str:
         lines.append(f"  stubs_drafted={plan['drafted_stubs']}")
     if not plan.get("files"):
         lines.append("  (no dirty/pending paths — empty plan)")
+    for pnc in plan.get("path_not_covered") or []:
+        f = pnc.get("file") or "?"
+        lines.append(f"  NOT-COVERED: {f} — invariants only")
+    for row in plan.get("red_cases") or []:
+        lines.append(
+            f"  RED must-fix-first {row.get('case')} last={row.get('result')} "
+            f"at={row.get('at')} ({row.get('duration_s')}s)"
+        )
+    if plan.get("telemetry_red_block"):
+        lines.append(
+            "  TELEMETRY_RED_BLOCK money ship blocked until green or human waiver"
+        )
     lines.append("===== END IMPACT PLAN =====")
     return "\n".join(lines)
 

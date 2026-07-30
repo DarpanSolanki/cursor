@@ -157,17 +157,30 @@ def validate_scenario_fixture(
     scenario_name: str = "",
     expects_children: bool | None = None,
 ) -> str | None:
-    """Return refusal reason when fixture LAN type mismatches scenario; None = OK."""
+    """Return refusal reason when fixture LAN type mismatches scenario; None = OK.
+
+    Fail-closed: unknown/unclassifiable LAN refuses child-shaped scenarios
+    (never silent None-passthrough for parent+child ops).
+    """
     info = classify_lan(parent_lan)
-    if not info.get("known"):
-        return None  # honest: cannot classify — do not block
-    cat = str(info.get("loan_category") or "")
-    meta = TAXONOMY.get(cat) or {}
     child_scenario = (
         expects_children
         if expects_children is not None
         else any(m in (profile_name + scenario_name).lower() for m in CHILD_SCENARIO_MARKERS)
     )
+    if not info.get("known"):
+        if child_scenario or expects_children is True:
+            return (
+                f"REFUSE: cannot classify fixture LAN {parent_lan!r} "
+                f"(unknown/missing) — block child/group scenario "
+                f"{profile_name!r}/{scenario_name!r}"
+            )
+        return (
+            f"REFUSE: cannot classify fixture LAN {parent_lan!r} "
+            f"(unknown/missing) — fail-closed taxonomy gate"
+        )
+    cat = str(info.get("loan_category") or "")
+    meta = TAXONOMY.get(cat) or {}
     if child_scenario and not meta.get("has_children"):
         return (
             f"REFUSE: scenario expects parent+child LANs but fixture {parent_lan} "
