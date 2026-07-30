@@ -7,6 +7,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `accounting-flow-coverage.sh` | Accounting flow coverage report — ALL domains (read, write, batch, money). | scripts/bin/accounting-flow-proof.sh |
 | `accounting-flow-proof.sh` | Accounting flow proof — routes by detected domain (ALL flows, not money-only). | — |
 | `agent-ops.sh` | Autonomous workspace ops — agents call this; do not re-decide manually. | scripts/bin/disburse-indl-kafka-quick.sh, scripts/bin/disburse-indl-quick.sh, scripts/bin/disburse-quick.sh, scripts/bin/disburse-shg-quick.sh, scripts/bin/ship-loop-gate.sh, scripts/lib/agent-ops-lib.sh, scripts/lib/pipeline_chain_audit.py, scripts/testing/agent_router.py |
+| `agent-probe.sh` | Agent probe entry — EVERY timed probe must go through with-budget (never bare sleep/hang). | scripts/bin/run-guarded.sh |
 | `agent-router.sh` | Classify user task → skill chain + consultation order (proof-backed routing). | scripts/bin/workspace-sanity.sh, scripts/testing/super_agent.py |
 | `assert-notification-sms-throughput.sh` | Assert SP-308 L0 SMS consumer throughput settings on the active notifications train. | scripts/lib/test_kg_ship_resolve_notification.py |
 | `audit-batch-skip-mappers.sh` | Enforce batch write-skip contract (platform-lib + job mappers stay aligned). | scripts/bin/ship-loop-gate.sh |
@@ -100,5 +101,5 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `workspace-verify.sh` | Back-compat entrypoint: older rules/tools call `workspace-verify.sh`. | scripts/bin/install-user-cursor-gates.sh, scripts/bin/workspace-bootstrap.sh |
 | `write-intelligence-hub.sh` | Regenerate session intelligence hub (--fast skips slow kg subprocess). | scripts/bin/ship-knowledge-gate.sh, scripts/bin/smoke-workspace.sh, scripts/bin/sync-intelligence.sh, scripts/bin/sync-test-intelligence.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-sanity.sh, scripts/testing/agent_router.py, scripts/testing/workspace_autopilot.py |
 
-_Generated 95 entries._
+_Generated 96 entries._
 

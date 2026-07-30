@@ -2,7 +2,9 @@
 # Global watchdog wrapper for ship-chain steps — per-step budget + heartbeats.
 # Usage: run-guarded.sh [--source|--label <name>] [--budget N] -- <cmd> [args...]
 # --label is an alias for --source (same flag name as with-budget.py — agents confuse them).
+# Agent probes: prefer scripts/bin/agent-probe.sh (wraps with-budget.py) then this watchdog.
 # Emits progress ticks ≤15s to stdout + .cursor/ship-progress.log (silence never >30s).
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
