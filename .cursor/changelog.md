@@ -1,3 +1,7 @@
+## 2026-07-30 — MCP hang fix (trustt-kg 1.9.1)
+- Handler watchdog: daemon `join` + structured `TIMEOUT` (reads≤2s, heavy≤15s, enhance≤45s); no `shutdown(wait=True)`.
+- SQLite: `check_same_thread=False` + serial lock; TIMEOUT invalidates without close (avoid abandon deadlock).
+
 ## 2026-07-30 — GAP-CLOSE: enforcement + money-truth + MCP cache
 - U0: `with-budget.py` portable kill; hooks.json all budgeted (sessionStart 600→30); run-guarded kill proven.
 - U1: telemetry RED blocks money ship; flow_coverage alias YES→PARTIAL (posting/reversal/event); NOT-COVERED path banner; taxonomy REFUSE unknown; PROVISIONAL on fresh/header.
