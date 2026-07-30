@@ -31,7 +31,8 @@ from flowtest.profiles import DCF_GROUP  # noqa: E402
 import group_parent_last_child_dfc_local_e2e as dcf  # noqa: E402
 
 PARENT = os.environ.get("PARENT_LAN", "6000137433")
-CHILD = os.environ.get("CHILD2_LAN", "6000137441")
+# Do NOT prefer CHILD2_LAN — suite/DCF env sets it to 6000137441 which is CLOSED in bak.
+CHILD = os.environ.get("LOAN_REOPEN_CHILD_LAN") or os.environ.get("CHILD1_LAN", "6000137440")
 DEATH_DATE = os.environ.get("DEATH_DATE", "2025-08-02")
 ACCT_URL = os.environ.get("ACCOUNTING_URL", "http://localhost:8002/accounting/api/v1")
 
@@ -126,8 +127,6 @@ def main() -> int:
     print(f"  parent={PARENT} child={CHILD}")
     print("  DOC_STUB: request payload (ValidateDocument + CreateDocument local DB) — no HTTP DMS")
 
-    inv_baseline = snapshot_invariants([PARENT, CHILD])
-    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -138,6 +137,8 @@ def main() -> int:
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.prepare_fixture_pint_free(PARENT)
     dcf.ensure_fixture_accounts_active(PARENT)
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     _icf_close()
     closed = snapshot_dues(CHILD, "before-reopen")

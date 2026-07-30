@@ -90,11 +90,11 @@ def main() -> int:
     print(f"  parent={PARENT} non_last={CHILD_NON_LAST} remaining={CHILD_REMAINING} death={DEATH_DATE}")
 
     inv_lans = [PARENT, CHILD_NON_LAST, CHILD_REMAINING]
-    inv_baseline = snapshot_invariants(inv_lans)
-    print(f"  invariants baseline: lans={inv_lans}")
 
     _ensure_stack()
     ensure_snapshot_or_restore(PARENT, RSTCRE_SPINE, force_restore=True)
+    inv_baseline = snapshot_invariants(inv_lans)
+    print(f"  invariants baseline: lans={inv_lans}")
 
     dcf.cleanup_abandoned_staging([CHILD_NON_LAST, CHILD_REMAINING])
     parent_id = dcf.parent_account_id(PARENT)

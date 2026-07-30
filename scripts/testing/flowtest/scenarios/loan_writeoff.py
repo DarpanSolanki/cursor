@@ -74,8 +74,6 @@ def main() -> int:
     print("=== flowtest.loan_writeoff (F4 FLOW B — age→writeoff compose) ===")
     print(f"  parent={PARENT} child={CHILD}")
 
-    inv_baseline = snapshot_invariants([PARENT, CHILD])
-    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -85,6 +83,8 @@ def main() -> int:
     subprocess.check_call(["bash", str(ROOT / "scripts/bin/novopay-service.sh"), "ensure", "authorization"])
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.ensure_fixture_accounts_active(PARENT)
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
     assert_loan_status(CHILD, "ACTIVE")
 
     child_id = int(

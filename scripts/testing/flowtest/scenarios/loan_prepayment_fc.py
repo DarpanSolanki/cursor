@@ -31,7 +31,8 @@ from flowtest.profiles import DCF_GROUP  # noqa: E402
 import group_parent_last_child_dfc_local_e2e as dcf  # noqa: E402
 
 PARENT = os.environ.get("PARENT_LAN", "6000137433")
-CHILD = os.environ.get("CHILD2_LAN", "6000137441")
+# Prefer ACTIVE child — CHILD2_LAN/7441 is CLOSED+settled in dcf_bak (suite env override).
+CHILD = os.environ.get("LOAN_PREPAY_FC_CHILD_LAN") or os.environ.get("CHILD1_LAN", "6000137440")
 DEATH_DATE = os.environ.get("DEATH_DATE", "2025-08-02")
 
 

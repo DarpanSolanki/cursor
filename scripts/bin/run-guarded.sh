@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Global watchdog wrapper for ship-chain steps — per-step budget + heartbeats.
-# Usage: run-guarded.sh --source <label> [--budget N] -- <cmd> [args...]
+# Usage: run-guarded.sh [--source|--label <name>] [--budget N] -- <cmd> [args...]
+# --label is an alias for --source (same flag name as with-budget.py — agents confuse them).
 # Emits progress ticks ≤15s to stdout + .cursor/ship-progress.log (silence never >30s).
 set -euo pipefail
 
@@ -18,13 +19,20 @@ _prog() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --source)
+    --source|--label)
       SOURCE_LABEL="${2:-}"
       shift 2
       ;;
     --budget)
       STEP_BUDGET="${2:-}"
       shift 2
+      ;;
+    --)
+      break
+      ;;
+    -*)
+      echo "run-guarded.sh: unknown option '$1' (want --source|--label, --budget, then --)" >&2
+      exit 2
       ;;
     *)
       break
@@ -34,6 +42,7 @@ done
 
 if [[ "${1:-}" != "--" ]]; then
   echo "run-guarded.sh: expected '--' delimiter (source=${SOURCE_LABEL:-unknown})" >&2
+  echo "  example: run-guarded.sh --budget 5 --label kill -- sleep 60" >&2
   exit 2
 fi
 shift

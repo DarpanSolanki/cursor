@@ -73,8 +73,6 @@ def main() -> int:
     print("=== flowtest.repayment_reversal (F2 — DCF child manual repay+rev) ===")
     print(f"  parent={PARENT} child={CHILD}")
 
-    inv_baseline = snapshot_invariants([PARENT, CHILD])
-    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -84,6 +82,8 @@ def main() -> int:
     subprocess.check_call(["bash", str(ROOT / "scripts/bin/novopay-service.sh"), "ensure", "task"])
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.ensure_fixture_accounts_active(PARENT)
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
     dcf.prepare_fixture_pint_free(PARENT)
 
     assert_loan_status(CHILD, "ACTIVE")

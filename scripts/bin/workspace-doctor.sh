@@ -110,6 +110,24 @@ else
 fi
 
 echo ""
+echo "--- MCP tools (code SoT vs expected 19) ---"
+_mcp_n="$(python3 - <<'PY'
+import importlib.util
+from pathlib import Path
+p = Path("cursor-bundle/kg/mcp/kg_mcp_server.py")
+spec = importlib.util.spec_from_file_location("kg_mcp_server", p)
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+print(len(m.TOOLS))
+PY
+)"
+if [[ "$_mcp_n" == "19" ]]; then
+  ok "MCP TOOLS len=${_mcp_n} (expected 19; Cursor IDE may lag until MCP restart)"
+else
+  die "MCP TOOLS len=${_mcp_n} != 19 — registration drift vs kg-mcp-smoke"
+fi
+
+echo ""
 echo "--- ntest flaky ---"
 _flaky="$(PYTHONPATH=scripts/testing python3 -c "from ntest_telemetry import doctor_report; print(doctor_report())" 2>/dev/null || echo none)"
 if [[ "$_flaky" == "none flaky" || "$_flaky" == "none" ]]; then

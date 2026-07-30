@@ -833,6 +833,11 @@
       ],
       "out_of_scope": [],
       "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    },
+    "ship_baseline": {
+      "wall_s": 79,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "dpic.integration_smoke": {
@@ -1097,6 +1102,11 @@
       ],
       "out_of_scope": [],
       "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    },
+    "ship_baseline": {
+      "wall_s": 222,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "dpic.posting_calendar_regression": {
@@ -1257,6 +1267,11 @@
       ],
       "out_of_scope": [],
       "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    },
+    "ship_baseline": {
+      "wall_s": 659,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "dpic.three_job_verify_single_eod": {
@@ -2094,7 +2109,8 @@
       "SEED_EXTRA": "1",
       "DCF_SEED_EMI_LABD": "1",
       "ACCEPTANCE_STRICT": "1",
-      "ACCEPTANCE_SCOPE": "obs123"
+      "ACCEPTANCE_SCOPE": "obs123",
+      "LOCAL_DFC_PTC_GAP": "1"
     },
     "expect": {
       "status": "PASS"
@@ -2164,7 +2180,7 @@
       },
       "note": "ACCEPTANCE_STRICT=1 ACCEPTANCE_SCOPE=obs123 (default): Obs1–3 + RSTCRE fail-closed; GAP-074 INT/DPI Out-of-scope. Scope=full FAILS on parent INT pending. Last-child amount: Obs2 amount==principal excess=0 (NOT child==parent). Non-last: tm parity. Dirty: DCF_SEED_EMI_LABD=1. Pin DEATH_DATE=2025-08-02."
     },
-    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE → childLoanEventProcessingBatchJob → childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate).",
+    "note": "QA acceptance (TDPQA-72/SDCP-10199) @ 9b6454df6 + CRN uniqueness GAP-078 @935c52743 (accountId+valueDateMs+deathForeclosureDetailsId). Two-path: (1) parent RSCH_DEATH_FORECLOSURE + sync reschedule in deathForeclosureInsuranceJob; (2) remaining children RSTCRE → childLoanEventProcessingBatchJob → childLoanRestructuring. ACCEPTANCE_SCOPE=obs123|full. Canonical pin PARENT_LAN=6000137433 DEATH_DATE=2025-08-02. Clean: SEED_EXTRA=0. Adversarial: SEED_EXTRA=1 DCF_SEED_EMI_LABD=1. Script: scripts/dcf_sanity/group_parent_last_child_dfc_local_e2e.py. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate). bone-close: LOCAL_DFC_PTC_GAP=1 — parent RSCH_DEATH_FORECLOSURE SUCCESS with 0 partitions on local pre-Sheet15 PTC (existing OOS path in e2e assert).",
     "ship_baseline": {
       "wall_s": 337,
       "invariants": "PASS",
@@ -2387,6 +2403,11 @@
       "out_of_scope": [
         "interestAccrualCalculation correctness"
       ]
+    },
+    "ship_baseline": {
+      "wall_s": 181,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "flowtest.repayment_reversal": {
@@ -2686,6 +2707,11 @@
       "out_of_scope": [
         "standalone invariant layer — not a single money API"
       ]
+    },
+    "ship_baseline": {
+      "wall_s": 128,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "flowtest.invariants_r0_weekly": {
@@ -3073,6 +3099,11 @@
         }
       ],
       "out_of_scope": []
+    },
+    "ship_baseline": {
+      "wall_s": 151,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
@@ -3648,6 +3679,11 @@
       "dimensions": [
         "adjacent_sibling"
       ]
+    },
+    "ship_baseline": {
+      "wall_s": 30,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "disbursement.clb_rep_acct_dedupe_sim": {
@@ -4320,6 +4356,11 @@
       "seeded": [],
       "out_of_scope": [],
       "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    },
+    "ship_baseline": {
+      "wall_s": 30,
+      "source": "telemetry_pass",
+      "filled_at": "2026-07-30T20:01:18Z"
     }
   },
   "reopening.child_payments_parity_sim": {

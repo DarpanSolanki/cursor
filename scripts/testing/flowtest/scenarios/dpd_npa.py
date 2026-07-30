@@ -40,8 +40,6 @@ def main() -> int:
     print("=== flowtest.dpd_npa (F3 FLOW C — lazy age + REAL jobs) ===")
     print(f"  parent={PARENT} child={CHILD} min_dpd={MIN_DPD}")
 
-    inv_baseline = snapshot_invariants([PARENT, CHILD])
-    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -49,6 +47,8 @@ def main() -> int:
     )
     ensure_snapshot_or_restore(PARENT, DCF_GROUP, force_restore=True)
     dcf.ensure_fixture_accounts_active(PARENT)
+    inv_baseline = snapshot_invariants([PARENT, CHILD])
+    print(f"  invariants baseline: lans={[PARENT, CHILD]}")
     assert_loan_status(CHILD, "ACTIVE")
 
     parent_id, ids, _ = resolve_fixture(PARENT)
