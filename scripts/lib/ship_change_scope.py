@@ -99,6 +99,38 @@ def is_money_harness_path(path: str) -> bool:
     return is_harness_path(s) and any(m in s for m in _MONEY_HARNESS_MARKERS)
 
 
+def is_scratch_path(path: str) -> bool:
+    s = _to_workspace_rel(path)
+    return s.startswith("scripts/scratch/")
+
+
+def is_workspace_push_safe_paths(paths: list[str]) -> bool:
+    """True when HEAD/paths touch zero service repos (trustt-*/novopay-* code).
+
+    Cursor harness / docs / testing-infra pushes must not re-run sticky money
+    ship-loop left by an earlier accounting edit. Service code in HEAD → False.
+    """
+    if not paths:
+        return False
+    from infer_ship_apis import is_knowledge_path, is_service_path, infer_repo_from_path
+
+    for raw in paths:
+        p = _to_workspace_rel(raw)
+        if not p or is_scratch_path(p):
+            continue
+        if is_service_path(p) or infer_repo_from_path(p):
+            return False
+        if is_knowledge_path(p):
+            continue
+        parts = partition_ship_paths([p])
+        if parts["service"]:
+            return False
+        # harness / kb / testing_infra / .gitignore-style root files OK
+    # At least one non-scratch path required
+    usable = [_to_workspace_rel(p) for p in paths if _to_workspace_rel(p) and not is_scratch_path(p)]
+    return bool(usable)
+
+
 def partition_ship_paths(paths: list[str]) -> dict[str, list[str]]:
     """Split changed paths: service code vs verification harness vs kb vs test infra."""
     service: list[str] = []

@@ -12,6 +12,8 @@
 #   push-origin.sh                    # push current branch: git push -u origin HEAD
 #   push-origin.sh origin my-branch   # pass through to git push
 #   SHIP_PUSH_NO_AUTO_CLOSE=1 push-origin.sh …  # skip auto-close (fail if stale)
+#   Knowledge OR workspace-harness-only HEAD auto-skips sticky money close
+#   (see ship_push_gate.should_skip_auto_close_for_knowledge_head).
 #   SHIP_CLOSE_REPO=trustt-platform-accounting   # scope pending → that repo only
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

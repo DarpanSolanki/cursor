@@ -93,6 +93,9 @@ def register_paths(
     added = 0
     for raw in rel_paths:
         rel = _rel_path(root, raw)
+        # Scratch is never ship-pending (pollutes sticky money close)
+        if rel.replace("\\", "/").startswith("scripts/scratch/"):
+            continue
         s = str(root / rel) if not rel.startswith("/") else rel
         if not is_ship_path(s):
             continue

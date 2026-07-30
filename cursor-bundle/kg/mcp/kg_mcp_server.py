@@ -300,7 +300,11 @@ TOOLS = {
         "schema": {"type": "object", "properties": {}},
     },
     "ship_plan": {
-        "description": "Current pending selection plan: ordered cases, WHY, tier, planned wall, NOT-COVERED.",
+        "description": (
+            "Advisory pending test selection (ordered cases, WHY, tier, wall). "
+            "Does NOT own push-origin close — that is ship_push_gate "
+            "(workspace-safe / knowledge HEAD skips sticky money close)."
+        ),
         "args": [],
         "schema": {"type": "object", "properties": {"repo": {"type": "string"}}},
     },

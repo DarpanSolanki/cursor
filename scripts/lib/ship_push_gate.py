@@ -81,32 +81,59 @@ def ship_loop_satisfied(pending_path: Path, passed_path: Path) -> bool:
 
 
 def should_skip_auto_close_for_knowledge_head(repo_dir: Path | None = None) -> bool:
-    """Skip money/DPIC ship-loop when HEAD commit is knowledge/KG-harness only.
+    """Skip money/DPIC ship-loop when HEAD has no service-repo product code.
 
-    Sticky pending money files from earlier tasks must NOT force DPIC on a
-    knowledge-only push. Money pending remains for the next product-code push.
+    Covers:
+      - knowledge/docs/KG gate scripts (legacy)
+      - workspace harness-only HEAD (disburse_* / neft_v2 / scripts/testing / .gitignore)
+
+    Sticky pending money from earlier accounting ships must NOT force a full
+    money ship-loop on a cursor harness/docs push. Service files stay in
+    pending for the next trustt-*/novopay-* product push.
     """
-    if not is_knowledge_only_head(repo_dir or ROOT):
+    repo = repo_dir or ROOT
+    if not (is_knowledge_only_head(repo) or is_workspace_push_safe_head(repo)):
         return False
-    # Prune knowledge paths from pending so sticky money list stays accurate.
     try:
-        _prune_knowledge_paths_from_pending()
+        _prune_non_service_paths_from_pending()
     except Exception:
         pass
     return True
 
 
-def _prune_knowledge_paths_from_pending() -> None:
-    """Drop knowledge-only files from pending; keep service/money for later close."""
+def is_workspace_push_safe_head(repo_dir: Path | None = None) -> bool:
+    """HEAD touches zero service repos — safe to push without sticky money close."""
     sys.path.insert(0, str(ROOT / "scripts/lib"))
-    from infer_ship_apis import is_knowledge_path, build_impact  # noqa: WPS433
+    from infer_ship_apis import head_commit_paths  # noqa: WPS433
+    from ship_change_scope import is_workspace_push_safe_paths  # noqa: WPS433
+
+    return is_workspace_push_safe_paths(head_commit_paths(repo_dir or ROOT))
+
+
+def _prune_non_service_paths_from_pending() -> None:
+    """Drop knowledge/harness/scratch/kb from pending; keep service money for later."""
+    sys.path.insert(0, str(ROOT / "scripts/lib"))
+    from infer_ship_apis import build_impact, is_knowledge_path, is_service_path, infer_repo_from_path  # noqa: WPS433
+    from ship_change_scope import is_scratch_path, partition_ship_paths  # noqa: WPS433
 
     pending_path = ROOT / ".cursor/.pending-ship-work.json"
     pending = load_json(pending_path)
     files = list(pending.get("files") or [])
     if not files:
         return
-    kept = [f for f in files if not is_knowledge_path(str(f))]
+
+    kept: list[str] = []
+    for f in files:
+        s = str(f)
+        if is_scratch_path(s) or is_knowledge_path(s):
+            continue
+        parts = partition_ship_paths([s])
+        if parts["service"] or is_service_path(s) or infer_repo_from_path(s):
+            kept.append(s)
+            continue
+        # harness / testing_infra / workspace kb — drop from sticky pending on safe push
+        continue
+
     if kept == files:
         return
     if not kept:
@@ -189,6 +216,7 @@ def main() -> int:
     ap.add_argument("--pending-apis", action="store_true")
     ap.add_argument("--is-merge-head", action="store_true")
     ap.add_argument("--is-knowledge-head", action="store_true")
+    ap.add_argument("--is-workspace-safe-head", action="store_true")
     ap.add_argument("--skip-auto-close-knowledge", action="store_true")
     ap.add_argument("--root", default=str(ROOT))
     args = ap.parse_args()
@@ -208,6 +236,8 @@ def main() -> int:
         sys.exit(0 if should_skip_auto_close_for_knowledge_head(root) else 1)
     if args.is_knowledge_head:
         sys.exit(0 if is_knowledge_only_head(root) else 1)
+    if args.is_workspace_safe_head:
+        sys.exit(0 if is_workspace_push_safe_head(root) else 1)
     if args.is_merge_head:
         repo = last_ship_repo_dir()
         if repo and is_merge_commit(repo):

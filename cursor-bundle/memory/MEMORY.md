@@ -1,3 +1,4 @@
+- [Push-origin workspace-safe HEAD](feedback_push_origin_workspace_safe_head.md) — harness/docs HEAD skips sticky money ship-close; keeps service pending; scratch never registered. (2026-07-30)
 - [Harness fidelity ≈ prod/QA flow](feedback_harness_fidelity_real_flow.md) — money ntest must use real api/batch entry; declare seeded bypasses; no default audit truncate / soft_fail / Accrued SQL mutate. Gate: `harness_fidelity_gate.py`. (2026-07-30)
 - [PlatformDate prod == system](feedback_platform_date_prod_equals_system.md) — valueDate≡systemDate in prod; TDPQA-207 L1 REJECTED demotion only, no system_created_on column. (2026-07-29)
 - [KG MCP stdout protocol](feedback_kg_mcp_stdout_protocol.md) — validate/fixed-elsewhere stdout leak broke Cursor JSON-RPC; capture + dup2; smoke `kg-mcp-smoke.sh`. (2026-07-29)

@@ -1,3 +1,8 @@
+## 2026-07-30 — Push-origin: workspace-safe HEAD skips sticky money close
+- `is_workspace_push_safe_paths` + `ship_push_gate` skip when HEAD has zero service-repo paths (harness/docs).
+- Prunes harness/scratch/kb from pending; keeps accounting Java for next product push. Scratch never registered.
+- Regression: `test_ship_push_workspace_safe.py`. KG `ship_plan` remains advisory (not push-close SoT).
+
 ## 2026-07-30 — NEFTv2 local simulator (Chameleon) enrichment for 3.4.2.4
 - Gold JSON stubs: `scripts/mfi_simulator_neft_v2_seed.sql` + `neft_v2_local_prepare.sh` (probe NEF/NEI/Inquiry on :8018).
 - `disburse_loan_sanity` v2 profile writes nested JSON (not XML) + single-token validation `ST_NEF`/`ST_NEI`.
