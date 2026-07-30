@@ -731,13 +731,28 @@ def _kg_enhance_payload(arguments: dict) -> dict:
     return result
 
 
+_WS_STATUS_CACHE: dict[str, Any] | None = None
+_WS_STATUS_CACHE_AT = 0.0
+_MAP_AUDIT_CACHE: dict[str, Any] | None = None
+_MAP_AUDIT_CACHE_AT = 0.0
+_MAP_AUDIT_CACHE_KEY = ""
+_STATUS_TTL_S = 20.0
+_MAP_AUDIT_TTL_S = 60.0
+
+
 def _workspace_status_payload() -> dict:
+    global _WS_STATUS_CACHE, _WS_STATUS_CACHE_AT
+    now = time.monotonic()
+    if _WS_STATUS_CACHE is not None and (now - _WS_STATUS_CACHE_AT) < _STATUS_TTL_S:
+        out = dict(_WS_STATUS_CACHE)
+        out["cache"] = {"hit": True, "ttl_s": _STATUS_TTL_S}
+        return out
     pending = _read_json(ROOT / ".cursor/.pending-ship-work.json")
     passed = _read_json(ROOT / ".cursor/.ship-loop-passed.json")
     impact_ran = _read_json(ROOT / ".cursor/.impact-tests-ran.json")
     close_state = _read_json(ROOT / ".cursor/.autopilot-state.json")
 
-    return {
+    out = {
         "provenance": _header(),
         "kg": {"fresh": _kg_fresh_summary(), "watermark": _kg_watermark_summary()},
         "ship": {
@@ -754,11 +769,36 @@ def _workspace_status_payload() -> dict:
         "backlog_su_open": _backlog_su_open(),
         "speed_p50": _speed_p50_from_self_report(),
         "active_waivers": _active_waivers(),
+        "cache": {"hit": False, "ttl_s": _STATUS_TTL_S},
     }
+    _WS_STATUS_CACHE = dict(out)
+    _WS_STATUS_CACHE_AT = now
+    return out
 
 
 def _map_audit_payload(arguments: dict | None = None) -> dict:
+    global _MAP_AUDIT_CACHE, _MAP_AUDIT_CACHE_AT, _MAP_AUDIT_CACHE_KEY
     arguments = arguments or {}
+    fail = bool(arguments.get("fail_on_mismatch"))
+    # Cache key: map+kg mtimes
+    try:
+        key = (
+            f"{(ROOT / 'scripts/lib/change_test_map.json').stat().st_mtime_ns}:"
+            f"{(ROOT / 'cursor-bundle/kg/data/kg.db').stat().st_mtime_ns}:{fail}"
+        )
+    except OSError:
+        key = f"nofile:{fail}"
+    now = time.monotonic()
+    if (
+        _MAP_AUDIT_CACHE is not None
+        and key == _MAP_AUDIT_CACHE_KEY
+        and (now - _MAP_AUDIT_CACHE_AT) < _MAP_AUDIT_TTL_S
+    ):
+        result = dict(_MAP_AUDIT_CACHE)
+        result["cache"] = {"hit": True, "ttl_s": _MAP_AUDIT_TTL_S}
+        result["provenance"] = _header()
+        result["fail_on_mismatch"] = fail
+        return result
     try:
         import importlib
 
@@ -774,7 +814,11 @@ def _map_audit_payload(arguments: dict | None = None) -> dict:
     except Exception as exc:  # noqa: BLE001
         return {"error": f"map audit failed: {exc}", "verdict": "ERROR"}
     result["provenance"] = _header()
-    result["fail_on_mismatch"] = bool(arguments.get("fail_on_mismatch"))
+    result["fail_on_mismatch"] = fail
+    result["cache"] = {"hit": False, "ttl_s": _MAP_AUDIT_TTL_S}
+    _MAP_AUDIT_CACHE = dict(result)
+    _MAP_AUDIT_CACHE_AT = now
+    _MAP_AUDIT_CACHE_KEY = key
     return result
 
 
@@ -798,14 +842,29 @@ def _ship_plan_payload(arguments: dict) -> dict:
         if ": " in line:
             c, w = line.split(": ", 1)
             why[c] = w
+    red = list(plan.get("red_cases") or [])
+    red_ids = {r.get("case") for r in red}
+    ordered_out = []
+    for c in ordered:
+        row = {"case": c, "why": why.get(c, "")}
+        if c in red_ids:
+            meta = next((r for r in red if r.get("case") == c), {})
+            row["status"] = "RED"
+            row["must_fix_first"] = True
+            row["last_result"] = meta.get("result")
+            row["last_at"] = meta.get("at")
+        ordered_out.append(row)
     return {
         "provenance": _header(),
         "tier": pending.get("tier") or ("money" if plan.get("invariants_mandatory") else "service"),
         "files": rel_paths or list(plan.get("files") or []),
-        "ordered_cases": [{"case": c, "why": why.get(c, "")} for c in ordered],
+        "ordered_cases": ordered_out,
+        "red_cases": red,
+        "telemetry_red_block": bool(red),
         "planned_wall_s": int(plan_wall_s(ordered)),
         "selection_tier_stats": plan.get("selection_tier_stats") or {},
         "not_covered": plan.get("not_covered_blocking") or plan.get("not_covered_flows") or [],
+        "path_not_covered": plan.get("path_not_covered") or [],
     }
 
 
@@ -844,18 +903,14 @@ def _dispatch_tool(name: str, arguments: dict) -> tuple[str, bool]:
             is_err = not payload.get("ok") and bool(payload.get("error"))
             return truncate(_header() + "\n" + json.dumps(payload, indent=2)), is_err
         if name == "mcp_auth":
+            # Instant — no provenance header (was ~0.7s cold WRAPPER cost).
             return (
-                truncate(
-                    _header()
-                    + "\n"
-                    + json.dumps(
-                        {
-                            "ok": True,
-                            "auth_required": False,
-                            "message": "trustt-kg is local stdio over SQLite — no authentication.",
-                        },
-                        indent=2,
-                    )
+                json.dumps(
+                    {
+                        "ok": True,
+                        "auth_required": False,
+                        "message": "trustt-kg is local stdio over SQLite — no authentication.",
+                    }
                 ),
                 False,
             )

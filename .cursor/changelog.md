@@ -1,3 +1,9 @@
+## 2026-07-30 — GAP-CLOSE: enforcement + money-truth + MCP cache
+- U0: `with-budget.py` portable kill; hooks.json all budgeted (sessionStart 600→30); run-guarded kill proven.
+- U1: telemetry RED blocks money ship; flow_coverage alias YES→PARTIAL (posting/reversal/event); NOT-COVERED path banner; taxonomy REFUSE unknown; PROVISIONAL on fresh/header.
+- U2: mcp_auth instant; workspace_status/map_audit TTL cache; sessionStart --fast.
+- U3: deleted 7 orphan KG builders + refresh-kg-state.sh; ship_baseline lives in registry.json (10 cases).
+
 ## 2026-07-30 — Workspace hygiene: KG cache LRU + scratch cleanup
 - Pruned orphan KG cache manifests (build kept 8 `*.db` but left `*.manifest.json`); live key kept; cache ~589MB→~332MB.
 - `build.sh` + `workspace-hygiene` (max 8) now drop sidecar+orphan manifests; `kg-switch` cache-hit touches LRU mtime.
