@@ -84,7 +84,10 @@ def build_envelope(
 
 def batch_envelope(api_name: str, job_time: str | None = None, stan: str | None = None) -> dict[str, Any]:
     jt = job_time or str(int(time.time() * 1000))
+    # Do not append api_name again — fresh_stan already prefixes; double-append blew past varchar(64).
     s = stan or fresh_stan(api_name)
+    if len(s) > 64:
+        s = s[:64]
     h = substitute_placeholders(dict(_HEADER_TEMPLATES["accounting_batch"]), s, {"user_id": "3"})
-    h["stan"] = f"{s}_{api_name}"
+    h["stan"] = s
     return {"headers": h, "request": {"job_time": jt, "op_code": "START"}}

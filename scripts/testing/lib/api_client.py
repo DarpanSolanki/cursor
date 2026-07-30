@@ -37,19 +37,29 @@ def accounting_url(api_name: str) -> str:
     return api_url("accounting", api_name)
 
 
+# transaction_master.stan is varchar(64) — keep harness STANs inside the contract.
+_STAN_MAX_LEN = 64
+
+
 def fresh_stan(prefix: str = "test") -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    ms = int(time.time() * 1000)
+    suffix = f"_{ms}"
+    head = (prefix or "test")[: max(1, _STAN_MAX_LEN - len(suffix))]
+    return f"{head}{suffix}"
 
 
 def batch_envelope(api_name: str, *, job_time: str, stan: str | None = None) -> dict[str, Any]:
+    # Do not append api_name again — fresh_stan already prefixes; double-append blew past varchar(64).
     stan = stan or fresh_stan(api_name)
+    if len(stan) > _STAN_MAX_LEN:
+        stan = stan[:_STAN_MAX_LEN]
     return {
         "headers": {
             "tenant_code": "mfi",
             "client_code": "NOVOPAY",
             "channel_code": "WEB",
             "user_id": "3",
-            "stan": f"{stan}_{api_name}",
+            "stan": stan,
             "function_code": "DEFAULT",
             "function_sub_code": "BATCH",
             "run_mode": "REAL",
