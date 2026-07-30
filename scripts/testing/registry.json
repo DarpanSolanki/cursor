@@ -75,6 +75,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "apis": [
+        "getLoanAccountBPIAmount"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.summary_api": {
@@ -302,6 +311,15 @@
         }
       ],
       "note": "U7 acceptance \u2014 value-level asserts cite dpic repayment e2e; promote/strengthen when suite upgrades"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "loanRepayment"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.repayment_reversal_e2e": {
@@ -325,6 +343,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "loanAccountTransactionReversal"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.extended_regression": {
@@ -465,6 +492,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "loanAccountPartPrepayment"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.foreclosure_write_e2e": {
@@ -488,6 +524,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "individualChildLoanForeclosure"
+      ],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.child_repayment_e2e": {
@@ -518,6 +568,15 @@
         "downstream_ui": "Child path Out-of-scope for UI this case",
         "replay_idempotency": "Covered by parent repayment suite"
       }
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "childLoanRepayment"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.npa_dpi_movement_e2e": {
@@ -632,6 +691,13 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.grace_e2e": {
@@ -707,6 +773,20 @@
     "expect": {
       "status": "PARTIAL",
       "note": "DPI feature/WIP branch \u2014 partial pass on feature train; full prod-train E2E pending DPI go-live"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.shg_parent_child_parity": {
@@ -735,6 +815,24 @@
     "expect": {
       "status": "PARTIAL",
       "note": "DPI feature/WIP branch \u2014 partial pass on feature train; full prod-train E2E pending DPI go-live"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.integration_smoke": {
@@ -798,6 +896,18 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.demo.status": {
@@ -859,6 +969,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.full_regression": {
@@ -882,6 +1001,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.disburse": {
@@ -917,6 +1045,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.go_live_ud": {
@@ -937,6 +1079,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.posting_calendar_regression": {
@@ -965,6 +1125,24 @@
     "expect": {
       "status": "PARTIAL",
       "note": "DPI feature/WIP branch \u2014 partial pass on feature train; full prod-train E2E pending DPI go-live"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualBooking"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.booking_anchor_next_due": {
@@ -987,6 +1165,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualBooking"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.june_slice_job_proof": {
@@ -1007,6 +1199,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.three_job_verify": {
@@ -1033,6 +1239,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.three_job_verify_single_eod": {
@@ -1055,6 +1279,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.jump_regression": {
@@ -1079,6 +1321,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.emi_first_anchor_regression": {
@@ -1103,6 +1359,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.eod_txn_regression": {
@@ -1127,6 +1401,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualBooking"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.billing_ud_next_emi": {
@@ -1151,6 +1443,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.post_maturity_billing": {
@@ -1176,6 +1486,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.post_maturity_billing_catchup": {
@@ -1204,6 +1532,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.ship_close_verify": {
@@ -1221,6 +1567,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.release_gate": {
@@ -1237,6 +1597,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.qa_verify": {
@@ -1252,6 +1621,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.dual_billing": {
@@ -1267,6 +1645,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.push_release": {
@@ -1284,6 +1676,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.dpi_sanity": {
@@ -1304,6 +1710,18 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.eod_dpi": {
@@ -1339,6 +1757,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiAccrualCalculation"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dpic.verify_certified": {
@@ -1372,6 +1808,24 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "dpiBilling"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "auto: quarantine detected"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "foreclosure.dpi_waiver_smoke": {
@@ -1396,6 +1850,20 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "loanDeathForeclosure"
+      ],
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "auto: batch job_time path"
+        }
+      ],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "dcf.principal_split_sim": {
@@ -1494,7 +1962,16 @@
       },
       "note": "Promoted from draft.dcf.non_last_rsch_amount_eq_principal as Out-of-scope-documented. Not a QA Pass for enforcing non-last amount==principal."
     },
-    "note": "Do not invent product fix. Options: enforce on non-last OR sign-off as intended."
+    "note": "Do not invent product fix. Options: enforce on non-last OR sign-off as intended.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.parent_statement_dfc_prtl": {
     "type": "flow",
@@ -1523,7 +2000,16 @@
       "webapp_required": true,
       "note": "Promoted from draft.dcf.parent_statement_dfc_prtl. Value assert lives in dcf.group_parent_last_child_e2e assert_webapp_bound_apis (last-child DFC_PRTL / parent fb_ref)."
     },
-    "note": "D10: child last DFC_PRTL=True; parent fb_ref=True DFC_PRTL=False (PARTIAL marker documented)."
+    "note": "D10: child last DFC_PRTL=True; parent fb_ref=True DFC_PRTL=False (PARTIAL marker documented).",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.parent_member_future_int_parity": {
     "type": "flow",
@@ -1548,7 +2034,16 @@
       },
       "note": "Promoted from draft.dcf.parent_member_future_int_parity as Out-of-scope-documented. Not a QA Pass for \u20b91 drift."
     },
-    "note": "Do not invent product fix. Options: fix drift OR tolerance-document with sign-off."
+    "note": "Do not invent product fix. Options: fix drift OR tolerance-document with sign-off.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.insurance_reupload_index_audit": {
     "type": "flow",
@@ -1676,6 +2171,24 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "wall budget"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "EOD job_time"
+        },
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak / fresh fixture"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.rstcre_spine": {
@@ -1735,6 +2248,16 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.loan_prepayment_fc": {
@@ -1797,6 +2320,16 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.part_prepayment": {
@@ -1838,6 +2371,22 @@
         }
       ],
       "note": "BLOCKED product-70: REAL getLoanAccountDetails\u2192getCustomerDetails 200065; TRIAL postTransaction PTC/placeholder missing. SU-FLOW-PARTPREP-PTC-GLAD. JTF nest loan_account_part_prepayment + paid_by=CUSTOMER verified."
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        },
+        {
+          "key": "iad_sql_scale",
+          "reason": "IAD scale for prepay path \u2014 not claiming accrual calc"
+        }
+      ],
+      "out_of_scope": [
+        "interestAccrualCalculation correctness"
+      ]
     }
   },
   "flowtest.repayment_reversal": {
@@ -1894,6 +2443,16 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.accrual_billing": {
@@ -1954,6 +2513,144 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "apis": [
+        "interestAccrualCalculation",
+        "interestAccrualPosting",
+        "loanAccountBillingJob"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "wall budget"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "due+1 EOD job_time"
+        },
+        {
+          "key": "labd_gap_for_billing_boundary",
+          "reason": "delete labd on one installment so billing is not a no-op"
+        },
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "DCF_GROUP bak restore"
+        }
+      ],
+      "out_of_scope": [],
+      "layers_real": [
+        "interestAccrualCalculation",
+        "interestAccrualPosting",
+        "loanAccountBillingJob"
+      ]
+    }
+  },
+  "flowtest.shg_int_accrual_stitch": {
+    "type": "flow",
+    "api": "interestAccrualCalculation",
+    "apis": [
+      "interestAccrualCalculation",
+      "interestAccrualPosting",
+      "loanAccountBillingJob"
+    ],
+    "smoke_tier": "money",
+    "verify_mode": "runtime",
+    "tags": [
+      "flowtest",
+      "shg",
+      "interest",
+      "accrual",
+      "billing",
+      "dateroll",
+      "group_loan"
+    ],
+    "title": "SHG INT Accrued distribute stitch \u2014 calc \u2192 posting \u2192 billing",
+    "cmd": "bash scripts/testing/flowtest/run_shg_int_accrual_stitch.sh",
+    "defaults": {
+      "PARENT_LAN": "6000012030",
+      "DCF_STACK_SKIP_ACCOUNTING_RESTART": "1",
+      "CLEAR_BATCH_FAILURE_AUDIT": "0",
+      "FLOWTEST_BATCH_TIMEOUT": "300",
+      "ACCEPTANCE_STRICT": "1"
+    },
+    "expect": {
+      "status": "PASS"
+    },
+    "acceptance": {
+      "verify_mode": "runtime",
+      "dimensions": [
+        "happy_path"
+      ],
+      "db_asserts": [
+        {
+          "table": "interest_accrual_details",
+          "assert": "installment-window Accrued parent == SUM(ACTIVE children) OR PASS_POSTED_FLOOR",
+          "checked_by": "scripts/sql/helpers/verify_shg_interest_accrual_parity.sql verdict"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "total_accrued_amount >= total_accrual_posted_amount on parent+children",
+          "checked_by": "fixture Accrued>=Posted count==0"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "parent MAX(end_date) advances to roll end (calc)",
+          "checked_by": "last_iad >= roll_end"
+        },
+        {
+          "table": "interest_accrual_details",
+          "assert": "parent total_accrual_posted_amount increases when ME/due in roll; children Accrued non-decreasing (Posted may lag until IAD.end_date is ME/due)",
+          "checked_by": "before/after Posted+Accrued snap"
+        },
+        {
+          "table": "loan_account_billing_details",
+          "assert": "LABD count increases when roll ends on an unbilled due date",
+          "checked_by": "before/after labd count per LAN"
+        }
+      ],
+      "note": "CHAIN_ACCRUAL_BILLING + quarantine; soft_fail=False; CLEAR_BATCH_FAILURE_AUDIT default 0 (real audit surface); opt-in truncate is SEEDED debug only"
+    },
+    "note": "Promoted SHG INT stitch. Fidelity: real batch APIs; quarantine+job_time seeded; audit truncate NOT default. SkipListener ClassCast deferred (senior).",
+    "ship_baseline": {
+      "wall_s": 164,
+      "invariants": "PASS",
+      "exit": 0,
+      "updated": "2026-07-30",
+      "note": "quarantined SHG parent+3 children; roll last_iad+1..next_due (~30d \u00d7 3 jobs)"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "apis": [
+        "interestAccrualCalculation",
+        "interestAccrualPosting",
+        "loanAccountBillingJob"
+      ],
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "wall budget \u2014 same jobs, fixture-only ACTIVE set"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "platform EOD job_time (IST 18:00) day roll"
+        },
+        {
+          "key": "audit_clear",
+          "reason": "opt-in CLEAR_BATCH_FAILURE_AUDIT=1 only; default 0"
+        }
+      ],
+      "out_of_scope": [
+        "SkipListener ClassCast on poison batch_failure_audit (product fix deferred)",
+        "online DEFAULT interestAccrualCalculation path",
+        "INDL non-SHG calc"
+      ],
+      "layers_real": [
+        "interestAccrualCalculation",
+        "interestAccrualPosting",
+        "loanAccountBillingJob"
+      ]
     }
   },
   "flowtest.invariants_universal": {
@@ -1978,6 +2675,13 @@
         "happy_path"
       ],
       "note": "Ship-gate marker: every money flowtest must run snapshot_invariants + run_universal_invariants"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "seeded": [],
+      "out_of_scope": [
+        "standalone invariant layer \u2014 not a single money API"
+      ]
     }
   },
   "flowtest.invariants_r0_weekly": {
@@ -2048,6 +2752,22 @@
         }
       ],
       "note": "F3 cut: CHAIN_PENAL in dateroll.py ready; fixture/reader eligibility blocked."
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "job_time_synthetic",
+          "reason": "EOD job_time"
+        },
+        {
+          "key": "soft_fail_allowed",
+          "reason": "penal reader eligibility often empty locally"
+        }
+      ],
+      "out_of_scope": [
+        "penal reader eligibility on local bak"
+      ]
     }
   },
   "flowtest.dpd_npa": {
@@ -2105,6 +2825,24 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "quarantine_portfolio",
+          "reason": "wall budget"
+        },
+        {
+          "key": "job_time_synthetic",
+          "reason": "EOD job_time"
+        },
+        {
+          "key": "aging_seed",
+          "reason": "DPD aging seed for classification path"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.loan_reopening": {
@@ -2153,6 +2891,20 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        },
+        {
+          "key": "docs_stub_payload",
+          "reason": "DMS docs stub"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.loan_writeoff": {
@@ -2193,6 +2945,26 @@
         }
       ],
       "note": "L1 amount fixed harness-side; LMS defect handoff scripts/scratch/flowtest-f5/LMS-DEFECT-writeoff-gap062-npe.md"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        },
+        {
+          "key": "iad_sql_scale",
+          "reason": "scale IAD for writeoff eligibility \u2014 not claiming accrual calc"
+        },
+        {
+          "key": "aging_seed",
+          "reason": "aging for writeoff path"
+        }
+      ],
+      "out_of_scope": [
+        "interestAccrualCalculation correctness"
+      ]
     }
   },
   "flowtest.waiver_charges": {
@@ -2238,6 +3010,16 @@
       "exit": 0,
       "updated": "2026-07-27",
       "note": "post-invariant G-CLOSE regression (local 127.0.0.1:5433); serial-suite wall (sum of case walls; not parallel); wall_saved_pct = 1 - planned/naive"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "seeded": [
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "bak restore"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "flowtest.proactive_excess_refund": {
@@ -2281,6 +3063,20 @@
         }
       ],
       "note": "High-risk ProactiveExcessAmountRefundItemWriter; honest PARTIAL when bank/rails no-op."
+    },
+    "fidelity": {
+      "entry": "batch_api",
+      "seeded": [
+        {
+          "key": "excess_seed",
+          "reason": "seed excess staging for refund writer"
+        },
+        {
+          "key": "soft_fail_allowed",
+          "reason": "bank stub / empty writer path"
+        }
+      ],
+      "out_of_scope": []
     }
   },
   "dcf.vikram_fc_rstcre_dfc_e2e": {
@@ -2361,7 +3157,16 @@
       "note": "VIKRAM_PATH=1: child1 regular FC (loanPrepayment DEFAULT\u2192APPROVE_TASK\u2192APPROVE) at death_date midnight IST; child2 last DFC unchanged Obs1\u20133. SEED_EXTRA=0 clean path. foreclosure_date=_eod_ms_ist(DEATH_DATE)."
     },
     "note": "TDPQA-72 Vikram QA path (Sim B). Defaults DCF_FRESH_GROUP=1 \u2014 pinned 6000137433 overdue settle needs product-70 LOAN_REPAYMENT PTC/IAD (local 134207). Pinned path quarantined as dcf.vikram_fc_rstcre_dfc_e2e_pinned_fixture.",
-    "ship_auto": true
+    "ship_auto": true,
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.group_parent_last_child_e2e_clean": {
     "type": "flow",
@@ -2413,7 +3218,16 @@
         }
       ]
     },
-    "note": "Matrix S1 \u2014 clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate)."
+    "note": "Matrix S1 \u2014 clean EXTRA=0 / no dirty EMI. ACCEPTANCE_SCOPE=obs123. Canonical pin 6000137433 / 2025-08-02. Fixture hygiene 2026-07-25: dcf_fixture_backup restores account+labd+iad; re-snapped 6000137433 after deleting interest-only dirt labds (Obs1 accumulate).",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.group_parent_last_child_e2e_full": {
     "type": "flow",
@@ -2457,7 +3271,16 @@
       ],
       "note": "S_full_gap074: gate is live. Product GAP-074 remains OPEN (Out-of-scope for QA Pass claims) until INT-180 merges or a residual-INT fixture FAILS this case. See feedback_int180_deferred_unpushed.md / ASK-057 DEFERRED."
     },
-    "note": "ACCEPTANCE_SCOPE=full fail-closed on parent INT/DPI. DEATH_DATE aligned to 2025-08-02 (same as obs123) \u2014 prior 2025-09-15 window on pinned 6000137433 caused FIXTURE parent POS sync Fail (10482\u226011699 overdue drift), not a tip product bug. GAP-074 residual still needs a dedicated residual-exposing fixture; tip mfi_integration_v3.4.2.4 \u2014 GAP-074 OPEN."
+    "note": "ACCEPTANCE_SCOPE=full fail-closed on parent INT/DPI. DEATH_DATE aligned to 2025-08-02 (same as obs123) \u2014 prior 2025-09-15 window on pinned 6000137433 caused FIXTURE parent POS sync Fail (10482\u226011699 overdue drift), not a tip product bug. GAP-074 residual still needs a dedicated residual-exposing fixture; tip mfi_integration_v3.4.2.4 \u2014 GAP-074 OPEN.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.group_parent_last_child_e2e_full_overdue_window": {
     "type": "flow",
@@ -2491,7 +3314,16 @@
     "expect": {
       "status": "PASS"
     },
-    "note": "Quarantined FIXTURE \u2014 do not ship-gate on this case. Prefer dcf.group_parent_last_child_e2e_full or fresh group."
+    "note": "Quarantined FIXTURE \u2014 do not ship-gate on this case. Prefer dcf.group_parent_last_child_e2e_full or fresh group.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "dcf.group_parent_last_child_fresh_e2e": {
     "type": "flow",
@@ -2545,7 +3377,16 @@
       ],
       "note": "Real flow: disburse SHG parent+2 children then full DFC matrix. Default SEED_EXTRA=0 (fast spine). SEED_EXTRA=1 PASS with unique receipt CRNs + DCF_FRESH_EMI_MONTHS_BACK=2 (past advance EMI; future dues\u2192EXCESS). Never uses blocklisted 6003896527 unless DCF_FRESH_GROUP=0."
     },
-    "note": "S09_fresh_group \u2014 one-shot LANs; PASS SEED_EXTRA=0 (e.g. 6004092625) and SEED_EXTRA=1 (e.g. 6004093925 EXTRA\u2248509) @2026-07-22."
+    "note": "S09_fresh_group \u2014 one-shot LANs; PASS SEED_EXTRA=0 (e.g. 6004092625) and SEED_EXTRA=1 (e.g. 6004093925 EXTRA\u2248509) @2026-07-22.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "disbursement.quick": {
     "type": "flow",
@@ -2604,6 +3445,15 @@
     "expect": {
       "status": "PASS",
       "note": "green confirmed 2026-07-27 local run exit=0"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "disburseLoan"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "disbursement.redis_inflight_lock_sim": {
@@ -2684,7 +3534,16 @@
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage.",
       "verify_mode": "runtime"
     },
-    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim."
+    "note": "RUNTIME_VERIFIED local API. Value-level column audits via disbursement_suite.column_audit (loan_account, installments, dues, mode, LDT, TM, CRR). Asserts FAIL on wrong values \u2014 never WARN-and-pass. Mandate+simulator preflight required. Kafka Redis locks: disbursement.redis_inflight_lock_sim.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "disburseLoan"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "disbursement.shg": {
     "type": "flow",
@@ -2738,6 +3597,15 @@
       ],
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage.",
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "disburseLoan"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "collections.tdpfr547_dpi_amountmap_sim": {
@@ -2926,6 +3794,15 @@
       ],
       "note": "Fail-closed column contracts; presence-only rejected by acceptance_coverage.",
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "disburseLoan"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "batch.dpi_calc": {
@@ -3189,6 +4066,15 @@
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
+    },
+    "fidelity": {
+      "entry": "http_api",
+      "apis": [
+        "fetchFailedSIPresentationList"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "health.actor": {
@@ -3310,7 +4196,16 @@
     "env": {
       "ACCOUNT_NUMBER": "0000001440"
     },
-    "note": "LAN 1440 has payment_mode=CASH (0680 dirty \u2192 333). Seeds REJECTED created_on future so MAX(created_on) would pick it; asserts BY_LATEST returns non-rejected. SQL ORDER BY proof included."
+    "note": "LAN 1440 has payment_mode=CASH (0680 dirty \u2192 333). Seeds REJECTED created_on future so MAX(created_on) would pick it; asserts BY_LATEST returns non-rejected. SQL ORDER BY proof included.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "getLoanForeclosureDetails"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "foreclosure.sdcp10255_e2e": {
     "type": "flow",
@@ -3382,6 +4277,15 @@
         }
       ],
       "note": "U7 acceptance \u2014 individual child foreclosure money bar"
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "individualChildLoanForeclosure"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "foreclosure.shg_bpi_parity": {
@@ -3403,6 +4307,15 @@
       "dimensions": [
         "adjacent_sibling"
       ]
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "loanPrepayment"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "reopening.child_payments_parity_sim": {
@@ -3528,6 +4441,15 @@
         "interest_details.accrued_amount"
       ],
       "ui_asserted": true
+    },
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "disburseLoan"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
     }
   },
   "batch.loan_installment_due_notification": {
@@ -3622,7 +4544,16 @@
     "expect": {
       "status": "PASS"
     },
-    "note": "Quarantined FIXTURE/ENV \u2014 local product-70 LOAN_REPAYMENT PTC gap."
+    "note": "Quarantined FIXTURE/ENV \u2014 local product-70 LOAN_REPAYMENT PTC gap.",
+    "fidelity": {
+      "entry": "mixed",
+      "apis": [
+        "deathForeclosureInsuranceJob"
+      ],
+      "seeded": [],
+      "out_of_scope": [],
+      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+    }
   },
   "foreclosure.child_loan_foreclosure_kg": {
     "type": "flow",

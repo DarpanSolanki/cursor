@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-07-25",
-  "source": "FLOWTEST F1–F5",
+  "source": "FLOWTEST F1\u2013F5",
   "notes": "harness_ready YES only after green fresh run + registry expect PASS/PARTIAL. Enforced: scripts/lib/flow_coverage_gate.py (doctor WARN).",
   "flows": [
     {
@@ -127,7 +127,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.loan_reopening",
-      "note": "F5 — ICF compose + document_details stub; ACTIVE + dues reinstated"
+      "note": "F5 \u2014 ICF compose + document_details stub; ACTIVE + dues reinstated"
     },
     {
       "flow": "childLoanReopening",
@@ -135,7 +135,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "via-parent-reopen",
       "registry": "flowtest.loan_reopening",
-      "note": "F5 — parent Request loanAccountReopening green; child async event path not separately asserted"
+      "note": "F5 \u2014 parent Request loanAccountReopening green; child async event path not separately asserted"
     },
     {
       "flow": "waiveLoanAccountCharges",
@@ -143,7 +143,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.waiver_charges",
-      "note": "F5 — age+waive INT due with document_details stub"
+      "note": "F5 \u2014 age+waive INT due with document_details stub"
     },
     {
       "flow": "loanWriteoff",
@@ -159,7 +159,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "SU-FLOW-EXCESS-RAILS",
       "registry": "flowtest.proactive_excess_refund",
-      "note": "F4 — staging+refund COMPLETED; excess unchanged (writer/rails)"
+      "note": "F4 \u2014 staging+refund COMPLETED; excess unchanged (writer/rails)"
     },
     {
       "flow": "loanAccountExcessAmountRefund",
@@ -188,16 +188,16 @@
       "verify_mode": "runtime",
       "harness_ready": "YES",
       "blocker": null,
-      "registry": "flowtest.accrual_billing",
-      "note": "F3 FLOW A \u2014 REAL jobs + IAD formula /360"
+      "registry": "flowtest.shg_int_accrual_stitch",
+      "note": "SHG parent-SoT window Accrued distribute + calc\u2192posting\u2192billing stitch; also flowtest.accrual_billing (F3)"
     },
     {
       "flow": "interestAccrualPosting",
       "verify_mode": "runtime",
       "harness_ready": "YES",
       "blocker": null,
-      "registry": "flowtest.accrual_billing",
-      "note": "F3 FLOW A"
+      "registry": "flowtest.shg_int_accrual_stitch",
+      "note": "SHG stitch + flowtest.accrual_billing (F3 FLOW A)"
     },
     {
       "flow": "penalInterestAccrualCalculation",
@@ -206,7 +206,7 @@
       "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "SU-FLOW-PENAL-READER-ELIG — WONT-DO per user scope cut"
+      "note": "SU-FLOW-PENAL-READER-ELIG \u2014 WONT-DO per user scope cut"
     },
     {
       "flow": "penalInterestAccrualBooking",
@@ -215,7 +215,7 @@
       "scope": "out",
       "blocker": "penal-reader-elig",
       "registry": "flowtest.penal_accrual",
-      "note": "blocked with calc — scope=out permanently"
+      "note": "blocked with calc \u2014 scope=out permanently"
     },
     {
       "flow": "loanAccountBillingJob",
@@ -223,7 +223,7 @@
       "harness_ready": "YES",
       "blocker": null,
       "registry": "flowtest.accrual_billing",
-      "note": "F3 FLOW A \u2014 labd gap SEEDED, billing REAL"
+      "note": "F3 FLOW A \u2014 labd gap SEEDED; SHG stitch: flowtest.shg_int_accrual_stitch"
     },
     {
       "flow": "loanAccountDpdCalcJob",
@@ -239,7 +239,7 @@
       "harness_ready": "PARTIAL",
       "blocker": "SU-FLOW-NPA-CRITERIA-FLIP",
       "registry": "flowtest.dpd_npa",
-      "note": "F4 triage: fixture selected REGULAR_TO_NPA; postTransaction fails varchar(64)/code 333 then SkipListener CCE — is_npa not flipped"
+      "note": "F4 triage: fixture selected REGULAR_TO_NPA; postTransaction fails varchar(64)/code 333 then SkipListener CCE \u2014 is_npa not flipped"
     },
     {
       "flow": "loanAccountAssetClassificationJob",

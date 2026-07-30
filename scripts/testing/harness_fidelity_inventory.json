@@ -1,0 +1,703 @@
+{
+  "generated_by": "harness_fidelity_gate.py",
+  "money_runtime_cases": 66,
+  "with_fidelity": 66,
+  "with_issues": 0,
+  "cases": [
+    {
+      "id": "dcf.group_parent_last_child_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic",
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.group_parent_last_child_e2e_clean",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.group_parent_last_child_e2e_full",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.group_parent_last_child_e2e_full_overdue_window",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.group_parent_last_child_fresh_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.non_last_rsch_amount_eq_principal",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+      "issues": []
+    },
+    {
+      "id": "dcf.parent_member_future_int_parity",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+      "issues": []
+    },
+    {
+      "id": "dcf.parent_statement_dfc_prtl",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/dcf_tdpqa72_product_pins.py",
+      "issues": []
+    },
+    {
+      "id": "dcf.vikram_fc_rstcre_dfc_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dcf.vikram_fc_rstcre_dfc_e2e_pinned_fixture",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dcf_sanity/run_group_parent_last_child_dfc_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "disbursement.any",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/bin/disburse-any-quick.sh",
+      "issues": []
+    },
+    {
+      "id": "disbursement.indl",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/bin/disburse-indl-quick.sh",
+      "issues": []
+    },
+    {
+      "id": "disbursement.jlg",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/bin/disburse-quick.sh",
+      "issues": []
+    },
+    {
+      "id": "disbursement.quick",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/bin/disburse-quick.sh",
+      "issues": []
+    },
+    {
+      "id": "disbursement.shg",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/bin/disburse-shg-quick.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.billing_ud_next_emi",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_billing_ud_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.booking_anchor_next_due",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio"
+      ],
+      "script": "scripts/dpic/run_dpi_booking_anchor_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.certify_scenarios",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/certify_dpi_scenarios.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.child_repayment_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_child_repayment_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.cross_eod_replay_134497",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_cross_eod_replay_guard.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.dpi_max_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_max_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.dpi_sanity",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_ud_compliance.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.dual_billing",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio"
+      ],
+      "script": "scripts/dpic/run_dpi_dual_billing_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.emi_first_anchor_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_emi_first_anchor_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.eod_txn_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_eod_txn_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.foreclosure_write_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_foreclosure_write_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.full_gate",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_full_gate.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.full_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_full_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.go_live_ud",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_go_live_ud_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.jump_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio"
+      ],
+      "script": "scripts/dpic/run_dpi_jump_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.june_slice_job_proof",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio"
+      ],
+      "script": "scripts/bin/dpi-june-slice-proof.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.part_prepayment_write_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_part_prepayment_write_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.post_maturity_billing",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_post_maturity_billing_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.post_maturity_billing_catchup",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_post_maturity_billing_catchup_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.posting_calendar_regression",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_posting_calendar_regression.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.push_release",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio"
+      ],
+      "script": "scripts/dpic/run_dpi_fresh_disburse_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.qa_verify",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/lib/run_dpi_qa_verify.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.release_gate",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_release_gate.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.repayment_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_repayment_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.repayment_reversal_e2e",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_dpi_repayment_reversal_e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.restructuring_bpi_api",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [],
+      "script": null,
+      "issues": []
+    },
+    {
+      "id": "dpic.restructuring_smoke",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/dpic/run_restructuring_api_smoke.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.shg_parent_child_parity",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_shg_parent_child_parity.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.ship_close_verify",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_ship_close_verify.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.three_job_verify",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_three_job_verify.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.three_job_verify_single_eod",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_three_job_verify.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.two_emi_full_chain",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_two_emi_full_chain.sh",
+      "issues": []
+    },
+    {
+      "id": "dpic.ud_compliance",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dpic/run_dpi_ud_compliance.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.accrual_billing",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "batch_api",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic",
+        "labd_gap_for_billing_boundary",
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/testing/flowtest/run_accrual_billing.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.dpd_npa",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "batch_api",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic",
+        "aging_seed"
+      ],
+      "script": "scripts/testing/flowtest/run_dpd_npa.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.invariants_universal",
+      "verify_mode": "RUNTIME_VERIFIED",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/flowtest/run_universal_invariants_gate.py",
+      "issues": []
+    },
+    {
+      "id": "flowtest.loan_prepayment_fc",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/testing/flowtest/run_loan_prepayment_fc.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.loan_reopening",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore",
+        "docs_stub_payload"
+      ],
+      "script": "scripts/testing/flowtest/run_loan_reopening.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.loan_writeoff",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore",
+        "iad_sql_scale",
+        "aging_seed"
+      ],
+      "script": "scripts/testing/flowtest/run_loan_writeoff.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.part_prepayment",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore",
+        "iad_sql_scale"
+      ],
+      "script": "scripts/testing/flowtest/run_part_prepayment.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.penal_accrual",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "batch_api",
+      "seeded": [
+        "job_time_synthetic",
+        "soft_fail_allowed"
+      ],
+      "script": "scripts/testing/flowtest/run_penal_accrual.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.proactive_excess_refund",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "batch_api",
+      "seeded": [
+        "excess_seed",
+        "soft_fail_allowed"
+      ],
+      "script": "scripts/testing/flowtest/run_proactive_excess_refund.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.repayment_reversal",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/testing/flowtest/run_repayment_reversal.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.rstcre_spine",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/testing/flowtest/run_rstcre_spine.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.shg_int_accrual_stitch",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "batch_api",
+      "seeded": [
+        "quarantine_portfolio",
+        "job_time_synthetic",
+        "audit_clear"
+      ],
+      "script": "scripts/testing/flowtest/run_shg_int_accrual_stitch.sh",
+      "issues": []
+    },
+    {
+      "id": "flowtest.waiver_charges",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [
+        "fixture_snapshot_restore"
+      ],
+      "script": "scripts/testing/flowtest/run_waiver_charges.sh",
+      "issues": []
+    },
+    {
+      "id": "foreclosure.by_latest_details_api",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/by-latest-details-api.sh",
+      "issues": []
+    },
+    {
+      "id": "foreclosure.dpi_waiver_smoke",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [
+        "job_time_synthetic"
+      ],
+      "script": "scripts/dcf_sanity/run_dfc_dpi_waiver_smoke.sh",
+      "issues": []
+    },
+    {
+      "id": "foreclosure.individual_child",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/individual-child-foreclosure-e2e.sh",
+      "issues": []
+    },
+    {
+      "id": "foreclosure.shg_bpi_parity",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "mixed",
+      "seeded": [],
+      "script": "scripts/testing/foreclosure/sdcp-11058-shg-bpi-parity.sh",
+      "issues": []
+    },
+    {
+      "id": "si.fetch_failed_presentation_list",
+      "verify_mode": "runtime",
+      "has_fidelity": true,
+      "entry": "http_api",
+      "seeded": [],
+      "script": null,
+      "issues": []
+    }
+  ]
+}

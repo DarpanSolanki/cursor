@@ -28,6 +28,16 @@ ntest run dpic.demo.all
 # Autonomous API checks
 scripts/bin/kg-switch.sh && scripts/bin/ntest.sh auto getLoanAccountOverviewDetails
 ntest list | ntest smoke | ntest run dpic.overview_api
+
+# SHG INT Accrued distribute stitch (calc → posting → billing)
+ntest run flowtest.shg_int_accrual_stitch
+# debug only (masks audit poison): CLEAR_BATCH_FAILURE_AUDIT=1
+
+# Harness fidelity (real prod/QA entry paths)
+python3 scripts/lib/harness_fidelity_gate.py check
+python3 scripts/lib/harness_fidelity_gate.py report
+# Money cases need fidelity.entry + declared seeded bypasses — see
+# cursor-bundle/memory/feedback_harness_fidelity_real_flow.md
 ```
 
 **Registry:** `registry.json` — correlators from `scripts/scratch/dpic_demo_state.env` after phase1.

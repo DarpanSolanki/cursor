@@ -106,12 +106,16 @@ def roll(
     quarantine_parent_id: int | None = None,
     quarantine_child_ids: Sequence[int] | None = None,
     timeout_s: int = 90,
+    soft_fail: bool = False,
     layers_seeded: Iterable[str] = (),
 ) -> RollResult:
     """Fire `chain` for each calendar day in [start, end] (inclusive).
 
     When quarantine_* set, portfolio is narrowed so EOD jobs only touch the
     fixture (DCF SEED_EXTRA pattern) — required to stay under wall budgets.
+
+    soft_fail defaults False (money fidelity): FAILED batch fails the harness.
+    Pass soft_fail=True only for exploratory / out-of-scope jobs and declare it.
     """
     s = date.fromisoformat(start) if isinstance(start, str) else start
     e = date.fromisoformat(end) if isinstance(end, str) else end
@@ -133,7 +137,9 @@ def roll(
             iso = d.isoformat()
             print(f"  dateroll day={iso} job_time={jt}")
             for api, jn in chain:
-                fire_and_wait(api, jt, job_name=jn, timeout_s=timeout_s, soft_fail=True)
+                fire_and_wait(
+                    api, jt, job_name=jn, timeout_s=timeout_s, soft_fail=soft_fail
+                )
                 fired.append((iso, api, jt))
     finally:
         if q_parent is not None:

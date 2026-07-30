@@ -1,3 +1,13 @@
+## 2026-07-30 — Harness fidelity gate (ntest ≈ prod/QA real flow)
+- New `scripts/lib/harness_fidelity_gate.py`: money runtime cases must declare `fidelity.entry`; undeclared audit truncate / Accrued SQL mutate / soft_fail / ACCEPTANCE_STRICT=0 fail closed.
+- Wired into `ntest validate` + `registry_companion_gate`; inventory `scripts/testing/harness_fidelity_inventory.json`.
+- SHG stitch: `CLEAR_BATCH_FAILURE_AUDIT` default 0; `dateroll.roll` soft_fail default False; flowtest cases annotated; remaining money cases AUTO-STUB fidelity for ratchet.
+
+## 2026-07-30 — L2 harness: SHG INT calc→posting→billing stitch
+- New `flowtest.shg_int_accrual_stitch` (`ntest run flowtest.shg_int_accrual_stitch`): quarantine + `CHAIN_ACCRUAL_BILLING`, window Accrued parity SQL, Posted/LABD asserts, optional `batch_failure_audit` truncate.
+- `dateroll.roll(..., soft_fail=False)` for money stitch; change_test_map → `InterestGroupLoanAccrualDistributionService`; proposal promoted.
+- LIVE PASS on `6000012030` (~164s). Product SkipListener ClassCast deferred (senior discuss).
+
 ## 2026-07-30 — trustt-kg MCP 1.8.3: hot-reload without IDE restart
 - On `tools/list|call|ping`, re-exec MCP process if server/kg.py mtimes changed (stdio pipes kept).
 - Re-open SQLite when `kg.db` mtime or watermark `built_at` changes.

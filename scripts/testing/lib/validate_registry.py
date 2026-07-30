@@ -64,6 +64,34 @@ def validate_registry(path: Path | None = None) -> list[str]:
             if var not in correlators and var not in defaults:
                 errors.append(f"{cid}: unresolved correlator ${{{var}}}")
 
+        fid = case.get("fidelity")
+        if fid is not None:
+            if not isinstance(fid, dict):
+                errors.append(f"{cid}: fidelity must be an object")
+            else:
+                entry = fid.get("entry")
+                if entry not in (
+                    None,
+                    "batch_api",
+                    "http_api",
+                    "orch_request",
+                    "mixed",
+                    "sim",
+                ):
+                    errors.append(f"{cid}: fidelity.entry invalid {entry!r}")
+
+    # Harness fidelity (money runtime masks) — hard errors only; missing block = warn via gate CLI
+    try:
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+        from harness_fidelity_gate import check as fidelity_check  # type: ignore
+
+        ferrs, _fwarns = fidelity_check(hard=False)
+        errors.extend(ferrs)
+    except Exception as ex:  # noqa: BLE001 — validate must still run if gate import fails
+        errors.append(f"harness_fidelity_gate import/check failed: {ex}")
+
     return errors
 
 

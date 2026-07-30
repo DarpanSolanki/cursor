@@ -100,6 +100,18 @@ def check_dcf_companion(*, hard: bool = False) -> list[str]:
 
 def check(*, hard: bool = False) -> int:
     errors = check_dcf_companion(hard=hard)
+    # Harness fidelity — always surface hard mask errors; missing block warns unless --hard
+    try:
+        sys.path.insert(0, str(ROOT / "scripts/lib"))
+        from harness_fidelity_gate import check as fidelity_check
+
+        ferrs, fwarns = fidelity_check(hard=hard)
+        errors.extend(ferrs)
+        for w in fwarns:
+            print(f"WARN fidelity: {w}")
+    except Exception as ex:  # noqa: BLE001
+        errors.append(f"harness_fidelity_gate failed: {ex}")
+
     if errors:
         print("registry-companion FAIL:", file=sys.stderr)
         for e in errors:

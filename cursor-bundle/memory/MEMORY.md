@@ -1,3 +1,4 @@
+- [Harness fidelity ≈ prod/QA flow](feedback_harness_fidelity_real_flow.md) — money ntest must use real api/batch entry; declare seeded bypasses; no default audit truncate / soft_fail / Accrued SQL mutate. Gate: `harness_fidelity_gate.py`. (2026-07-30)
 - [PlatformDate prod == system](feedback_platform_date_prod_equals_system.md) — valueDate≡systemDate in prod; TDPQA-207 L1 REJECTED demotion only, no system_created_on column. (2026-07-29)
 - [KG MCP stdout protocol](feedback_kg_mcp_stdout_protocol.md) — validate/fixed-elsewhere stdout leak broke Cursor JSON-RPC; capture + dup2; smoke `kg-mcp-smoke.sh`. (2026-07-29)
 - [Upstream fetch stamp](feedback_upstream_fetch_stamp.md) — stale stamp hid real fetch → false fixed-elsewhere STALE; git-fetch-all writes stamp; age=max(stamp,refs). (TDPQA-207 2026-07-29)
