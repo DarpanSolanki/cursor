@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import contextlib
-import concurrent.futures
 import io
 import json
 import os
+import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -22,24 +23,36 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.9.0"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.9.1"}
 PROTOCOL = "2024-11-05"
 _SERVER_FILE = Path(__file__).resolve()
 # Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
 _BOOT_SOURCE_MTIMES: dict[str, int] = {}
 
-# Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
+# Per-tool wall-clock caps. Reads ≤2s; heavy ≤15s; kg_enhance explicit.
+# CRITICAL: _run_timed must NOT shutdown(wait=True) after timeout (that was the hang).
 TOOL_TIMEOUT_S: dict[str, float] = {
-    "workspace_status": 18.0,
-    "ship_plan": 12.0,
-    "kg_map_audit": 25.0,
-    "kg_orient": 20.0,
-    "kg_fixed_elsewhere": 25.0,
-    "kg_enhance": 180.0,
-    "kg_doctor": 15.0,
-    "kg_align": 15.0,
+    "mcp_auth": 1.0,
+    "kg_watermark": 2.0,
+    "kg_search": 2.0,
+    "kg_flow": 2.0,
+    "kg_crud": 2.0,
+    "kg_writes": 2.0,
+    "kg_reads": 2.0,
+    "kg_cases": 2.0,
+    "kg_node": 2.0,
+    "kg_align": 3.0,
+    "kg_orient": 5.0,
+    "kg_why": 5.0,
+    "kg_impact": 5.0,
+    "kg_doctor": 8.0,
+    "workspace_status": 5.0,
+    "ship_plan": 8.0,
+    "kg_map_audit": 15.0,
+    "kg_fixed_elsewhere": 15.0,
+    "kg_enhance": 45.0,  # explicit heavy — was 180; still returns TIMEOUT payload
 }
-DEFAULT_TOOL_TIMEOUT_S = 25.0
+DEFAULT_TOOL_TIMEOUT_S = 2.0
 
 _MONEY_LOOKUP_TOOLS = frozenset(
     {
@@ -368,7 +381,14 @@ def _db():
         _DB = None
         _HEADER_CACHE = None
     if _DB is None:
-        _DB = kg_mod.conn(readonly=True)
+        # Tool bodies run on daemon threads (_run_timed). Default sqlite
+        # check_same_thread=True breaks when a later worker reuses a conn opened
+        # on a prior worker (or after TIMEOUT abandon). _TOOL_SERIAL keeps access
+        # single-flight; check_same_thread=False allows cross-worker reuse.
+        uri = f"file:{kg_mod.DB}?mode=ro"
+        c = sqlite3.connect(uri, uri=True, check_same_thread=False)
+        c.row_factory = sqlite3.Row
+        _DB = c
         _DB_WATERMARK = built
         _DB_FILE_MTIME_NS = db_mtime
     return _DB
@@ -524,14 +544,43 @@ def _run_cmd(cmd: list[str], *, timeout_s: int = 8) -> tuple[int, str]:
         return 1, f"error: {exc}"
 
 
+_TOOL_SERIAL = threading.Lock()  # one tool at a time — abandoned workers must not race _DB
+
+
 def _run_timed(label: str, fn: Callable[[], Any], timeout_s: float) -> Any:
-    """Run fn with wall-clock cap; raise TimeoutError on exceed."""
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        fut = pool.submit(fn)
+    """Wall-clock cap that returns promptly on breach.
+
+    Hang root-cause (2026-07-30):
+    1) ``with ThreadPoolExecutor`` → ``shutdown(wait=True)`` waited for the timed-out
+       worker (CallMcpTool blocked for remaining work, e.g. kg-switch ≤170s).
+    2) Non-daemon pool threads also blocked **process exit** after TIMEOUT return.
+
+    Fix: daemon ``threading.Thread`` + ``join(timeout)`` — return/TIMEOUT without waiting
+    for the worker; drop shared SQLite handle (close=False) so a later call opens a
+    fresh conn without joining the abandoned worker (close=True deadlocked).
+    """
+    box: dict[str, Any] = {}
+
+    def _runner() -> None:
         try:
-            return fut.result(timeout=timeout_s)
-        except concurrent.futures.TimeoutError as exc:
-            raise TimeoutError(f"{label} exceeded {timeout_s}s") from exc
+            box["value"] = fn()
+        except BaseException as exc:  # noqa: BLE001 — deliver to caller
+            box["exc"] = exc
+
+    thr = threading.Thread(target=_runner, name=f"mcp-{label}", daemon=True)
+    thr.start()
+    thr.join(timeout=timeout_s)
+    if thr.is_alive():
+        try:
+            _invalidate_db_cache(close=False)
+        except Exception:
+            pass
+        raise TimeoutError(f"{label} exceeded {timeout_s}s")
+    if "exc" in box:
+        raise box["exc"]
+    if "value" not in box:
+        raise TimeoutError(f"{label} exceeded {timeout_s}s (no result)")
+    return box["value"]
 
 
 def _flow_coverage_pct() -> str:
@@ -647,13 +696,16 @@ def _kg_watermark_summary() -> str:
     return f"built={built} repos={len(wm.get('repos') or {})}"
 
 
-def _invalidate_db_cache() -> None:
+def _invalidate_db_cache(*, close: bool = True) -> None:
+    """Drop cached SQLite handle. On tool TIMEOUT use close=False — closing a conn
+    still in use by an abandoned daemon worker can deadlock the main thread."""
     global _DB, _HEADER_CACHE, _DB_WATERMARK, _DB_FILE_MTIME_NS
-    try:
-        if _DB is not None:
-            _DB.close()
-    except Exception:  # noqa: BLE001
-        pass
+    if close:
+        try:
+            if _DB is not None:
+                _DB.close()
+        except Exception:  # noqa: BLE001
+            pass
     _DB = None
     _HEADER_CACHE = None
     _DB_WATERMARK = None
@@ -700,7 +752,7 @@ def _kg_enhance_payload(arguments: dict) -> dict:
     cmd = ["bash", str(switch)]
     if force:
         cmd.append("--force")
-    rc, out = _run_cmd(cmd, timeout_s=170)
+    rc, out = _run_cmd(cmd, timeout_s=int(TOOL_TIMEOUT_S.get("kg_enhance", 45) - 5))
     _invalidate_db_cache()
     result["kg_switch_rc"] = rc
     result["kg_switch_tail"] = (out.splitlines()[-6:] if out else [])
@@ -1010,16 +1062,48 @@ def _dispatch_tool(name: str, arguments: dict) -> tuple[str, bool]:
         text, rc = run_kg(tool_argv(name, arguments))
         return text, _infer_is_error(text, rc)
 
+    # Optional env override for one tool (tests): KG_MCP_TOOL_TIMEOUT_<NAME>
+    env_key = f"KG_MCP_TOOL_TIMEOUT_{name.upper()}"
+    if os.environ.get(env_key):
+        try:
+            timeout_s = float(os.environ[env_key])
+        except ValueError:
+            pass
+    if os.environ.get("KG_MCP_TOOL_TIMEOUT"):
+        try:
+            timeout_s = min(timeout_s, float(os.environ["KG_MCP_TOOL_TIMEOUT"]))
+        except ValueError:
+            pass
+
+    acquired = _TOOL_SERIAL.acquire(timeout=timeout_s + 1.0)
+    if not acquired:
+        payload = {
+            "ok": False,
+            "status": "TIMEOUT",
+            "partial": True,
+            "tool": name,
+            "budget_s": timeout_s,
+            "error": "tool serial lock busy — prior abandoned worker still running",
+        }
+        return json.dumps(payload, indent=2), True
     try:
         return _run_timed(name, _work, timeout_s)
     except TimeoutError as exc:
-        return (
-            truncate(
-                _header()
-                + f"\nMCP TIMEOUT — {exc}. Retry with a narrower query or increase KG_MCP_TOOL_TIMEOUT."
-            ),
-            True,
-        )
+        # Avoid _header()/_db() here — abandoned worker may still touch SQLite.
+        payload = {
+            "ok": False,
+            "status": "TIMEOUT",
+            "partial": True,
+            "stale": name in {"kg_fixed_elsewhere", "kg_map_audit", "kg_enhance", "kg_doctor"},
+            "tool": name,
+            "budget_s": timeout_s,
+            "error": str(exc),
+            "hint": "narrow query / use cache / avoid kg_enhance during rebuild; retry",
+            "provenance": (_HEADER_CACHE[1] if _HEADER_CACHE else "[KG @? TIMEOUT]"),
+        }
+        return json.dumps(payload, indent=2), True
+    finally:
+        _TOOL_SERIAL.release()
 
 
 def handle(msg: dict) -> dict | None:
