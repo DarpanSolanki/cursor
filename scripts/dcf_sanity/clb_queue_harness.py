@@ -100,51 +100,77 @@ WHERE bji.job_name = '{job_name}';
     return int(row or "0")
 
 
-def wait_batch_after(job_name: str, min_execution_id: int, timeout_s: int = 180) -> str:
-    """Wait for a new batch_job_execution with id > min_execution_id (TZ-safe; no create_time epoch)."""
+def bind_batch_execution_id(
+    job_name: str, min_execution_id: int, bind_timeout_s: int = 45
+) -> int:
+    """Capture the FIRST new execution id after fire (MIN id > min_execution_id)."""
+    deadline = time.time() + bind_timeout_s
+    while time.time() < deadline:
+        row = psql(f"""
+SELECT MIN(bje.job_execution_id)::text
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = '{job_name}'
+  AND bje.job_execution_id > {int(min_execution_id)};
+""")
+        if row and row.isdigit() and int(row) > 0:
+            eid = int(row)
+            print(f"  … batch-wait {job_name} bound exec_id={eid}")
+            return eid
+        time.sleep(0.25)
+    raise RuntimeError(
+        f"batch {job_name} could not bind exec_id after min_execution_id={min_execution_id}"
+    )
+
+
+def wait_batch_execution(job_name: str, exec_id: int, timeout_s: int = 180) -> str:
+    """Poll ONE batch_job_execution row by id — name/time-window matching is forbidden."""
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         row = psql(f"""
 SELECT bje.status
 FROM mfi_batch.batch_job_execution bje
-JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
-WHERE bji.job_name = '{job_name}'
-  AND bje.job_execution_id > {min_execution_id}
-ORDER BY bje.job_execution_id DESC
-LIMIT 1;
+WHERE bje.job_execution_id = {int(exec_id)};
 """)
         if row == "COMPLETED":
+            print(f"  … batch-wait {job_name} exec_id={exec_id} COMPLETED")
             return row
         if row in ("FAILED", "STOPPED", "ABANDONED"):
-            raise RuntimeError(f"batch {job_name} {row}")
-        time.sleep(2)
-    raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
+            raise RuntimeError(f"batch {job_name} exec_id={exec_id} {row}")
+        time.sleep(0.5)
+    raise RuntimeError(f"batch {job_name} exec_id={exec_id} timeout after {timeout_s}s")
+
+
+def wait_batch_after(job_name: str, min_execution_id: int, timeout_s: int = 180) -> str:
+    """Bind exact exec id at fire-correlator, then poll that row only."""
+    exec_id = bind_batch_execution_id(job_name, min_execution_id)
+    return wait_batch_execution(job_name, exec_id, timeout_s=timeout_s)
 
 
 def wait_batch_by_start(job_name: str, started_epoch: int, timeout_s: int = 180) -> str:
-    """Legacy wrapper: wall-clock start is unreliable vs timestamp-without-tz create_time.
+    """Legacy: resolve FIRST exec with create_time >= started_epoch, then poll that id only.
 
-    Prefer wait_batch_after(max_batch_execution_id) from fire sites. Kept for callers that
-    only have a wall clock — compare create_time in session TimeZone (Asia/Kolkata).
+    Prefer wait_batch_after(max_batch_execution_id) from fire sites.
     """
-    deadline = time.time() + timeout_s
+    deadline = time.time() + min(45, timeout_s)
+    exec_id = 0
     while time.time() < deadline:
         row = psql(f"""
-SELECT bje.status
+SELECT MIN(bje.job_execution_id)::text
 FROM mfi_batch.batch_job_execution bje
 JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
 WHERE bji.job_name = '{job_name}'
   AND EXTRACT(EPOCH FROM (bje.create_time AT TIME ZONE current_setting('TimeZone')))::bigint
-      >= {started_epoch}
-ORDER BY bje.job_execution_id DESC
-LIMIT 1;
+      >= {int(started_epoch)};
 """)
-        if row == "COMPLETED":
-            return row
-        if row in ("FAILED", "STOPPED", "ABANDONED"):
-            raise RuntimeError(f"batch {job_name} {row}")
-        time.sleep(2)
-    raise RuntimeError(f"batch {job_name} timeout after {timeout_s}s")
+        if row and row.isdigit() and int(row) > 0:
+            exec_id = int(row)
+            print(f"  … batch-wait {job_name} bound exec_id={exec_id} (from start epoch)")
+            break
+        time.sleep(0.25)
+    if not exec_id:
+        raise RuntimeError(f"batch {job_name} could not bind exec_id from start={started_epoch}")
+    return wait_batch_execution(job_name, exec_id, timeout_s=timeout_s)
 
 
 def quarantine_billing_portfolio(parent_account_id: int, child_account_ids: list[int]) -> None:

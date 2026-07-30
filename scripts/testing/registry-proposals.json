@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-27T07:34:18Z",
+  "updated": "2026-07-29T12:34:06Z",
   "proposals": [
     {
       "id": "proposal.unknown.unknownApi.20260722",
@@ -14,7 +14,7 @@
         "api": "unknownApi",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -28,7 +28,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -69,7 +69,7 @@
         "api": "batch_other",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain batch_other gap=30 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain batch_other gap=30 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -96,7 +96,7 @@
         "api": "loanDeathForeclosure",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain death_foreclosure gap=9 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain death_foreclosure gap=9 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -130,7 +130,7 @@
         "api": "disburseLoan",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain disbursement gap=31 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain disbursement gap=31 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -166,7 +166,7 @@
         "api": "runEODJobs",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain eod_bod gap=5 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain eod_bod gap=5 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -195,7 +195,7 @@
         "api": "individualChildLoanForeclosure",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain foreclosure gap=11 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain foreclosure gap=11 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -224,7 +224,7 @@
         "api": "insurance",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain insurance gap=7 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain insurance gap=7 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -253,7 +253,7 @@
         "api": "fetchFailedSIPresentationList",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain mandates_si gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain mandates_si gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -282,7 +282,7 @@
         "api": "loanAccountDpdCalcJob",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain npa_dpd gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain npa_dpd gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -311,7 +311,7 @@
         "api": "other",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain other gap=44 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain other gap=44 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -338,7 +338,7 @@
         "api": "executeLMSPortfolioTransfer",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain portfolio gap=1 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain portfolio gap=1 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -365,7 +365,7 @@
         "api": "loanAccountPartPrepayment",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain prepayment gap=3 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain prepayment gap=3 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -394,7 +394,7 @@
         "api": "getLoanAccountOverviewDetails",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain read_inquiry gap=90 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain read_inquiry gap=90 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -423,7 +423,7 @@
         "api": "loanAccountReopening",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain reopening gap=2 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain reopening gap=2 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -452,7 +452,7 @@
         "api": "loanRepayment",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain repayment gap=2 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain repayment gap=2 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -481,7 +481,7 @@
         "api": "childLoanRestructuring",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain restructuring gap=12 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain restructuring gap=12 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -511,7 +511,7 @@
         "api": "loanAccountTransactionReversal",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain reversal gap=5 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain reversal gap=5 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -540,7 +540,7 @@
         "api": "write_ops",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain write_ops gap=44 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain write_ops gap=44 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -567,7 +567,7 @@
         "api": "loanWriteoff",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "GAP STUB — domain writeoff gap=1 apis; human designs fixture",
+        "note": "GAP STUB \u2014 domain writeoff gap=1 apis; human designs fixture",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -594,7 +594,7 @@
         "api": "individualChildLoanForeclosure",
         "smoke_tier": "money",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -608,7 +608,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_due_details",
@@ -616,7 +616,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_account_payments_details",
@@ -624,7 +624,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "transaction_master",
@@ -632,7 +632,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -700,7 +700,7 @@
       "suggested_tier": "money",
       "case": {
         "api": "deathForeclosureInsuranceJob",
-        "note": "Out-of-scope-documented ₹1 product decision"
+        "note": "Out-of-scope-documented \u20b91 product decision"
       }
     },
     {
@@ -715,7 +715,7 @@
         "api": "unknownApi",
         "smoke_tier": "money",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -729,7 +729,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_installment_details",
@@ -737,7 +737,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_due_details",
@@ -745,7 +745,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             },
             {
               "table": "loan_disbursement_mode_details",
@@ -753,7 +753,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -794,7 +794,7 @@
         "api": "unknownApi",
         "smoke_tier": "smoke",
         "verify_mode": "runtime",
-        "note": "AUTO-DRAFT from ship/RCA — human must promote to registry.json after filling expects",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
         "acceptance": {
           "verify_mode": "runtime",
           "dimensions": [
@@ -808,7 +808,7 @@
               "expect": {
                 "TODO": "fill from ship DB readback"
               },
-              "checked_by": "AUTO-DRAFT — promote after human fills expects"
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
             }
           ]
         },
@@ -822,6 +822,601 @@
         "pending_files": [],
         "tier": ""
       }
+    },
+    {
+      "id": "impact.not_covered.loanRepaymentSI",
+      "kind": "registry_case",
+      "api": "loanRepaymentSI",
+      "reason": "flow loanRepaymentSI impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T11:15:38Z"
+    },
+    {
+      "id": "impact.not_covered.fetchPartPrepaymentRepaymentSchedule",
+      "kind": "registry_case",
+      "api": "fetchPartPrepaymentRepaymentSchedule",
+      "reason": "flow fetchPartPrepaymentRepaymentSchedule impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T11:15:38Z"
+    },
+    {
+      "id": "proposal.repayment.loanRepayment.20260728",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-28T12:05:56Z",
+      "domain": "repayment",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanRepayment",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "loan_account",
+              "assert": "TODO: value-level expect for loan_account from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_due_details",
+              "assert": "TODO: value-level expect for loan_due_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_account_payments_details",
+              "assert": "TODO: value-level expect for loan_account_payments_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "loanRepayment",
+          "getLoanAccountOverviewDetails"
+        ],
+        "pending_files": [
+          ".cursor/rules/harness-push-origin-main-only.mdc",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualcalculation/DpiAccrualCalculationBatchService.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/dpi/calculation/DPICalculationService.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/partprepayment/processor/ValidateLoanAccountPartPrepaymentProcessor.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/transactionreversal/processor/ValidateTransactionReversalDataProcessor.java"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "impact.not_covered.childLoanDisbursementCancellation",
+      "kind": "registry_case",
+      "api": "childLoanDisbursementCancellation",
+      "reason": "flow childLoanDisbursementCancellation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanDisbursementCancellation",
+      "kind": "registry_case",
+      "api": "loanDisbursementCancellation",
+      "reason": "flow loanDisbursementCancellation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanRestructuring",
+      "kind": "registry_case",
+      "api": "childLoanRestructuring",
+      "reason": "flow childLoanRestructuring impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanPartPrepayment",
+      "kind": "registry_case",
+      "api": "childLoanPartPrepayment",
+      "reason": "flow childLoanPartPrepayment impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanRebooking",
+      "kind": "registry_case",
+      "api": "childLoanRebooking",
+      "reason": "flow childLoanRebooking impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanDisbursementCancellationParentRescheduling",
+      "kind": "registry_case",
+      "api": "childLoanDisbursementCancellationParentRescheduling",
+      "reason": "flow childLoanDisbursementCancellationParentRescheduling impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountRebooking",
+      "kind": "registry_case",
+      "api": "loanAccountRebooking",
+      "reason": "flow loanAccountRebooking impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanTransactionReversal",
+      "kind": "registry_case",
+      "api": "childLoanTransactionReversal",
+      "reason": "flow childLoanTransactionReversal impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.generateRepaymentSchedule",
+      "kind": "registry_case",
+      "api": "generateRepaymentSchedule",
+      "reason": "flow generateRepaymentSchedule impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanDisbursementCancellationParentClosure",
+      "kind": "registry_case",
+      "api": "childLoanDisbursementCancellationParentClosure",
+      "reason": "flow childLoanDisbursementCancellationParentClosure impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountExcessAmountRefund",
+      "kind": "registry_case",
+      "api": "loanAccountExcessAmountRefund",
+      "reason": "flow loanAccountExcessAmountRefund impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.parentLoanAccountPartPrepayment",
+      "kind": "registry_case",
+      "api": "parentLoanAccountPartPrepayment",
+      "reason": "flow parentLoanAccountPartPrepayment impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.fetchLoanAccountChargeDetails",
+      "kind": "registry_case",
+      "api": "fetchLoanAccountChargeDetails",
+      "reason": "flow fetchLoanAccountChargeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.fetchDisbursementCancellationSimulationDetails",
+      "kind": "registry_case",
+      "api": "fetchDisbursementCancellationSimulationDetails",
+      "reason": "flow fetchDisbursementCancellationSimulationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.getInsurancePremiumAmount",
+      "kind": "registry_case",
+      "api": "getInsurancePremiumAmount",
+      "reason": "flow getInsurancePremiumAmount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.cancelLoanForeclosure",
+      "kind": "registry_case",
+      "api": "cancelLoanForeclosure",
+      "reason": "flow cancelLoanForeclosure impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanForeclosure",
+      "kind": "registry_case",
+      "api": "childLoanForeclosure",
+      "reason": "flow childLoanForeclosure impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.runEODJobs",
+      "kind": "registry_case",
+      "api": "runEODJobs",
+      "reason": "flow runEODJobs impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.updateMandateDetailsTask",
+      "kind": "registry_case",
+      "api": "updateMandateDetailsTask",
+      "reason": "flow updateMandateDetailsTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.individualLoanAccountRebooking",
+      "kind": "registry_case",
+      "api": "individualLoanAccountRebooking",
+      "reason": "flow individualLoanAccountRebooking impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.groupLoanAccountRebooking",
+      "kind": "registry_case",
+      "api": "groupLoanAccountRebooking",
+      "reason": "flow groupLoanAccountRebooking impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.postManualJournalEntry",
+      "kind": "registry_case",
+      "api": "postManualJournalEntry",
+      "reason": "flow postManualJournalEntry impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateEmployee",
+      "kind": "registry_case",
+      "api": "createOrUpdateEmployee",
+      "reason": "flow createOrUpdateEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAgentEmployee",
+      "kind": "registry_case",
+      "api": "createOrUpdateAgentEmployee",
+      "reason": "flow createOrUpdateAgentEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAgent",
+      "kind": "registry_case",
+      "api": "createOrUpdateAgent",
+      "reason": "flow createOrUpdateAgent impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCorporate",
+      "kind": "registry_case",
+      "api": "createOrUpdateCorporate",
+      "reason": "flow createOrUpdateCorporate impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCorporateEmployee",
+      "kind": "registry_case",
+      "api": "createOrUpdateCorporateEmployee",
+      "reason": "flow createOrUpdateCorporateEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCustomer",
+      "kind": "registry_case",
+      "api": "createOrUpdateCustomer",
+      "reason": "flow createOrUpdateCustomer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.uploadLeadDocument",
+      "kind": "registry_case",
+      "api": "uploadLeadDocument",
+      "reason": "flow uploadLeadDocument impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.deleteEmployee",
+      "kind": "registry_case",
+      "api": "deleteEmployee",
+      "reason": "flow deleteEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.doGLTransfer",
+      "kind": "registry_case",
+      "api": "doGLTransfer",
+      "reason": "flow doGLTransfer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.doGenericSyncSTPBankNEINeftCallBack",
+      "kind": "registry_case",
+      "api": "doGenericSyncSTPBankNEINeftCallBack",
+      "reason": "flow doGenericSyncSTPBankNEINeftCallBack impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.executeLMSPortfolioTransfer",
+      "kind": "registry_case",
+      "api": "executeLMSPortfolioTransfer",
+      "reason": "flow executeLMSPortfolioTransfer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountAssetClassificationJob",
+      "kind": "registry_case",
+      "api": "loanAccountAssetClassificationJob",
+      "reason": "flow loanAccountAssetClassificationJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountAssetCriteriaJob",
+      "kind": "registry_case",
+      "api": "loanAccountAssetCriteriaJob",
+      "reason": "flow loanAccountAssetCriteriaJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountRestructuring",
+      "kind": "registry_case",
+      "api": "loanAccountRestructuring",
+      "reason": "flow loanAccountRestructuring impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.updateChildLoanDisbursementStatus",
+      "kind": "registry_case",
+      "api": "updateChildLoanDisbursementStatus",
+      "reason": "flow updateChildLoanDisbursementStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanAccountExcessAmountRefund",
+      "kind": "registry_case",
+      "api": "childLoanAccountExcessAmountRefund",
+      "reason": "flow childLoanAccountExcessAmountRefund impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.updateLoanAccountPreDisbursementDetails",
+      "kind": "registry_case",
+      "api": "updateLoanAccountPreDisbursementDetails",
+      "reason": "flow updateLoanAccountPreDisbursementDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childWaiveLoanAccountCharges",
+      "kind": "registry_case",
+      "api": "childWaiveLoanAccountCharges",
+      "reason": "flow childWaiveLoanAccountCharges impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanBooking",
+      "kind": "registry_case",
+      "api": "childLoanBooking",
+      "reason": "flow childLoanBooking impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-28T12:56:45Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:service:trustt-platform-accounting",
+      "kind": "registry_case",
+      "api": "topic-consumer:service:trustt-platform-accounting",
+      "reason": "flow topic-consumer:service:trustt-platform-accounting impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:bulkCollectionFailedRecordConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:bulkCollectionFailedRecordConsumer",
+      "reason": "flow topic-consumer:consumer:bulkCollectionFailedRecordConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:lmsMessageBrokerConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:lmsMessageBrokerConsumer",
+      "reason": "flow topic-consumer:consumer:lmsMessageBrokerConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:service:trustt-platform-los",
+      "kind": "registry_case",
+      "api": "topic-consumer:service:trustt-platform-los",
+      "reason": "flow topic-consumer:service:trustt-platform-los impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:disbursementSyncConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:disbursementSyncConsumer",
+      "reason": "flow topic-consumer:consumer:disbursementSyncConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:service:trustt-platform-notifications",
+      "kind": "registry_case",
+      "api": "topic-consumer:service:trustt-platform-notifications",
+      "reason": "flow topic-consumer:service:trustt-platform-notifications impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:notificationMessageBrokerConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:notificationMessageBrokerConsumer",
+      "reason": "flow topic-consumer:consumer:notificationMessageBrokerConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:notificationSMSConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:notificationSMSConsumer",
+      "reason": "flow topic-consumer:consumer:notificationSMSConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:notificationFCMConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:notificationFCMConsumer",
+      "reason": "flow topic-consumer:consumer:notificationFCMConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:notificationEmailConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:notificationEmailConsumer",
+      "reason": "flow topic-consumer:consumer:notificationEmailConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:service:trustt-platform-payments",
+      "kind": "registry_case",
+      "api": "topic-consumer:service:trustt-platform-payments",
+      "reason": "flow topic-consumer:service:trustt-platform-payments impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "impact.not_covered.topic-consumer:consumer:populateCollectionCustomerDetailsConsumer",
+      "kind": "registry_case",
+      "api": "topic-consumer:consumer:populateCollectionCustomerDetailsConsumer",
+      "reason": "flow topic-consumer:consumer:populateCollectionCustomerDetailsConsumer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T11:10:49Z"
+    },
+    {
+      "id": "proposal.prepayment.getLoanForeclosureDetails.20260729",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-29T12:34:06Z",
+      "domain": "prepayment",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "getLoanForeclosureDetails",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "getLoanForeclosureDetails"
+        ],
+        "pending_files": [
+          ".cursor/changelog.md",
+          "cursor-bundle/memory/MEMORY.md",
+          "cursor-bundle/memory/feedback_upstream_fetch_stamp.md",
+          "scripts/bin/git-fetch-all.sh",
+          "scripts/lib/branch_train.py",
+          "scripts/lib/test_branch_train.py",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/prepayment/dao/PrepaymentDetailsRepository.java",
+          "scripts/lib/change_test_map.json",
+          "scripts/testing/lib/envelope.py",
+          "scripts/testing/ntest.py",
+          "scripts/lib/accounting_flow_domains.json",
+          "scripts/testing/foreclosure/by-latest-details-api.sh"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "impact.not_covered.glBalanceZeroisation",
+      "kind": "registry_case",
+      "api": "glBalanceZeroisation",
+      "reason": "flow glBalanceZeroisation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T13:34:17Z"
+    },
+    {
+      "id": "impact.not_covered.reverseTransaction",
+      "kind": "registry_case",
+      "api": "reverseTransaction",
+      "reason": "flow reverseTransaction impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T13:34:17Z"
+    },
+    {
+      "id": "impact.not_covered.reverseManualJournalEntry",
+      "kind": "registry_case",
+      "api": "reverseManualJournalEntry",
+      "reason": "flow reverseManualJournalEntry impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-07-29T13:34:17Z"
     }
   ]
 }

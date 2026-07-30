@@ -187,10 +187,50 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         req = _subst_request(case.get("request") or {}, env)
         if service == "actor" and "user_id" in req:
             env["user_id"] = str(req["user_id"])
-        payload = build_envelope(service, req, stan=stan, vars=env)
+        header_overrides = {}
+        if case.get("function_sub_code"):
+            header_overrides["function_sub_code"] = str(case["function_sub_code"])
+        if isinstance(case.get("headers"), dict):
+            header_overrides.update(case["headers"])
+        payload = build_envelope(
+            service,
+            req,
+            stan=stan,
+            vars=env,
+            header_overrides=header_overrides or None,
+        )
 
     print(f"=== {case_id} [{service}] {api} ===")
-    run_started = str(int(time.time()))
+    before_exec = "0"
+    will_wait_batch = (
+        case.get("wait_batch") is not False
+        and (case.get("batch") or case.get("type") == "batch")
+    )
+    if will_wait_batch:
+        job_name_pre = case.get("batch_job_name") or api
+        try:
+            import subprocess as _sp
+            before_exec = _sp.check_output(
+                [
+                    "psql",
+                    "-h", os.environ.get("YB_HOST", "127.0.0.1"),
+                    "-p", os.environ.get("YB_PORT", "5433"),
+                    "-U", os.environ.get("YB_USER", "yugabyte"),
+                    "-d", os.environ.get("YB_DB", "yugabyte"),
+                    "-t", "-A", "-v", "ON_ERROR_STOP=1",
+                    "-c",
+                    f"SELECT COALESCE(MAX(bje.job_execution_id), 0) "
+                    f"FROM mfi_batch.batch_job_execution bje "
+                    f"JOIN mfi_batch.batch_job_instance bji "
+                    f"ON bji.job_instance_id = bje.job_instance_id "
+                    f"WHERE bji.job_name = '{job_name_pre}'",
+                ],
+                env={**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")},
+                text=True,
+            ).strip() or "0"
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [WARN] before_exec capture failed: {exc}", file=sys.stderr)
+            before_exec = "0"
     result = fire_api(api, payload, service=service)
     if os.environ.get("NTEST_NO_AUTO_RECOVER") != "1" and result.http_status in (0, 502, 503, 504):
         print("(connection failed — agent-ops retry)")
@@ -220,10 +260,11 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         job_time = str(env.get("JOB_TIME") or "")
         wait_script = ROOT / "scripts" / "dpic" / "lib" / "wait_batch_job.sh"
         if wait_script.is_file() and job_time:
-            print(f"  wait_batch: {job_name} job_time={job_time}")
+            print(f"  wait_batch: {job_name} job_time={job_time} before_exec={before_exec}")
             wb = subprocess.run(
-                ["bash", str(wait_script), job_name, job_time, run_started],
+                ["bash", str(wait_script), job_name, job_time, before_exec],
                 cwd=str(ROOT),
+                env={**os.environ, "BATCH_WAIT_ARG3": "before"},
             )
             if wb.returncode != 0:
                 print(f"  [FAIL] batch_completed: wait_batch_job exited {wb.returncode}", file=sys.stderr)

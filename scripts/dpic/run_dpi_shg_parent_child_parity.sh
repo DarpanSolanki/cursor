@@ -56,9 +56,13 @@ if [[ -f "$ROOT/scripts/dpic/sql/helpers/clear_batch_failure_audit.sql" ]]; then
 fi
 
 echo ">>> dpiAccrualCalculation (SHG family)"
-run_started="$(date +%s)"
+before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = 'dpiAccrualCalculation'")"
 JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$run_started"
+BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$before"
 
 verify_out=""
 for _ in 1 2 3 4 5 6 7 8; do

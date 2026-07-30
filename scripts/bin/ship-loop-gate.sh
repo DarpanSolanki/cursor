@@ -107,6 +107,14 @@ bash "$ROOT/scripts/bin/stack-doctor.sh" --remediate || {
   exit 1
 }
 
+# FIX2: park non-fixture dpiAccrualBooking eligible set for money/DPI suites
+if [[ "$TIER" == "money" ]] || [[ "${_SMART_CASES[*]:-}" == *dpic.* ]]; then
+  echo "→ suite booking quarantine (park)"
+  bash "$ROOT/scripts/dpic/lib/suite_booking_quarantine.sh" park || true
+  _suite_q_restore() { bash "$ROOT/scripts/dpic/lib/suite_booking_quarantine.sh" restore >/dev/null 2>&1 || true; }
+  trap '_suite_q_restore' EXIT
+fi
+
 # Query plan gate — only when pending touches @Query/native SQL/repo methods (conditional).
 if [[ "$FROM_PENDING" -eq 1 || "$PENDING_FILES" -gt 0 ]]; then
   if bash "$ROOT/scripts/bin/query-plan-gate.sh" --check-touched >/dev/null 2>&1; then

@@ -1,3 +1,6 @@
+## 2026-07-30 — DPIC harness: exec-id batch wait + local single-node registration (3.7.1 verified)
+- wait_batch_job binds job_execution_id; dpi_demo_fixture single-node SQL; suite quarantine; test-map + TDPQA-207; MCP 1.8.1 KG cache refresh on watermark drift.
+
 ## 2026-07-30 — trustt-kg MCP 1.8.0: close honest gaps (22 tools)
 - Added kg_reads, kg_error, kg_node, kg_doctor, kg_enhance; orient verify paths; fetch_if_stale default; MAX_CHARS 24k; E2E 24 tests PASS.
 

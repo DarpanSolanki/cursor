@@ -87,11 +87,15 @@ purge_batch() {
 
 call_batch() {
   local api="$1" job_time="$2"
+  local before
   purge_batch "$api" "$job_time"
-  local rs
-  rs="$(date +%s)"
+  before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = '$api'")"
   JOB_TIME="$job_time" "$NTEST" api accounting "$api" --batch --job-time "$job_time" >/dev/null
-  bash "$WAIT_BATCH" "$api" "$job_time" "$rs"
+  BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" "$api" "$job_time" "$before"
 }
 
 run_calc_book_at() {

@@ -88,9 +88,13 @@ PY
 
 echo ">>> dpiAccrualCalculation (go-live base)"
 purge_batch dpiAccrualCalculation "$JOB_TIME"
-rs="$(date +%s)"
+before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = 'dpiAccrualCalculation'")"
 JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$rs"
+BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$before"
 
 read -r eligible all_od accrual_base accrual_amount verdict <<<"$(
   dpi_pg -t -A -F' ' -v ON_ERROR_STOP=1 \
@@ -116,9 +120,13 @@ dpi_pg -v ON_ERROR_STOP=1 -c \
 dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$LOAN_ACCOUNT_ID" \
   -f "$ROOT/scripts/dpic/sql/helpers/purge_dpi_accruals_for_loan.sql" >/dev/null
 purge_batch dpiAccrualCalculation "$JOB_TIME"
-rs="$(date +%s)"
+before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = 'dpiAccrualCalculation'")"
 JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$rs"
+BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$before"
 n="$(dpi_pg -t -A -c "SELECT COUNT(*) FROM mfi_accounting.dpi_accrual_details WHERE loan_account_id=$LOAN_ACCOUNT_ID AND is_deleted=false AND total_accrued_amount>0;")"
 [[ "${n:-0}" == "0" ]] || fail "maturity before go-live: expected 0 accrual rows, got $n"
 dpi_pg -v ON_ERROR_STOP=1 -c \

@@ -22,7 +22,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.8.0"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.8.1"}
 PROTOCOL = "2024-11-05"
 
 # Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
@@ -287,6 +287,7 @@ TOOLS = {
 }
 
 _DB = None
+_DB_WATERMARK: str | None = None
 os.environ.setdefault("KG_NO_AUTO_REBUILD", "1")
 
 _STACK_DOCTOR_CACHE: tuple[float, dict] | None = None
@@ -295,9 +296,16 @@ _STACK_DOCTOR_TIMEOUT_S = 12
 
 
 def _db():
-    global _DB
+    global _DB, _DB_WATERMARK
+    wm = kg_mod._load_watermark() or {}
+    built = str(wm.get("built_at") or "")
+    if _DB is not None and built and built != _DB_WATERMARK:
+        _DB = None
+        global _HEADER_CACHE
+        _HEADER_CACHE = None
     if _DB is None:
         _DB = kg_mod.conn(readonly=True)
+        _DB_WATERMARK = built
     return _DB
 
 

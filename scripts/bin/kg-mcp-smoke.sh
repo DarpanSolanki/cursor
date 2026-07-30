@@ -105,8 +105,8 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.8.0":
-    print(f"WARN: expected server version 1.8.0 got {si.get('version')}")
+if si.get("version") != "1.8.1":
+    print(f"WARN: expected server version 1.8.1 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")

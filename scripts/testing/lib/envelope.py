@@ -55,6 +55,7 @@ def build_envelope(
     vars: dict[str, Any] | None = None,
     headers_key: str | None = None,
     batch_job_time: str | None = None,
+    header_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble {headers, request} for a service API call."""
     vars = dict(vars or {})
@@ -69,11 +70,15 @@ def build_envelope(
         hk = headers_key or service
         tpl = _HEADER_TEMPLATES.get(hk) or _HEADER_TEMPLATES["accounting"]
         headers = substitute_placeholders(dict(tpl), stan, vars)
+        if header_overrides:
+            headers.update(substitute_placeholders(dict(header_overrides), stan, vars))
         req = substitute_placeholders(dict(request_body), stan, vars)
         return {"headers": headers, "request": req}
 
     tpl = _HEADER_TEMPLATES[hk]
     headers = substitute_placeholders(dict(tpl), stan, vars)
+    if header_overrides:
+        headers.update(substitute_placeholders(dict(header_overrides), stan, vars))
     return {"headers": headers, "request": req}
 
 

@@ -32,7 +32,7 @@ _DEFAULT_STEP = {
 # Generous cap multiplier over planned wall
 _WALL_CAP_MULT = 2.5
 _WALL_CAP_MIN = 300
-_WALL_CAP_MAX = 7200
+_WALL_CAP_MAX = 14400  # daily-loop DPI cases (june_slice / emi_first) need >2h
 
 
 def _load_registry() -> dict:
@@ -58,10 +58,19 @@ def case_wall_s(case_id: str, reg: dict | None = None) -> int:
         return 8
     if case_id.startswith("dcf."):
         return 600
+    # Daily calendar loops (calc+book per day) — not 180s e2e
+    if case_id in (
+        "dpic.june_slice_job_proof",
+        "dpic.emi_first_anchor_regression",
+        "dpic.posting_calendar_regression",
+    ):
+        return 3600
+    if case_id in ("dpic.certify_scenarios", "dpic.three_job_verify", "dpic.jump_regression"):
+        return 1200
     if case_id.startswith("dpic.ud_compliance") or case_id.startswith("dpic.go_live"):
         return 600  # multi-phase EOD + booking on local portfolio
     if case_id.startswith("dpic.") or case_id.startswith("batch.dpi"):
-        return 180  # typical DPI e2e / batch wait
+        return 300  # typical DPI e2e / batch wait (booking floor 300)
     if meta.get("type") == "flow":
         return 90
     return 120

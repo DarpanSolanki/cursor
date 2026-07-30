@@ -63,7 +63,11 @@ while IFS= read -r day; do
   [[ -n "$day" ]] || continue
   ms="$(date_to_ms "$day")"
   purge_batch "$ms"
-  rs="$(date +%s)"
+  before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = 'dpiAccrualBooking'")"
   JOB_TIME="$ms" "$NTEST" api accounting dpiAccrualBooking --batch --job-time "$ms" >/dev/null
-  bash "$WAIT_BATCH" dpiAccrualBooking "$ms" "$rs"
+  BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" dpiAccrualBooking "$ms" "$before"
 done <<<"$POSTING_DAYS"

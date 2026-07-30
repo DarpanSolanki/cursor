@@ -911,7 +911,9 @@
       "DPI_UD_CERTIFY": "1"
     },
     "note": "Ship-loop uses scoped cases (batch.dpi_* + dpic.grace/go_live/multi); not auto-injected",
-    "ship_baseline": {"wall_s": 600},
+    "ship_baseline": {
+      "wall_s": 600
+    },
     "verify_mode": "runtime",
     "acceptance": {
       "verify_mode": "runtime"
@@ -1990,7 +1992,7 @@
       "weekly",
       "selftest"
     ],
-    "title": "R0 invariant detector self-tests (ii/iii) — weekly, non-gate",
+    "title": "R0 invariant detector self-tests (ii/iii) \u2014 weekly, non-gate",
     "quarantine": true,
     "cmd": "python3 scripts/testing/flowtest/r0_invariant_proofs.py ii && python3 scripts/testing/flowtest/r0_invariant_proofs.py iii",
     "expect": {
@@ -3292,6 +3294,24 @@
     "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh",
     "note": "Alias for full E2E; standalone ntest auto loanPrepayment lacks APPROVE/REAL headers"
   },
+  "foreclosure.by_latest_details_api": {
+    "type": "flow",
+    "api": "getLoanForeclosureDetails",
+    "smoke_tier": "money",
+    "ship_auto": true,
+    "quick": true,
+    "tags": [
+      "foreclosure",
+      "tdpqa-207"
+    ],
+    "title": "getLoanForeclosureDetails BY_LATEST must not prefer REJECTED (TDPQA-207)",
+    "cmd": "bash scripts/testing/foreclosure/by-latest-details-api.sh",
+    "verify_mode": "runtime",
+    "env": {
+      "ACCOUNT_NUMBER": "0000001440"
+    },
+    "note": "LAN 1440 has payment_mode=CASH (0680 dirty \u2192 333). Seeds REJECTED created_on future so MAX(created_on) would pick it; asserts BY_LATEST returns non-rejected. SQL ORDER BY proof included."
+  },
   "foreclosure.sdcp10255_e2e": {
     "type": "flow",
     "title": "SDCP-10255 full local E2E \u2014 duplicate pending, fix, REAL, payments sync",
@@ -3603,5 +3623,245 @@
       "status": "PASS"
     },
     "note": "Quarantined FIXTURE/ENV \u2014 local product-70 LOAN_REPAYMENT PTC gap."
+  },
+  "foreclosure.child_loan_foreclosure_kg": {
+    "type": "flow",
+    "api": "childLoanForeclosure",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "foreclosure",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 childLoanForeclosure (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh childLoanForeclosure",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "reversal.child_txn_reversal_kg": {
+    "type": "flow",
+    "api": "childLoanTransactionReversal",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "reversal",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 childLoanTransactionReversal (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh childLoanTransactionReversal",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "restructuring.child_loan_restructuring_kg": {
+    "type": "flow",
+    "api": "childLoanRestructuring",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "restructuring",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 childLoanRestructuring (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh childLoanRestructuring",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "restructuring.loan_account_reschedule_kg": {
+    "type": "flow",
+    "api": "loanAccountReschedule",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "restructuring",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 loanAccountReschedule (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh loanAccountReschedule",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "reopening.get_loan_account_reopening_details_kg": {
+    "type": "flow",
+    "api": "getLoanAccountReopeningDetails",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "reopening",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 getLoanAccountReopeningDetails (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh getLoanAccountReopeningDetails",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "npa_dpd.loan_account_asset_criteria_kg": {
+    "type": "flow",
+    "api": "loanAccountAssetCriteriaJob",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "npa_dpd",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 loanAccountAssetCriteriaJob (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh loanAccountAssetCriteriaJob",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "npa_dpd.loan_account_asset_classification_kg": {
+    "type": "flow",
+    "api": "loanAccountAssetClassificationJob",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "npa_dpd",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 loanAccountAssetClassificationJob (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh loanAccountAssetClassificationJob",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "eod_bod.run_eod_jobs_kg": {
+    "type": "flow",
+    "api": "runEODJobs",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "eod_bod",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 runEODJobs (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh runEODJobs",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "eod_bod.run_bod_jobs_kg": {
+    "type": "flow",
+    "api": "runBODJobs",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "eod_bod",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 runBODJobs (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh runBODJobs",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "read_inquiry.get_loan_account_accrued_bpi_kg": {
+    "type": "flow",
+    "api": "getLoanAccountAccruedBPIAmount",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "read_inquiry",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 getLoanAccountAccruedBPIAmount (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh getLoanAccountAccruedBPIAmount",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "mandates_si.expire_pending_mandates_kg": {
+    "type": "flow",
+    "api": "expirePendingMandatesBatchJob",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "mandates_si",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 expirePendingMandatesBatchJob (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh expirePendingMandatesBatchJob",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "portfolio.execute_lms_portfolio_transfer_kg": {
+    "type": "flow",
+    "api": "executeLMSPortfolioTransfer",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "portfolio",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 executeLMSPortfolioTransfer (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh executeLMSPortfolioTransfer",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "waiver.child_waive_loan_account_charges_kg": {
+    "type": "flow",
+    "api": "childWaiveLoanAccountCharges",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "waiver",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 childWaiveLoanAccountCharges (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh childWaiveLoanAccountCharges",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "excess_refund.proactive_excess_amount_refund_staging_kg": {
+    "type": "flow",
+    "api": "proactiveExcessAmountRefundStaging",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "excess_refund",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 proactiveExcessAmountRefundStaging (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh proactiveExcessAmountRefundStaging",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
+  },
+  "excess_refund.loan_account_excess_amount_refund_kg": {
+    "type": "flow",
+    "api": "loanAccountExcessAmountRefund",
+    "smoke_tier": "workspace",
+    "ship_auto": false,
+    "quick": true,
+    "verify_mode": "WORKSPACE_ONLY",
+    "tags": [
+      "map_coverage",
+      "excess_refund",
+      "kg"
+    ],
+    "title": "KG map coverage \u2014 loanAccountExcessAmountRefund (domain api_hint)",
+    "cmd": "bash scripts/testing/map_coverage/kg_api_presence.sh loanAccountExcessAmountRefund",
+    "note": "Fills domain api_hints gap until a money e2e exists; asserts KG request/flow presence only."
   }
 }

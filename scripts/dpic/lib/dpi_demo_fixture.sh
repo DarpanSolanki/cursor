@@ -16,7 +16,38 @@ export GRACE_DAYS="${GRACE_DAYS:-3}"
 export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 
 dpi_pg() {
-  psql -h "${YB_HOST:-127.0.0.1}" -p "${YB_PORT:-5433}" -U "${YB_USER:-yugabyte}" -d "${YB_DB:-yugabyte}" "$@"
+  # Retry transient Yugabyte serialization / kConflict errors.
+  # Harness-only: avoids random contention failures in SQL setup/quarantine helpers.
+  local host="${YB_HOST:-127.0.0.1}"
+  local port="${YB_PORT:-5433}"
+  local user="${YB_USER:-yugabyte}"
+  local db="${YB_DB:-yugabyte}"
+  local max_retries="${DPI_PSQL_RETRIES:-3}"
+  local sleep_s="${DPI_PSQL_RETRY_SLEEP_S:-1}"
+  local attempt=1
+  while true; do
+    set +e
+    local out
+    out="$(psql -h "$host" -p "$port" -U "$user" -d "$db" "$@" 2>&1)"
+    local rc=$?
+    set -e
+    if [[ $rc -eq 0 ]]; then
+      printf '%s\n' "$out"
+      return 0
+    fi
+    if [[ "$out" == *"could not serialize access due to concurrent update"* || "$out" == *"kConflict"* ]]; then
+      echo "dpi_pg: retry YB conflict attempt ${attempt}/${max_retries} rc=${rc}" >&2
+      if (( attempt >= max_retries )); then
+        echo "$out" >&2
+        return "$rc"
+      fi
+      attempt=$((attempt + 1))
+      sleep "$sleep_s"
+      continue
+    fi
+    echo "$out" >&2
+    return "$rc"
+  done
 }
 
 dpi_export_correlators() {
@@ -41,7 +72,26 @@ dpi_restore_api_state() {
 }
 
 dpi_ensure_accounting() {
+  dpi_ensure_local_batch_registration
   bash "$DPI_FIXTURE_ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compile}
+}
+
+# Local-only: DPI jobs must use single-node batch profile (is_multi_node=FALSE) or Spring never registers them.
+dpi_ensure_local_batch_registration() {
+  [[ "${DPI_SKIP_LOCAL_SINGLE_NODE:-}" == "1" ]] && return 0
+  local sql="$DPI_FIXTURE_ROOT/scripts/dpic/sql/helpers/upsert_dpi_batch_local_single_node.sql"
+  [[ -f "$sql" ]] || return 0
+  local stamp="$DPI_FIXTURE_ROOT/.cursor/.dpi-local-single-node.stamp"
+  local cur
+  cur="$(md5sum "$sql" 2>/dev/null | awk '{print $1}' || echo v1)"
+  if [[ -f "$stamp" ]] && [[ "$(cat "$stamp" 2>/dev/null)" == "$cur" ]]; then
+    return 0
+  fi
+  echo "  dpi: local single-node batch params (is_multi_node=FALSE) — restart accounting for job registration"
+  dpi_pg -v ON_ERROR_STOP=1 -f "$sql" >/dev/null
+  mkdir -p "$(dirname "$stamp")"
+  echo "$cur" >"$stamp"
+  bash "$DPI_FIXTURE_ROOT/scripts/bin/novopay-service.sh" restart accounting ${COMPILE:+--compile} >/dev/null
 }
 
 dpi_probe_masterdata() {
@@ -212,23 +262,34 @@ dpi_prep_before_batch() {
   dpi_ensure_accounting
 }
 
+# Max Spring Batch execution id for a job (pre-fire correlator).
+dpi_max_batch_exec_id() {
+  local job_name="$1"
+  dpi_pg -t -A -v ON_ERROR_STOP=1 -v job_name="$job_name" <<'SQL'
+SELECT COALESCE(MAX(bje.job_execution_id), 0)::text
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = :'job_name';
+SQL
+}
+
 # Usage: dpi_call_batch dpiAccrualCalculation [job_time_ms] [purge=1]
-# QA path: ntest batch API + wait_batch_job.sh (same as registry batch.dpi_* intent).
+# QA path: ntest batch API + wait_batch_job.sh (exec-id correlation — no name/time-window).
 dpi_call_batch() {
   local api="$1" job_time="${2:-$JOB_TIME}" purge="${3:-1}"
-  local rs wait="$DPI_FIXTURE_ROOT/scripts/dpic/lib/wait_batch_job.sh"
+  local before wait="$DPI_FIXTURE_ROOT/scripts/dpic/lib/wait_batch_job.sh"
   local ntest="$DPI_FIXTURE_ROOT/scripts/bin/ntest.sh"
   dpi_prep_before_batch
   # Matrix hops can exceed 25s under YB contention — default higher for harness fires.
   export BATCH_POLL_TIMEOUT_S="${BATCH_POLL_TIMEOUT_S:-90}"
   # Purge same job_time only — do NOT abandon other in-flight dpi jobs (that kills siblings).
   [[ "$purge" == "1" ]] && dpi_purge_batch "$api" "$job_time"
-  rs="$(date +%s)"
-  echo ">>> ${api} job_time=${job_time}"
+  before="$(dpi_max_batch_exec_id "$api")"
+  echo ">>> ${api} job_time=${job_time} before_exec_id=${before}"
   echo "# QA: JOB_TIME=$job_time bash scripts/bin/ntest.sh api accounting $api --batch --job-time $job_time"
-  echo "# QA: bash scripts/dpic/lib/wait_batch_job.sh $api $job_time $rs"
+  echo "# QA: BATCH_WAIT_ARG3=before bash scripts/dpic/lib/wait_batch_job.sh $api $job_time $before"
   JOB_TIME="$job_time" "$ntest" api accounting "$api" --batch --job-time "$job_time" >/dev/null
-  bash "$wait" "$api" "$job_time" "$rs"
+  BATCH_WAIT_ARG3=before bash "$wait" "$api" "$job_time" "$before"
 }
 
 dpi_call_eod_chain() {

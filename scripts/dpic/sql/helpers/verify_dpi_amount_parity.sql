@@ -17,16 +17,16 @@ accrual AS (
   WHERE da.loan_account_id = p.loan_id AND da.is_deleted = false
 ),
 gl AS (
-  SELECT COALESCE(SUM(tm.amount), 0) AS gl_posted
+  SELECT COALESCE(SUM(tm.original_amount), 0) AS gl_posted
   FROM mfi_accounting.dpi_accrual_details da
   CROSS JOIN params p
   JOIN mfi_accounting.transaction_master tm
-    ON tm.transaction_reference_number = da.accrual_transaction_ref_number
-   AND tm.is_deleted = false
+    ON tm.reference_number = da.accrual_transaction_ref_number
   WHERE da.loan_account_id = p.loan_id
     AND da.is_deleted = false
     AND da.accrual_posting_date IS NOT NULL
     AND da.total_accrued_amount > 0
+    AND da.accrual_transaction_ref_number IS NOT NULL
 ),
 dpi_due AS (
   SELECT COALESCE(SUM(ldd.due_amount), 0) AS dpi_due_total

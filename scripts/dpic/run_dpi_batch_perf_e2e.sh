@@ -83,17 +83,20 @@ SELECT 'unposted_accrual_rows=' || COUNT(*) FROM mfi_accounting.dpi_accrual_deta
 " | tee -a "$REPORT"
 
 run_job() {
-  local api="$1"
-  local run_started
-  run_started="$(date +%s)"
+  local api="$1" before
   "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name="$api" -v job_time="$JOB_TIME" \
     -f "$ROOT/scripts/dpic/sql/helpers/purge_batch_job_execution.sql" >/dev/null
+  before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = '$api'")"
   log ">>> Run $api (started $(date -Iseconds))"
   JOB_TIME="$JOB_TIME" "$NTEST" api accounting "$api" --batch --job-time "$JOB_TIME" >/dev/null
-  BATCH_POLL_TIMEOUT_S="$BATCH_POLL_TIMEOUT_S" bash "$WAIT_BATCH" "$api" "$JOB_TIME" "$run_started" | tee -a "$REPORT"
+  BATCH_POLL_TIMEOUT_S="$BATCH_POLL_TIMEOUT_S" BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" "$api" "$JOB_TIME" "$before" | tee -a "$REPORT"
   log ">>> Metrics $api"
   "${PG[@]}" -v ON_ERROR_STOP=1 \
-    -v job_name="$api" -v job_time="$JOB_TIME" -v run_started="$run_started" \
+    -v job_name="$api" -v job_time="$JOB_TIME" -v run_started=0 \
     -f "$ROOT/scripts/dpic/sql/helpers/batch_step_metrics.sql" | tee -a "$REPORT"
   log ""
 }

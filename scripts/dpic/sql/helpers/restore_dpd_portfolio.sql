@@ -1,4 +1,4 @@
--- Restore past_due_days zeroed by quarantine_dpd_portfolio.sql (optional after demo).
+-- Restore past_due_days + booking soft-deletes from quarantine_dpd_portfolio.sql.
 \set ON_ERROR_STOP on
 
 BEGIN;
@@ -12,6 +12,14 @@ WHERE la.account_id = b.account_id;
 
 DELETE FROM mfi_accounting._demo_dpd_quarantine_backup;
 
+UPDATE mfi_accounting.dpi_accrual_details da
+SET is_deleted = false
+FROM mfi_accounting._demo_dpi_booking_quarantine_backup b
+WHERE da.id = b.accrual_id
+  AND da.is_deleted = true;
+
+DELETE FROM mfi_accounting._demo_dpi_booking_quarantine_backup;
+
 COMMIT;
 
-\echo '=== DPD restore done ==='
+\echo '=== DPD + booking quarantine restore done ==='

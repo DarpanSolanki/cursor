@@ -47,19 +47,23 @@ echo ">>> Seed perf portfolio (target_count=${TARGET_COUNT})"
   -v clear_accruals="$CLEAR_ACCRUALS" \
   -f "$ROOT/scripts/dpic/sql/helpers/seed_dpi_batch_perf_portfolio.sql"
 
-run_started="$(date +%s)"
 "${PG[@]}" -v ON_ERROR_STOP=1 -v job_name=dpiAccrualCalculation -v job_time="$JOB_TIME" \
   -f "$ROOT/scripts/dpic/sql/helpers/purge_batch_job_execution.sql" >/dev/null
+before="$(dpi_pg -t -A -c "
+SELECT COALESCE(MAX(bje.job_execution_id), 0)
+FROM mfi_batch.batch_job_execution bje
+JOIN mfi_batch.batch_job_instance bji ON bji.job_instance_id = bje.job_instance_id
+WHERE bji.job_name = 'dpiAccrualCalculation'")"
 
 echo ">>> Run dpiAccrualCalculation"
 JOB_TIME="$JOB_TIME" "$NTEST" api accounting dpiAccrualCalculation --batch --job-time "$JOB_TIME" >/dev/null
-bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$run_started"
+BATCH_WAIT_ARG3=before bash "$WAIT_BATCH" dpiAccrualCalculation "$JOB_TIME" "$before"
 
 echo ">>> Step metrics"
 "${PG[@]}" -v ON_ERROR_STOP=1 \
   -v job_name=dpiAccrualCalculation \
   -v job_time="$JOB_TIME" \
-  -v run_started="$run_started" \
+  -v run_started=0 \
   -f "$ROOT/scripts/dpic/sql/helpers/batch_step_metrics.sql"
 
 echo ""

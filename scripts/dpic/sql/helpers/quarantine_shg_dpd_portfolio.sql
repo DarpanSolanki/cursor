@@ -1,4 +1,4 @@
--- Local demo: only SHG parent + its children stay DPI-eligible (past_due_days > 0).
+-- Local demo: only SHG parent + its children stay DPI-eligible (calc DPD + booking unposted).
 \set ON_ERROR_STOP on
 
 BEGIN;
@@ -30,6 +30,31 @@ WHERE la.past_due_days > 0
   AND la.account_id <> :parent_loan_account_id::bigint
   AND COALESCE(la.parent_loan_account_id, -1) <> :parent_loan_account_id::bigint;
 
+CREATE TABLE IF NOT EXISTS mfi_accounting._demo_dpi_booking_quarantine_backup (
+  accrual_id      BIGINT PRIMARY KEY,
+  loan_account_id BIGINT NOT NULL,
+  backed_up_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO mfi_accounting._demo_dpi_booking_quarantine_backup (accrual_id, loan_account_id)
+SELECT da.id, da.loan_account_id
+FROM mfi_accounting.dpi_accrual_details da
+JOIN mfi_accounting.loan_account la ON la.account_id = da.loan_account_id
+WHERE da.is_deleted = false
+  AND da.accrual_posting_date IS NULL
+  AND da.total_accrued_amount > 0
+  AND la.loan_status IN ('ACTIVE', 'FORECLOSURE_FREEZE')
+  AND da.loan_account_id <> :parent_loan_account_id::bigint
+  AND COALESCE(la.parent_loan_account_id, -1) <> :parent_loan_account_id::bigint
+ON CONFLICT (accrual_id) DO UPDATE
+  SET loan_account_id = EXCLUDED.loan_account_id, backed_up_at = NOW();
+
+UPDATE mfi_accounting.dpi_accrual_details da
+SET is_deleted = true
+FROM mfi_accounting._demo_dpi_booking_quarantine_backup b
+WHERE da.id = b.accrual_id
+  AND da.is_deleted = false;
+
 COMMIT;
 
 \echo '=== SHG DPD quarantine eligible ==='
@@ -46,3 +71,12 @@ WHERE la.loan_status = 'ACTIVE'
   AND (la.account_id = :parent_loan_account_id::bigint
        OR la.parent_loan_account_id = :parent_loan_account_id::bigint)
 ORDER BY la.account_id;
+
+\echo '=== SHG booking quarantine eligible loans ==='
+SELECT COUNT(DISTINCT da.loan_account_id) AS booking_eligible_loans
+FROM mfi_accounting.dpi_accrual_details da
+JOIN mfi_accounting.loan_account la ON la.account_id = da.loan_account_id
+WHERE da.is_deleted = false
+  AND da.accrual_posting_date IS NULL
+  AND da.total_accrued_amount > 0
+  AND la.loan_status IN ('ACTIVE', 'FORECLOSURE_FREEZE');
