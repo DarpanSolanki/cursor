@@ -1,3 +1,13 @@
+## 2026-07-30 — trustt-kg MCP 1.8.3: hot-reload without IDE restart
+- On `tools/list|call|ping`, re-exec MCP process if server/kg.py mtimes changed (stdio pipes kept).
+- Re-open SQLite when `kg.db` mtime or watermark `built_at` changes.
+- `capabilities.tools.listChanged=true`; e2e impact query points at distribute service.
+
+## 2026-07-30 — SHG INT Accrued: parent SoT installment-window distribute (3.4.2.4)
+- New `InterestGroupLoanAccrualDistributionService` (~230 LOC): SET ACTIVE child window Accrued via existing `GroupLoanUtility` carry-over; posted floor; reuse `findAllByAccountId` (child IAD p95≈25); no new `@Query`; no aide/extra installment lookups on create.
+- Wire online+batch (skip child calc; distribute after parent; also when `stop_interest_accrual`); removed forceful `adjustChildLoanAccountsInterestAccrual`.
+- Prod-grade live: Posted invariant, Accrued≥Posted, child-LAN redirect, multi-window SET 2174→3125 parity (`scripts/scratch/shg_int_distribute/run_prod_grade_checks.py`).
+
 ## 2026-07-30 — trustt-kg train routing: autopilot sync + honest kg_enhance (v1.8.2)
 - `train_sync.py`: parse user train from message → scoped `sync-branches --domain … --yes` when live ≠ requested.
 - Autopilot: auto `train_sync` step + directive when message names a train (e.g. 3.4.2.4).

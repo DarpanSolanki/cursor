@@ -1,3 +1,8 @@
+## 2026-07-30 | acct `ffa882cdf` | accounting | mfi_integration_v3.4.2.4 | kg-flow | SHG INT Accrued parent SoT installment-window distribute
+- apiName: interestAccrualCalculation (online DEFAULT + BATCH); tables: interest_accrual_details
+- InterestGroupLoanAccrualDistributionService: SET ACTIVE child window Accrued via GroupLoanUtility fractions; skip child calc; stop_interest_accrual still distributes; removed adjustChildLoanAccountsInterestAccrual
+| kg-flow | interestAccrualCalculation
+
 - **TDPQA-192** `a9bcc275a` accounting@mfi_integration_v3.7.1 — DIY/DIM dual-code hubs (`resolveDaysInYear`/`isDaysInYear360`): raw 360/ACTUAL + DIY_* for getDaywiseInterestRate + Days360; apiName fetchRestructuringRepaymentSchedule; tables product_scheme.interest_calculation_days_in_year
 
 ## 2026-07-28 | acct (WIP) | accounting-v2 | mfi_integration_v3.4.2.4 | kg-flow | TDPQA-72 parent FC force-post+bill slice + RSCH BLD_INT

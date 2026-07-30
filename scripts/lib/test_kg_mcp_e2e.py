@@ -119,7 +119,10 @@ class McpE2ETests(unittest.TestCase):
     def test_10_impact(self):
         text, err, _ = self._call(
             "kg_impact",
-            {"query": "InterestAccrualBookingService#adjustChildLoanAccountsInterestAccrual", "depth": 1},
+            {
+                "query": "InterestGroupLoanAccrualDistributionService#distributeInstallmentWindowAccrued",
+                "depth": 1,
+            },
             max_ms=15_000,
         )
         self.assertFalse(err)

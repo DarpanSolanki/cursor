@@ -22,8 +22,11 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.8.2"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.8.3"}
 PROTOCOL = "2024-11-05"
+_SERVER_FILE = Path(__file__).resolve()
+# Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
+_BOOT_SOURCE_MTIMES: dict[str, int] = {}
 
 # Per-tool wall-clock caps — prevents one call wedging the single-threaded stdio server.
 TOOL_TIMEOUT_S: dict[str, float] = {
@@ -305,24 +308,74 @@ TOOLS = {
 
 _DB = None
 _DB_WATERMARK: str | None = None
+_DB_FILE_MTIME_NS: int | None = None
 os.environ.setdefault("KG_NO_AUTO_REBUILD", "1")
 
 _STACK_DOCTOR_CACHE: tuple[float, dict] | None = None
 _STACK_DOCTOR_TTL_S = 90.0
 _STACK_DOCTOR_TIMEOUT_S = 12
 
+_KG_DB_PATH = Path(getattr(kg_mod, "DB", str(ROOT / "cursor-bundle" / "kg" / "data" / "kg.db")))
+
+
+def _file_mtime_ns(path: Path) -> int:
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return 0
+
+
+def _tracked_source_paths() -> list[Path]:
+    return [
+        _SERVER_FILE,
+        BIN / "kg.py",
+        BIN / "kg_state_banner.py",
+        ROOT / "scripts" / "lib" / "train_sync.py",
+    ]
+
+
+def _capture_boot_mtimes() -> None:
+    global _BOOT_SOURCE_MTIMES
+    _BOOT_SOURCE_MTIMES = {str(p): _file_mtime_ns(p) for p in _tracked_source_paths()}
+
+
+def _maybe_hot_reexec() -> None:
+    """If MCP server / kg CLI sources changed, replace this process in-place.
+
+    Cursor keeps the same stdio pipes — no IDE restart. Next tools/list + calls
+    see the new SERVER_INFO version and tool schemas.
+    """
+    if not _BOOT_SOURCE_MTIMES:
+        _capture_boot_mtimes()
+        return
+    for path in _tracked_source_paths():
+        key = str(path)
+        now = _file_mtime_ns(path)
+        prev = _BOOT_SOURCE_MTIMES.get(key, 0)
+        if now != prev:
+            # Re-open sqlite handles would be stale; exec clears process state.
+            os.execv(sys.executable, [sys.executable, str(_SERVER_FILE), *sys.argv[1:]])
+
 
 def _db():
-    global _DB, _DB_WATERMARK
+    global _DB, _DB_WATERMARK, _DB_FILE_MTIME_NS, _HEADER_CACHE
     wm = kg_mod._load_watermark() or {}
     built = str(wm.get("built_at") or "")
-    if _DB is not None and built and built != _DB_WATERMARK:
+    db_mtime = _file_mtime_ns(_KG_DB_PATH)
+    stale_wm = bool(_DB is not None and built and built != _DB_WATERMARK)
+    stale_file = bool(_DB is not None and _DB_FILE_MTIME_NS is not None and db_mtime != _DB_FILE_MTIME_NS)
+    if stale_wm or stale_file:
+        try:
+            if _DB is not None:
+                _DB.close()
+        except Exception:  # noqa: BLE001
+            pass
         _DB = None
-        global _HEADER_CACHE
         _HEADER_CACHE = None
     if _DB is None:
         _DB = kg_mod.conn(readonly=True)
         _DB_WATERMARK = built
+        _DB_FILE_MTIME_NS = db_mtime
     return _DB
 
 
@@ -599,9 +652,16 @@ def _kg_watermark_summary() -> str:
 
 
 def _invalidate_db_cache() -> None:
-    global _DB, _HEADER_CACHE
+    global _DB, _HEADER_CACHE, _DB_WATERMARK, _DB_FILE_MTIME_NS
+    try:
+        if _DB is not None:
+            _DB.close()
+    except Exception:  # noqa: BLE001
+        pass
     _DB = None
     _HEADER_CACHE = None
+    _DB_WATERMARK = None
+    _DB_FILE_MTIME_NS = None
 
 
 def _kg_enhance_payload(arguments: dict) -> dict:
@@ -818,13 +878,18 @@ def handle(msg: dict) -> dict | None:
     method = msg.get("method")
     params = msg.get("params") or {}
 
+    # Pick up MCP/tool code changes without requiring an IDE restart.
+    if method in {"tools/list", "tools/call", "ping"}:
+        _maybe_hot_reexec()
+
     if method == "initialize":
+        _capture_boot_mtimes()
         return {
             "jsonrpc": "2.0",
             "id": mid,
             "result": {
                 "protocolVersion": PROTOCOL,
-                "capabilities": {"tools": {}},
+                "capabilities": {"tools": {"listChanged": True}},
                 "serverInfo": SERVER_INFO,
             },
         }
@@ -854,6 +919,7 @@ def handle(msg: dict) -> dict | None:
 
 
 def main() -> None:
+    _capture_boot_mtimes()
     mcp_fd = os.dup(1)
     os.dup2(2, 1)
     mcp_out = os.fdopen(mcp_fd, "w", buffering=1, encoding="utf-8", errors="replace")
