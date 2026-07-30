@@ -12,7 +12,8 @@ CLEAN=0
 VERBOSE=0
 GATE=0
 ISSUES=0
-KG_CACHE_MAX="${KG_CACHE_MAX:-48}"
+# Align with cursor-bundle/kg/bin/build.sh (keeps newest 8 *.db snapshots).
+KG_CACHE_MAX="${KG_CACHE_MAX:-8}"
 for a in "$@"; do
   case "$a" in
     --clean|-c) CLEAN=1 ;;
@@ -151,9 +152,22 @@ else
 fi
 
 # KG cache LRU — top-level branch-set manifests only (newest KG_CACHE_MAX)
+# Also drop orphan manifests / sidecars with no matching *.db (build.sh leaves these otherwise).
 if [[ -d cursor-bundle/kg/data/cache ]]; then
   n=$(find cursor-bundle/kg/data/cache -maxdepth 1 -name '*.manifest.json' 2>/dev/null | wc -l)
-  if [[ "$n" -gt "$KG_CACHE_MAX" ]]; then
+  orphan_n=$(python3 - <<'PY'
+from pathlib import Path
+cache = Path("cursor-bundle/kg/data/cache")
+mans = list(cache.glob("*.manifest.json"))
+orph = 0
+for m in mans:
+    key = m.name[: -len(".manifest.json")]
+    if not (cache / f"{key}.db").is_file():
+        orph += 1
+print(orph)
+PY
+)
+  if [[ "$n" -gt "$KG_CACHE_MAX" || "$orphan_n" -gt 0 ]]; then
     if [[ "$CLEAN" == 1 ]]; then
       python3 - <<PY
 from pathlib import Path
@@ -165,16 +179,25 @@ mans = sorted(
     key=lambda p: p.stat().st_mtime,
     reverse=True,
 )
-keep = {p.name[: -len(".manifest.json")] for p in mans[:max_n]}
+# Prefer keys that still have a .db when ranking keep-set.
+with_db = [p for p in mans if (cache / (p.name[: -len(".manifest.json")] + ".db")).is_file()]
+without_db = [p for p in mans if p not in with_db]
+ordered = with_db + without_db
+keep = {p.name[: -len(".manifest.json")] for p in ordered[:max_n]
+        if (cache / (p.name[: -len(".manifest.json")] + ".db")).is_file()}
+# Always keep every remaining .db under max_n newest dbs (even if manifest missing).
+dbs = sorted(cache.glob("*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+keep |= {p.stem for p in dbs[:max_n]}
 removed = 0
-for p in mans[max_n:]:
-    key = p.name[: -len(".manifest.json")]
-    p.unlink(missing_ok=True)
-    removed += 1
-    for sib in cache.glob(key + ".*"):
-        if sib.name.endswith(".manifest.json"):
-            continue
-        sib.unlink(missing_ok=True)
+for p in list(cache.iterdir()):
+    if not p.is_file():
+        continue
+    if p.name.endswith(".manifest.json"):
+        key = p.name[: -len(".manifest.json")]
+    else:
+        key = p.name.split(".", 1)[0]
+    if key not in keep:
+        p.unlink(missing_ok=True)
         removed += 1
 print(f"pruned_files={removed} keep={len(keep)}")
 PY
@@ -182,10 +205,10 @@ PY
       if [[ "$n2" -gt "$KG_CACHE_MAX" ]]; then
         warn "KG cache still oversized after prune ($n2 > $KG_CACHE_MAX)"
       else
-        echo "    → pruned KG cache $n → $n2"
+        echo "    → pruned KG cache manifests $n → $n2 (orphans were $orphan_n)"
       fi
     else
-      warn "KG cache has $n snapshots (max $KG_CACHE_MAX)"
+      warn "KG cache has $n snapshots (max $KG_CACHE_MAX), orphan_manifests=$orphan_n"
     fi
   else
     ok "KG cache snapshots: $n (max $KG_CACHE_MAX)"

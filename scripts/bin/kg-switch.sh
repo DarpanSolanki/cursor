@@ -54,6 +54,8 @@ restore_cache() {
   cp "$CACHE/$key.jsonl" "$DATA/kg.jsonl" 2>/dev/null || true
   cp "$CACHE/$key.json" "$DATA/stats.json" 2>/dev/null || true
   touch "$DATA/kg.db"
+  # Bump cache entry mtime so build.sh / hygiene LRU keeps recently used keys.
+  touch "$CACHE/$key.db" "$CACHE/$key.manifest.json" 2>/dev/null || true
   if ! python3 "$BIN/kg_validate.py" >/dev/null 2>&1; then
     log "cache $key failed validation — removing corrupt cache entry"
     rm -f "$CACHE/$key.db" "$CACHE/$key.jsonl" "$CACHE/$key.json" "$CACHE/$key.manifest.json"

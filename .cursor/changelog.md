@@ -1,3 +1,8 @@
+## 2026-07-30 — Workspace hygiene: KG cache LRU + scratch cleanup
+- Pruned orphan KG cache manifests (build kept 8 `*.db` but left `*.manifest.json`); live key kept; cache ~589MB→~332MB.
+- `build.sh` + `workspace-hygiene` (max 8) now drop sidecar+orphan manifests; `kg-switch` cache-hit touches LRU mtime.
+- Closed-task `scripts/scratch/*` removed (kept `logs/`, `services/`, `dpic_demo_state.env`); Jul-2 KG temp jsonl removed. No ops script deletes.
+
 ## 2026-07-30 — Push-origin: workspace-safe HEAD skips sticky money close
 - `is_workspace_push_safe_paths` + `ship_push_gate` skip when HEAD has zero service-repo paths (harness/docs).
 - Prunes harness/scratch/kb from pending; keeps accounting Java for next product push. Scratch never registered.

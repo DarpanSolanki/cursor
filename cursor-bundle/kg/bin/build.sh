@@ -163,7 +163,14 @@ cp "$DATA/kg.db" "$CACHE/$KEY.db"
 cp "$DATA/kg.jsonl" "$CACHE/$KEY.jsonl" 2>/dev/null || true
 cp "$DATA/stats.json" "$CACHE/$KEY.json" 2>/dev/null || true
 echo "✓ snapshotted to cache (key $KEY)."
+# Keep newest 8 branch-set snapshots; drop sidecars + orphan manifests (no .db).
 ls -1t "$CACHE"/*.db 2>/dev/null | tail -n +9 | while read -r old; do
-  rm -f "$old" "${old%.db}.jsonl" "${old%.db}.json"
+  base="${old%.db}"
+  rm -f "$old" "${base}.jsonl" "${base}.json" "${base}.manifest.json"
+done
+for m in "$CACHE"/*.manifest.json; do
+  [[ -f "$m" ]] || continue
+  base="${m%.manifest.json}"
+  [[ -f "${base}.db" ]] || rm -f "$m"
 done
 echo "-> $DATA/kg.jsonl + $DATA/kg.db"
