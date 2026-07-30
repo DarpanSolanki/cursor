@@ -732,11 +732,31 @@ def _money_path_touched(changed: list[str], flows: list[dict], cases: list[dict]
     )
 
 
-def _replay_axis_flags(changed: list[str]) -> dict[str, str]:
+def _w3_replay_cases(reg: dict | None) -> list[str]:
+    """Registry cases tagged W3-replay-concurrency (selectable reality axis)."""
+    out: list[str] = []
+    for cid, meta in (reg or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        tags = meta.get("tags") or []
+        if "w3-replay-concurrency" in tags and not meta.get("quarantine"):
+            out.append(cid)
+    return sorted(out)
+
+
+def _replay_axis_flags(changed: list[str], *, reg: dict | None = None, ordered: list[str] | None = None) -> dict[str, str]:
     blob = " ".join(p.replace("\\", "/").lower() for p in changed)
     flags: dict[str, str] = {}
-    if any(f in blob for f in _REPLAY_AXIS_FRAGMENTS):
-        flags["replay_dedup_callback"] = "NOT-EXERCISED"
+    touch = any(f in blob for f in _REPLAY_AXIS_FRAGMENTS)
+    w3 = _w3_replay_cases(reg)
+    selected = [c for c in (ordered or []) if c in w3]
+    if touch or w3:
+        if selected:
+            flags["replay_dedup_callback"] = "EXERCISED"
+        elif w3:
+            flags["replay_dedup_callback"] = "SELECTABLE"
+        else:
+            flags["replay_dedup_callback"] = "NOT-EXERCISED"
     return flags
 
 
@@ -1133,7 +1153,17 @@ def build_plan(
     if money_touch and INVARIANTS_CASE in (reg or {}) and INVARIANTS_CASE not in ordered:
         ordered.insert(0, INVARIANTS_CASE)
     ordered, scope_dropped = _exclude_scope_out(ordered)
-    replay_axes = _replay_axis_flags(changed)
+    # Inject W3-replay-concurrency cases when dedup/replay/callback paths change
+    replay_touch = any(
+        f in " ".join(p.replace("\\", "/").lower() for p in changed)
+        for f in _REPLAY_AXIS_FRAGMENTS
+    )
+    w3_injected: list[str] = []
+    if replay_touch:
+        for cid in _w3_replay_cases(reg):
+            if cid not in ordered:
+                ordered.append(cid)
+                w3_injected.append(cid)
     ordered, tier_lines, tier_stats = _apply_selection_tiering(
         ordered,
         cases=cases,
@@ -1145,6 +1175,12 @@ def build_plan(
     )
     ordered, train_skipped = _filter_cases_by_train(ordered, reg, pending)
     tier_lines.extend(train_skipped)
+    if w3_injected:
+        tier_lines.extend(
+            f"TIER replay-axis {c}: W3-replay-concurrency selectable"
+            for c in w3_injected
+        )
+    replay_axes = _replay_axis_flags(changed, reg=reg, ordered=ordered)
 
     direct_apis = _direct_apis_from_nodes(uniq_nodes, flows, changed)
     not_covered_all = [
