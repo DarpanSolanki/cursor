@@ -87,10 +87,10 @@ Pass claims only when ntest/script PASS this session. `ORCH_SIBLING_SIM` / `PROC
 
 ### Gate D-acceptance — QA acceptance is the bar, not a passing subset (fail-closed)
 **Never claim Pass / RESOLVED / QA-ready when the assert allows the exact QA fail mode.** OK/WARN-and-pass for a state QA rejects is a **FAIL**.
-Anti-patterns forbidden as Pass: amount≠principal without documented legs; "a labd exists" without dedicated force-bill visibility (EMI-labd hijack must FAIL); happy-path-only without dirty fixture; parent scope silently dropped (Must be Pass or Out-of-scope-documented); SQL-only as "webapp"; presence-only DB asserts.
+Anti-patterns forbidden as Pass: amount≠principal without documented legs; "a labd exists" without dedicated force-bill visibility (EMI-labd hijack must FAIL); happy-path-only without dirty fixture; parent scope silently dropped (Must be Pass or Out-of-scope-documented); SQL-only as "webapp"; presence-only DB asserts; **amount/sum-only parity when a money write path was replaced/bypassed** (calendar/`end_date`/booking/FK must match old path unless ticket scopes otherwise — FAIL-closed, never WARN-as-Pass).
 Debug relax flags (`ACCEPTANCE_STRICT=0`, etc.) **never** produce a handoff Pass.
-Machine gate: `acceptance_coverage.py` — fail closed on subset / SQL-only webapp / presence-only.
-**Enforced domains (ratchet):** `death_foreclosure`, `disbursement`, `repayment`, `foreclosure` — may only GROW (`registry_proposals.py ratchet`). All `smoke_tier:money` cases must declare `verify_mode` (ship-discipline fails otherwise).
+Machine gate: `acceptance_coverage.py` — fail closed on subset / SQL-only webapp / presence-only; `money_behavior_parity_gate.py` for SHG INT / distribute behavior parity + column audit.
+**Enforced domains (ratchet):** `death_foreclosure`, `disbursement`, `repayment`, `foreclosure`, `interest_accrual` — may only GROW (`registry_proposals.py ratchet`). All `smoke_tier:money` cases must declare `verify_mode` (ship-discipline fails otherwise).
 
 ### Gate E — Outputs
 Diplomatic RCA; after analysis emit full **OPTIONS BOARD (L0 + L1 + L2 + L3)** — code options included when they exist; evidence-only next-step is not enough; then minimal-fix gate before propose. See `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.

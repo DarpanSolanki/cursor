@@ -1,68 +1,30 @@
 # LMS-DEFECT — SHG child IAD tip stuck mid-month (distribute)
 
 **Class:** LMS-DEFECT (follow-up to booking-abort formalize / DEFECT-#5 probe)  
-**Status:** OPEN — probe only; **no product edit** this round  
-**Related:** Accrued distribute `InterestGroupLoanAccrualDistributionService` (ffa882cdf era); booking gate `isAccrualPostingDate(end_date)`
+**Status:** RESOLVED — 2026-07-31  
+**Train:** accounting `mfi_integration_v3.4.2.4`  
+**Commit:** `60e2c0ab9`  
+**Fix:** `InterestGroupLoanAccrualDistributionService.applyWindowShareToChild` — when tip
+`endDate.before(asOf)`: if `lastAccrualPostedDate != null` freeze Accrued=Posted + create
+new tip to asOf; else `setTotalAccruedAmount` + `setEndDate(asOf)`.
 
-## Probe verdict
+## Probe (pre-fix)
 
-**DEFECT_STUCK_TIP** — on fixture SHG parent `6000012030`, after calc distribute through mid-month then roll to month-end + `interestAccrualPosting`, child tip `end_date` **did not advance** and tip `total_accrual_posted_amount` stayed NULL.
+**DEFECT_STUCK_TIP** — child tip `end_date` did not advance while parent tip advanced;
+booking gate `isAccrualPostingDate(end_date)` blocked child tip booking.
 
-Proof: `scripts/scratch/bone/proofs/child-tip-probe.txt`
+## Verification (post-fix)
 
-```
-AFTER_ME_POST child tip=2027-10-06|103.000000|NULL
-child_end_after_mid=2027-10-06 child_end_after_ME=2027-10-06
-end_date_advanced=False ended_on_me=False
-VERDICT=DEFECT_STUCK_TIP
-```
-
-(ME day driven: 2027-11-30; child tip remained 2027-10-06.)
-
-## Trace
-
-1. **Create path** — empty window → one child row with `endDate = asOf` (parent latest IAD end, often mid-month):
-
-```165:168:trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/interest/service/InterestGroupLoanAccrualDistributionService.java
-		if (windowRows.isEmpty()) {
-			InterestAccrualDetailsEntity created = newChildRow(childAccountId, prevDueDate, asOf, ...);
-```
-
-```210:215:.../InterestGroupLoanAccrualDistributionService.java
-	newChildRow(...):
-		entity.setStartDate(startDate);
-		entity.setEndDate(endDate);  // asOf — not advanced later
-```
-
-2. **Update path** — window rows exist → set Accrued only; **does not call `setEndDate`**:
-
-```183:190:.../InterestGroupLoanAccrualDistributionService.java
-		InterestAccrualDetailsEntity latest = windowRows.get(windowRows.size() - 1);
-		...
-		latest.setTotalAccruedAmount(latestTarget);
-		toSave.add(latest);
-		interestAccrualDetailsDaoService.save(toSave);
-```
-
-3. **Children skip independent calc** — parent SoT distribute; child does not run `createOrUpdateIADE` tip extend:
-
-`InterestAccrualCalculationService` child branch → parent process + distribute (no child daily end_date advance).
-
-4. **Booking** — `isAccrualPostingDate(end_date)` false while tip stuck mid-month → child never normal-books that tip (even after batch abort fix).
-
-## STOP
-
-No product edit in this formalize round (user instruction). Fix options for a later FIX-PLAN: advance child tip `end_date` to parent `asOf` on distribute update; or create new child row on ME/due boundaries like parent calc.
+- `ntest run flowtest.shg_int_accrual_stitch` **PASS** (exit 0)
+- Parent asOf / child tip end: **2027-11-05** for children `6000012036/37/38` on parent `6000012030`
+- Window Accrued parity: parent=311 children=311 **PASS**
+- Tip `start_date=2027-10-31` (ME) → freeze+new after posted tip (adversarial posted path)
+- Tip carry=0; rate=aide 24%; Accrued≥Posted; LID non-null; unfrozen posted behind tip=0
+- Full physical IAD column audit (11/11) FAIL-closed in stitch re-run after tip fix
+- Batch reader still excludes children: `parent_loan_account_id IS NULL`
+- Carry: intentional distribute 0 on new tips (not independent rounding carry) — see
+  `feedback_money_behavior_parity_no_amount_only_ship.md`
 
 ## Not confused with
 
-`LMS-DEFECT-accrual-booking-abort.md` (`af52abe3d`) — parent/batch walk abort. This defect is **child tip end_date never reaches ME/due**.
-
-
-## W4-c evidence 2026-07-31 (`flowtest.w4_midmonth_repay_then_me`)
-LAN=6000137440 mid=2026-05-01 ME=2026-05-31
-tip_before=2026-05-01|1.000000|1.000000
-tip_mid=2026-05-01|1.000000|1.000000
-tip_me=2026-05-01|1.000000|1.000000
-end_date_advanced=False ended_on_me=False
-VERDICT=DEFECT_STUCK_TIP (reproduced on DCF ACTIVE child after mid-repay→ME)
+`LMS-DEFECT-accrual-booking-abort.md` — parent/batch walk abort.

@@ -28,6 +28,8 @@ Push blocked when pending ship files exist but `.ship-loop-passed.json` stale/ti
 
 Money ships: real-flow DB write validation — drive actual orch/API/job; assert **exact column values** on every touched money table (`acceptance.db_asserts` / `expect.db_eq`). Presence-only / status-only fail closed. Adversarial matrix: happy / dirty / UI equality / webapp-bound APIs — or Out-of-scope-documented. Assert must **FAIL** on exact QA fail mode.
 
+**Behavior parity (STANDING):** if a change replaces/bypasses an existing money write path (e.g. SHG INT distribute vs independent child calc), **amount/sum PASS is not enough** — tip/calendar/`end_date`, booking gates, and FKs the old path wrote must still match unless the ticket explicitly changes that contract and asserts fail-closed. Machine: `money_behavior_parity_gate.py` + column audits (e.g. `iad_column_audit`). **Never** WARN-and-pass money calendar/state defects. Memory: `feedback_money_behavior_parity_no_amount_only_ship.md`.
+
 When E2E blocked → code-backed sim ladder (below), still cite expected writes.
 
 After PASS: `ship-discipline.sh write …` then mark-verified / workspace-close. Prefer `push-origin.sh` — **never bypass with raw `git push`**. Escape: `SHIP_PUSH_NO_AUTO_CLOSE=1` rare.

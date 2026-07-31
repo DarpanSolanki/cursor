@@ -1,3 +1,4 @@
+- [Money behavior parity — no amount-only ship](feedback_money_behavior_parity_no_amount_only_ship.md) — replace/bypass write path → tip/calendar/FK parity + column audit FAIL-closed; never WARN-as-Pass; gate `money_behavior_parity_gate.py`. (2026-07-31 SHG INT tip)
 - [Flowtest e2e lock smooth](feedback_flowtest_e2e_lock_smooth.md) — one money harness owner; owner meta + `FLOWTEST_LOCK_WAIT_S`; stack-doctor flock+pid; never pgrep -f waiter. (2026-07-31)
 - [Push-origin workspace-safe HEAD](feedback_push_origin_workspace_safe_head.md) — harness/docs HEAD skips sticky money ship-close; keeps service pending; scratch never registered. (2026-07-30)
 - [Harness fidelity ≈ prod/QA flow](feedback_harness_fidelity_real_flow.md) — money ntest must use real api/batch entry; declare seeded bypasses; no default audit truncate / soft_fail / Accrued SQL mutate. Gate: `harness_fidelity_gate.py`. (2026-07-30)

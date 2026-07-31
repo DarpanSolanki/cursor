@@ -302,14 +302,17 @@
       "impact_cases": [
         "batch.interest_accrual_calc",
         "batch.interest_accrual_posting",
-        "flowtest.accrual_billing"
+        "flowtest.accrual_billing",
+        "flowtest.shg_int_accrual_stitch"
       ],
       "deep_cases": [
-        "flowtest.accrual_billing"
+        "flowtest.accrual_billing",
+        "flowtest.shg_int_accrual_stitch"
       ],
       "release_cases": [
         "batch.interest_accrual_calc",
-        "flowtest.accrual_billing"
+        "flowtest.accrual_billing",
+        "flowtest.shg_int_accrual_stitch"
       ]
     },
     "penal_interest": {

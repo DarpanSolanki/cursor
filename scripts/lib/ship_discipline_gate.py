@@ -278,6 +278,23 @@ def check(*, hard: bool = True) -> int:
             + (detail[-1] if detail else "required dimensions missing / anti-pattern")
         )
 
+    parity = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "lib" / "money_behavior_parity_gate.py"), "--from-pending"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+    if parity.returncode != 0:
+        detail = (parity.stdout or parity.stderr or "").strip().splitlines()
+        for line in detail:
+            if line.strip().startswith("- "):
+                errors.append("money-behavior-parity: " + line.strip()[2:])
+        if not any(e.startswith("money-behavior-parity:") for e in errors):
+            errors.append(
+                "money-behavior-parity-gate failed — amount-only / missing tip-calendar "
+                "column audit is blocked for SHG INT / distribute ships"
+            )
+
     # Money cases must declare verify_mode (Upgrade 7); domain money ships fail if any
     # touched domain's money impact cases lack verify_mode.
     try:

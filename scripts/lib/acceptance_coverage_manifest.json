@@ -39,20 +39,23 @@
     "death_foreclosure",
     "disbursement",
     "repayment",
-    "foreclosure"
+    "foreclosure",
+    "interest_accrual"
   ],
   "enforced_domains_min": [
     "death_foreclosure",
     "disbursement",
     "repayment",
-    "foreclosure"
+    "foreclosure",
+    "interest_accrual"
   ],
   "require_db_value_asserts": true,
   "db_assert_enforced_on_money_tier": [
     "disbursement",
     "repayment",
     "foreclosure",
-    "death_foreclosure"
+    "death_foreclosure",
+    "interest_accrual"
   ],
   "require_money_verify_mode": true,
   "domain_money_tables": {
@@ -129,14 +132,16 @@
       "principal_amount"
     ],
     "interest_accrual_details": [
+      "id",
       "account_id",
+      "base_amount",
       "start_date",
       "end_date",
-      "base_amount",
       "interest_rate",
       "total_accrued_amount",
       "carry_over_amount",
       "total_accrual_posted_amount",
+      "last_accrual_posted_date",
       "loan_installment_details_id"
     ]
   },

@@ -2602,8 +2602,13 @@
     "acceptance": {
       "verify_mode": "runtime",
       "dimensions": [
-        "happy_path"
+        "happy_path",
+        "dirty_state",
+        "replay_idempotency"
       ],
+      "na": {
+        "downstream_ui": "SHG INT stitch asserts IAD/LABD DB columns fail-closed; webapp summary Accrued Out-of-scope-documented (batch distribute path)"
+      },
       "db_asserts": [
         {
           "table": "interest_accrual_details",
@@ -2627,9 +2632,10 @@
         },
         {
           "table": "interest_accrual_details",
-          "assert": "ACTIVE child tip columns: account_id, start_date, end_date(=parent asOf), base_amount, interest_rate, total_accrued_amount>=posted, carry_over_amount, loan_installment_details_id",
-          "checked_by": "flowtest.iad_column_audit.audit_shg_child_iad_distribute",
+          "assert": "ALL physical IAD columns audited fail-closed: id, account_id, base_amount, start_date, end_date(=parent asOf), interest_rate(=aide), total_accrued_amount(parent share; >=posted), carry_over_amount(0 on distribute tip), total_accrual_posted_amount, last_accrual_posted_date, loan_installment_details_id(FK); schema drift FAIL; tipBehind+posted freeze+new; tipBehind unposted setEndDate(asOf)",
+          "checked_by": "flowtest.iad_column_audit.audit_shg_child_iad_distribute (IAD_PHYSICAL_COLUMNS=11)",
           "columns": [
+            "id",
             "account_id",
             "base_amount",
             "start_date",
@@ -2648,9 +2654,9 @@
           "checked_by": "before/after labd count per LAN"
         }
       ],
-      "note": "CHAIN_ACCRUAL_BILLING + quarantine; soft_fail=False; CLEAR_BATCH_FAILURE_AUDIT default 0 (real audit surface); opt-in truncate is SEEDED debug only; IAD child column audit mandatory"
+      "note": "CHAIN_ACCRUAL_BILLING + quarantine; soft_fail=False; CLEAR_BATCH_FAILURE_AUDIT default 0 (real audit surface); opt-in truncate is SEEDED debug only; IAD child column audit mandatory FAIL-closed (never WARN tip lag); dirty_state=posted tip freeze+new; replay=distribute SET idempotent window share"
     },
-    "note": "Promoted SHG INT stitch. Fidelity: real batch APIs; quarantine+job_time seeded; audit truncate NOT default. SkipListener ClassCast deferred (senior).",
+    "note": "Promoted SHG INT stitch. Fidelity: real batch APIs; quarantine+job_time seeded; audit truncate NOT default. SkipListener ClassCast deferred (senior). Behavior parity: tip calendar/LID/rate/freeze vs independent createOrUpdateIAD; Accrued share + tip carry=0 intentional.",
     "ship_baseline": {
       "wall_s": 164,
       "invariants": "PASS",

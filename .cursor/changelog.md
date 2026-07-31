@@ -1,3 +1,7 @@
+## 2026-07-31 — SHG INT distribute tip calendar + full IAD column audit bar
+- accounting `InterestGroupLoanAccrualDistributionService`: tipBehind asOf → freeze+new when posted else setEndDate(asOf) (independent-calc calendar parity; Accrued=parent share intentional).
+- Workspace: `iad_column_audit` audits ALL 11 physical IAD columns fail-closed; tip carry=0 intentional; `money_behavior_parity_gate` + interest_accrual enforced; never WARN tip lag.
+
 ## 2026-07-31 — SHG child IAD column audit in local stitch
 - `flowtest.iad_column_audit` + wire into `flowtest.shg_int_accrual_stitch`; acceptance manifest `interest_accrual` IAD columns. Tip end_date lag = WARN (LMS-DEFECT-child-iad-stuck-tip); money columns fail-closed.
 
