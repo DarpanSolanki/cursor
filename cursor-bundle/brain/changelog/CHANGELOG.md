@@ -1,3 +1,8 @@
+## 2026-07-31 — SHG DPI Accrued distribute (acct `508950207`)
+
+- apiName `dpiAccrualCalculation` on `mfi_integration_v3.7.1`: parent SoT → `DpiGroupLoanAccrualDistributionService` (mirror INT); tables `dpi_accrual_details`; tip/calendar parity + dad_column_audit.
+- ntest `dpic.shg_parent_child_parity` PASS parent=692=children tip end_date sync.
+
 ## 2026-07-31 | workspace | kg | semantics close-up GL+config
 - curated/semantics_closeup.jsonl + build_semantics_closeup.py; gl_rule nodes; MessageBroker/tomcat/skipLimit; purpose backfill money-core
 
