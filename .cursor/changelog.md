@@ -1,3 +1,7 @@
+## 2026-07-31 — flowtest e2e lock harness (owner + wait + stack-doctor)
+- `lock.py`: owner meta, `FLOWTEST_LOCK_WAIT_S` (default 120), clear busy msg; `flowtest-lock-status.sh`; stack-doctor clears only flock-free stale files.
+- Memory: `feedback_flowtest_e2e_lock_smooth.md`. L2: ship-loop same-case PASS skip while lock held — deferred.
+
 ## 2026-07-31 — interestAccrualCalculation reader exclude SHG children
 - accounting `aa13f99d0` on mfi_integration_v3.4.2.4: reader+partitioner `parent_loan_account_id IS NULL` (SHG children only; JLG/INDL have none). e2e: shg_int_accrual_stitch + accrual_billing + batch.interest_accrual_calc PASS.
 

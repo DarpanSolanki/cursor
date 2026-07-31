@@ -73,6 +73,7 @@ def wait_batch(job_name: str, min_execution_id: int, timeout_s: int = 180) -> st
 
 def run_scenario(scenario: Scenario) -> int:
     """Execute one scenario; returns 0 on PASS."""
+    os.environ.setdefault("FLOWTEST_CASE_ID", scenario.name)
     acquire_flowtest_lock()
     print(f"=== flowtest scenario={scenario.name} api={scenario.api} ===")
     print(f"  parent={scenario.parent_lan} profile={scenario.profile.name} batch={scenario.batch}")

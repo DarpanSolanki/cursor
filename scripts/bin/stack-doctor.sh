@@ -120,14 +120,51 @@ SQL
   fi
 fi
 
-# --- Stale /tmp locks ---
+# --- Stale locks: only fail/clear when flock is free (or holder pid dead).
+# Never rm /tmp/flowtest_e2e.lock solely because the file exists — live harness may hold flock.
+_lock_flock_held() {
+  local lock="$1"
+  python3 - "$lock" <<'PY' 2>/dev/null
+import fcntl, os, sys
+path = sys.argv[1]
+if not os.path.exists(path):
+    raise SystemExit(1)
+fd = os.open(path, os.O_RDWR)
+try:
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise SystemExit(0)  # held
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    raise SystemExit(1)  # free
+finally:
+    os.close(fd)
+PY
+}
+_lock_owner_pid_live() {
+  local lock="$1"
+  local pid
+  pid="$(awk -F= '/^pid=/{print $2; exit}' "$lock" 2>/dev/null || true)"
+  [[ -n "${pid:-}" && "$pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
 for lock in /tmp/flowtest_e2e.lock /tmp/disburse_loan_sanity.lock /tmp/dcf_e2e.lock "$ROOT/.cursor/.ship-push.lock"; do
   if [[ -f "$lock" ]]; then
-    if [[ "$REMEDIATE" -eq 1 ]]; then
-      rm -f "$lock" 2>/dev/null || true
-      note_ok "lock:cleared:$(basename "$lock")"
+    if _lock_flock_held "$lock"; then
+      if _lock_owner_pid_live "$lock"; then
+        note_fail "lock:held_live:$(basename "$lock")"
+      else
+        # flock held but pid metadata dead/missing — warn; do not rm under live flock
+        note_warn "lock:held_orphan_meta:$(basename "$lock")"
+      fi
     else
-      note_fail "lock:stale:$(basename "$lock")"
+      # file present, flock free → stale metadata; safe to clear
+      if [[ "$REMEDIATE" -eq 1 ]]; then
+        rm -f "$lock" 2>/dev/null || true
+        note_ok "lock:cleared_stale:$(basename "$lock")"
+      else
+        note_warn "lock:stale_file:$(basename "$lock") (flock free)"
+      fi
     fi
   fi
 done

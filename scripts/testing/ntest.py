@@ -324,6 +324,8 @@ def _run_flow_case(case_id: str, case: dict) -> int:
     # defaults first (os.environ wins when already set — empty string keeps unpinned)
     env.update(_resolve_defaults(case))
     env.update({k: str(v) for k, v in (case.get("env") or {}).items()})
+    env.setdefault("FLOWTEST_CASE_ID", case_id)
+    env.setdefault("NTEST_CASE_ID", case_id)
     print(f"=== {case_id} [flow] ===\n$ {cmd}", flush=True)
     t0 = time.time()
     proc = subprocess.run(
