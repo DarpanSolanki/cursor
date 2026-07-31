@@ -125,12 +125,43 @@ def test_tdpqa_pack_fields() -> None:
     assert "customfield_12007" in fields  # PrePost
     assert "customfield_12000" in fields  # AITDP remarks
     assert fields["customfield_12001"] == 75.0  # whole percent
+    assert fields["customfield_12002"] == "A"  # Fix Quality Grade default
+    assert fields["customfield_12003"] == 75.0  # Fix Quality Score defaults to Dev Accuracy
     assert fields["customfield_12004"] == 75.0  # Lead Accuracy defaults to Dev
     assert "customfield_12005" in fields  # Lead Improvement Remarks
     assert pack.get("comment_adf") is not None
     body = json.dumps(pack["comment_adf"])
     assert "Dev Test Details" in body
     assert "How to retest" in body
+
+
+def test_tdpqa_pack_fix_grade_override() -> None:
+    adf = _load_adf()
+    payload = {
+        "rca": {
+            "situation": "Delayed payment interest was a little wrong after rebooking.",
+            "cause": "The system kept the old rate on an open interest window.",
+            "resolution": "Close the old window and start a new one with the new rate.",
+        },
+        "impact": [
+            "Fixes delayed payment interest after rate change.",
+            "Does not change loans without a rate change.",
+            "Please retest on a fresh rebooked loan.",
+        ],
+        "pre": "NA",
+        "post": "NA",
+        "micro": ["accounting"],
+        "dev": [
+            "Fresh rebooked loan — delayed payment interest matches the new rate. Result: Pass.",
+        ],
+        "aitdp_fix_grade": "B",
+        "aitdp_fix_score": 70,
+        **_base_aitdp(),
+    }
+    pack = adf.build_handoff_pack("TDPQA-180", payload)
+    fields = pack["edit_fields"]
+    assert fields["customfield_12002"] == "B"
+    assert fields["customfield_12003"] == 70.0
 
 
 def test_tdpqa_pack_lead_override() -> None:

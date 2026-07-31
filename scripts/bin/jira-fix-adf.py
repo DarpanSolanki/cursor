@@ -183,6 +183,8 @@ TDPQA_IMPACT = "customfield_12008"
 TDPQA_PREPOST = "customfield_12007"
 TDPQA_AITDP_REMARKS = "customfield_12000"
 TDPQA_AITDP_ACCURACY = "customfield_12001"  # float — write whole percent (80), not 0.80
+TDPQA_AITDP_FIX_GRADE = "customfield_12002"  # short text — e.g. A / B / NA
+TDPQA_AITDP_FIX_SCORE = "customfield_12003"  # float — Fix Quality Score (number)
 TDPQA_AITDP_LEAD_ACCURACY = "customfield_12004"  # float — whole percent 0–100 (Lead Accuracy)
 TDPQA_AITDP_LEAD_REMARKS = "customfield_12005"  # AiTDP Lead Improvement Remarks
 TDPQA_AITDP_YESNO = "customfield_12009"
@@ -202,9 +204,9 @@ def project_mode(issue_key: str) -> dict[str, Any]:
     elif prefix == "TDPQA":
         mode = "tdpqa_field_handoff"
         note = (
-            "Fill TDPQA RCA/Impact/PrePost/AITDP Dev+Lead fields "
-            "(11999/12008/12007/12000/12001/12004/12005/12009) + owners; "
-            "short QA ping + Dev Test Details comment"
+            "Fill TDPQA RCA/Impact/PrePost/AITDP Dev+Lead+Fix fields "
+            "(11999/12008/12007/12000/12001/12002/12003/12004/12005/12009/12006) "
+            "+ owners; short QA ping + Dev Test Details comment"
         )
         owners_cmd = "owners_tdpqa"
     else:
@@ -654,7 +656,31 @@ def build_handoff_pack(issue_key: str, payload: dict[str, Any]) -> dict[str, Any
         edit_fields[TDPQA_AITDP_REMARKS] = doc(paragraph(remarks))
         edit_fields[TDPQA_AITDP_YESNO] = TDPQA_AITDP_YES
         # TDPQA accuracy is a whole percent (80), unlike SDCP fraction field.
-        edit_fields[TDPQA_AITDP_ACCURACY] = float(round(aitdp_frac * 100))
+        accuracy_whole = float(round(aitdp_frac * 100))
+        edit_fields[TDPQA_AITDP_ACCURACY] = accuracy_whole
+
+        # AiTDP Fix Quality Grade + Score — mandatory for QA Test transition
+        # (popup lists "AiTDP Fix…"). Grade is short text (A/B/NA); score is number.
+        fix_grade = (
+            payload.get("aitdp_fix_grade")
+            or payload.get("fix_quality_grade")
+            or "A"
+        )
+        fix_grade = str(fix_grade).strip() or "A"
+        fix_score_raw = payload.get("aitdp_fix_score")
+        if fix_score_raw is None:
+            fix_score_raw = payload.get("fix_quality_score")
+        if fix_score_raw is None:
+            fix_score = accuracy_whole
+        else:
+            try:
+                fix_score = float(fix_score_raw)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"aitdp_fix_score must be a number: {e}") from e
+            if 0.0 < fix_score <= 1.0:
+                fix_score = float(round(fix_score * 100))
+        edit_fields[TDPQA_AITDP_FIX_GRADE] = fix_grade
+        edit_fields[TDPQA_AITDP_FIX_SCORE] = float(fix_score)
 
         # Lead Accuracy + Lead Improvement Remarks — mandatory for transition
         # (workflow popup). Default to Dev AITDP when lead_* omitted.

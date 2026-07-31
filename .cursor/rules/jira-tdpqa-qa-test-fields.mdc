@@ -18,6 +18,8 @@ Moving a **TDPQA** bug to **QA Test** fails unless these ticket fields are fille
 | Pre /Post Deployment Scripts | `customfield_12007` | `NA` / `NA` when no script |
 | AiTDP Dev Improvement Remarks | `customfield_12000` | How AI helped (analysis → fix → check) — no Cursor brand |
 | AiTDP Dev Accuracy | `customfield_12001` | **Whole percent** (e.g. `80`), not `0.80` |
+| AiTDP Fix Quality Grade | `customfield_12002` | Short text `A`/`B`/`NA` — **mandatory for QA Test** |
+| AiTDP Fix Quality Score | `customfield_12003` | Number (often same as Dev Accuracy) — **mandatory for QA Test** |
 | AiTDP Lead Accuracy | `customfield_12004` | **Whole percent** 0–100 — mandatory for transition (popup) |
 | AiTDP Lead Improvement Remarks | `customfield_12005` | Lead view of AI help — mandatory for transition |
 | JIRA As per AI TDP Temp | `customfield_12009` | Yes `12785` when AI assisted |
