@@ -86,3 +86,5 @@
 - **Ship-loop credit PASS:** skip re-fire when pending fingerprint matches — `feedback_ship_credit_pass_skip_refire.md`
 
 - **Pending ship GC:** drop clean+pushed zombies — `feedback_pending_ship_gc_no_sticky.md`
+
+- **SHG IAD column audit:** `flowtest/iad_column_audit.py` in shg_int_accrual_stitch; tip lag WARN = LMS-DEFECT-child-iad-stuck-tip

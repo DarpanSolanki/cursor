@@ -2626,12 +2626,29 @@
           "checked_by": "before/after Posted+Accrued snap"
         },
         {
+          "table": "interest_accrual_details",
+          "assert": "ACTIVE child tip columns: account_id, start_date, end_date(=parent asOf), base_amount, interest_rate, total_accrued_amount>=posted, carry_over_amount, loan_installment_details_id",
+          "checked_by": "flowtest.iad_column_audit.audit_shg_child_iad_distribute",
+          "columns": [
+            "account_id",
+            "base_amount",
+            "start_date",
+            "end_date",
+            "interest_rate",
+            "total_accrued_amount",
+            "carry_over_amount",
+            "total_accrual_posted_amount",
+            "last_accrual_posted_date",
+            "loan_installment_details_id"
+          ]
+        },
+        {
           "table": "loan_account_billing_details",
           "assert": "LABD count increases when roll ends on an unbilled due date",
           "checked_by": "before/after labd count per LAN"
         }
       ],
-      "note": "CHAIN_ACCRUAL_BILLING + quarantine; soft_fail=False; CLEAR_BATCH_FAILURE_AUDIT default 0 (real audit surface); opt-in truncate is SEEDED debug only"
+      "note": "CHAIN_ACCRUAL_BILLING + quarantine; soft_fail=False; CLEAR_BATCH_FAILURE_AUDIT default 0 (real audit surface); opt-in truncate is SEEDED debug only; IAD child column audit mandatory"
     },
     "note": "Promoted SHG INT stitch. Fidelity: real batch APIs; quarantine+job_time seeded; audit truncate NOT default. SkipListener ClassCast deferred (senior).",
     "ship_baseline": {
@@ -2674,7 +2691,8 @@
       "layers_real": [
         "interestAccrualCalculation",
         "interestAccrualPosting",
-        "loanAccountBillingJob"
+        "loanAccountBillingJob",
+        "iad_column_audit"
       ]
     }
   },
@@ -5281,7 +5299,7 @@
         },
         {
           "key": "iad_sql_scale",
-          "reason": "mid-month tip unposted poison seed — skip-path only, not calc correctness"
+          "reason": "mid-month tip unposted poison seed \u2014 skip-path only, not calc correctness"
         },
         {
           "key": "labd_gap_for_billing_boundary",

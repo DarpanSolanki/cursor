@@ -1,3 +1,6 @@
+## 2026-07-31 — SHG child IAD column audit in local stitch
+- `flowtest.iad_column_audit` + wire into `flowtest.shg_int_accrual_stitch`; acceptance manifest `interest_accrual` IAD columns. Tip end_date lag = WARN (LMS-DEFECT-child-iad-stuck-tip); money columns fail-closed.
+
 ## 2026-07-31 — SEMANTICS CLOSE-UP (GL DB + config)
 - `gl_rule` from local transaction_accounting_rule (191); placeholder F absent; QA3 parity OK on 3 samples; GL truth MATCH on BILLING/INTEREST/repay.
 - Kafka MessageBroker.xml threads/poll; skipLimit MAX; Tomcat Boot defaults; txn reconcile; activation path→novopay-platform-lib; money-core purpose backfill.

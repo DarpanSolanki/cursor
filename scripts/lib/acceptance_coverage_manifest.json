@@ -82,6 +82,9 @@
       "loan_due_details",
       "loan_account_payments_details",
       "transaction_master"
+    ],
+    "interest_accrual": [
+      "interest_accrual_details"
     ]
   },
   "domain_money_table_required_columns": {
@@ -124,6 +127,17 @@
     "loan_account_payments_details": [
       "amount",
       "principal_amount"
+    ],
+    "interest_accrual_details": [
+      "account_id",
+      "start_date",
+      "end_date",
+      "base_amount",
+      "interest_rate",
+      "total_accrued_amount",
+      "carry_over_amount",
+      "total_accrual_posted_amount",
+      "loan_installment_details_id"
     ]
   },
   "backlog_domains_ranked": [

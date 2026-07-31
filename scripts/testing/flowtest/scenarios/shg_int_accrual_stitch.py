@@ -11,6 +11,8 @@ Coverage (fail-closed):
   - parent Posted increases when unposted>0 and a posting day (ME or due) is in range
   - LABD count increases when roll end is an unbilled due date
   - all three jobs COMPLETED (soft_fail=False)
+  - **column audit** on ACTIVE children interest_accrual_details tip rows
+    (account_id, dates, base/rate, accrued/posted/carry, lid, tip sync to parent asOf)
 
 Optional debug only (NOT default): CLEAR_BATCH_FAILURE_AUDIT=1 truncates
 mfi_accounting.batch_failure_audit — masks SkipListener ClassCast poison;
@@ -33,7 +35,21 @@ sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
 from flowtest.dateroll import CHAIN_ACCRUAL_BILLING, declare_layers, roll  # noqa: E402
 from flowtest.db import psql, psql_raw  # noqa: E402
 from flowtest.fixture import resolve_fixture  # noqa: E402
+from flowtest.iad_column_audit import assert_audit, audit_shg_child_iad_distribute  # noqa: E402
 from flowtest.lock import acquire_flowtest_lock, mark_lock_held  # noqa: E402
+
+
+def _query_rows(sql: str) -> list[tuple[str, ...]]:
+    raw = psql_raw(sql).strip()
+    if not raw:
+        return []
+    out: list[tuple[str, ...]] = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        out.append(tuple(p.strip() for p in line.split("|")))
+    return out
 
 PARENT = os.environ.get("PARENT_LAN", "6000012030")
 PARITY_SQL = (ROOT / "scripts/sql/helpers/verify_shg_interest_accrual_parity.sql").read_text()
@@ -342,9 +358,18 @@ WHERE (la.account_id={parent_id} OR la.parent_loan_account_id={parent_id})
 
     audit_n = psql("SELECT COUNT(*)::text FROM mfi_accounting.batch_failure_audit")
     print(f"  audit rows after={audit_n}")
+    print("  → IAD column audit (ACTIVE children tip + window parity)")
+    assert_audit(
+        audit_shg_child_iad_distribute(
+            parent_lan=PARENT,
+            query_rows=_query_rows,
+            require_tip_sync=os.environ.get("IAD_TIP_SYNC_STRICT", "1") == "1",
+        )
+    )
+    print("  PASS IAD column audit (children)")
     print(
         "  LAYERS_DECLARE: jobs=REAL(interestAccrualCalculation,interestAccrualPosting,"
-        "loanAccountBillingJob) quarantine=REAL parity=SQL_helper"
+        "loanAccountBillingJob) quarantine=REAL parity=SQL_helper iad_column_audit=REAL"
     )
     print("=== PASS: flowtest.shg_int_accrual_stitch ===")
     return 0
