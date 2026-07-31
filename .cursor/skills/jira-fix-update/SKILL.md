@@ -126,6 +126,8 @@ cat > /tmp/tdpqa-payload.json <<'EOF'
   "micro": ["accounting"],
   "aitdp_percent": 0.80,
   "aitdp_remarks": "Helped review the QA case and loan data, found the rate-window issue, applied the fix, and checked the result before sending to QA.",
+  "aitdp_fix_grade": "A",
+  "aitdp_fix_score": 80,
   "aitdp_lead_percent": 0.80,
   "aitdp_lead_remarks": "Lead reviewed the parent-share fix and confirmed member totals and window dates match before QA.",
   "dev": [
