@@ -294,7 +294,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
    - **EC writes:** `principal_amount`, `interest_amount`, `penalty_amount`, `fee_amount`, `excess_amount`, `loan_due_details_list`, `product_id`  
    - **DB:** `loan_due_details` (via `LoanDueDetailsSuperListUtil.getDueDetails`); `loan_product` / asset criteria slab lookups  
    - **Exception:** propagates fatal/non-fatal from framework  
-   - **Contract mismatch vs `loanWriteoff` XML (see GAP-062):** orchestration passes **`prepayment_amount`** (local) = `${writeoff_amount}`, not `total_foreclosure_amount`. Validator sets **`penalty_amount`** but processor reads **`penal_amount`**. Request uses **`value_date`**, not **`foreclosure_date`**. **`fee_amount`** is not populated by the validator before this processor.
+   - **Historical (GAP-062 WONT_TRACK 2026-07-31):** orch once passed writeoff keys that did not match foreclosure appropriation reads — **not tracked**; writeoff not developed/live.
 
 5. **`populateAdditionalAmountDetailsProcessor`** (×4) — PRIN/INT/FEE/PENALTY lines from `${principal_amount}` etc.  
 
@@ -307,7 +307,7 @@ Total **362** requests, **348** unique `apiName`s. **14** `apiName`s appear in *
 **Final output:** HTTP orchestration response (maker/checker codes path-dependent) + `postTransaction` OParams when REAL posting runs.  
 **Error path:** Validator or posting failure → fatal → txn rollback per orchestration.  
 **Idempotency:** `client_reference_number` = `${stan}` on nested `postTransaction` (dedupe in REAL mode).  
-**Known gaps:** **GAP-062** (write-off vs `PrepaymentApproppriationProcessor` EC keys).
+**Known gaps:** none active — **GAP-062 WONT_TRACK** (writeoff not developed/live, 2026-07-31).
 
 ---
 

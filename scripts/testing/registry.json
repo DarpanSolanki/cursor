@@ -2958,7 +2958,7 @@
     "title": "loanWriteoff \u2014 NOT-DEVELOPED this train (catalogue absent)",
     "quarantine": {
       "label": "NOT-DEVELOPED",
-      "reason": "LOAN_WRITE_OFF/FINAL_WRITE_OFF catalogue absent on mfi_integration_v3.4.2.4; user 2026-07-30 out of suite. GAP-062 guard remains for prepayment callers."
+      "reason": "loanWriteoff not developed/live; GAP-062 WONT_TRACK 2026-07-31; no writeoff appropriation guards."
     },
     "cmd": "bash scripts/testing/flowtest/run_loan_writeoff.sh",
     "defaults": {

@@ -780,32 +780,10 @@ Cross-reference: `.cursor/gaps-and-risks.md`. Related diagrams: `.cursor/archite
 
 ---
 
-## GAP-062: `loanWriteoff` vs `PrepaymentApproppriationProcessor` — wrong or missing ExecutionContext keys
+## GAP-062: `loanWriteoff` vs `PrepaymentApproppriationProcessor` — **WONT_TRACK** (2026-07-31)
 
-- **What breaks**  
-  Final write-off posting branch invokes `prepaymentApproppriationProcessor` with orchestration keys that **do not match** what the Java processor reads (`total_foreclosure_amount`, `penal_amount`, `foreclosure_date`, `fee_amount` vs `prepayment_amount`, `penalty_amount`, `value_date`, unset fee). Runtime may throw (**null** → `BigDecimal` / `Long.parseLong`) or compute **wrong principal/interest/penalty/fee splits** before nested `postTransaction`.
-
-- **Early warning signs**  
-  - Logs/stack traces referencing `PrepaymentApproppriationProcessor` line ~85–90 on `loanWriteoff` APPROVE / auto-post path.  
-  - `transaction_master` for `LOAN_WRITE_OFF` / `FINAL_WRITE_OFF` with amounts that don’t match expected outstanding components for the account.
-
-- **Immediate mitigation (2am)**  
-  1. Capture `account_number`, `stan`, `tenant_code`, and whether the failure is **exception** vs **wrong amounts**.  
-  2. Compare `loan_due_details` outstanding components vs posted `transaction_details` for the same `client_reference_number` / business date.  
-  3. **Do not** bulk-retry write-off without confirming idempotency (`client_reference_number` = `stan` on nested `postTransaction`).  
-  4. If code fix not yet deployed: coordinate **manual GL / loan adjustment** per finance ops procedure (out of band of this runbook).
-
-- **Permanent fix**  
-  Align orchestration `IParam` / processor reads (see **GAP-062** in `.cursor/gaps-and-risks.md`): supply `total_foreclosure_amount` (or change processor), map `penalty_amount` ↔ `penal_amount`, map `value_date` → `foreclosure_date`, set `fee_amount`; add regression test for `loanWriteoff` REAL posting.
-
-- **Files**  
-  - `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` (`loanWriteoff`)  
-  - `.../ValidateLoanWriteOffDataProcessor.java`  
-  - `.../PrepaymentApproppriationProcessor.java`  
-  - `trustt-platform-lib/.../DefaultExecutionContext.java` (`get` local-then-shared)
-
-- **Business impact**  
-  Write-off is a **terminal credit event**; wrong splits or failed completion blocks portfolio cleanup and statutory reporting accuracy.
+- **Status:** Out of scope — `loanWriteoff` is **not developed / not live**. Appropriation EC-alias code fix reverted (`131e57a2f`). Do not page on this runbook; do not ship writeoff-only guards.
+- **Reopen when:** product delivers writeoff (catalogue + working txn path). Historical notes remain in `.cursor/gaps-and-risks.md` GAP-062 archive.
 
 ---
 

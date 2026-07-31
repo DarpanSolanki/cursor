@@ -139,15 +139,15 @@
     },
     {
       "id": "WS-020",
-      "status": "deferred",
+      "status": "cancelled",
       "auto_safe": false,
       "area": "registry",
       "title": "loanWriteoff registry e2e (writeoff domain)",
-      "detail": "Orchestration loanWriteoff exists; no ntest case \u2014 add when writeoff fixture + money-path harness ready",
+      "detail": "CANCELLED 2026-07-31 — loanWriteoff not developed/live; GAP-062 WONT_TRACK",
       "domain": "writeoff",
-      "evidence": "inventory_gap_only \u2014 no implementation claimed",
+      "evidence": "user decision WONT_TRACK",
       "wave": "W3",
-      "note": " Deferred to W3 wave (FINAL SYNC 2026-07-27)."
+      "note": "Cancelled — do not resume until product delivers writeoff."
     },
     {
       "id": "WS-021",
@@ -471,9 +471,10 @@
     {
       "id": "SU-FLOW-WRITEOFF-GAP062",
       "title": "loanWriteoff PrepaymentAppropriation NPE \u2014 LMS defect",
-      "status": "open",
+      "status": "cancelled",
       "auto_safe": false,
-      "area": "flowtest"
+      "area": "flowtest",
+      "note": "GAP-062 WONT_TRACK 2026-07-31; code revert 131e57a2f"
     },
     {
       "id": "SU-FLOW-EXCESS-RAILS",

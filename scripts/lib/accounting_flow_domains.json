@@ -585,7 +585,7 @@
         "flowtest.loan_writeoff"
       ],
       "fallback_case": "health.accounting",
-      "release_cases_note": "F5 amount 2dp IAD harness PASS; BLOCKED GAP-062 NPE (LMS-DEFECT-writeoff-gap062-npe.md)"
+      "release_cases_note": "NOT-DEVELOPED / GAP-062 WONT_TRACK 2026-07-31 — loanWriteoff not live; do not select for ship"
     },
     "waiver": {
       "label": "Waive loan account charges",

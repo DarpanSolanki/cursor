@@ -165,7 +165,7 @@ HTTP **`reverseTransaction`** / **`postManualJournalEntry`** → posting engine 
 
 ---
 
-**Flow Sync Wave 6 (2026-04-17):** Deep cross-service gap mining + observability matrix — new **GAP-065..069** in `.cursor/gaps-and-risks.md`. **Type 1 field drift:** `entity_type` absent in accounting sync JSON vs LOS `ENTITY_TYPE` required (existing + file:line in gap narratives). **Type 7:** accounting `MessageBroker.xml` money consumers lack explicit `maxPollRecords` (**GAP-065**). **Type 8 / EC:** `loanWriteoff` vs `PrepaymentApproppriationProcessor` (**GAP-062**); `account_details` NPE (**GAP-063**).
+**Flow Sync Wave 6 (2026-04-17):** Deep cross-service gap mining + observability matrix — new **GAP-065..069** in `.cursor/gaps-and-risks.md`. **Type 1 field drift:** `entity_type` absent in accounting sync JSON vs LOS `ENTITY_TYPE` required (existing + file:line in gap narratives). **Type 7:** accounting `MessageBroker.xml` money consumers lack explicit `maxPollRecords` (**GAP-065**). **Type 8 / EC:** `loanWriteoff` vs `PrepaymentApproppriationProcessor` (**GAP-062** — **WONT_TRACK** 2026-07-31, writeoff not live); `account_details` NPE (**GAP-063**).
 
 **Wave 7 revalidation (2026-04-22):** full disbursement audit confirms E6/E7 mismatch is still active in current runtime code (`LmsMessageBrokerConsumer.sendResultMessageToKafka` omits `entity_type`) and correlation is still partial (`stan` absent). See reopened/new gaps **GAP-070..073**.
 

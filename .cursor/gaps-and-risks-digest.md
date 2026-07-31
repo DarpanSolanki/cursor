@@ -26,7 +26,6 @@ SoT: `.cursor/gaps-and-risks.md`. Escalate to full file when task touches a GAP-
 | **Multi-node batch scheduler has no distributed leader/lock (race across batch instances)** | **High** | `trustt-platform-batch/src/main/java/in/novopay/batch/batchschedule/daoservice/BatchScheduleService.java` (`canStart`, `isJobRunning`) + `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (job start) | Two batch nodes can both decide “not running” and start the same job/group → duplicate job execution or inconsistent schedule status updates. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
 | **No `src/test` coverage for API Gateway `RequestForward*` (`RequestForwardProcessor`, controller)** | **High** | Workspace `grep` `RequestForward` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-055** | `/forward/*` ingress (documented as filter-bypass + payload logging risk) has no automated regression tests. |
-| **`loanWriteoff` orchestration vs `PrepaymentApproppriationProcessor` ExecutionContext contract mismatch** | **High** | `loans_orc.xml` `loanWriteoff` passes `prepayment_amount` (not `total_foreclosure_amount`); `ValidateLoanWriteOffDataProcessor` sets `penalty_amount` but processor reads `penal_amount`; write-off uses `value_date`, processor reads `foreclosure_date`; `fee_amount` not set pre-processor — **GAP-062** | Appropriation/posting branch can **NPE** or apply **wrong component splits** for final write-off ledger and dues updates. |
 
 ## Medium/Low index
 
@@ -44,7 +43,6 @@ GAP-028 | Authorization service logs access tokens and has doc-vs-conf | see-ful
 GAP-029 | Masterdata business-date cache invalidation failures are non | see-full
 GAP-030 | Task service has multiple replay/consistency risks (no TTL c | see-full
 GAP-061 | Child MFT post-processor CRR response can diverge from callb | see-full
-GAP-062 | [High] `loanWriteoff` posting branch — ExecutionContext key… | see-full
 GAP-063 | `PopulateAndValidateAccountDetailsProcessor` — no null guard | see-full
 GAP-065 | Accounting MessageBroker consumers — no explicit `maxPollRec | see-full
 GAP-066 | Disburse sync Kafka message lacks correlation IDs (`stan` /  | see-full
@@ -69,4 +67,4 @@ ROW-posttransaction-populateandvalidateaccou | `postTransaction` — `PopulateAn
 ROW-proactive-excess-refund-uses-time-based- | Proactive excess refund uses time-based `client_reference_n… | ...
 ROW-reopened-2026-04-22-los-lms-disbursement | REOPENED (2026-04-22) — `los_lms_disbursement_sync` still o… | accounting
 
-<!-- digest high=19 medium=12 low=1 idx=38 max=14000 -->
+<!-- digest high=18 medium=12 low=1 idx=37 max=14000 -->

@@ -77,7 +77,7 @@ Every item below has **description + file path + line evidence + risk level**. S
 | **Multi-node batch dependency tracking is in-memory only** | **Medium** | `trustt-platform-batch/src/main/java/in/novopay/batch/core/service/SchedulerCommonService.java` (`jobCompletionStatus` map, `areDependenciesCompleted`) | In multi-instance deployment, node A’s dependency completion is invisible to node B → dependency ordering can be violated cluster-wide. |
 | **No `src/test` coverage for API Gateway `AuthorizationCheckFilter` (permission / mapping-miss path)** | **High** | Workspace `grep` `AuthorizationCheckFilter` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-054** | Bypass / mis-configuration paths for mapped APIs ship without CI guard. |
 | **No `src/test` coverage for API Gateway `RequestForward*` (`RequestForwardProcessor`, controller)** | **High** | Workspace `grep` `RequestForward` in `**/src/test/**/*.java` → **no hits** (2026-04-10); pairs **GAP-055** | `/forward/*` ingress (documented as filter-bypass + payload logging risk) has no automated regression tests. |
-| **`loanWriteoff` orchestration vs `PrepaymentApproppriationProcessor` ExecutionContext contract mismatch** | **High** | `loans_orc.xml` `loanWriteoff` passes `prepayment_amount` (not `total_foreclosure_amount`); `ValidateLoanWriteOffDataProcessor` sets `penalty_amount` but processor reads `penal_amount`; write-off uses `value_date`, processor reads `foreclosure_date`; `fee_amount` not set pre-processor — **GAP-062** | Appropriation/posting branch can **NPE** or apply **wrong component splits** for final write-off ledger and dues updates. |
+| **WONT_TRACK (2026-07-31) — GAP-062 `loanWriteoff` vs `PrepaymentApproppriationProcessor` EC mismatch** | **Out of scope** | `loanWriteoff` not developed / not live (catalogue absent; txn path unused). Appropriation alias fix `896c02a56` **reverted** `131e57a2f` on `mfi_integration_v3.4.2.4`. Do not track or ship writeoff-only guards. | N/A — feature dead; reopen only if product delivers writeoff. |
 | **`postTransaction` — `PopulateAndValidateAccountDetailsProcessor` assumes non-null `account_details` array** | **Medium** | `trustt-platform-accounting/.../PopulateAndValidateAccountDetailsProcessor.java` L60-L61 — direct cast/iterate without null check | Malformed request, partial internal-api merge, or bypassed validation → **NPE** before business validation messages. |
 | **`CreateOrUpdateBulkCollectionConsumer` — `collection_list` null before `size()`** | **Medium** | `trustt-platform-payments/.../CreateOrUpdateBulkCollectionConsumer.java` L81-L83 — `collection_list` cast without null check | Valid JSON envelope with missing `collection_list` → **NPE**; offsets stuck / poison message behaviour depends on broker config — **GAP-064**. |
 | **Accounting money-path Kafka consumers omit explicit `maxPollRecords` in MessageBroker.xml** | **Medium** | `trustt-platform-accounting/deploy/application/messagebroker/MessageBroker.xml` L15-L28 — only `pollTime` / threads; no `maxPollRecords` (cf. payments bulk consumer) | Broker/framework defaults apply; backpressure/lag tuning and “financial topic SLO” not codified in-repo — **GAP-065**. |
@@ -1330,34 +1330,15 @@ Resolved in branch: `mfi_integration_v3.2.8.4.1` (commit `1a789b6c7`)
 
 Service: `trustt-platform-accounting`  
 Lens: 5 (Contract/state integrity), 1 (Money correctness), 7 (Idempotency / partial failure on wrong splits)  
-Risk: High  
+Risk: ~~High~~ → **Out of scope (not tracked)**  
 
-**Evidence**
+**Status:** **WONT_TRACK** (2026-07-31) — `loanWriteoff` is **not developed / not working** in production (catalogue `LOAN_WRITE_OFF`/`FINAL_WRITE_OFF` absent; user decision). Code fix `896c02a56` was **reverted** (`131e57a2f`). Do **not** reopen, ship, or suite this gap until product delivers writeoff.
 
-- Orchestration (`loanWriteoff`, posting branch) passes **`prepayment_amount`** (local) = `${writeoff_amount}` into `prepaymentApproppriationProcessor`, not **`total_foreclosure_amount`**:  
-  `trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml` ~L1440-L1442.
-- `ValidateLoanWriteOffDataProcessor` sets **`penalty_amount`**, not **`penal_amount`**:  
-  `.../loan/writeoff/processor/ValidateLoanWriteOffDataProcessor.java` ~L92-L94.
-- `PrepaymentApproppriationProcessor` reads **`total_foreclosure_amount`**, **`penal_amount`**, **`fee_amount`**, **`foreclosure_date`**:  
-  `.../loan/prepayment/processor/PrepaymentApproppriationProcessor.java` ~L85-L90.
-- Write-off request validates **`value_date`**, not **`foreclosure_date`** (`loans_orc.xml` validators ~L1384-L1398).
+**Historical evidence (archived — do not action):** orch `prepayment_amount`/`penalty_amount`/`value_date` vs processor `total_foreclosure_amount`/`penal_amount`/`foreclosure_date` on `loanWriteoff` posting branch.
 
-`DefaultExecutionContext.get` checks **local** then **shared** maps, so missing keys return **null** → `new BigDecimal(null)` / `Long.parseLong(null)` can fail at runtime; mis-keyed penalty/fee amounts change appropriation logic.
-
-**What can go wrong**
-
-- **Hard failure** on approve/post path (NPE / NumberFormatException) after maker-checker, or  
-- **Silent wrong splits** if some keys resolve unexpectedly, producing incorrect `postTransaction` amounts and downstream dues/installment updates.
-
-**Mitigation direction (tiered)**
-
-- **L0:** In `loans_orc.xml`, add `IParam` mappings so `total_foreclosure_amount`, `penal_amount` (or change processor to read `penalty_amount`), `foreclosure_date` (from `value_date`), and `fee_amount` (`0` or computed) are set before `prepaymentApproppriationProcessor`.  
-- **L1:** Align processor to accept the write-off contract (single source of key names) and add integration test for `loanWriteoff` REAL posting.  
-- **L2:** Static validation: fail in CI if orchestration local keys for a processor bean don’t match processor reads (tooling).
-
-**Status:** Open  
 **Date found:** 2026-04-17  
-**Runbook:** `.cursor/runbooks.md` → GAP-062
+**Date closed (tracking):** 2026-07-31  
+**Runbook:** `.cursor/runbooks.md` → GAP-062 (WONT_TRACK)
 
 ## GAP-063: `PopulateAndValidateAccountDetailsProcessor` — no null guard on `account_details`
 

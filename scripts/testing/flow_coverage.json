@@ -154,11 +154,11 @@
       "flow": "loanWriteoff",
       "verify_mode": "none",
       "harness_ready": "NOT-DEVELOPED",
-      "blocker": "wont-do: LOAN_WRITE_OFF/FINAL_WRITE_OFF catalogue absent this train (user 2026-07-30); out of suite+coverage denominators",
+      "blocker": "wont-do: loanWriteoff not developed/live (user 2026-07-31); GAP-062 WONT_TRACK",
       "registry": "flowtest.loan_writeoff",
-      "note": "GAP-062 appropriation alias guard remains (live prepayment callers). Writeoff E2E not developed on mfi_integration_v3.4.2.4 local catalogue set.",
-      "decision_at": "2026-07-30T18:15:00Z",
-      "wont_do_reason": "feature/catalogue absent this train \u2014 user decision NOT-DEVELOPED"
+      "note": "Writeoff E2E out of coverage. No appropriation alias guard — fix reverted.",
+      "decision_at": "2026-07-31T06:45:00Z",
+      "wont_do_reason": "feature not developed — user decision WONT_TRACK GAP-062"
     },
     {
       "flow": "proactiveExcessAmountRefund",
