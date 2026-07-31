@@ -1,3 +1,8 @@
+## 2026-07-31 | acct `af52abe3d` | accounting | mfi_integration_v3.4.2.4 | kg-flow | interestAccrualPosting soft-skip mid-month IAD
+- apiName: interestAccrualPosting; tables: interest_accrual_details
+- Batch InterestAccrualBookingBatchService continues past non-booking-day unposted IAD (was return false abort); L2 skip log; defect LMS-DEFECT-accrual-booking-abort
+| kg-flow | interestAccrualPosting
+
 ## 2026-07-30 | acct `ffa882cdf` | accounting | mfi_integration_v3.4.2.4 | kg-flow | SHG INT Accrued parent SoT installment-window distribute
 - apiName: interestAccrualCalculation (online DEFAULT + BATCH); tables: interest_accrual_details
 - InterestGroupLoanAccrualDistributionService: SET ACTIVE child window Accrued via GroupLoanUtility fractions; skip child calc; stop_interest_accrual still distributes; removed adjustChildLoanAccountsInterestAccrual

@@ -1,0 +1,1 @@
+-- no owed DML this bone; SELECT-only placeholder

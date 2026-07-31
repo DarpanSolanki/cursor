@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated": "2026-07-23",
-  "notes": "Paths/names only \u2014 credentials live in scripts/db/env/*.env (gitignored). Cells agents cannot fill are \"not-applicable: QA-team owned\".",
+  "updated": "2026-07-31",
+  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability from env-smoke 2026-07-31.",
   "environments": {
     "local": {
       "db_wrapper": "scripts/db-local.sh",
@@ -16,7 +16,15 @@
       "log_access": "scripts/bin/novopay-logs.sh (local service logs)",
       "reachable_from_here": true,
       "write_policy": "full (local Yugabyte via db-local-write / approved helpers only)",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "REACHABLE",
+      "deployed_train": "workspace MIXED \u2014 accounting mfi_integration_v3.4.2.4 local gradle",
+      "allowed_suites": [
+        "ntest",
+        "flowtest",
+        "db-local-write",
+        "dpi-sanity"
+      ]
     },
     "qa1": {
       "db_wrapper": "scripts/db-qa1.sh",
@@ -30,7 +38,13 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "REACHABLE",
+      "deployed_train": "not-applicable: QA-team owned deploy train",
+      "allowed_suites": [
+        "db-qa1.sh read-only",
+        "cursor-bundle db-tools read"
+      ]
     },
     "qa2": {
       "db_wrapper": "scripts/db-qa2.sh",
@@ -42,9 +56,13 @@
       "api_base": "not-applicable: QA-team owned",
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
-      "reachable_from_here": true,
+      "reachable_from_here": false,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "UNREACHABLE",
+      "deployed_train": "not-applicable: QA-team owned (UNREACHABLE)",
+      "allowed_suites": [],
+      "reachability_detail": "2026-07-31 env-smoke: connection refused/fail to 172.31.2.70:5433"
     },
     "qa3": {
       "db_wrapper": "scripts/db-qa3.sh",
@@ -58,7 +76,12 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "REACHABLE",
+      "deployed_train": "not-applicable: QA-team owned deploy train",
+      "allowed_suites": [
+        "db-qa3.sh read-only"
+      ]
     },
     "qa4": {
       "db_wrapper": "scripts/db-qa4.sh",
@@ -72,7 +95,12 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "REACHABLE",
+      "deployed_train": "not-applicable: QA-team owned deploy train",
+      "allowed_suites": [
+        "db-qa4.sh read-only"
+      ]
     },
     "qa5": {
       "db_wrapper": "scripts/db-qa5.sh",
@@ -86,7 +114,12 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "REACHABLE",
+      "deployed_train": "not-applicable: QA-team owned deploy train",
+      "allowed_suites": [
+        "db-qa5.sh read-only"
+      ]
     },
     "qa6": {
       "db_wrapper": "scripts/db-qa6.sh",
@@ -98,17 +131,25 @@
       "api_base": "not-applicable: QA-team owned",
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
-      "reachable_from_here": true,
+      "reachable_from_here": false,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-22T15:07:05Z"
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "UNREACHABLE",
+      "deployed_train": "not-applicable: QA-team owned (UNREACHABLE)",
+      "allowed_suites": [],
+      "reachability_detail": "2026-07-31 env-smoke: timeout 5s"
     },
     "uat": {
       "db_wrapper": "not-applicable: QA-team owned",
       "api_base": "not-applicable: QA-team owned",
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
-      "reachable_from_here": "not-applicable: QA-team owned",
-      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)"
+      "reachable_from_here": false,
+      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)",
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "N/A_NO_WRAPPER",
+      "deployed_train": "not-applicable",
+      "allowed_suites": []
     },
     "prod": {
       "db_wrapper": "not-applicable: QA-team owned",
@@ -116,7 +157,11 @@
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": false,
-      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)"
+      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)",
+      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachability_status": "N/A_NO_WRAPPER",
+      "deployed_train": "not-applicable",
+      "allowed_suites": []
     }
   }
 }

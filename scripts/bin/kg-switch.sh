@@ -24,6 +24,10 @@ ASSERT_REPO=""
 ASSERT_BRANCH=""
 for a in "$@"; do
   case "$a" in
+    --help|-h)
+      sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
     --quiet|-q) QUIET=1 ;;
     --force|-f) FORCE=1 ;;
   esac

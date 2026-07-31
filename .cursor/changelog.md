@@ -1,3 +1,9 @@
+## 2026-07-31 — JOURNEY BONE: kg-switch --help + env reachability
+- `kg-switch.sh --help` no longer triggers rebuild (was cache-miss path).
+- `cursor-bundle/kg/kg.db` → symlink `data/kg.db` (empty stub removed).
+- env-matrix reachability refreshed 2026-07-31 (qa2/qa6 UNREACHABLE); qa-catchup queue added.
+- Self-learn: `af52abe3d` accrual booking soft-skip still missing `kg cases interestAccrualPosting` (changelog lacked kg-flow tag) — see defect LMS-DEFECT-accrual-booking-abort.
+
 ## 2026-07-31 — booking abort formalize
 - Defect LMS-DEFECT-accrual-booking-abort + child stuck tip probe; L2 skip log on accounting; QA blast UNKNOWN (DB down).
 
