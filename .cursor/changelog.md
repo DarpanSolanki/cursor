@@ -1,3 +1,6 @@
+## 2026-07-31 — revert GAP-062 writeoff appropriation (dead code)
+- accounting `131e57a2f` on mfi_integration_v3.4.2.4: revert `896c02a56` PrepaymentApproppriationProcessor writeoff EC normalize — loanWriteoff not in production.
+
 ## 2026-07-31 — JOURNEY BONE: kg-switch --help + env reachability
 - `kg-switch.sh --help` no longer triggers rebuild (was cache-miss path).
 - `cursor-bundle/kg/kg.db` → symlink `data/kg.db` (empty stub removed).
