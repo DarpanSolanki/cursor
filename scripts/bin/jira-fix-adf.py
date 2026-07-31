@@ -183,6 +183,8 @@ TDPQA_IMPACT = "customfield_12008"
 TDPQA_PREPOST = "customfield_12007"
 TDPQA_AITDP_REMARKS = "customfield_12000"
 TDPQA_AITDP_ACCURACY = "customfield_12001"  # float — write whole percent (80), not 0.80
+TDPQA_AITDP_LEAD_ACCURACY = "customfield_12004"  # float — whole percent 0–100 (Lead Accuracy)
+TDPQA_AITDP_LEAD_REMARKS = "customfield_12005"  # AiTDP Lead Improvement Remarks
 TDPQA_AITDP_YESNO = "customfield_12009"
 TDPQA_AITDP_YES = [{"id": "12785"}]
 TDPQA_MICRO = "customfield_12006"
@@ -200,8 +202,9 @@ def project_mode(issue_key: str) -> dict[str, Any]:
     elif prefix == "TDPQA":
         mode = "tdpqa_field_handoff"
         note = (
-            "Fill TDPQA RCA/Impact/PrePost/AITDP fields (11999/12008/12007/12000) "
-            "+ owners; keep a short QA ping comment"
+            "Fill TDPQA RCA/Impact/PrePost/AITDP Dev+Lead fields "
+            "(11999/12008/12007/12000/12001/12004/12005/12009) + owners; "
+            "short QA ping + Dev Test Details comment"
         )
         owners_cmd = "owners_tdpqa"
     else:
@@ -652,6 +655,36 @@ def build_handoff_pack(issue_key: str, payload: dict[str, Any]) -> dict[str, Any
         edit_fields[TDPQA_AITDP_YESNO] = TDPQA_AITDP_YES
         # TDPQA accuracy is a whole percent (80), unlike SDCP fraction field.
         edit_fields[TDPQA_AITDP_ACCURACY] = float(round(aitdp_frac * 100))
+
+        # Lead Accuracy + Lead Improvement Remarks — mandatory for transition
+        # (workflow popup). Default to Dev AITDP when lead_* omitted.
+        lead_frac_raw = payload.get("aitdp_lead_percent")
+        if lead_frac_raw is None:
+            lead_frac_raw = payload.get("aitdp_lead_accuracy")
+        if lead_frac_raw is None:
+            lead_frac = aitdp_frac
+        else:
+            try:
+                lead_frac = float(lead_frac_raw)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"aitdp_lead_percent must be a number: {e}") from e
+            if lead_frac > 1.0:
+                # already whole percent (85) → fraction
+                lead_frac = lead_frac / 100.0
+            if not (0.0 <= lead_frac <= 1.0):
+                raise ValueError("aitdp_lead_percent must be 0–1 fraction or 0–100 whole %")
+        lead_remarks = (
+            payload.get("aitdp_lead_remarks")
+            or payload.get("aitdp_lead_remark")
+            or remarks
+        ).strip()
+        if not lead_remarks:
+            raise ValueError(
+                "TDPQA pack requires aitdp_lead_remarks (or aitdp_remarks fallback) — "
+                "workflow blocks transition without Lead Accuracy / Lead Improvement Remark"
+            )
+        edit_fields[TDPQA_AITDP_LEAD_ACCURACY] = float(round(lead_frac * 100))
+        edit_fields[TDPQA_AITDP_LEAD_REMARKS] = doc(paragraph(lead_remarks))
 
         micro_keys = [str(k).strip().lower() for k in (payload.get("micro") or ["accounting"])]
         if "accounting" in micro_keys or not micro_keys:

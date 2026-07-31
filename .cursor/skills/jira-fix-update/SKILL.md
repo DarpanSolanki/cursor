@@ -84,7 +84,7 @@ python3 scripts/bin/jira-fix-adf.py project_mode TDPQA-180
 | Mode | Projects | Where RCA / Impact live |
 |------|----------|-------------------------|
 | **`field_handoff`** | **SDCP** | Custom fields (`11137` / `11138` / `11901` …). Comment = short ping only. |
-| **`tdpqa_field_handoff`** | **TDPQA** | Custom fields (`11999` RCA / `12008` Impact / `12007` PrePost / `12000` AITDP remarks / `12001` Accuracy **whole %**). **Mandatory for QA Test.** **No Dev Test field** — always include `dev[]` in the pack; helper posts a companion comment headed **Dev Test Details** (+ optional **How to retest**). Short ping can be the comment lead-in. |
+| **`tdpqa_field_handoff`** | **TDPQA** | Custom fields (`11999` RCA / `12008` Impact / `12007` PrePost / `12000` AITDP Dev remarks / `12001` Dev Accuracy / **`12004` Lead Accuracy** / **`12005` Lead Improvement Remarks** / `12009` Yes). **Mandatory for QA Test / transition.** **No Dev Test field** — always include `dev[]` in the pack; helper posts a companion comment headed **Dev Test Details** (+ optional **How to retest**). Short ping can be the comment lead-in. |
 | **`comment_handoff`** | HSQA, AUT, other non-SDCP | **One structured handoff comment**. Set only the owners the project has. |
 
 **Hard rules for agents:**
@@ -126,6 +126,8 @@ cat > /tmp/tdpqa-payload.json <<'EOF'
   "micro": ["accounting"],
   "aitdp_percent": 0.80,
   "aitdp_remarks": "Helped review the QA case and loan data, found the rate-window issue, applied the fix, and checked the result before sending to QA.",
+  "aitdp_lead_percent": 0.80,
+  "aitdp_lead_remarks": "Lead reviewed the parent-share fix and confirmed member totals and window dates match before QA.",
   "dev": [
     "Fresh rebooked loan — delayed payment interest follows the new rate. Result: Pass.",
     "Loan without a rate change — interest behaviour unchanged. Result: Pass."
@@ -153,6 +155,8 @@ Then:
 | JIRA as per AI TDP (`12009`) | Yes `12785` |
 | AiTDP Dev Accuracy (`12001`) | **Whole percent** (`80`). Helper converts from `aitdp_percent` 0–1 |
 | AiTDP remarks (`12000`) | 2–4 simple sentences: analysis + finding + fix + verify — **never** Cursor / IDE brand |
+| AiTDP Lead Accuracy (`12004`) | **Whole percent** 0–100. Payload `aitdp_lead_percent` (0–1 or whole %); defaults to Dev accuracy if omitted |
+| AiTDP Lead Improvement Remarks (`12005`) | Lead narrative; payload `aitdp_lead_remarks` (defaults to `aitdp_remarks` if omitted). **Mandatory for transition** (popup: Lead Accuracy + Lead Improvement Remark) |
 
 Helper rejects pack without `aitdp_percent` + `aitdp_remarks`.
 
@@ -708,7 +712,7 @@ editJiraIssue(
 - [ ] **Simple language** — QA can read fields in ~30 seconds
 - [ ] **Assignee + project owners set** — SDCP `owners` **or** TDPQA `owners_tdpqa`
 - [ ] **SDCP only:** AiTDP Yes + 0–1 fraction + remarks; MICRO; Pre/Post; fields `11137`/`11138`/`11901`
-- [ ] **TDPQA only:** fields `11999`/`12008`/`12007`/`12000`/`12001`(whole %)/`12009` filled; **`dev[]` companion comment** with Dev Test Details (required — no Dev Test field)
+- [ ] **TDPQA only:** fields `11999`/`12008`/`12007`/`12000`/`12001`(whole %)/`12004` Lead Accuracy/`12005` Lead Remarks/`12009` filled; **`dev[]` companion comment** with Dev Test Details (required — no Dev Test field)
 - [ ] **Rework / reopened ticket:** simple ADF tables in comment when useful (Test data, Expected/Actual); no commit SHA
 - [ ] **QA Test / QA Retest transition** used if exposed; otherwise reported unavailable (never guess QA:Traige)
 - [ ] **Human tone** — developer-to-QA

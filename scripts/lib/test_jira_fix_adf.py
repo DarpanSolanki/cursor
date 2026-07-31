@@ -125,10 +125,42 @@ def test_tdpqa_pack_fields() -> None:
     assert "customfield_12007" in fields  # PrePost
     assert "customfield_12000" in fields  # AITDP remarks
     assert fields["customfield_12001"] == 75.0  # whole percent
+    assert fields["customfield_12004"] == 75.0  # Lead Accuracy defaults to Dev
+    assert "customfield_12005" in fields  # Lead Improvement Remarks
     assert pack.get("comment_adf") is not None
     body = json.dumps(pack["comment_adf"])
     assert "Dev Test Details" in body
     assert "How to retest" in body
+
+
+def test_tdpqa_pack_lead_override() -> None:
+    adf = _load_adf()
+    payload = {
+        "rca": {
+            "situation": "Delayed payment interest was a little wrong after rebooking.",
+            "cause": "The system kept the old rate on an open interest window.",
+            "resolution": "Close the old window and start a new one with the new rate.",
+        },
+        "impact": [
+            "Fixes delayed payment interest after rate change.",
+            "Does not change loans without a rate change.",
+            "Please retest on a fresh rebooked loan.",
+        ],
+        "pre": "NA",
+        "post": "NA",
+        "micro": ["accounting"],
+        "dev": [
+            "Fresh rebooked loan — delayed payment interest matches the new rate. Result: Pass.",
+        ],
+        "aitdp_lead_percent": 0.80,
+        "aitdp_lead_remarks": "Lead reviewed the parent-share approach and confirmed member totals match.",
+        **_base_aitdp(),
+    }
+    pack = adf.build_handoff_pack("TDPQA-180", payload)
+    fields = pack["edit_fields"]
+    assert fields["customfield_12001"] == 75.0
+    assert fields["customfield_12004"] == 80.0
+    assert "parent-share" in json.dumps(fields["customfield_12005"])
 
 
 def test_tdpqa_pack_requires_dev() -> None:

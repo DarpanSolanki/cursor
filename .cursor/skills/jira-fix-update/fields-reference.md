@@ -175,6 +175,8 @@ Project: **TDPQA**. Issue type: **Bug** (`11014`).
 | Pre /Post Deployment Scripts | `customfield_12007` | ADF | Pre + Post lines; `NA` when none |
 | AiTDP Dev Improvement Remarks | `customfield_12000` | ADF | How AI helped — never Cursor brand |
 | AiTDP Dev Accuracy | `customfield_12001` | float | **Whole percent** (`80` for 80%). **Not** SDCP’s 0–1 fraction |
+| AiTDP Lead Accuracy (Number 0–100) | `customfield_12004` | float | **Whole percent**. Payload `aitdp_lead_percent`; defaults to Dev accuracy. **Required for transition** |
+| AiTDP Lead Improvement Remarks | `customfield_12005` | ADF | Payload `aitdp_lead_remarks`; defaults to `aitdp_remarks`. **Required for transition** |
 | JIRA As per AI TDP Temp | `customfield_12009` | multicheckboxes | Yes=`12785` when AI assisted |
 | Micro Service | `customfield_12006` | multicheckboxes | Accounting=`12770` |
 | Assignee | `assignee` | user | Darpan |
@@ -190,10 +192,10 @@ bash scripts/bin/jira-enrich.sh pack TDPQA-180 payload.json
 bash scripts/bin/jira-enrich.sh post TDPQA-180 payload.json
 ```
 
-Payload: `rca` + `impact` + `pre`/`post` + `aitdp_percent` (0–1 in JSON; helper writes whole % to `12001`) + `aitdp_remarks` + **`dev[]` (required)** + optional `qa_retest` / `ping_comment` + optional `micro`.
+Payload: `rca` + `impact` + `pre`/`post` + `aitdp_percent` (0–1 → whole % on `12001`) + `aitdp_remarks` + **`aitdp_lead_percent` / `aitdp_lead_remarks`** (Lead Accuracy `12004` + Lead Remarks `12005`; default to Dev AITDP if omitted) + **`dev[]` (required)** + optional `qa_retest` / `ping_comment` + optional `micro`.
 
 **Dev Test Details:** TDPQA has **no** Dev Test custom field (SDCP uses `11901`). Pack **requires** `dev[]` and always posts a companion comment headed **Dev Test Details** (ordered functional steps). Optional `qa_retest` → **How to retest**. `ping_comment` is the short mention lead-in only.
 
 Do **not** send SDCP field IDs to TDPQA. Do **not** invent a twin SDCP ticket unless the user asks.
 
-Transition: toward **QA Test** after fields are non-null. Never use **QA:Traige** as a substitute for QA Retest.
+Transition: toward **QA Test** after fields are non-null — including **Lead Accuracy** + **Lead Improvement Remark** (workflow popup). Never use **QA:Traige** as a substitute for QA Retest.
