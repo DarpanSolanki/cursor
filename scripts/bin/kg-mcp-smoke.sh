@@ -110,9 +110,14 @@ if si.get("version") != "1.9.1":
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")
 expected_names = sorted(TOOLS_NAMES := [n for n, _ in tools] + [align_fail[0]])
-if len(listed) != 19:
-    print(f"FAIL: expected 19 tools, got {len(listed)}: {listed}")
+# Server advertises smoke-probed tools plus kg_concept/kg_enhance (lookup extras).
+if len(listed) < 19 or len(listed) > 22:
+    print(f"FAIL: expected 19..22 tools, got {len(listed)}: {listed}")
     sys.exit(3)
+for required in ("kg_doctor", "kg_align", "ship_plan", "workspace_status"):
+    if required not in listed:
+        print(f"FAIL: {required} missing from tools/list")
+        sys.exit(3)
 for gone in ("kg_validate", "kg_fresh", "kg_error"):
     if gone in listed:
         print(f"FAIL: {gone} should be removed (folded into kg_doctor/kg_search)")

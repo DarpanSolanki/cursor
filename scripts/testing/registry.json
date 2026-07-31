@@ -798,9 +798,10 @@
       "dpi",
       "batch",
       "shg",
-      "regression"
+      "regression",
+      "distribute"
     ],
-    "title": "SDCP-11012 SHG parent DPI accrued = sum(children) after calc adjust",
+    "title": "SHG DPI parent Accrued SoT distribute to children + tip calendar + DAD column audit",
     "cmd": "bash scripts/dpic/run_dpi_shg_parent_child_parity.sh",
     "env": {
       "PARENT_LOAN_ACCOUNT_ID": "116360",
@@ -810,34 +811,63 @@
     },
     "verify_mode": "runtime",
     "acceptance": {
-      "verify_mode": "runtime"
+      "verify_mode": "runtime",
+      "note": "Parent dpi_accrual_details Accrued SoT; children via DpiGroupLoanAccrualDistributionService (not independent reader calc). Tip end_date==parent asOf FAIL-closed; carry=0 on synced tip; all 15 DAD columns via dad_column_audit.",
+      "db_asserts": [
+        {
+          "table": "dpi_accrual_details",
+          "assert": "parent SUM(total_accrued_amount) == SUM(ACTIVE children); child tip end_date == parent MAX(end_date); carry_over_amount=0 on synced tip; loan_account_id=child",
+          "columns": [
+            "id",
+            "loan_account_id",
+            "installment_id",
+            "base_amount",
+            "start_date",
+            "end_date",
+            "dpi_annual_rate",
+            "days_in_year",
+            "total_accrued_amount",
+            "carry_over_amount",
+            "accrual_posting_date",
+            "accrual_transaction_ref_number",
+            "billing_posting_date",
+            "billing_transaction_ref_number",
+            "is_deleted"
+          ],
+          "checked_by": "flowtest.dad_column_audit.audit_shg_child_dad_distribute (DAD_PHYSICAL_COLUMNS=15)"
+        }
+      ]
     },
     "expect": {
-      "status": "PARTIAL",
-      "note": "DPI feature/WIP branch \u2014 partial pass on feature train; full prod-train E2E pending DPI go-live"
+      "status": "PASS",
+      "note": "mfi_integration_v3.7.1 — parent calc + multi-window distribute; reader excludes SHG children (parent_loan_account_id IS NULL)"
     },
     "fidelity": {
-      "entry": "mixed",
+      "entry": "batch_api",
       "apis": [
         "dpiAccrualCalculation"
       ],
       "seeded": [
         {
           "key": "quarantine_portfolio",
-          "reason": "auto: quarantine detected"
+          "reason": "isolate SHG family DPD portfolio for dpiAccrualCalculation"
         },
         {
           "key": "job_time_synthetic",
-          "reason": "auto: batch job_time path"
+          "reason": "batch job_time path"
+        },
+        {
+          "key": "fixture_snapshot_restore",
+          "reason": "setup_shg_dpi_parity_e2e soft-clears family dpi_accrual_details + DPI LDD before job"
         }
       ],
       "out_of_scope": [],
-      "note": "AUTO-STUB fidelity \u2014 review seeded/out_of_scope; real entry path must stay batch/http/orch"
+      "note": "Real dpiAccrualCalculation batch; parent SoT distribute mirrors INT InterestGroupLoanAccrualDistributionService"
     },
     "ship_baseline": {
-      "wall_s": 79,
+      "wall_s": 120,
       "source": "telemetry_pass",
-      "filled_at": "2026-07-30T20:01:18Z"
+      "filled_at": "2026-07-31T10:00:00Z"
     }
   },
   "dpic.integration_smoke": {

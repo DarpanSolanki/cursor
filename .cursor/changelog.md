@@ -1,3 +1,8 @@
+## 2026-07-31 — SHG DPI accrual distribute parity (3.7.1)
+
+- accounting `mfi_integration_v3.7.1`: `DpiGroupLoanAccrualDistributionService` mirrors INT parent-SoT distribute; reader/partitioner `parent_loan_account_id IS NULL`; writer distributes after parent calc; removed portfolio-wide adjust tasklet (hung).
+- Harness: `dad_column_audit` (15 cols fail-closed) + `dpic.shg_parent_child_parity` tip/calendar; money_behavior_parity_gate SHG/DPI markers. ntest PASS parent=692=children tip end_date sync.
+
 ## 2026-07-31 — SHG INT distribute tip calendar + full IAD column audit bar
 - accounting `InterestGroupLoanAccrualDistributionService`: tipBehind asOf → freeze+new when posted else setEndDate(asOf) (independent-calc calendar parity; Accrued=parent share intentional).
 - Workspace: `iad_column_audit` audits ALL 11 physical IAD columns fail-closed; tip carry=0 intentional; `money_behavior_parity_gate` + interest_accrual enforced; never WARN tip lag.

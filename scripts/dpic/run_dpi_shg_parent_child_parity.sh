@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SDCP-11012: after dpiAccrualCalculation + DpiGroupLoanAccrualAdjustTasklet,
-# parent DPI accrued must equal sum(children).
+# SHG DPI distribute: after dpiAccrualCalculation + parent→child distribute,
+# parent DPI accrued must equal sum(children); tip calendar + full DAD column audit.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -19,7 +19,7 @@ WAIT_BATCH="$ROOT/scripts/dpic/lib/wait_batch_job.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-echo "=== SDCP-11012 SHG parent/child DPI parity ==="
+echo "=== SHG parent/child DPI distribute parity ==="
 echo "  parent_loan_account_id=$PARENT_LOAN_ACCOUNT_ID lan=$ACCOUNT_NUMBER job_time=$JOB_TIME"
 
 bash "$ROOT/scripts/bin/novopay-service.sh" ensure accounting ${COMPILE:+--compile}
@@ -55,7 +55,7 @@ if [[ -f "$ROOT/scripts/dpic/sql/helpers/clear_batch_failure_audit.sql" ]]; then
   done
 fi
 
-echo ">>> dpiAccrualCalculation (SHG family)"
+echo ">>> dpiAccrualCalculation (SHG family — parent calc + distribute)"
 before="$(dpi_pg -t -A -c "
 SELECT COALESCE(MAX(bje.job_execution_id), 0)
 FROM mfi_batch.batch_job_execution bje
@@ -82,4 +82,51 @@ IFS='|' read -r parent_accrued children_sum parent_out child_out accrual_parity 
 [[ "$outstanding_parity" == "t" ]] || fail "outstanding_parity=$outstanding_parity parent=$parent_out children=$child_out"
 [[ "${parent_accrued:-0}" != "0" && "${children_sum:-0}" != "0" ]] || fail "zero accrual — batch did not produce DPI rows (parent=$parent_accrued children=$children_sum)"
 
-echo "PASS: SHG parent=$parent_accrued children_sum=$children_sum accrual_parity=$accrual_parity outstanding_parity=$outstanding_parity (LAN $ACCOUNT_NUMBER)"
+echo ">>> dad_column_audit (ACTIVE children tip — all 15 physical columns fail-closed)"
+ROOT="$ROOT" ACCOUNT_NUMBER="$ACCOUNT_NUMBER" python3 - <<'PY'
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(os.environ["ROOT"])
+sys.path.insert(0, str(ROOT / "scripts/testing"))
+sys.path.insert(0, str(ROOT / "scripts/disbursement"))
+
+def query_rows(sql: str):
+    r = subprocess.run(
+        [
+            "psql",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-U",
+            "yugabyte",
+            "-d",
+            "yugabyte",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-t",
+            "-A",
+            "-F",
+            "|",
+            "-c",
+            sql,
+        ],
+        env={**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    lines = [ln for ln in r.stdout.splitlines() if ln.strip()]
+    return [tuple(ln.split("|")) for ln in lines]
+
+from flowtest.dad_column_audit import assert_audit, audit_shg_child_dad_distribute
+
+lan = os.environ["ACCOUNT_NUMBER"]
+result = audit_shg_child_dad_distribute(parent_lan=lan, query_rows=query_rows)
+assert_audit(result)
+PY
+
+echo "PASS: SHG parent=$parent_accrued children_sum=$children_sum accrual_parity=$accrual_parity tip+column_audit OK (LAN $ACCOUNT_NUMBER)"

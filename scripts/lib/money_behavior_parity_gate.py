@@ -32,6 +32,16 @@ _SHG_INT_MARKERS = (
     "grouploan/interest",
 )
 
+# Paths / apis that imply SHG parent→child DPI Accrued distribute behavior
+_SHG_DPI_MARKERS = (
+    "DpiGroupLoanAccrualDistribution",
+    "dpiaccrualcalculation",
+    "dpiAccrualCalculation",
+    "shg_parent_child_parity",
+    "grouploan/dpi",
+    "dad_column_audit",
+)
+
 _WARN_AS_PASS_ANTIPATTERNS = (
     "warn-and-pass",
     "warn only",
@@ -59,6 +69,13 @@ def _pending_implies_shg_int(pending: dict) -> bool:
     return any(m.lower() in blob for m in _SHG_INT_MARKERS)
 
 
+def _pending_implies_shg_dpi(pending: dict) -> bool:
+    blob = " ".join(
+        str(x) for x in (pending.get("files") or []) + (pending.get("apis") or []) + (pending.get("ntest_cases") or [])
+    ).lower()
+    return any(m.lower() in blob for m in _SHG_DPI_MARKERS)
+
+
 def _case_has_iad_column_audit(case: dict) -> bool:
     acc = case.get("acceptance") or {}
     for a in acc.get("db_asserts") or []:
@@ -70,6 +87,23 @@ def _case_has_iad_column_audit(case: dict) -> bool:
         if "iad_column_audit" in checked or "column audit" in assert_txt:
             return True
         if "interest_accrual_details" == str(a.get("table") or "") and (
+            "end_date" in assert_txt or "end_date" in [str(c).lower() for c in cols]
+        ):
+            return True
+    return False
+
+
+def _case_has_dad_column_audit(case: dict) -> bool:
+    acc = case.get("acceptance") or {}
+    for a in acc.get("db_asserts") or []:
+        if not isinstance(a, dict):
+            continue
+        checked = str(a.get("checked_by") or "").lower()
+        assert_txt = str(a.get("assert") or "").lower()
+        cols = a.get("columns") or []
+        if "dad_column_audit" in checked or "column audit" in assert_txt:
+            return True
+        if "dpi_accrual_details" == str(a.get("table") or "") and (
             "end_date" in assert_txt or "end_date" in [str(c).lower() for c in cols]
         ):
             return True
@@ -154,6 +188,67 @@ def check(pending: dict | None = None, reg: dict | None = None) -> list[str]:
                 errors.append(
                     "ship-discipline impact/fix_plan missing tip/end_date/calendar/"
                     "independent-calc behavior parity — do not ship amount-only distribute"
+                )
+
+    if _pending_implies_shg_dpi(pending):
+        parity = reg.get("dpic.shg_parent_child_parity") or {}
+        if not _case_has_dad_column_audit(parity):
+            errors.append(
+                "SHG/DPI money path: dpic.shg_parent_child_parity must declare "
+                "dpi_accrual_details column audit (end_date/tip + accrued) via "
+                "dad_column_audit — amount-only sum parity is not enough"
+            )
+        note_blob = " ".join(
+            str(x).lower()
+            for x in (
+                (parity.get("acceptance") or {}).get("note"),
+                parity.get("note"),
+                *(
+                    (a.get("assert") or "")
+                    for a in ((parity.get("acceptance") or {}).get("db_asserts") or [])
+                    if isinstance(a, dict)
+                ),
+            )
+            if x
+        )
+        for pat in _WARN_AS_PASS_ANTIPATTERNS:
+            if pat in note_blob and "fail-closed" not in note_blob:
+                if "tip" in note_blob or "calendar" in note_blob or "amount-only" in note_blob:
+                    errors.append(
+                        f"SHG/DPI acceptance allows '{pat}' — money calendar/column defects "
+                        "must FAIL closed (independent-calc behavior parity)"
+                    )
+                    break
+        disc = _load(ROOT / ".cursor" / ".ship-discipline.json")
+        if disc and (disc.get("tier") or "").lower() == "money":
+            impact = " ".join(
+                str(disc.get(k) or "")
+                for k in (
+                    "minimal_fix",
+                    "layers_dropped",
+                    "fix_plan",
+                )
+            ).lower()
+            fp = disc.get("fix_plan") if isinstance(disc.get("fix_plan"), dict) else {}
+            impact += " " + " ".join(str(v).lower() for v in (fp or {}).values())
+            ia = disc.get("impact_analysis") if isinstance(disc.get("impact_analysis"), dict) else {}
+            impact += " " + " ".join(str(v).lower() for v in (ia or {}).values())
+            if not any(
+                k in impact
+                for k in (
+                    "tip",
+                    "end_date",
+                    "calendar",
+                    "behavior parity",
+                    "independent",
+                    "distribute",
+                    "dad_column",
+                    "asof",
+                )
+            ):
+                errors.append(
+                    "SHG/DPI ship-discipline impact/fix_plan missing tip/end_date/calendar/"
+                    "distribute behavior parity — do not ship amount-only DPI distribute"
                 )
 
     return errors
