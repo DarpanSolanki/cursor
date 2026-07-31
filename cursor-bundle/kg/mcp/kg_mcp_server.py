@@ -35,6 +35,7 @@ TOOL_TIMEOUT_S: dict[str, float] = {
     "mcp_auth": 1.0,
     "kg_watermark": 2.0,
     "kg_search": 2.0,
+    "kg_concept": 2.0,
     "kg_flow": 2.0,
     "kg_crud": 2.0,
     "kg_writes": 2.0,
@@ -175,9 +176,19 @@ TOOLS = {
     "kg_search": {
         "description": (
             "Full-text node search (FTS5). Smallest query first. "
-            "Numeric/ACCT_* queries also deepen error-code precedents (ex-kg_error)."
+            "Numeric/ACCT_* queries also deepen error-code precedents (ex-kg_error). "
+            "Prefers semantics/framework kinds (entity, txn_type, framework, …) when present."
         ),
         "args": ["search"],
+        "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    },
+    "kg_concept": {
+        "description": (
+            "DOMAIN SEMANTICS + FRAMEWORK bone lookup (what is X / how substrate behaves). "
+            "Kinds: entity, txn_type, gl_mech, batch_cfg, redis_key, framework, server. "
+            "LEAN extension — use when kg_search IDs are not enough; returns purpose/note/UNKNOWN/src."
+        ),
+        "args": ["concept"],
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     "kg_cases": {

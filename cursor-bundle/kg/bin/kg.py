@@ -22,6 +22,7 @@ Commands:
   fixed-elsewhere <query> [--repo R] [--base B]
                                   verified higher-branch fixes + file-touch candidates (read-only)
   table <name>                   a table: owning repo + entity + cases that touched it + docs
+  concept <name>                 DOMAIN SEMANTICS / FRAMEWORK bone (entity|txn_type|gl_mech|framework|…)
   error <code>                   cases that hit an error code (who hit it, fix SHA)
   why [<request/processor/table/symptom>]   FAILURE-MODE catalog — the silent decision-points where bugs hide (wrong/zero/null/empty/missing/reverted). `kg why <request>` = the whole flow's silent surface. The 'pinpoint any issue' entrypoint.
   doctor                         health + freshness + branch-watermark drift (sources newer than kg.db, repo moved off built branch)
@@ -34,7 +35,7 @@ Commands:
 Node ids are typed: request:  processor:  service:  api:  doc:  table:  case:  error:  diag:
 Partial ids resolve when unambiguous (e.g. `flow disburseLoan`, `deps accounting`).
 """
-import os, sys, sqlite3, re
+import os, sys, sqlite3, re, json
 
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
@@ -119,6 +120,10 @@ def cmd_stats(c,a):
     print("total:", c.execute("SELECT count(*) FROM nodes").fetchone()[0], "nodes,",
           c.execute("SELECT count(*) FROM edges").fetchone()[0], "edges")
 
+_SEMANTICS_KINDS = (
+    "entity", "txn_type", "gl_mech", "batch_cfg", "redis_key", "framework", "server", "activation",
+)
+
 def cmd_search(c,a):
     q=" ".join(a)
     # Error-code fold (MCP kg_error removed): numeric / ACCT_* → deepen via cmd_error first.
@@ -131,8 +136,120 @@ def cmd_search(c,a):
                        "WHERE node_fts MATCH ? LIMIT 50", (q+"*",)).fetchall()
     except sqlite3.OperationalError:
         rows=c.execute("SELECT kind,id,role,repo FROM nodes WHERE id LIKE ? LIMIT 50",(f"%{q}%",)).fetchall()
-    for r in rows: print(f"{r[0]:9} {r[1]:55} {r[2] or r[3] or ''}")
-    print(f"-- {len(rows)} match(es)")
+    # Prefer semantics/framework kinds when present (surface bone answers first)
+    pref = [r for r in rows if r[0] in _SEMANTICS_KINDS]
+    rest = [r for r in rows if r[0] not in _SEMANTICS_KINDS]
+    ordered = pref + rest
+    for r in ordered: print(f"{r[0]:9} {r[1]:55} {r[2] or r[3] or ''}")
+    print(f"-- {len(ordered)} match(es)")
+
+def cmd_concept(c,a):
+    """Domain semantics + framework bone lookup (LEAN — no new MCP tool required).
+
+    Usage: kg concept <name>   e.g. LOAN_PREPAYMENT | loan_due_details | autoflush | Redis TTL
+    """
+    if not a:
+        print("usage: kg concept <entity|txn_type|framework keyword>")
+        print("kinds:", ", ".join(_SEMANTICS_KINDS))
+        return
+    q = " ".join(a).strip()
+    aliases = {
+        "transaction boundary": "spring.txn",
+        "txn boundary": "spring.txn",
+        "orchestrator txn": "spring.txn",
+        "server.port": "server:",
+        "tomcat": "server:",
+        "chunk": "batch_cfg",
+        "skip retry": "batch_cfg",
+        "iad": "interest_accrual_details",
+        "loan_account_dues": "loan_due_details",  # no such table — redirect with note
+    }
+    ql = q.lower()
+    redirect_note = None
+    if ql in aliases:
+        if ql == "loan_account_dues":
+            redirect_note = (
+                "NOTE: no @Entity/@Table loan_account_dues in money repos — "
+                "closest typed entity is loan_due_details (per-component dues)."
+            )
+        q = aliases[ql]
+    # Exact id / label first across semantics kinds
+    rows = c.execute(
+        "SELECT kind,id,label,json FROM nodes WHERE kind IN ({}) AND "
+        "(id=? OR id=? OR id=? OR id=? OR id=? OR id=? OR label=? OR id LIKE ? OR label LIKE ?) "
+        "LIMIT 40".format(",".join("?" * len(_SEMANTICS_KINDS))),
+        (*_SEMANTICS_KINDS,
+         f"entity:{q}", f"txn_type:{q}", f"framework:{q}", f"gl_mech:{q}", f"redis_key:{q}",
+         f"batch_cfg:{q}",
+         q, f"%{q}%", f"%{q}%"),
+    ).fetchall()
+    if not rows:
+        # FTS fallback restricted to semantics kinds
+        try:
+            rows = c.execute(
+                "SELECT n.kind,n.id,n.label,n.json FROM node_fts f JOIN nodes n ON n.id=f.id "
+                "WHERE n.kind IN ({}) AND node_fts MATCH ? LIMIT 30".format(
+                    ",".join("?" * len(_SEMANTICS_KINDS))
+                ),
+                (*_SEMANTICS_KINDS, q.replace(":", " ") + "*"),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+    if not rows and q.startswith("server:"):
+        rows = c.execute(
+            "SELECT kind,id,label,json FROM nodes WHERE kind='server' LIMIT 20"
+        ).fetchall()
+    if not rows and q == "batch_cfg":
+        rows = c.execute(
+            "SELECT kind,id,label,json FROM nodes WHERE kind='batch_cfg' AND json LIKE '%chunk%' LIMIT 15"
+        ).fetchall()
+    if not rows:
+        print("not found — try kg search, or check UNKNOWN semantics index (kg node semantics:unknown_index)")
+        return
+    # Prefer exact label / exact entity:id / framework containing query
+    def _rank(row):
+        kind, nid, label, _js = row
+        if label == q or nid.endswith(":" + q) or nid == q:
+            return 0
+        if nid == f"entity:{q}" or nid == f"txn_type:{q}":
+            return 0
+        if q in nid or q in (label or ""):
+            return 1
+        return 2
+    rows = sorted(rows, key=_rank)
+    if redirect_note:
+        print(redirect_note)
+    for kind, nid, label, js in rows[:12]:
+        try:
+            o = json.loads(js)
+        except Exception:
+            o = {}
+        print(f"=== {kind}  {nid}  ({label}) ===")
+        if o.get("purpose"):
+            print(f"purpose: {o['purpose']}")
+        if o.get("note"):
+            print(f"note: {o['note']}")
+        if o.get("unknown"):
+            print(f"UNKNOWN: {o['unknown']}")
+        if o.get("key_columns"):
+            print(f"key_columns: {', '.join(o['key_columns'][:16])}")
+        if o.get("creators"):
+            for cr in o["creators"][:5]:
+                print(f"  creator: {cr.get('src')}")
+        if o.get("chunk") is not None:
+            print(f"chunk: {o['chunk']}")
+        if o.get("port") is not None:
+            print(f"port: {o['port']}")
+        if o.get("ttl"):
+            print(f"ttl: {o['ttl']}  {o.get('ttl_notes') or ''}")
+        print(f"src: {o.get('src') or '?'}")
+        outs = c.execute(
+            "SELECT rel,dst_id,note FROM edges WHERE src_id=? ORDER BY rel LIMIT 12", (nid,)
+        ).fetchall()
+        for e in outs:
+            print(f"  -{e[0]}-> {e[1]}  {e[2] or ''}")
+        print()
+
 
 def cmd_node(c,a):
     nid=resolve(c,a[0])
@@ -288,6 +405,17 @@ def cmd_impact(c,a):
     if acc:
         print(f"IMPACT KG train: accounting={acc.get('branch','?')}@{acc.get('sha','?')} "
               f"(built {wm.get('built_at','?')}) — misaligned? kg align --repo trustt-platform-accounting --branch <train>")
+    # Framework-aware warning when touching platform-lib paths / framework nodes
+    q0 = pos[0]
+    if ("platform-lib" in q0 or "infra-" in q0 or str(nid).startswith("framework:")
+            or str(nid).startswith("activation:framework")):
+        print("FRAMEWORK WARNING: change under platform-lib / framework:* has cross-service blast radius "
+              "(all services scanning in.novopay). See kg concept platform_lib / framework:platform_lib.blast_radius.")
+        blast = c.execute(
+            "SELECT id,label FROM nodes WHERE id='framework:platform_lib.blast_radius' OR id LIKE 'framework:%' LIMIT 8"
+        ).fetchall()
+        for b in blast:
+            print(f"  framework-hint: {b[0]}  {b[1]}")
     rows=c.execute("""
       WITH RECURSIVE up(id,d) AS (
         VALUES(?,0)
@@ -850,6 +978,22 @@ def cmd_doctor(c,a):
         print(f"DB-ACCESS: {nwith}/{nproc} processors carry a CRUD edge ({nda} reads/writes/deletes) — `kg crud <flow>` / `kg writes <table>`")
     else:
         print("DB-ACCESS: no CRUD edges — run build.sh (build_dataaccess) to fold the DB-op layer in.")
+    # Semantics + framework bone coverage (staleness signal if kinds missing after rebuild)
+    sk = dict(c.execute(
+        "SELECT kind,count(*) FROM nodes WHERE kind IN ('entity','txn_type','gl_mech','batch_cfg',"
+        "'redis_key','framework','server','activation') GROUP BY kind"
+    ).fetchall())
+    if sk:
+        print(f"SEMANTICS-BONE: {sk} — `kg concept <name>` / search prefers these kinds")
+    else:
+        print("SEMANTICS-BONE: MISSING — run build.sh (build_semantics_bone + build_activation); doctor expects these kinds after rebuild.")
+    # Rebuild staleness: builder script newer than kg.db
+    bone = os.path.join(HERE, "build_semantics_bone.py")
+    try:
+        if os.path.isfile(bone) and os.path.getmtime(bone) > dbm:
+            print("STALE-BONE: build_semantics_bone.py newer than kg.db — force rebuild to refresh semantics/framework nodes.")
+    except OSError:
+        pass
 
 def cmd_crud(c,a):
     """The full DB footprint of a flow: every processor's reads/writes/deletes, then the
@@ -1142,7 +1286,7 @@ def cmd_fixed_elsewhere(c,a):
 
 CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"deps":cmd_deps,
       "docs":cmd_docs,"neighbors":cmd_neighbors,"impact":cmd_impact,"path":cmd_path,"sql":cmd_sql,
-      "cases":cmd_cases,"table":cmd_table,"error":cmd_error,"why":cmd_why,"config":cmd_why,"doctor":cmd_doctor,"stale":cmd_stale,
+      "cases":cmd_cases,"table":cmd_table,"concept":cmd_concept,"error":cmd_error,"why":cmd_why,"config":cmd_why,"doctor":cmd_doctor,"stale":cmd_stale,
       "watermark":cmd_watermark,"crud":cmd_crud,"writes":cmd_writes,"reads":cmd_reads,"deletes":cmd_deletes,
       "fresh":cmd_fresh,"validate":cmd_validate,"orient":cmd_orient,"align":cmd_align,
       "fixed-elsewhere":cmd_fixed_elsewhere}
@@ -1150,7 +1294,7 @@ CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"dep
 # Commands that READ knowledge (must be branch-correct). doctor/watermark/stats report drift
 # themselves, so they're excluded to avoid a double banner.
 _KNOWLEDGE_CMDS={"search","node","flow","deps","docs","neighbors","impact","path","sql",
-                 "cases","table","error","why","config","crud","writes","reads","deletes",
+                 "cases","table","concept","error","why","config","crud","writes","reads","deletes",
                  "orient","fixed-elsewhere"}
 # align is intentionally NOT auto-rebuilding — it reports watermark mismatch for a named train
 

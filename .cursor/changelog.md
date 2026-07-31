@@ -1,3 +1,7 @@
+## 2026-07-31 — SEMANTICS + FRAMEWORK BONE
+- KG layer: `entity`/`txn_type`/`gl_mech`/`batch_cfg`/`redis_key`/`framework`/`server` via `build_semantics_bone.py`; wired `build_activation.py`; `kg concept` + MCP `kg_concept`; doctor SEMANTICS-BONE; impact framework warning.
+- Provenance-only (no invented GL accounts). Query: `kg concept LOAN_PREPAYMENT` / `autoflush` / `loan_due_details`.
+
 ## 2026-07-31 — empty pending after GC is PASS
 - ship-loop-gate + autopilot end: GC-cleared pending → PASS (not exit 2).
 

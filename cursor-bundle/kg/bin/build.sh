@@ -55,6 +55,10 @@ python3 "$BIN/build_java_symbols.py" $REPOS         >> "$tmp"
 python3 "$BIN/build_money_concepts.py" "$tmp" $REPOS >> "$tmp"
 python3 "$BIN/build_kafka.py" "$tmp" $REPOS       >> "$tmp"
 python3 "$BIN/build_schedulers.py" "$tmp"         >> "$tmp"
+# DOMAIN SEMANTICS + FRAMEWORK LAYER (entity/txn_type/gl_mech/batch_cfg/redis_key/framework/server)
+python3 "$BIN/build_semantics_bone.py" "$tmp" $REPOS >> "$tmp"
+# Activation/wiring (api_master + platform-lib anchors) — was built but unwired
+python3 "$BIN/build_activation.py" "$tmp"         >> "$tmp"
 python3 "$BIN/build_cases.py" "$tmp"              >> "$tmp"
 python3 "$BIN/build_curated.py"                   >> "$tmp"
 python3 "$BIN/build_docs.py" "$tmp"               >> "$tmp"

@@ -1,3 +1,8 @@
+## 2026-07-31 | workspace | kg | semantics+framework bone
+- Builders: build_semantics_bone.py + wire build_activation; kinds entity/txn_type/gl_mech/batch_cfg/redis_key/framework/server
+- Query: `kg concept` / MCP kg_concept; doctor SEMANTICS-BONE; impact platform-lib warning
+- Honesty: product GL accounts / Kafka DLQ / Tomcat pools / skip-retry often UNKNOWN
+
 ## 2026-07-31 | acct `af52abe3d` | accounting | mfi_integration_v3.4.2.4 | kg-flow | interestAccrualPosting soft-skip mid-month IAD
 - apiName: interestAccrualPosting; tables: interest_accrual_details
 - Batch InterestAccrualBookingBatchService continues past non-booking-day unposted IAD (was return false abort); L2 skip log; defect LMS-DEFECT-accrual-booking-abort
