@@ -81,3 +81,5 @@
 - feedback_jira_mcp_parent_not_shell_subagent.md — JIRA enrich: parent CallMcpTool, not shell subagent
 
 - **SHG-only children:** only SHG has child LANs; JLG/INDL do not — `reference_shg_only_has_child_lans.md`
+
+- **Ship-loop credit PASS:** skip re-fire when pending fingerprint matches — `feedback_ship_credit_pass_skip_refire.md`

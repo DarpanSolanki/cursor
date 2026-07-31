@@ -100,6 +100,7 @@ scripts/lib/flyway_checksum/*.class
 !scripts/workspace-backlog.json
 .cursor/query-plan-evidence/
 .cursor/.query-plan-gate-result.json
+.cursor/.ntest-pass-credits.json
 
 # X4 orient-before-edit session state (ephemeral)
 .cursor/kg-orient-session.json

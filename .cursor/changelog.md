@@ -1,3 +1,6 @@
+## 2026-07-31 — ship-loop credit PASS skip re-fire (TAT)
+- `ship_credit_pass.py` + ntest record + ship-loop `SKIP CREDIT` when pending fingerprint matches recent PASS. Env: SHIP_CREDIT_PASS / SHIP_FORCE_REFIRE / SHIP_CREDIT_PASS_MAX_AGE_S.
+
 ## 2026-07-31 — flowtest e2e lock harness (owner + wait + stack-doctor)
 - `lock.py`: owner meta, `FLOWTEST_LOCK_WAIT_S` (default 120), clear busy msg; `flowtest-lock-status.sh`; stack-doctor clears only flock-free stale files.
 - Memory: `feedback_flowtest_e2e_lock_smooth.md`. L2: ship-loop same-case PASS skip while lock held — deferred.

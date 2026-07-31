@@ -287,8 +287,21 @@ fi
 if [[ ${#_SMART_CASES[@]} -gt 0 ]]; then
   _IMPACT_SCOPED="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if d.get('impact_scoped') or d.get('dpi_scoped') else 'no')" 2>/dev/null || echo no)"
   echo "→ smart ntest (impact-scoped=${_IMPACT_SCOPED}): ${_SMART_CASES[*]}"
+  python3 "$ROOT/scripts/lib/ship_credit_pass.py" filter \
+    $(for c in "${_SMART_CASES[@]}"; do printf ' --case %q' "$c"; done) 2>/dev/null \
+    | while IFS= read -r _cl; do
+        [[ -n "$_cl" ]] && echo "  $_cl"
+      done || true
 fi
 [[ ${#APIS[@]} -gt 0 ]] && echo "→ KG-resolved apis: ${APIS[*]}"
+
+_credit_skip_ntest() {
+  # Credit recent PASS with matching pending fingerprint — skip re-fire (TAT).
+  # SHIP_CREDIT_PASS=0 or SHIP_FORCE_REFIRE=1 disables.
+  local case_id="$1"
+  python3 "$ROOT/scripts/lib/ship_credit_pass.py" eligible --case "$case_id" 2>/dev/null \
+    | grep -q ': YES '
+}
 
 _run_ntest() {
   local case_id="$1"
@@ -303,6 +316,15 @@ _run_ntest() {
     [[ "$c" == "$case_id" ]] && idx=$((i + 1)) && break
   done
   [[ "$idx" -eq 0 ]] && idx=1
+  if _credit_skip_ntest "$case_id"; then
+    local why
+    why="$(python3 "$ROOT/scripts/lib/ship_credit_pass.py" eligible --case "$case_id" 2>/dev/null | head -1)"
+    echo "[$idx/$n] SKIP CREDIT $case_id — ${why#*: }"
+    python3 "$ROOT/scripts/lib/ship_progress.py" start "$idx" "$n" "$case_id" "$budget"
+    python3 "$ROOT/scripts/lib/ship_progress.py" end "$idx" "$n" "$case_id" PASS 0 \
+      "$(python3 -c "import json; print(json.dumps({'fire_flow_ms': 0, 'credit_pass': True}))")"
+    return 0
+  fi
   python3 "$ROOT/scripts/lib/ship_progress.py" start "$idx" "$n" "$case_id" "$budget"
   start_ts=$(date +%s)
   # Phase: fire+flow (ntest owns fixture/fire/wait/asserts — heartbeat while silent)

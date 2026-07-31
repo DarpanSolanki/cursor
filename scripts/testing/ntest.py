@@ -159,6 +159,26 @@ def _telemetry(case_id: str, passed: bool, duration_s: float = 0.0) -> None:
         append_case_result(case_id, passed, duration_s)
     except Exception:
         pass
+    if passed:
+        try:
+            import sys
+
+            sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+            from ship_credit_pass import record_pass
+
+            record_pass(case_id, duration_s)
+        except Exception:
+            pass
+    else:
+        try:
+            import sys
+
+            sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+            from ship_credit_pass import clear_pass
+
+            clear_pass(case_id)
+        except Exception:
+            pass
 
 
 def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
