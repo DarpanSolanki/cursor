@@ -35,9 +35,17 @@ echo "=== stack-doctor ==="
 
 # --- Sticky pending GC (clean+pushed zombies) ---
 if [[ -f "$ROOT/.cursor/.pending-ship-work.json" ]]; then
-  _gc_out="$(python3 "$ROOT/scripts/lib/pending_ship_gc.py" 2>/dev/null || true)"
+  _gc_out="$(bash "$ROOT/scripts/bin/pending-ship-gc.sh" 2>/dev/null || true)"
   if [[ -n "$_gc_out" ]]; then
     note_ok "pending_gc:$_gc_out"
+  fi
+fi
+
+# --- Flowtest e2e lock visibility (non-blocking) ---
+if [[ -x "$ROOT/scripts/bin/flowtest-lock-status.sh" ]]; then
+  _fl="$(bash "$ROOT/scripts/bin/flowtest-lock-status.sh" 2>/dev/null | head -1 || true)"
+  if [[ -n "$_fl" ]]; then
+    note_ok "flowtest_lock:${_fl}"
   fi
 fi
 

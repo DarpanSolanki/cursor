@@ -34,6 +34,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `ensure-dpi-branches.sh` | Verify DPI feature repos are on feature/delayed_payment_interest | — |
 | `env-smoke.sh` | Env connectivity smoke — ping configured wrappers; write results into workspace-ops-state. | scripts/bin/agent-ops.sh, scripts/bin/workspace-doctor.sh |
 | `flow-onboard.sh` | Onboard a new orchestration apiName into local test harness. | scripts/bin/super-machine-smoke.sh, scripts/testing/flow_trace.py |
+| `flowtest-lock-status.sh` | Print flowtest e2e lock status: held Y/N + owner metadata. | scripts/bin/stack-doctor.sh |
 | `flyway-checksum.sh` | Compute Flyway 5.2.4 migration checksum (matches mfi_accounting.flyway_schema_history). | — |
 | `flyway-prod-deploy-pack.sh` | Generate production deploy SQL: DDL + flyway_schema_history INSERT (manual prod path). | — |
 | `foreclosure-local-setup.sh` | One-shot local setup for foreclosure E2E (accounting + payments schema + service endpoints | — |
@@ -65,6 +66,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `ntest.sh` | Canonical ntest entry (SU-STITCH-001): always prefer scripts/bin/ntest.sh over | scripts/bin/accounting-flow-proof.sh, scripts/bin/flow-onboard.sh, scripts/bin/ship-loop-gate.sh, scripts/bin/workspace-smoke.sh, scripts/lib/pipeline_chain_audit.py, scripts/lib/ship_test_plan.py, scripts/testing/agent_router.py, scripts/testing/flow_scaffold.py |
 | `open-final.sh` | Resolve workspace path(s) for a forwardable final file. | — |
 | `ops-bin-hygiene.sh` | Fail if a NEW scripts/bin/*.sh has zero references (pre-U5 orphans grandfathered). | scripts/bin/ship-loop-gate.sh |
+| `pending-ship-gc.sh` | Drop clean+pushed zombie paths from .pending-ship-work.json | scripts/bin/stack-doctor.sh |
 | `platform-scan.sh` | Parallel platform scan — map + contracts + chains in one pass. | scripts/bin/intel-automation.sh, scripts/testing/agent_router.py, scripts/testing/intelligence_hub.py |
 | `pr-review.sh` | Read-only GitHub PR evidence collector. Never checks out, comments, or mutates a PR. | scripts/testing/agent_router.py |
 | `purge-local-dpi.sh` | Wipe all local DPI accruals/dues/GL txns + drop agent backup tables. Local only. | — |
@@ -90,7 +92,7 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `test-map.sh` | Alias kept for muscle-memory: test-map.sh → sync-test-intelligence.sh | scripts/bin/sync-test-intelligence.sh |
 | `workspace-autopilot.sh` | Workspace autopilot — zero manual ops for agents. | .cursor/hooks/post-ntest-intel-sync.sh, .cursor/hooks/stop-ship-nudge.sh, .cursor/hooks/workspace-autopilot-session.sh, scripts/bin/super-machine-smoke.sh, scripts/lib/infer_ship_apis.py, scripts/testing/corroborate.py, scripts/testing/workspace_autopilot.py |
 | `workspace-bootstrap.sh` | Compatibility entry — prefer workspace-verify / workspace-doctor. | — |
-| `workspace-close.sh` | Single task-close entry: fresh KG → ship-loop → sync → knowledge gate → hygiene. | .cursor/hooks/after-money-path-edit.sh, .cursor/hooks/pre-push-checklist.sh, scripts/bin/push-origin.sh, scripts/bin/workspace-smoke.sh, scripts/lib/infer_ship_apis.py, scripts/lib/pipeline_chain_audit.py, scripts/lib/register_pending_ship.py, scripts/testing/corroborate.py |
+| `workspace-close.sh` | Single task-close entry: fresh KG → ship-loop → sync → knowledge gate → hygiene. | .cursor/hooks/after-money-path-edit.sh, .cursor/hooks/pre-push-checklist.sh, scripts/bin/push-origin.sh, scripts/bin/workspace-smoke.sh, scripts/lib/infer_ship_apis.py, scripts/lib/pending_ship_gc.py, scripts/lib/pipeline_chain_audit.py, scripts/lib/register_pending_ship.py |
 | `workspace-disk-clean.sh` | Smart disk cleanup for sliProd — service archived logs, scratch, pycache, large ops logs. | scripts/bin/workspace-max-pass.sh, scripts/testing/super_agent.py, scripts/testing/workspace_autopilot.py |
 | `workspace-doctor.sh` | Unified workspace health — KG, hooks, DB, registry, optional services. | scripts/bin/workspace-bootstrap.sh, scripts/bin/workspace-sanity.sh |
 | `workspace-health.sh` | Fast workspace health (~1–3s) — no ntest, no workspace-close, no full KG rebuild. | scripts/bin/super-machine-smoke.sh, scripts/bin/workspace-max-pass.sh, scripts/testing/workspace_autopilot.py |
@@ -101,5 +103,5 @@ Regenerate: `bash scripts/bin/build-ops-index.sh` (also via intel-session-sync h
 | `workspace-verify.sh` | Back-compat entrypoint: older rules/tools call `workspace-verify.sh`. | scripts/bin/install-user-cursor-gates.sh, scripts/bin/workspace-bootstrap.sh |
 | `write-intelligence-hub.sh` | Regenerate session intelligence hub (--fast skips slow kg subprocess). | scripts/bin/ship-knowledge-gate.sh, scripts/bin/smoke-workspace.sh, scripts/bin/sync-intelligence.sh, scripts/bin/sync-test-intelligence.sh, scripts/bin/workspace-close.sh, scripts/bin/workspace-sanity.sh, scripts/testing/agent_router.py, scripts/testing/workspace_autopilot.py |
 
-_Generated 96 entries._
+_Generated 98 entries._
 
