@@ -72,6 +72,14 @@ def register_paths(
     pending_path.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    # Drop clean+pushed zombies before merge — sticky pending root cause.
+    try:
+        from pending_ship_gc import gc_pending  # noqa: WPS433
+
+        gc_pending(root)
+    except Exception:
+        pass
+
     data: dict = {
         "tier": "workspace",
         "files": [],

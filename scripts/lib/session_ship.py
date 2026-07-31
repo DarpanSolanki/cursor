@@ -75,17 +75,24 @@ def auto_close_mode(root: Path | None = None) -> str:
     if os.environ.get("WORKSPACE_AUTOPILOT_FORCE_CLOSE", "") == "1":
         return "full"
 
+    sys_path = str(root / "scripts/lib")
+    if sys_path not in __import__("sys").path:
+        __import__("sys").path.insert(0, sys_path)
+    try:
+        from pending_ship_gc import gc_pending  # noqa: WPS433
+
+        gc_pending(root)
+    except Exception:
+        pass
+
     pending_p = root / ".cursor/.pending-ship-work.json"
     passed_p = root / ".cursor/.ship-loop-passed.json"
     if not pending_p.is_file():
         return "none"
 
-    sys_path = str(root / "scripts/lib")
-    if sys_path not in __import__("sys").path:
-        __import__("sys").path.insert(0, sys_path)
     from ship_push_gate import ship_loop_satisfied  # noqa: WPS433
 
-    if ship_loop_satisfied(pending_p, passed_p, root):
+    if ship_loop_satisfied(pending_p, passed_p):
         return "none"
 
     if not session_ship_active(root):
@@ -118,7 +125,7 @@ def auto_close_reason(root: Path | None = None) -> str:
         return "no pending"
     from ship_push_gate import ship_loop_satisfied  # noqa: WPS433
 
-    if ship_loop_satisfied(root / ".cursor/.pending-ship-work.json", root / ".cursor/.ship-loop-passed.json", root):
+    if ship_loop_satisfied(root / ".cursor/.pending-ship-work.json", root / ".cursor/.ship-loop-passed.json"):
         return "already satisfied"
     if not session_ship_active(root):
         return "stale pending (no session ship touch)"

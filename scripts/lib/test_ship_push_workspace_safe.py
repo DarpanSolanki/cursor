@@ -48,7 +48,8 @@ class WorkspacePushSafeShipRoutingTest(unittest.TestCase):
             is_workspace_push_safe_paths(["scripts/scratch/indl_int_stitch/run_indl_int.py"])
         )
 
-    def test_harness_head_skips_sticky_money_pending(self) -> None:
+    def test_harness_head_skips_and_gc_drops_pushed_money(self) -> None:
+        """Harness push must not money-close; clean+pushed service zombies are GC'd."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             cursor = root / ".cursor"
@@ -68,20 +69,75 @@ class WorkspacePushSafeShipRoutingTest(unittest.TestCase):
             (cursor / ".pending-ship-work.json").write_text(
                 json.dumps(pending), encoding="utf-8"
             )
+
+            def _unshipped(_root: Path, rel: str) -> tuple[bool, str]:
+                # Only a dirty accounting file would stay; Foo is pushed → drop
+                if "Foo.java" in rel:
+                    return False, "clean-and-pushed"
+                if "scratch" in rel:
+                    return False, "scratch"
+                return False, "clean-and-pushed"
+
             with mock.patch("ship_push_gate.ROOT", root), mock.patch(
                 "ship_push_gate.is_knowledge_only_head", return_value=False
             ), mock.patch(
                 "ship_push_gate.is_workspace_push_safe_head", return_value=True
+            ), mock.patch(
+                "pending_ship_gc.path_unshipped", side_effect=_unshipped
+            ), mock.patch(
+                "pending_ship_gc.ROOT", root
+            ):
+                self.assertTrue(should_skip_auto_close_for_knowledge_head(root))
+            self.assertFalse((cursor / ".pending-ship-work.json").is_file())
+
+    def test_harness_head_keeps_dirty_unpushed_money(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cursor = root / ".cursor"
+            cursor.mkdir()
+            pending = {
+                "tier": "money",
+                "files": [
+                    "trustt-platform-accounting/src/main/java/Foo.java",
+                    "scripts/disburse_loan_sanity.py",
+                ],
+                "apis": ["interestAccrualCalculation"],
+                "repos": ["trustt-platform-accounting"],
+            }
+            (cursor / ".pending-ship-work.json").write_text(
+                json.dumps(pending), encoding="utf-8"
+            )
+
+            def _unshipped(_root: Path, rel: str) -> tuple[bool, str]:
+                if "Foo.java" in rel:
+                    return True, "dirty"
+                return False, "clean-and-pushed"
+
+            with mock.patch("ship_push_gate.ROOT", root), mock.patch(
+                "ship_push_gate.is_knowledge_only_head", return_value=False
+            ), mock.patch(
+                "ship_push_gate.is_workspace_push_safe_head", return_value=True
+            ), mock.patch(
+                "pending_ship_gc.path_unshipped", side_effect=_unshipped
+            ), mock.patch(
+                "pending_ship_gc.ROOT", root
+            ), mock.patch(
+                "pending_ship_gc.rebuild_pending",
+                return_value={
+                    "tier": "money",
+                    "files": ["trustt-platform-accounting/src/main/java/Foo.java"],
+                    "apis": ["interestAccrualCalculation"],
+                    "repos": ["trustt-platform-accounting"],
+                    "registry_cases": [],
+                    "ntest_cases": [],
+                    "updated_at": "2026-07-31T00:00:00Z",
+                    "source": "gc",
+                },
             ):
                 self.assertTrue(should_skip_auto_close_for_knowledge_head(root))
             left = json.loads((cursor / ".pending-ship-work.json").read_text(encoding="utf-8"))
             self.assertEqual(
                 ["trustt-platform-accounting/src/main/java/Foo.java"],
-                left.get("files") or [],
-            )
-            self.assertNotIn("scripts/disburse_loan_sanity.py", left.get("files") or [])
-            self.assertNotIn(
-                "scripts/scratch/shg_int_distribute/run_live_multiwindow.py",
                 left.get("files") or [],
             )
 

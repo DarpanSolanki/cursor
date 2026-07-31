@@ -87,15 +87,22 @@ def should_skip_auto_close_for_knowledge_head(repo_dir: Path | None = None) -> b
       - knowledge/docs/KG gate scripts (legacy)
       - workspace harness-only HEAD (disburse_* / neft_v2 / scripts/testing / .gitignore)
 
-    Sticky pending money from earlier accounting ships must NOT force a full
-    money ship-loop on a cursor harness/docs push. Service files stay in
-    pending for the next trustt-*/novopay-* product push.
+    Sticky money that is already clean+pushed is GC'd (pending_ship_gc). Only
+    dirty/unpushed service paths remain — and they must NOT force a money
+    ship-loop on a harness/docs push.
     """
     repo = repo_dir or ROOT
     if not (is_knowledge_only_head(repo) or is_workspace_push_safe_head(repo)):
         return False
     try:
         _prune_non_service_paths_from_pending()
+    except Exception:
+        pass
+    try:
+        sys.path.insert(0, str(ROOT / "scripts/lib"))
+        from pending_ship_gc import gc_pending  # noqa: WPS433
+
+        gc_pending(ROOT)
     except Exception:
         pass
     return True

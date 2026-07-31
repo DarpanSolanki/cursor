@@ -83,3 +83,5 @@
 - **SHG-only children:** only SHG has child LANs; JLG/INDL do not — `reference_shg_only_has_child_lans.md`
 
 - **Ship-loop credit PASS:** skip re-fire when pending fingerprint matches — `feedback_ship_credit_pass_skip_refire.md`
+
+- **Pending ship GC:** drop clean+pushed zombies — `feedback_pending_ship_gc_no_sticky.md`

@@ -1,3 +1,6 @@
+## 2026-07-31 — pending-ship GC (no forever sticky money)
+- `pending_ship_gc.py`: drop clean+pushed paths; keep dirty/unpushed. Wired into register, harness push-skip, session auto-close, stack-doctor. CLI `pending-ship-gc.sh`.
+
 ## 2026-07-31 — ship-loop credit PASS skip re-fire (TAT)
 - `ship_credit_pass.py` + ntest record + ship-loop `SKIP CREDIT` when pending fingerprint matches recent PASS. Env: SHIP_CREDIT_PASS / SHIP_FORCE_REFIRE / SHIP_CREDIT_PASS_MAX_AGE_S.
 

@@ -14,9 +14,13 @@ apply (harness ≠ knowledge allowlist).
 
 - `ship_change_scope.is_workspace_push_safe_paths` — HEAD has zero service-repo paths
 - `ship_push_gate.should_skip_auto_close_for_knowledge_head` — also skips for
-  workspace-safe HEAD; prunes harness/scratch/kb from pending; **keeps** service money
-- `register_pending_ship` — never register `scripts/scratch/**`
+  workspace-safe HEAD; prunes harness/scratch/kb from pending; then
+  **`pending_ship_gc`** drops clean+pushed service zombies (no forever sticky money).
+  Only dirty/unpushed service paths remain.
+- `register_pending_ship` — never register `scripts/scratch/**`; GC before merge
 - Regression: `scripts/lib/test_ship_push_workspace_safe.py`
+
+See also: `feedback_pending_ship_gc_no_sticky.md` (2026-07-31 — sticky once-and-for-all).
 
 ## Not KG MCP
 

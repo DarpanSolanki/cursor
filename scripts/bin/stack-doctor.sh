@@ -33,6 +33,14 @@ export PGPASSWORD="${PGPASSWORD:-yugabyte}"
 
 echo "=== stack-doctor ==="
 
+# --- Sticky pending GC (clean+pushed zombies) ---
+if [[ -f "$ROOT/.cursor/.pending-ship-work.json" ]]; then
+  _gc_out="$(python3 "$ROOT/scripts/lib/pending_ship_gc.py" 2>/dev/null || true)"
+  if [[ -n "$_gc_out" ]]; then
+    note_ok "pending_gc:$_gc_out"
+  fi
+fi
+
 # --- DB reachable ---
 if psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -t -A -c "SELECT 1" >/dev/null 2>&1; then
   note_ok "db:${PGHOST}:${PGPORT}"
