@@ -48,6 +48,10 @@ PY
 
 PENDING_JSON="$(_read_pending)"
 
+# Drop clean+pushed zombies before selecting cases (sticky pending).
+python3 "$ROOT/scripts/lib/pending_ship_gc.py" >/dev/null 2>&1 || true
+PENDING_JSON="$(_read_pending)"
+
 # Single Python call: tier, apis, ntest cases, repos
 _IMPACT_JSON="$(python3 "$ROOT/scripts/lib/resolve_ship_impact.py" --json \
   --root "$ROOT" --pending "$PENDING" \
@@ -62,8 +66,27 @@ PENDING_FILES="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.
 _TESTING_PATHS="$(echo "$_IMPACT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('testing_paths_touched') or 0)" 2>/dev/null || echo 0)"
 
 if [[ "$PENDING_FILES" -eq 0 && ${#APIS[@]} -eq 0 && "$FROM_PENDING" -eq 1 ]]; then
-  echo "ship-loop-gate: no pending ship work — edit a ship-path file or pass --api / --tier" >&2
-  exit 2
+  # After GC, nothing unshipped left — not an error (zombies cleared / already on origin).
+  echo "ship-loop-gate: nothing unshipped in pending (GC clear) — PASS"
+  python3 - <<'PY' "$ROOT" "$TIER"
+import json, sys
+from datetime import datetime, timezone
+from pathlib import Path
+root = Path(sys.argv[1])
+tier = sys.argv[2] or "workspace"
+passed = root / ".cursor" / ".ship-loop-passed.json"
+now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+passed.write_text(json.dumps({
+    "passed_at": now,
+    "tier": tier,
+    "apis": [],
+    "file_fingerprints": {},
+    "source": "pending_gc_empty",
+}, indent=2) + "\n", encoding="utf-8")
+(root / ".cursor" / ".pending-ship-nudge").unlink(missing_ok=True)
+print(f"wrote {passed}")
+PY
+  exit 0
 fi
 
 echo "=== ship-loop-gate: tier=$TIER apis=${APIS[*]:-(none)} cases=${_SMART_CASES[*]:-(none)} files=$PENDING_FILES ==="

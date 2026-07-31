@@ -1,3 +1,6 @@
+## 2026-07-31 — empty pending after GC is PASS
+- ship-loop-gate + autopilot end: GC-cleared pending → PASS (not exit 2).
+
 ## 2026-07-31 — pending-ship GC (no forever sticky money)
 - `pending_ship_gc.py`: drop clean+pushed paths; keep dirty/unpushed. Wired into register, harness push-skip, session auto-close, stack-doctor. CLI `pending-ship-gc.sh`.
 

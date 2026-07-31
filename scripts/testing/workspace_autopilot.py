@@ -789,6 +789,14 @@ def cmd_end(args: argparse.Namespace) -> int:
         Step("hygiene", "bash scripts/bin/workspace-hygiene.sh --clean", auto=True),
     ]
     pending = ROOT / ".cursor/.pending-ship-work.json"
+    # GC zombies before deciding close — empty pending must not FAIL end.
+    try:
+        sys.path.insert(0, str(ROOT / "scripts/lib"))
+        from pending_ship_gc import gc_pending  # noqa: WPS433
+
+        gc_pending(ROOT)
+    except Exception:
+        pass
     gate = ROOT / "scripts/lib/ship_push_gate.py"
     if pending.is_file():
         steps.append(
