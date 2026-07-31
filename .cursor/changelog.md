@@ -1,3 +1,7 @@
+## 2026-07-31 — SEMANTICS CLOSE-UP (GL DB + config)
+- `gl_rule` from local transaction_accounting_rule (191); placeholder F absent; QA3 parity OK on 3 samples; GL truth MATCH on BILLING/INTEREST/repay.
+- Kafka MessageBroker.xml threads/poll; skipLimit MAX; Tomcat Boot defaults; txn reconcile; activation path→novopay-platform-lib; money-core purpose backfill.
+
 ## 2026-07-31 — SEMANTICS + FRAMEWORK BONE
 - KG layer: `entity`/`txn_type`/`gl_mech`/`batch_cfg`/`redis_key`/`framework`/`server` via `build_semantics_bone.py`; wired `build_activation.py`; `kg concept` + MCP `kg_concept`; doctor SEMANTICS-BONE; impact framework warning.
 - Provenance-only (no invented GL accounts). Query: `kg concept LOAN_PREPAYMENT` / `autoflush` / `loan_due_details`.

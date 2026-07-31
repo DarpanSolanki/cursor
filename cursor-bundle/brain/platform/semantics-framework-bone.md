@@ -17,3 +17,7 @@ Typed KG layer for **what is X** and **how the substrate behaves**. Builder: `cu
 ## Honesty
 
 Product-specific GL account numbers, Kafka DLQ/concurrency per env, Tomcat pools, and entities without db-code-map purpose are **UNKNOWN** — never invented. See `semantics:unknown_index` and the session report UNKNOWN list.
+
+## Close-up (2026-07-31)
+
+`gl_rule` nodes from local DB dump (`curated/semantics_closeup.jsonl`). Query: `kg concept PRIN_AMT` / `skipLimit` / `tomcat`.

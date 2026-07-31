@@ -1,0 +1,23 @@
+{
+  "t": "meta",
+  "db_txn_types": [
+    "AUTO_CLOSURE",
+    "BILLING",
+    "DEATH_FORECLOSURE",
+    "EXCESS_AMT_REFUND",
+    "INTEREST",
+    "LOAN_DISBURSEMENT",
+    "LOAN_DISB_CNCL",
+    "LOAN_PART-PREPAYMENT",
+    "LOAN_PREPAYMENT",
+    "LOAN_REBOOKING",
+    "LOAN_REPAYMENT",
+    "NPA_TO_REGULAR",
+    "REGULAR_TO_NPA",
+    "RSCH_DEATH_FORECLOSURE",
+    "RSCH_DEATH_FORECLOSURE1",
+    "RSCH_LOAN_DISB_CNCL",
+    "RSCH_LOAN_PREPAYMENT"
+  ],
+  "placeholder_F": false
+}

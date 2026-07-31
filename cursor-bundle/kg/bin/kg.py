@@ -121,7 +121,7 @@ def cmd_stats(c,a):
           c.execute("SELECT count(*) FROM edges").fetchone()[0], "edges")
 
 _SEMANTICS_KINDS = (
-    "entity", "txn_type", "gl_mech", "batch_cfg", "redis_key", "framework", "server", "activation",
+    "entity", "txn_type", "gl_mech", "gl_rule", "batch_cfg", "redis_key", "framework", "server", "activation",
 )
 
 def cmd_search(c,a):
@@ -980,7 +980,7 @@ def cmd_doctor(c,a):
         print("DB-ACCESS: no CRUD edges — run build.sh (build_dataaccess) to fold the DB-op layer in.")
     # Semantics + framework bone coverage (staleness signal if kinds missing after rebuild)
     sk = dict(c.execute(
-        "SELECT kind,count(*) FROM nodes WHERE kind IN ('entity','txn_type','gl_mech','batch_cfg',"
+        "SELECT kind,count(*) FROM nodes WHERE kind IN ('entity','txn_type','gl_mech','gl_rule','batch_cfg',"
         "'redis_key','framework','server','activation') GROUP BY kind"
     ).fetchall())
     if sk:
@@ -988,12 +988,13 @@ def cmd_doctor(c,a):
     else:
         print("SEMANTICS-BONE: MISSING — run build.sh (build_semantics_bone + build_activation); doctor expects these kinds after rebuild.")
     # Rebuild staleness: builder script newer than kg.db
-    bone = os.path.join(HERE, "build_semantics_bone.py")
-    try:
-        if os.path.isfile(bone) and os.path.getmtime(bone) > dbm:
-            print("STALE-BONE: build_semantics_bone.py newer than kg.db — force rebuild to refresh semantics/framework nodes.")
-    except OSError:
-        pass
+    for bone_name in ("build_semantics_bone.py", "build_semantics_closeup.py"):
+        bone = os.path.join(HERE, bone_name)
+        try:
+            if os.path.isfile(bone) and os.path.getmtime(bone) > dbm:
+                print(f"STALE-BONE: {bone_name} newer than kg.db — force rebuild to refresh semantics/framework nodes.")
+        except OSError:
+            pass
 
 def cmd_crud(c,a):
     """The full DB footprint of a flow: every processor's reads/writes/deletes, then the

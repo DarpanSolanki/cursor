@@ -57,6 +57,7 @@ python3 "$BIN/build_kafka.py" "$tmp" $REPOS       >> "$tmp"
 python3 "$BIN/build_schedulers.py" "$tmp"         >> "$tmp"
 # DOMAIN SEMANTICS + FRAMEWORK LAYER (entity/txn_type/gl_mech/batch_cfg/redis_key/framework/server)
 python3 "$BIN/build_semantics_bone.py" "$tmp" $REPOS >> "$tmp"
+python3 "$BIN/build_semantics_closeup.py" "$tmp" $REPOS >> "$tmp"
 # Activation/wiring (api_master + platform-lib anchors) — was built but unwired
 python3 "$BIN/build_activation.py" "$tmp"         >> "$tmp"
 python3 "$BIN/build_cases.py" "$tmp"              >> "$tmp"
@@ -74,17 +75,36 @@ nodes = []
 edges = []
 # Track processor bean -> set of repos (from orch emits) for shared-attr fix
 proc_repos = collections.defaultdict(set)
+entity_by_id = {}
 for line in open(raw, encoding="utf-8"):
     o = json.loads(line)
     if o["t"] == "node":
         if o.get("kind") == "processor" and o.get("repo"):
             proc_repos[o["id"]].add(o["repo"])
+        # entity purpose upgrade: later non-UNKNOWN / purpose_backfill wins
+        if o.get("kind") == "entity":
+            prev = entity_by_id.get(o["id"])
+            if prev is None:
+                entity_by_id[o["id"]] = o
+            else:
+                prev_p = (prev.get("purpose") or "")
+                new_p = (o.get("purpose") or "")
+                if prev_p.startswith("UNKNOWN") and new_p and not new_p.startswith("UNKNOWN"):
+                    entity_by_id[o["id"]] = o
+                elif o.get("purpose_backfill") and not prev.get("purpose_backfill"):
+                    if new_p and not new_p.startswith("UNKNOWN"):
+                        entity_by_id[o["id"]] = o
+            continue
         if o["id"] in seen:
             continue
         seen.add(o["id"])
         nodes.append(o)
     else:
         edges.append(o)
+for eid, eo in entity_by_id.items():
+    if eid not in seen:
+        seen.add(eid)
+        nodes.append(eo)
 # Shared processors used from multiple repos → repo=shared (fixes ATTR_DRIFT)
 for n in nodes:
     if n.get("kind") != "processor":

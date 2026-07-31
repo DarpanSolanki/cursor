@@ -345,7 +345,7 @@ def emit_gl_mechanics() -> None:
                 "unless product data literally uses placeholder 'F' (not found as a code constant)."
             ),
             "src": "trustt-platform-accounting/src/main/java/in/novopay/accounting/common/AccountingConstants.java:60",
-            "unknown": "Whether any product maps placeholder code literally 'F' — UNKNOWN (check placeholder_master in env DB).",
+            "unknown": "RESOLVED local 2026-07-31: placeholder_master has no code='F' (0 rows). See gl_mech:placeholder_F_absent. Other envs: re-query placeholder_master.",
         },
         {
             "id": "gl_mech:ref_codes",
@@ -554,13 +554,13 @@ def emit_framework() -> None:
             "id": "framework:kafka.consumer_wiring",
             "label": "Kafka consumer wiring (NovopayMessageBrokerConsumer)",
             "note": (
-                "Accounting consumers implement NovopayMessageBrokerConsumer (infra-message-broker) and "
-                "are registered via messagebroker XML — not @KafkaListener concurrency annotations in "
-                "service code. Explicit concurrency / DLQ / maxPollRecords often ABSENT at consumer class "
-                "(see GAP-065). Retry semantics: at-least-once + app-level Redis locks / status gates."
+                "Accounting consumers implement NovopayMessageBrokerConsumer and are registered via "
+                "deploy/.../messagebroker/MessageBroker.xml. Local accounting XML: numberOfThreads=1, "
+                "pollTime=100; topic/group prefixes only (env suffix at runtime). "
+                "No DLQ / consumer retryBackoff in XML — see framework:kafka.consumer:* and framework:kafka.dlq_absent_accounting."
             ),
             "src": "trustt-platform-accounting/src/main/java/in/novopay/accounting/consumers/LmsMessageBrokerConsumer.java:37",
-            "unknown": "Per-topic concurrency, DLQ topic names, Spring Kafka retry backoff — UNKNOWN without messagebroker XML + broker config for the env.",
+            "unknown": None,
         },
         {
             "id": "framework:platform.service_orchestrator",

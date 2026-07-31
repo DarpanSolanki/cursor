@@ -39,12 +39,12 @@ WEBAPP_API = re.compile(
 )
 
 FRAMEWORK_ANCHORS = [
-    ("ServiceGatewayController", "trustt-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java"),
-    ("ServiceOrchestrator", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java"),
-    ("ProcessorOrchestrator", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ProcessorOrchestrator.java"),
-    ("RequestProcessorImpl", "trustt-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/RequestProcessorImpl.java"),
-    ("NovopayCacheConfiguration", "trustt-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java"),
-    ("NovopayApiClientConfig", "trustt-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayApiClientConfig.java"),
+    ("ServiceGatewayController", "novopay-platform-lib/infra-service-gateway/src/main/java/in/novopay/infra/essentials/controller/ServiceGatewayController.java"),
+    ("ServiceOrchestrator", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ServiceOrchestrator.java"),
+    ("ProcessorOrchestrator", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/ProcessorOrchestrator.java"),
+    ("RequestProcessorImpl", "novopay-platform-lib/infra-navigation/src/main/java/in/novopay/infra/navigation/orchestrator/RequestProcessorImpl.java"),
+    ("NovopayCacheConfiguration", "novopay-platform-lib/infra-cache/src/main/java/in/novopay/infra/cache/configuration/NovopayCacheConfiguration.java"),
+    ("NovopayApiClientConfig", "novopay-platform-lib/infra-http-client/src/main/java/in/novopay/infra/api/client/NovopayApiClientConfig.java"),
     ("Loader", "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/common/Loader.java"),
     ("AutoScheduler", "trustt-platform-batch/src/main/java/in/novopay/batch/core/service/AutoScheduler.java"),
 ]

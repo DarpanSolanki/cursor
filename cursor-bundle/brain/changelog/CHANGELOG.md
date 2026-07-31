@@ -1,3 +1,6 @@
+## 2026-07-31 | workspace | kg | semantics close-up GL+config
+- curated/semantics_closeup.jsonl + build_semantics_closeup.py; gl_rule nodes; MessageBroker/tomcat/skipLimit; purpose backfill money-core
+
 ## 2026-07-31 | workspace | kg | semantics+framework bone
 - Builders: build_semantics_bone.py + wire build_activation; kinds entity/txn_type/gl_mech/batch_cfg/redis_key/framework/server
 - Query: `kg concept` / MCP kg_concept; doctor SEMANTICS-BONE; impact platform-lib warning
