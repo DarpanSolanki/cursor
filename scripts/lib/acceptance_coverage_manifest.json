@@ -132,18 +132,25 @@
       "principal_amount"
     ],
     "interest_accrual_details": [
-      "id",
-      "account_id",
-      "base_amount",
-      "start_date",
-      "end_date",
-      "interest_rate",
-      "total_accrued_amount",
-      "carry_over_amount",
-      "total_accrual_posted_amount",
-      "last_accrual_posted_date",
-      "loan_installment_details_id"
+      "total_accrued_amount"
     ]
+  },
+  "domain_money_table_required_columns_by_domain": {
+    "interest_accrual": {
+      "interest_accrual_details": [
+        "id",
+        "account_id",
+        "base_amount",
+        "start_date",
+        "end_date",
+        "interest_rate",
+        "total_accrued_amount",
+        "carry_over_amount",
+        "total_accrual_posted_amount",
+        "last_accrual_posted_date",
+        "loan_installment_details_id"
+      ]
+    }
   },
   "backlog_domains_ranked": [
     {
