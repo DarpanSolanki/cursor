@@ -8,6 +8,7 @@
 - [DPIC harness gotchas](feedback_dpic_harness_gotchas.md) — two clocks (JOB_TIME vs platform date); 132280/134243/130241 = harness first; `dpic_harness_lib.sh`; never fail ship on overview optional keys. (2026-07-28)
 
 # Memory Index
+- [JIRA discussion comment = plain English](feedback_jira_discussion_comment_plain.md) — discuss/clarify comments: ~30s business words; no API/processor/error-code dump (TDPQA-221 2026-07-31).
 - [LMS flow map audit](feedback_lms_flow_map_audit.md) — broad /loan/prepayment/ swallowed getLoanForeclosureDetails; run `lms_flow_map_audit.py` (CRITICAL fail-closed). (2026-07-29)
 - [TDPQA-207 real API mandatory](feedback_tdpqa207_real_api_test_mandatory.md) — money fix ≠ compile; map PrepaymentDetailsRepository→getLoanForeclosureDetails; run foreclosure.by_latest_details_api. (2026-07-29)
 - [Harness push = origin/main only](feedback_harness_push_origin_main_only.md) — `scripts/dpic` / dpi-sanity / agent-ops DPI prep → commit+push **main** only; never train branch as harness SoT. (2026-07-28)

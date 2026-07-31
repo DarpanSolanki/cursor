@@ -12,6 +12,7 @@ reads:
   - cursor-bundle/memory/feedback_release_details_final.md
   - cursor-bundle/memory/feedback_jira_enrich_forbidden_scan_assignee.md
   - cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md
+  - cursor-bundle/memory/feedback_jira_discussion_comment_plain.md
   - .cursor/skills/jira-fix-update/fields-reference.md
   - .cursor/skills/jira-fix-update/owners-defaults.json
   - .cursor/skills/jira-fix-update/mentions.json
@@ -26,6 +27,8 @@ triggers:
   - TDPQA handoff
   - jira fix update
   - enrich jira for QA
+  - jira discussion comment
+  - clarify on jira
 ---
 
 # JIRA fix update (SDCP + TDPQA)
@@ -244,6 +247,42 @@ Functional QA retest steps:
 <good-example>
 ```
 @Srikant @Reema Fix is ready for QA. Parent SHG foreclosure now splits BPI from the parent total across members so they always add up (e.g. 79 → 40+39). Please retest on a fresh parent foreclosure — older closed loans can still show the old ₹1 gap.
+```
+</good-example>
+
+### Discussion / clarification comments (before a fix)
+
+When the ask is **discuss with product/UI** (not "fill RCA for QA Test"), post **one short plain comment** — not an engineering RCA dump.
+
+Memory: `cursor-bundle/memory/feedback_jira_discussion_comment_plain.md` (TDPQA-221).
+
+**Bar:** readable in ~30 seconds. Product language only.
+
+| Do | Do not |
+|----|--------|
+| What QA saw on screen | API / processor / class / template names |
+| Why in business words (e.g. delayed payment interest vs interest-handling flag) | Error codes, payload dumps, SQL, branch/SHA |
+| Who changes what (Web / Accounting / Product) | Long `##` section engineering write-ups |
+| 2–4 clear questions + real ADF mentions | "GET returns bpd_amount" style jargon |
+
+<bad-example>
+```
+## Are GET APIs already returning BPD?
+getPartPrepaymentBPIAmount returns bpd_amount; validatePartPrepaymentAmount adds dpi_till_date…
+```
+</bad-example>
+
+<good-example>
+```
+@Sudheer Pandey @Himanshu Tomar — quick discussion needed.
+
+What QA saw: part prepayment failed on the reported loan when showing the new schedule even though overdue + fees + principal + charges matched the gross amount.
+
+What we found: the loan also has a little delayed payment interest not yet billed. The interest-handling flag is only for broken-period interest, but the screen zeros delayed-payment interest when that flag is NO.
+
+Who needs to change what: Web should always show and include that delayed-payment amount. Accounting money rule looks fine; optional clearer error text only.
+
+Please confirm: (1) should that amount still be collected when interest handling is NO? (2) can UI take the screen fix?
 ```
 </good-example>
 
