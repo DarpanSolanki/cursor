@@ -4,6 +4,12 @@
 | kg-flow | interestAccrualPosting
 
 ## 2026-07-30 | acct `ffa882cdf` | accounting | mfi_integration_v3.4.2.4 | kg-flow | SHG INT Accrued parent SoT installment-window distribute
+
+## 2026-07-31 | acct `aa13f99d0` | accounting | mfi_integration_v3.4.2.4 | kg-flow | accrual reader exclude SHG children
+interestAccrualCalculation reader+partitioner: AND parent_loan_account_id IS NULL. Only SHG has children; JLG/INDL unchanged. Verified: flowtest.shg_int_accrual_stitch PASS, flowtest.accrual_billing PASS, batch.interest_accrual_calc PASS (exec 3969453). Scale local ACTIVE 2074→790 parents.
+
+---
+
 - apiName: interestAccrualCalculation (online DEFAULT + BATCH); tables: interest_accrual_details
 - InterestGroupLoanAccrualDistributionService: SET ACTIVE child window Accrued via GroupLoanUtility fractions; skip child calc; stop_interest_accrual still distributes; removed adjustChildLoanAccountsInterestAccrual
 | kg-flow | interestAccrualCalculation

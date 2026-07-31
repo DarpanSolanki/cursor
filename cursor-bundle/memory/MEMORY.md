@@ -78,3 +78,5 @@
 - [Forward-port release train](feedback_forward_port_release_train.md) — upstream (`trusttai`) is source of truth; autopilot runs `kg fixed-elsewhere` for explicit BUG/FIX apiNames; use `scripts/bin/fwd-port.sh` (`--fixed-elsewhere`/gap/`--train`/`--diverge`/`--path`/`--audit`) to reuse verified higher-branch fixes and check propagation; **only `VERIFIED_FIXED_CLEAN` + `REUSE_ALLOWED` may be proposed** — see [[feedback_cross_branch_no_false_positive]].
 - [Cross-branch no false positive](feedback_cross_branch_no_false_positive.md) — FILE_TOUCH_HINTS / DIVERGED / stale refs = REUSE_FORBIDDEN; watermark FRESH ≠ production certainty / aligned trains.
 - feedback_jira_mcp_parent_not_shell_subagent.md — JIRA enrich: parent CallMcpTool, not shell subagent
+
+- **SHG-only children:** only SHG has child LANs; JLG/INDL do not — `reference_shg_only_has_child_lans.md`

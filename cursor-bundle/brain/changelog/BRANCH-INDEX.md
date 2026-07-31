@@ -6,7 +6,7 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 
 | Branch | Latest | Service | Sha | Tag |
 |--------|--------|---------|-----|-----|
-| `mfi_integration_v3.4.2.4` | 2026-07-27 | accounting-v2 | `f377e6c80` | kg-flow |
+| `mfi_integration_v3.4.2.4` | 2026-07-31 | accounting | `af52abe3d` | kg-flow |
 | `main` | 2026-07-21 | sliProd | `workspace` | kb-only |
 | `mfi_integration_v3.7.1` | 2026-07-21 | accounting-v2 | `ac8f185bbc` | kg-flow |
 | `feature/tdpqa72-dfc-acceptance-labd-lapd` | 2026-07-17 | accounting-v2 | `a7e6d1d1c4` | kg-flow |
@@ -52,6 +52,10 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 - 2026-07-10 `068247cc9` — SDCP-10227 bank error filler REQUIRES_NEW persist
 
 ### `mfi_integration_v3.4.2.4`
+- 2026-07-31 `af52abe3d` — interestAccrualPosting soft-skip mid-month IAD
+- 2026-07-30 `ffa882cdf` — SHG INT Accrued parent SoT installment-window distribute
+- 2026-07-31 `aa13f99d0` — accrual reader exclude SHG children
+- 2026-07-28 `acct (WIP)` — TDPQA-72 parent FC force-post+bill slice + RSCH BLD_INT
 - 2026-07-27 `f377e6c80` — TDPQA-72 bpi_amount=0 after force-bill (all paths)
 - 2026-07-27 `dc06ba9aa` — TDPQA-72 FC force-bill INT_AMT parity
 - 2026-07-22 `935c52743` — DCF parent force-bill CRN unique per claim
@@ -60,8 +64,6 @@ Use: find what shipped on **your branch** before KG enrich or reference-doc upda
 - 2026-07-17 `b256efd054` — DCF force-bill client_ref platform-numeric
 - 2026-07-17 `dfec1e60f1` — TDPQA-72 Obs3 Accrued≤Original (port)
 - 2026-07-17 `29bd01e8a6` — TDPQA-72 dedicated force-bill labd + lapd EXTRA (port)
-- 2026-07-15 `59e9686a80` — SDCP-11085 SHG child sanction_date on CLB
-- 2026-07-15 `5b1b928ed` — last-child DFC A2 EXTRA-net + B force-bill labd
 
 ### `mfi_integration_v3.7.1`
 - 2026-07-21 `ac8f185bbc` — TDPFR-547 DPI amountMap no EC leak

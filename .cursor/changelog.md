@@ -1,3 +1,6 @@
+## 2026-07-31 — interestAccrualCalculation reader exclude SHG children
+- accounting `aa13f99d0` on mfi_integration_v3.4.2.4: reader+partitioner `parent_loan_account_id IS NULL` (SHG children only; JLG/INDL have none). e2e: shg_int_accrual_stitch + accrual_billing + batch.interest_accrual_calc PASS.
+
 ## 2026-07-31 — GAP-062 WONT_TRACK (loanWriteoff not live)
 - Stop tracking writeoff EC mismatch / suite / backlog / defect as open High. Code already reverted `131e57a2f`. Reopen only if product delivers writeoff.
 
