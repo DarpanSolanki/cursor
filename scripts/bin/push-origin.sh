@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Push to origin after ship-loop gate (auto workspace-close if pending).
 #
-# Train-branch sync-first (mfi_integration_vX.Y.Z): before calling this script,
-# fetch origin+upstream, base local branch on upstream/<train> tip, replay any
-# unique origin commits, then push. Never push from an origin tip that is behind
-# upstream without saying STALE and syncing first. See:
+# Train-branch sync-first (mfi_integration_vX.Y.Z / mfi_release_v*): before push,
+# fetch origin+upstream and ensure HEAD includes upstream/<branch> tip. Machine
+# gate: train-upstream-sync.sh (--sync if clean, else --check fail). Never push
+# from an origin tip behind upstream. See:
+#   .cursor/rules/upstream-mainline-push-sync.mdc
 #   cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md
 #   .cursor/rules/10-quality-gates.mdc
 #
@@ -12,6 +13,7 @@
 #   push-origin.sh                    # push current branch: git push -u origin HEAD
 #   push-origin.sh origin my-branch   # pass through to git push
 #   SHIP_PUSH_NO_AUTO_CLOSE=1 push-origin.sh …  # skip auto-close (fail if stale)
+#   TRAIN_UPSTREAM_SYNC_SKIP=1 …      # skip upstream-ahead gate (rare; state aloud)
 #   Knowledge OR workspace-harness-only HEAD auto-skips sticky money close
 #   (see ship_push_gate.should_skip_auto_close_for_knowledge_head).
 #   SHIP_CLOSE_REPO=trustt-platform-accounting   # scope pending → that repo only
@@ -20,6 +22,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PENDING="$ROOT/.cursor/.pending-ship-work.json"
 PASSED="$ROOT/.cursor/.ship-loop-passed.json"
 GATE="$ROOT/scripts/lib/ship_push_gate.py"
+TRAIN_SYNC="$ROOT/scripts/bin/train-upstream-sync.sh"
 
 if [[ ! -x "$GATE" ]]; then
   GATE="python3 $ROOT/scripts/lib/ship_push_gate.py"
@@ -84,6 +87,25 @@ _run_close_if_needed() {
 }
 
 _run_close_if_needed
+
+# Mainline train: refuse push when behind upstream (auto-rebase if worktree clean).
+_ensure_train_upstream() {
+  if [[ ! -x "$TRAIN_SYNC" ]]; then
+    chmod +x "$TRAIN_SYNC" 2>/dev/null || true
+  fi
+  if [[ ! -f "$TRAIN_SYNC" ]]; then
+    echo "push-origin: WARN — train-upstream-sync.sh missing; skipping sync gate" >&2
+    return 0
+  fi
+  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+    echo "=== push-origin: train upstream check (dirty — check only) ===" >&2
+    bash "$TRAIN_SYNC" --check
+  else
+    echo "=== push-origin: train upstream sync (rebase onto upstream if behind) ===" >&2
+    bash "$TRAIN_SYNC" --check --sync
+  fi
+}
+_ensure_train_upstream
 
 if [[ $# -eq 0 ]]; then
   set -- -u origin HEAD

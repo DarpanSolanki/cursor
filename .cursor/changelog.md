@@ -1,3 +1,9 @@
+## 2026-08-03 — TDPQA-207 BY_LATEST soft-deleted REJECTED blank
+
+- **Repo:** trustt-platform-accounting @ mfi_integration_v3.5.2.2
+- **Change:** `findLatestByLoanAccountNos` prefers live rows, demotes REJECTED only among live, falls back to soft-deleted (first-time reject still shows). Cancel/update query unchanged.
+- **Why:** Reject sets `is_deleted=true`; prior BY_LATEST hard-filtered deleted → empty details tab.
+
 ## 2026-07-31 — SHG DPI accrual distribute parity (3.7.1)
 
 - accounting `mfi_integration_v3.7.1`: `DpiGroupLoanAccrualDistributionService` mirrors INT parent-SoT distribute; reader/partitioner `parent_loan_account_id IS NULL`; writer distributes after parent calc; removed portfolio-wide adjust tasklet (hung).

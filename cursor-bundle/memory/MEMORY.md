@@ -1,3 +1,4 @@
+- [Upstream mainline push sync](feedback_train_branch_sync_origin_upstream.md) — before origin push on `mfi_integration_*` / `mfi_release_*`: fetch upstream, include tip, then `push-origin.sh` (gate `train-upstream-sync.sh`). Rule: `.cursor/rules/upstream-mainline-push-sync.mdc`. (2026-08-03)
 - [TDPQA QA Test Fix Quality mandatory](feedback_jira_tdpqa_qa_test_fix_quality_mandatory.md) — enrich must set `12002`/`12003` (Fix Grade/Score) with full QA Test field set. (TDPQA-227 2026-07-31)
 - [TDPQA Lead Accuracy mandatory](feedback_jira_tdpqa_lead_accuracy_mandatory.md) — enrich must set `12004`/`12005` (Lead Accuracy + Lead Improvement Remarks) or transition fails. (TDPQA-227 2026-07-31)
 - [Money behavior parity — no amount-only ship](feedback_money_behavior_parity_no_amount_only_ship.md) — replace/bypass write path → tip/calendar/FK parity + column audit FAIL-closed; never WARN-as-Pass; gate `money_behavior_parity_gate.py`. (2026-07-31 SHG INT tip)

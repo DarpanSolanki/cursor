@@ -15,6 +15,6 @@ Before analysis checkout OR push on train branch mfi_integration_vX.Y.Z:
 
 **Why:** Origin often lags upstream after `trusttai` merges (e.g. origin 35 commits behind). Pushing a fix onto stale origin creates a fork tip that is not the next-release line.
 
-**Cross-links:** [[feedback_jira_reported_version_branch]] (version → branch) → this sync → [[feedback_fetch_latest_before_checking_code]] · rule `.cursor/rules/10-quality-gates.mdc` · `scripts/bin/push-origin.sh`.
+**Cross-links:** [[feedback_jira_reported_version_branch]] (version → branch) → this sync → [[feedback_fetch_latest_before_checking_code]] · rule `.cursor/rules/upstream-mainline-push-sync.mdc` · `.cursor/rules/10-quality-gates.mdc` · `scripts/bin/train-upstream-sync.sh` · `scripts/bin/push-origin.sh`.
 
-**Do not ask again** — apply on every train-branch RCA/port/push.
+**Do not ask again** — apply on every train-branch RCA/port/push. Machine-enforced on `push-origin.sh`.

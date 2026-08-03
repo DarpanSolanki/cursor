@@ -59,6 +59,8 @@ Before closing fixes on loops / per-item / high-volume paths: no N+1; no repeate
 
 When porting to another base: reset from exact upstream tip; only intended files; `git diff --name-only upstream/<base>...HEAD` must be clean scope. **Hard stop** if any unrelated file appears — no exceptions for “small” formatting.
 
+**Mainline origin push (HARD):** on `mfi_integration_v*` / `mfi_release_v*`, never push while behind `upstream/<branch>`. Use `bash scripts/bin/train-upstream-sync.sh --sync` then `bash scripts/bin/push-origin.sh` (machine-gated). Rule: `.cursor/rules/upstream-mainline-push-sync.mdc`.
+
 Train branches before analysis/push: fetch origin + upstream separately; local train = upstream tip; origin-only unique commits rebase onto upstream; never push upstream/trusttai. If origin behind upstream without sync: say **STALE**, sync first.
 
 **Hard stop conditions (no exceptions)** on upstream port: unrelated files in diff → STOP. Push checklist must pass: based on exact upstream tip; diff only approved files; no internal docs noise.

@@ -1,0 +1,30 @@
+---
+description: Before push to origin on mfi_integration/mfi_release mainline — fetch upstream, sync tip, never push stale origin-behind-upstream
+alwaysApply: true
+---
+
+# Upstream sync before origin mainline push (HARD)
+
+When committing/pushing a **mainline train** on a service repo (`mfi_integration_vX.Y.Z`, `mfi_release_vX.Y.Z`):
+
+## Mandatory (every push)
+
+1. `git fetch origin` and `git fetch upstream` **separately** (never one arg list for both).
+2. Local branch tip must include **`upstream/<branch>` tip** (not behind).
+3. If origin/local is behind upstream → say **STALE**, sync first (`bash scripts/bin/train-upstream-sync.sh --sync` or rebase onto `upstream/<branch>`), then push.
+4. Push **origin only** via `bash scripts/bin/push-origin.sh` — never `upstream` / `trusttai`.
+5. After sync, `git diff --name-only upstream/<branch>...HEAD` must contain **only** intended fix files (no unrelated noise).
+
+## Machine gate
+
+`scripts/bin/push-origin.sh` calls `train-upstream-sync.sh --check` (and `--sync` when tree is clean) before `git push` on train branches. Do not bypass with raw `git push` unless the user explicitly overrides.
+
+## Why
+
+Origin forks lag after trusttai merges. Pushing onto a stale origin tip creates a divergent mainline that is not the next-release line.
+
+## Escape
+
+`TRAIN_UPSTREAM_SYNC_SKIP=1` — rare; state aloud why. Prefer sync.
+
+Pairs: `cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md` · `10-quality-gates.mdc` § Upstream sync · archive `workspace-gates-reference/upstream-sync-no-unrelated-diff.md`.
