@@ -15,6 +15,15 @@ reads:
 writes: []
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `Repository.java`, `DAOService.java`, `new query`, `@Query`
+- **requires:** []
+- **reads:** `cursor-bundle/memory/feedback_keep_code_simple.md`, `cursor-bundle/memory/feedback_query_reuse_vs_performance.md`
+- **writes:** []
+
 # Reuse queries — Java filter (MANDATORY)
 
 **Hard gate:** Follow the **3-step ladder** before any repository change. Read `.cursor/rules/10-quality-gates.mdc`.

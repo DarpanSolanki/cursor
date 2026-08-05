@@ -21,9 +21,21 @@ def repo_name(p):
     return os.path.basename(p.rstrip(os.sep))
 
 seen=set()
+# `novopay-platform-lib` is a symlink to `trustt-platform-lib` — build_config.json
+# declares it an alias "covered once under trustt-platform-lib". Scanning both
+# double-owns every lib table, and the alias sorts first so it would win the name.
+_real_targets={os.path.realpath(d) for d in sys.argv[1:] if not os.path.islink(d.rstrip(os.sep))}
 for repo_dir in sys.argv[1:]:
+    if os.path.islink(repo_dir.rstrip(os.sep)) and os.path.realpath(repo_dir) in _real_targets:
+        continue
     repo=repo_name(repo_dir)
-    for jf in glob.glob(os.path.join(repo_dir,"src","main","java","**","*.java"), recursive=True):
+    # trustt-platform-lib is a composite build: sources live in infra-*/src/main/java,
+    # never repo/src/main/java. Assuming the single-module layout hid its entities
+    # (platform_master tenant/service/api master) from the KG completely.
+    java_files = glob.glob(os.path.join(repo_dir,"src","main","java","**","*.java"), recursive=True)
+    if not java_files:
+        java_files = glob.glob(os.path.join(repo_dir,"*","src","main","java","**","*.java"), recursive=True)
+    for jf in java_files:
         try:
             txt=open(jf,encoding="utf-8",errors="replace").read()
         except OSError: continue

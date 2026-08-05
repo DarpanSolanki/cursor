@@ -22,6 +22,16 @@ feeds:
   - sync-intelligence
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `after fix`, `after test pass`, `ship`, `kg-flow`
+- **requires:** `autonomous-workspace-ops`
+- **reads:** `cursor-bundle/flow-test/chains.jsonl`, `cursor-bundle/flow-test/contracts.jsonl`, `cursor-bundle/flow-test/flows.jsonl`
+- **writes:** `cursor-bundle/flow-test/sources.jsonl`, `cursor-bundle/flow-test/footprints.jsonl`, `cursor-bundle/flow-test/learning_bus.jsonl`
+- **feeds:** `sync-intelligence`
+
 # Capture proof (post fix+test)
 
 ## When

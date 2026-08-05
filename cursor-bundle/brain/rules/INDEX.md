@@ -29,5 +29,5 @@ Pull the relevant rule into the head of any analysis or fix turn. Rules are shor
 ## Cross-links
 
 - Convention summary (style, formatting, comment policy): [`conventions.md`](conventions.md).
-- Concurrency guidance for multi-writer rows: `~/.claude/projects/-home-darpan-darpan/memory/feedback_concurrency_contract_audit.md`.
-- "No in-memory mutation after CAS": `~/.claude/projects/-home-darpan-darpan/memory/feedback_no_inmem_mutation_after_cas.md`.
+- Concurrency guidance for multi-writer rows: `cursor-bundle/memory/feedback_concurrency_contract_audit.md`.
+- "No in-memory mutation after CAS": `cursor-bundle/memory/feedback_no_inmem_mutation_after_cas.md`.

@@ -23,6 +23,8 @@ PATH_TRIGGERED_CASES = frozenset(
     {
         "foreclosure.individual_child",
         "foreclosure.dpi_waiver_smoke",
+        "foreclosure.child_fc_parent_rsch_gl",
+        "foreclosure.last_child_parent_closure",
         "foreclosure.loan_prepayment_real",
         "foreclosure.sdcp10255_e2e",
         "reopening.child_payments_parity_sim",
@@ -215,6 +217,18 @@ def _path_triggered_now(cid: str, blob: str) -> bool:
             "loandeathforeclosure",
             "dcf_",
             "/death/",
+        ),
+        "foreclosure.child_fc_parent_rsch_gl": (
+            "group_mfi_orc",
+            "parentloanaccountpartprepayment",
+            "forcebill",
+            "populateadditionalamountforpartprepayment",
+        ),
+        "foreclosure.last_child_parent_closure": (
+            "group_mfi_orc",
+            "parentloanaccountpartprepayment",
+            "evaluatelastchildforeclosure",
+            "settleparentduesonlastchildforeclosure",
         ),
         "dpic.go_live_ud": ("golive", "postgolive", "maturity", "overduebase", "verify_go_live"),
         "dpic.grace_e2e": ("grace", "ispastgracegate", "computoverduedate"),
@@ -454,6 +468,24 @@ def touches_dpi_blob(blob: str, apis: set[str]) -> bool:
     return any(h in blob for h in hints)
 
 
+def _dpi_tree_available() -> bool:
+    try:
+        from impact_tests import _dpi_tree_present  # noqa: WPS433
+
+        return _dpi_tree_present()
+    except Exception:
+        return True
+
+
+def _drives_dpi_jobs(meta: dict) -> bool:
+    try:
+        from impact_tests import _case_requires_dpi  # noqa: WPS433
+
+        return _case_requires_dpi(meta)
+    except Exception:
+        return False
+
+
 def _dpi_waiver_smoke_applicable() -> bool:
     """DPI waiver smoke needs dpiAccrualCalculation on the DPI feature branch."""
     try:
@@ -525,6 +557,7 @@ def resolve_ship_cases(
     except ImportError:
         pass
 
+    dpi_tree = _dpi_tree_available()
     out: list[str] = []
     for cid in cases:
         if cid in _DPI_FULL_SUITE_CASES:
@@ -532,6 +565,8 @@ def resolve_ship_cases(
         if cid == "foreclosure.dpi_waiver_smoke" and not _dpi_waiver_smoke_applicable():
             continue
         meta = reg.get(cid) or {}
+        if not dpi_tree and _drives_dpi_jobs(meta):
+            continue
         if is_ship_auto_case(cid, meta):
             out.append(cid)
         elif cid in PATH_TRIGGERED_CASES and _path_triggered_now(cid, blob):

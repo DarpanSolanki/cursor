@@ -1,4 +1,4 @@
-"""Resolve sliProd + cursor-bundle paths (no hardcoded /home/darpan/darpan)."""
+"""Resolve sliProd + cursor-bundle paths (no hardcoded legacy home roots)."""
 from pathlib import Path
 
 BIN = Path(__file__).resolve().parent

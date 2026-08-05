@@ -3511,7 +3511,8 @@ def main() -> int:
         sys.path.insert(0, str(ROOT / "scripts/dcf_sanity"))
         from create_fresh_dcf_group_fixture import create_fresh_dcf_group_fixture  # noqa: WPS433
 
-        parent, child1, child2, death_date = create_fresh_dcf_group_fixture()
+        parent, fresh_children, death_date = create_fresh_dcf_group_fixture()
+        child1, child2 = fresh_children[0], fresh_children[1]
     elif os.environ.get("PARENT_LAN"):
         parent = os.environ["PARENT_LAN"]
         # Canonical pin 6000137433 children; do not default to blocklisted 600397* family.

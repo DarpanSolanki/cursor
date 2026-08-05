@@ -81,6 +81,33 @@ def test_concise_invariant_ok() -> None:
     assert f == [], f
 
 
+def test_diff_volume_fail_and_pass() -> None:
+    import subprocess, tempfile
+    from java_comment_lint import diff_findings
+
+    with tempfile.TemporaryDirectory() as d:
+        repo = Path(d)
+        run = lambda *a: subprocess.run(["git", "-C", d, *a], check=True, capture_output=True)
+        run("init", "-q")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        src = repo / "Dpi.java"
+        src.write_text("class A {\n  int x;\n}\n")
+        run("add", "-A"); run("commit", "-qm", "base")
+
+        src.write_text("class A {\n  int x;\n  /** one. */\n  int y;\n}\n")
+        run("add", "-A"); run("commit", "-qm", "few")
+        assert diff_findings(repo, "HEAD~1") == [], "1 added comment must pass"
+
+        src.write_text(
+            "class A {\n  int x;\n  /** one. */\n  int y;\n"
+            "  /** two. */\n  int z;\n  // three\n  // four\n  int w;\n}\n"
+        )
+        run("add", "-A"); run("commit", "-qm", "many")
+        f = diff_findings(repo, "HEAD~1")
+        assert any(x["kind"] == "added_comment_volume" for x in f), f
+
+
 if __name__ == "__main__":
     test_is_dpi_java()
     test_consecutive_slashes_fail()
@@ -88,4 +115,5 @@ if __name__ == "__main__":
     test_plain_long_javadoc_ok()
     test_ticket_marker_fail()
     test_concise_invariant_ok()
+    test_diff_volume_fail_and_pass()
     print("test_java_comment_lint: OK")

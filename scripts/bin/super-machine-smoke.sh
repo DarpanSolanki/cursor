@@ -121,16 +121,16 @@ for name, ok in checks:
 PY
 while IFS='|' read -r mark id _; do
   [[ -n "$id" ]] && record "$id" "$([[ $mark == PASS ]] && echo 1 || echo 0)"
-done < <(python3 - <<'PY'
+done < <(python3 - <<PY
 import json
 from pathlib import Path
-root = Path("/home/darpan/Documents/sliProd")
-h = json.loads((root/".cursor/hooks.json").read_text())
+root = Path(${ROOT@Q})
+h = json.loads((root / ".cursor" / "hooks.json").read_text())
 starts = [x.get("command","") for x in h.get("hooks",{}).get("sessionStart",[])]
 after = [x.get("command","") for x in h.get("hooks",{}).get("afterShellExecution",[])]
 for name, ok in [
   ("hooks:intel-session", any("intel-session" in c for c in starts)),
-  ("hooks:post-ntest", any("post-ntest" in c in after for c in after)),
+  ("hooks:post-ntest", any("post-ntest" in c for c in after)),
   ("hooks:super-machine-matcher", "super-machine" in json.dumps(h)),
 ]:
     print(f"{'PASS' if ok else 'FAIL'}|{name}|")

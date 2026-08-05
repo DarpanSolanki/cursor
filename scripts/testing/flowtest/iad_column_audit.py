@@ -94,6 +94,7 @@ def audit_shg_child_iad_distribute(
     query_rows: QueryRows,
     schema: str = "mfi_accounting",
     require_tip_sync: bool = True,
+    scheduled_int_since: str | None = None,
 ) -> ColumnAuditResult:
     """Audit ACTIVE children IAD tip — every physical column, fail-closed."""
     out = ColumnAuditResult(
@@ -196,7 +197,102 @@ def audit_shg_child_iad_distribute(
         )
     )
 
+    # Distribute must leave each child with exactly the rows the job would have written
+    # had it processed that child independently. The parent is segmented by the normal
+    # calc path, so the parent's (start,end) boundaries ARE that expected shape.
+    # Scope to the CURRENT installment window only: distribute rewrites just that window,
+    # so a child's older rows are history and can never match the parent's full series.
+    window_start_sql = f"""
+        SELECT COALESCE(MAX(lid.installment_date)::date::text, '1900-01-01')
+        FROM {schema}.loan_installment_details lid
+        WHERE lid.loan_account_id = {int(parent_id)}
+          AND COALESCE(lid.is_deleted,false)=false
+          AND lid.installment_date < {_q(parent_max_end)}::timestamp
+    """
+    win = query_rows(window_start_sql)
+    window_start = (win[0][0] if win else "1900-01-01") or "1900-01-01"
+    out.evidence["distribute_window_start"] = window_start
+    # Collapse the parent by start_date (max end wins): its open row is extended in place,
+    # and a re-run fixture can hold several stale snapshots of the same segment. The
+    # collapsed set is the true shape independent calc would leave. Child rows are read
+    # RAW so duplicate child rows still fail the count check.
+    parent_segments = query_rows(
+        f"""
+        SELECT start_date::date::text || '|' || MAX(end_date)::date::text
+        FROM {schema}.interest_accrual_details
+        WHERE account_id = {int(parent_id)}
+          AND end_date::date > {_q(window_start)}::date
+        GROUP BY start_date::date
+        ORDER BY start_date::date
+        """
+    )
+    parent_bounds = [r[0] for r in parent_segments]
     for child_id, child_lan in children:
+        child_segments = query_rows(
+            f"""
+            SELECT start_date::date::text || '|' || end_date::date::text
+            FROM {schema}.interest_accrual_details
+            WHERE account_id = {int(child_id)}
+              AND end_date::date > {_q(window_start)}::date
+            ORDER BY end_date, start_date
+            """
+        )
+        child_bounds = [r[0] for r in child_segments]
+        out.checks.append(
+            ColumnCheck(
+                name=f"child[{child_lan}].row_count_matches_independent_shape",
+                table="interest_accrual_details",
+                ok=len(child_bounds) == len(parent_bounds),
+                expect=f"{len(parent_bounds)} rows (parent segment count)",
+                actual=f"{len(child_bounds)} rows",
+                details=(
+                    "distribute must produce the same number of accrual rows the job "
+                    "would have written processing this child independently"
+                ),
+                level="FAIL",
+            )
+        )
+        # Accrued must stay in the same rounded unit space as the parent, or booking
+        # rejects it with "Invalid amount" (a pro-rata split is what broke this).
+        frac = query_rows(
+            f"""
+            SELECT COUNT(*)::text
+            FROM {schema}.interest_accrual_details
+            WHERE account_id = {int(child_id)}
+              AND total_accrued_amount IS NOT NULL
+              AND total_accrued_amount <> TRUNC(total_accrued_amount)
+            """
+        )
+        frac_n = int(frac[0][0]) if frac and frac[0][0] else 0
+        out.checks.append(
+            ColumnCheck(
+                name=f"child[{child_lan}].accrued_rounded_like_parent",
+                table="interest_accrual_details",
+                ok=frac_n == 0,
+                expect="0 fractional total_accrued_amount rows",
+                actual=f"{frac_n} fractional",
+                details="sub-unit remainder belongs in carry_over_amount, not accrued",
+                level="FAIL",
+            )
+        )
+
+        missing = [b for b in parent_bounds if b not in set(child_bounds)]
+        extra = [b for b in child_bounds if b not in set(parent_bounds)]
+        out.checks.append(
+            ColumnCheck(
+                name=f"child[{child_lan}].row_boundaries_match_parent_segments",
+                table="interest_accrual_details",
+                ok=not missing and not extra,
+                expect="identical (start_date,end_date) set as parent",
+                actual=(
+                    "aligned" if not missing and not extra
+                    else f"missing={missing[:3]} extra={extra[:3]}"
+                ),
+                details="missing or extra windows mean child dates diverge from independent calc",
+                level="FAIL",
+            )
+        )
+
         tip_rows = query_rows(
             f"""
             SELECT iad.id::text,
@@ -276,6 +372,32 @@ def audit_shg_child_iad_distribute(
         _ck("col.end_date", bool(end_d), "non-null date", end_d or "NULL")
         if start_d and end_d:
             _ck("col.end_gte_start", end_d >= start_d, f"end>={start_d}", end_d)
+
+        # MUST-MATCH independent: each row starts where the previous one ended.
+        # Presence-only here is what let distribute write the PARENT's prevDueDate
+        # onto a child tip without the suite noticing.
+        prev_end = query_rows(
+            f"""
+            SELECT iad.end_date::date::text
+            FROM {schema}.interest_accrual_details iad
+            WHERE iad.account_id = {int(child_id)}
+              AND iad.id <> {int(iad_id)}
+              AND iad.end_date <= DATE '{start_d}'
+            ORDER BY iad.end_date DESC
+            LIMIT 1
+            """
+        ) if start_d else []
+        if prev_end and prev_end[0][0]:
+            _ck(
+                "col.start_date_contiguous_with_prior_row",
+                start_d == prev_end[0][0],
+                prev_end[0][0],
+                start_d or "NULL",
+                details=(
+                    "MUST-MATCH independent: tip start_date == prior row end_date "
+                    "(distribute must not start the child at the parent's prevDueDate)"
+                ),
+            )
 
         tip_synced = bool(require_tip_sync and parent_max_end and end_d == parent_max_end)
         if require_tip_sync and parent_max_end:
@@ -410,7 +532,7 @@ def audit_shg_child_iad_distribute(
         if lid_ok:
             lid_row = query_rows(
                 f"""
-                SELECT id::text
+                SELECT id::text, loan_account_id::text, installment_date::date::text
                 FROM {schema}.loan_installment_details
                 WHERE id = {int(lid)}
                 LIMIT 1
@@ -422,6 +544,47 @@ def audit_shg_child_iad_distribute(
                 f"exists id={lid}",
                 "missing" if not lid_row else lid,
             )
+            # Existence alone is not ownership: the distribute path can fall back to
+            # the PARENT's installment id, which still "exists". Fail closed on
+            # cross-loan FKs.
+            if lid_row:
+                lid_owner = lid_row[0][1]
+                _ck(
+                    "col.loan_installment_details_id_owned_by_child",
+                    lid_owner == child_id,
+                    f"loan_account_id={child_id}",
+                    f"loan_account_id={lid_owner}",
+                    details=(
+                        "cross-loan FK: child accrual row points at another account's "
+                        "installment (parent fallback in distribute)"
+                    ),
+                )
+                # MUST-MATCH independent: installment is resolved per row from the
+                # child's own INT due on THIS row's end_date, not copied forward.
+                if end_d:
+                    expected = query_rows(
+                        f"""
+                        SELECT loan_installment_details_id::text
+                        FROM {schema}.loan_due_details
+                        WHERE loan_account_id = {int(child_id)}
+                          AND component_type = 'INT'
+                          AND COALESCE(is_deleted,false) = false
+                          AND due_date >= DATE '{end_d}'
+                        ORDER BY due_date
+                        LIMIT 1
+                        """
+                    )
+                    if expected and expected[0][0]:
+                        _ck(
+                            "col.loan_installment_details_id_tracks_window",
+                            lid == expected[0][0],
+                            expected[0][0],
+                            lid,
+                            details=(
+                                "MUST-MATCH independent: getTodayOrNextDueDate(child, "
+                                "row.end_date); a stale id means distribute copied it forward"
+                            ),
+                        )
 
         # Coverage marker: every physical column named above
         audited = {
@@ -455,6 +618,53 @@ def audit_shg_child_iad_distribute(
         )
         n_viol = int((viol[0][0] if viol else "0") or "0")
         _ck("all_rows_accrued_gte_posted", n_viol == 0, "0 violations", str(n_viol))
+
+        # Parent-sum parity alone cannot see a rupee moved between two children. Once a window has
+        # been trued up, each child must match its OWN scheduled INT — that is what it gets billed.
+        # Scoped to the caller's roll window: earlier rows were not written by this run.
+        skew = [] if scheduled_int_since is None else query_rows(
+            f"""
+            WITH sched AS (
+                SELECT lid.installment_date::date AS due_date,
+                       ldd.due_amount AS scheduled_int,
+                       LAG(lid.installment_date::date)
+                           OVER (ORDER BY lid.installment_date) AS prev_due
+                FROM {schema}.loan_due_details ldd
+                JOIN {schema}.loan_installment_details lid
+                  ON lid.id = ldd.loan_installment_details_id
+                WHERE ldd.loan_account_id = {int(child_id)}
+                  AND ldd.is_deleted = false
+                  AND ldd.component_type = 'INT'
+            ), acc AS (
+                SELECT s.due_date, s.scheduled_int,
+                       COALESCE(SUM(iad.total_accrued_amount), 0) AS accrued
+                FROM sched s
+                LEFT JOIN {schema}.interest_accrual_details iad
+                       ON iad.account_id = {int(child_id)}
+                      AND iad.end_date::date > COALESCE(s.prev_due, DATE '1900-01-01')
+                      AND iad.end_date::date <= s.due_date
+                GROUP BY s.due_date, s.scheduled_int
+            )
+            SELECT COUNT(*)::text
+            FROM acc
+            WHERE EXISTS (
+                    SELECT 1 FROM {schema}.interest_accrual_details i
+                    WHERE i.account_id = {int(child_id)}
+                      AND i.end_date::date = acc.due_date
+                  )
+              AND acc.due_date >= {_q(scheduled_int_since)}::date
+              AND acc.accrued <> acc.scheduled_int
+            """
+        )
+        n_skew = int((skew[0][0] if skew else "0") or "0")
+        if scheduled_int_since is not None:
+            _ck(
+            "closed_window_accrued_eq_own_scheduled_int",
+            n_skew == 0,
+            f"0 trued-up windows off own RPS INT since {scheduled_int_since}",
+            str(n_skew),
+            details="child accrued must equal its own loan_due_details INT once the window closes",
+            )
 
         if parent_max_end:
             unfrozen = query_rows(

@@ -26,6 +26,16 @@ feeds:
   - capture-proof
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `session start`, `any task`, `orient`, `test`, `RCA`, `sync`
+- **requires:** []
+- **reads:** `.cursor/workspace-intelligence-state.md`, `cursor-bundle/memory/MEMORY.md`, `cursor-bundle/flow-test/learning_bus.jsonl`, `cursor-bundle/flow-test/test_coverage.jsonl`, `cursor-bundle/kg/data/kg.db`
+- **writes:** `cursor-bundle/flow-test/learning_bus.jsonl`, `cursor-bundle/brain/testing/learnings.jsonl`
+- **feeds:** `workspace-router`, `autonomous-workspace-ops`, `capture-proof`
+
 # Super agent (KG + test KG + skills)
 
 One orchestrator. All intelligence layers **cross-learn** through `learning_bus.jsonl` — skills do not hold separate state.

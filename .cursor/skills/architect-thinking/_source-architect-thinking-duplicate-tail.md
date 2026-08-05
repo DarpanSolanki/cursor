@@ -1,6 +1,6 @@
-<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.mdc only routes here. -->
+<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.md only routes here. -->
 
-<!-- Duplicate tail from architect-thinking.mdc (2nd copy). Zero-loss archive. -->
+<!-- Duplicate tail from architect-thinking.md (2nd copy). Zero-loss archive. -->
 
 # Principal architect context (sliProd)
 
@@ -15,7 +15,7 @@
 ## Behaviour
 
 - **Contracts**: additive-only API/Kafka/ExecutionContext changes; grep callers across LOS, payments, batch, webapp, reporting (see `api-contract-safety.mdc`).
-- **Accounting / money**: trace orchestration XML → processors → `postTransaction` / ledger tables; run through `accounting.mdc (Accounting Financial Flow Preflight)` and signoff gate when figures or GL are touched.
+- **Accounting / money**: trace orchestration XML → processors → `postTransaction` / ledger tables; run through `accounting.md (Accounting Financial Flow Preflight)` and signoff gate when figures or GL are touched.
 - **Risks**: read `.cursor/gaps-and-risks-digest.md` (escalate to full `.cursor/gaps-and-risks.md` when GAP-id/area flagged) for known edge cases; do not dismiss Redis, bank replay, or sync field requirements.
 - **Documentation**: prefer updating `system_brain/` for verified operational facts and `accounting.mdc` when accounting-v2 behaviour changes (`accounting.mdc` (Accounting knowledge sync section)).
 
@@ -32,7 +32,7 @@
 
 **Also**: `.cursor/docs/*.md` (glossary, patterns, anti-patterns, FAQ, testing) and **`system_brain/flows/*.md`** (indexed in `.cursor/architecture.md` §§11–12).
 
-These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+These complement — do not replace — `AGENTS.md`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
 
 ---
 

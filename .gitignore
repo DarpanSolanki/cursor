@@ -3,6 +3,7 @@
 
 !.gitignore
 !AGENTS.md
+!.mcp.json
 !WORKSPACE.md
 !sync_branches_v2.sh
 !doctor.sh
@@ -32,6 +33,10 @@ cursor-bundle/*
 !cursor-bundle/brain/**
 !cursor-bundle/memory/
 !cursor-bundle/memory/**
+!cursor-bundle/schema/
+!cursor-bundle/schema/**
+# Regenerates from the Java tree; 9MB of churn otherwise. tables.jsonl stays tracked.
+cursor-bundle/schema/bindings.jsonl
 !cursor-bundle/kg/
 cursor-bundle/kg/*
 !cursor-bundle/kg/bin/
@@ -39,6 +44,8 @@ cursor-bundle/kg/*
 !cursor-bundle/kg/build_config.json
 !cursor-bundle/kg/curated/
 !cursor-bundle/kg/curated/**
+!cursor-bundle/kg/snapshot/
+!cursor-bundle/kg/snapshot/**
 cursor-bundle/kg/data/cache/
 cursor-bundle/kg/data/*.db-journal
 

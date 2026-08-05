@@ -1,0 +1,394 @@
+{
+  "rules": [
+    {
+      "rule": "00-workspace-core",
+      "file": ".cursor/rules/00-workspace-core.mdc",
+      "description": "Workspace core \u2014 bootstrap, autopilot, contract, ops, hygiene, open-final",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "10-quality-gates",
+      "file": ".cursor/rules/10-quality-gates.mdc",
+      "description": "Quality gates \u2014 discuss-before, minimal-fix, reuse-queries, hot-path, upstream-sync, gates A\u2013E",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "20-ship-gates",
+      "file": ".cursor/rules/20-ship-gates.mdc",
+      "description": "Ship gates \u2014 ship-loop, ship-test, enrichment, post-ship, enhancement fronts, code-backed sim, internal-api, flyway",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "30-kg-discipline",
+      "file": ".cursor/rules/30-kg-discipline.mdc",
+      "description": "KG discipline \u2014 safety, self-learning, flow-cross-learn, DPI branch gate",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "accounting-134207-placeholder-iad",
+      "file": ".cursor/rules/accounting-134207-placeholder-iad.mdc",
+      "description": "Fix 134207 on postTransaction/disburseLoan \u2014 missing product_transaction_catalogue placeholder\u2192IAD rows (PROC_FEE, GST, STAMP_DUTY_AMT)",
+      "alwaysApply": false,
+      "globs": []
+    },
+    {
+      "rule": "accounting-full-flow-gate",
+      "file": ".cursor/rules/accounting-full-flow-gate.mdc",
+      "description": "Accounting module \u2014 ALL flow domains (read, write, batch, money); not money-only",
+      "alwaysApply": false,
+      "globs": [
+        "trustt-platform-accounting/**",
+        "scripts/accounting/**",
+        "scripts/dpic/**",
+        "scripts/disbursement/**",
+        "scripts/testing/registry.json"
+      ]
+    },
+    {
+      "rule": "accounting",
+      "file": ".cursor/rules/accounting.mdc",
+      "description": "Accounting module \u2014 financial gates + routing to on-demand accounting-knowledge skill",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-accounting/**/*.java",
+        "**/trustt-platform-accounting/**/*.xml"
+      ]
+    },
+    {
+      "rule": "api-contract-safety",
+      "file": ".cursor/rules/api-contract-safety.mdc",
+      "description": "API contract safety \u2014 backward compatibility, additive changes, response semantics, cross-module impact",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml"
+      ]
+    },
+    {
+      "rule": "architect-thinking",
+      "file": ".cursor/rules/architect-thinking.mdc",
+      "description": "Architect thinking \u2014 tiered solutions, repository comment policy, routing to on-demand skill",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml",
+        "**/*.gradle",
+        "**/*.gradle.kts"
+      ]
+    },
+    {
+      "rule": "batch-hot-path-perf",
+      "file": ".cursor/rules/batch-hot-path-perf.mdc",
+      "description": "Batch inner-loop perf \u2014 precedents; workspace gate: 10-quality-gates.md (always-on)",
+      "alwaysApply": false,
+      "globs": [
+        "**/batchnew/**/*.java",
+        "**/*BatchService.java",
+        "**/*ItemProcessor.java",
+        "**/*ItemReader.java",
+        "**/*ItemWriter.java"
+      ]
+    },
+    {
+      "rule": "batch-write-skip-contract",
+      "file": ".cursor/rules/batch-write-skip-contract.mdc",
+      "description": "Batch write-skip contract \u2014 platform Future resolve vs job mapper responsibilities (force_async)",
+      "alwaysApply": false,
+      "globs": [
+        "**/GenericListenerV3.java",
+        "**/*FailureEntityMapper.java"
+      ]
+    },
+    {
+      "rule": "batch",
+      "file": ".cursor/rules/batch.mdc",
+      "description": "Auto-loads when editing batch service or batch-shaped Spring Batch artifacts",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-batch/**/*.java",
+        "**/*BatchConfig*.java",
+        "**/*JobConfig*.java",
+        "**/*Tasklet*.java",
+        "**/*Writer*.java",
+        "**/*Reader*.java",
+        "**/*Processor*.java"
+      ]
+    },
+    {
+      "rule": "darpan",
+      "file": ".cursor/rules/darpan.mdc",
+      "description": "Trustt LMS pinpoint-RCA discipline \u2014 cursor-bundle brain, KG, db-tools, memory (sliProd)",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "death-foreclosure-sanity-suite",
+      "file": ".cursor/rules/death-foreclosure-sanity-suite.mdc",
+      "description": "Death foreclosure local test harness and flow entrypoints",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/dcf_sanity.py",
+        "scripts/dcf_sanity/**",
+        "trustt-platform-accounting/**/deathforeclosure/**"
+      ]
+    },
+    {
+      "rule": "debugging-production-issues",
+      "file": ".cursor/rules/debugging-production-issues.mdc",
+      "description": "Systematic debugging of production issues \u2014 evidence-based RCA, adversarial self-review, and manual verification plans.",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml"
+      ]
+    },
+    {
+      "rule": "disburse-loan-sanity-suite",
+      "file": ".cursor/rules/disburse-loan-sanity-suite.mdc",
+      "description": "Run evidence-driven disburseLoan sanity (simulator+DB)",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/disburse_loan_sanity.py",
+        "scripts/disbursement/payloads/canonical/*.json",
+        "scripts/bin/disburse-quick.sh",
+        "scripts/bin/disburse-shg-quick.sh",
+        "docs/disbursement-sanity/**",
+        "docs/disbursement-reset-recipes/**",
+        "scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql",
+        "scripts/sql/reset/reset_disburse_loan_replay_mfi_from_json.py"
+      ]
+    },
+    {
+      "rule": "disbursement-testing-playbook",
+      "file": ".cursor/rules/disbursement-testing-playbook.mdc",
+      "description": "Disbursement testing playbook with simulator + CRR proof",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/disburse_loan_sanity.py",
+        "scripts/disburse_loan_sanity_*.json",
+        "docs/disbursement-sanity/**"
+      ]
+    },
+    {
+      "rule": "docs-outside-service-repos",
+      "file": ".cursor/rules/docs-outside-service-repos.mdc",
+      "description": "Workspace docs/ placement; editorial standards for docs outside service repos",
+      "alwaysApply": false,
+      "globs": [
+        "docs/**/*"
+      ]
+    },
+    {
+      "rule": "dpi-money-proof-gate",
+      "file": ".cursor/rules/dpi-money-proof-gate.mdc",
+      "description": "DPI money path \u2014 mandatory SQL proof chain before ship or QA hand-off",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/dpic/**",
+        "scripts/bin/dpi-*.sh",
+        "scripts/testing/registry.json"
+      ]
+    },
+    {
+      "rule": "effective-prompts-and-issue-triage",
+      "file": ".cursor/rules/effective-prompts-and-issue-triage.mdc",
+      "description": "How users should frame fix requests; how agents interpret thin prompts and triage before acting.",
+      "alwaysApply": false,
+      "globs": [
+        "CLAUDE.md",
+        "AGENTS.md",
+        "**/*.md"
+      ]
+    },
+    {
+      "rule": "events",
+      "file": ".cursor/rules/events.mdc",
+      "description": "Kafka/events hygiene, consumer patterns, idempotency, disbursement sync contract",
+      "alwaysApply": false,
+      "globs": [
+        "**/MessageBroker*.xml",
+        "**/*Consumer*.java",
+        "**/*Producer*.java",
+        "**/*KafkaConfig*.java",
+        "**/*MessageBroker*.java"
+      ]
+    },
+    {
+      "rule": "execution-context-discipline",
+      "file": ".cursor/rules/execution-context-discipline.mdc",
+      "description": "ExecutionContext discipline \u2014 the #1 source of runtime bugs; key management, null safety, scope control",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml"
+      ]
+    },
+    {
+      "rule": "gateway",
+      "file": ".cursor/rules/gateway.mdc",
+      "description": "Auto-loads when editing trustt-platform-api-gateway",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-api-gateway/**/*.java",
+        "**/trustt-platform-api-gateway/**/*.xml"
+      ]
+    },
+    {
+      "rule": "git-workflow",
+      "file": ".cursor/rules/git-workflow.mdc",
+      "description": "Git commit hygiene, fork/upstream PR workflow, multi-repo sync script phrase",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/bin/sync-branches.sh",
+        "sync_branches_v2.sh",
+        "**/build.gradle",
+        "**/build.gradle.kts",
+        "**/settings.gradle",
+        "**/settings.gradle.kts"
+      ]
+    },
+    {
+      "rule": "harness-push-origin-main-only",
+      "file": ".cursor/rules/harness-push-origin-main-only.mdc",
+      "description": "",
+      "alwaysApply": false,
+      "globs": []
+    },
+    {
+      "rule": "jira-tdpqa-qa-test-fields",
+      "file": ".cursor/rules/jira-tdpqa-qa-test-fields.mdc",
+      "description": "",
+      "alwaysApply": false,
+      "globs": []
+    },
+    {
+      "rule": "local-dev-workflows",
+      "file": ".cursor/rules/local-dev-workflows.mdc",
+      "description": "Local DB investigation, MFI disburse reset scripts, disburseLoan replay reset (Yugabyte)",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/**",
+        "docs/disbursement-sanity/**"
+      ]
+    },
+    {
+      "rule": "los",
+      "file": ".cursor/rules/los.mdc",
+      "description": "Auto-loads when editing trustt-platform-los",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-los/**/*.java",
+        "**/trustt-platform-los/**/*.xml"
+      ]
+    },
+    {
+      "rule": "multi-agent-spawning",
+      "file": ".cursor/rules/multi-agent-spawning.mdc",
+      "description": "When to spawn multiple agents for speed; how to partition work; when one agent is mandatory (money, contracts).",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.md",
+        "**/*.java"
+      ]
+    },
+    {
+      "rule": "multi-path-state-persistence-safety",
+      "file": ".cursor/rules/multi-path-state-persistence-safety.mdc",
+      "description": "Multi-path state persistence safety (general + disbursement queue/JSON layers)",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml"
+      ]
+    },
+    {
+      "rule": "no-flow-break-impact-check",
+      "file": ".cursor/rules/no-flow-break-impact-check.mdc",
+      "description": "Non-negotiable impact analysis before any change \u2014 learned from production incidents",
+      "alwaysApply": false,
+      "globs": [
+        "**/*.java",
+        "**/*.xml"
+      ]
+    },
+    {
+      "rule": "payments",
+      "file": ".cursor/rules/payments.mdc",
+      "description": "Auto-loads when editing trustt-platform-payments",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-payments/**/*.java",
+        "**/trustt-platform-payments/**/*.xml"
+      ]
+    },
+    {
+      "rule": "platform-lib",
+      "file": ".cursor/rules/platform-lib.mdc",
+      "description": "Auto-loads when editing any file in trustt-platform-lib",
+      "alwaysApply": false,
+      "globs": [
+        "**/trustt-platform-lib/**/*.java",
+        "**/trustt-platform-lib/**/*.xml"
+      ]
+    },
+    {
+      "rule": "prod-ops-sql-impact-gate",
+      "file": ".cursor/rules/prod-ops-sql-impact-gate.mdc",
+      "description": "Prod/ops SQL impact gate \u2014 mandatory caller + status/column blast analysis before adhoc UPDATE scripts (CRR, loan_account money patches)",
+      "alwaysApply": false,
+      "globs": [
+        "scripts/sql/adhoc/**",
+        "scripts/sql/deploy/**",
+        "scripts/sql/setup/**"
+      ]
+    },
+    {
+      "rule": "release-details",
+      "file": ".cursor/rules/release-details.mdc",
+      "description": "Short release/QA hand-off when user asks for release details \u2014 RCA, impact, dev testing in plain language",
+      "alwaysApply": false,
+      "globs": []
+    },
+    {
+      "rule": "repository-layer-no-comments",
+      "file": ".cursor/rules/repository-layer-no-comments.mdc",
+      "description": "No comments in persistence/repository layer \u2014 use knowledge docs or SQL",
+      "alwaysApply": false,
+      "globs": [
+        "**/src/main/java/**/repository/**/*.java"
+      ]
+    },
+    {
+      "rule": "upstream-mainline-push-sync",
+      "file": ".cursor/rules/upstream-mainline-push-sync.mdc",
+      "description": "Before push to origin on mfi_integration/mfi_release mainline \u2014 fetch upstream, sync tip, never push stale origin-behind-upstream",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "run-the-real-thing-locally",
+      "file": "run-the-real-thing-locally.mdc",
+      "description": "Every fix must be proven by running the real job/API locally \u2014 never SQL inserts alone",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "agent-parallelism-and-token-budget",
+      "file": "agent-parallelism-and-token-budget.mdc",
+      "description": "Cheapest tool that can answer wins \u2014 script > CLI > subagent; parallelise reads, never money writes",
+      "alwaysApply": true,
+      "globs": []
+    },
+    {
+      "rule": "40-knowledge-upkeep",
+      "file": ".cursor/rules/40-knowledge-upkeep.mdc",
+      "description": "Knowledge upkeep \u2014 KG + suite + docs three loops",
+      "alwaysApply": true,
+      "globs": []
+    }
+  ]
+}

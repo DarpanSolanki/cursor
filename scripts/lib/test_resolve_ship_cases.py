@@ -10,7 +10,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/lib"))
 
+from impact_tests import _dpi_tree_present  # noqa: E402
 from resolve_ship_cases import resolve_dpi_cases, resolve_ship_cases  # noqa: E402
+
+needs_dpi_tree = unittest.skipUnless(
+    _dpi_tree_present(),
+    "DPI batch sources land on 3.7.1 / DPI trains; resolve_ship_cases correctly drops "
+    "DPI cases when the tree is absent, so asserting them here would assert an aspiration",
+)
 
 
 def _load_reg() -> dict:
@@ -35,6 +42,7 @@ class ResolveDpiCasesTest(unittest.TestCase):
         self.assertIn("dpic.ship_close_verify", out)
         self.assertNotIn("dpic.billing_ud_next_emi", out)
 
+    @needs_dpi_tree
     def test_money_tier_booking_ship_auto_includes_ship_close(self) -> None:
         reg = _load_reg()
         paths = [
@@ -45,6 +53,7 @@ class ResolveDpiCasesTest(unittest.TestCase):
         self.assertIn("dpic.ship_close_verify", out)
         self.assertNotIn("dpic.posting_calendar_regression", out)
 
+    @needs_dpi_tree
     def test_npa_fixture_sql_does_not_pull_npa_movement_e2e(self) -> None:
         reg = _load_reg()
         paths = [

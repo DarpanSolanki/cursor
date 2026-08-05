@@ -1,6 +1,6 @@
 ---
 name: architect-thinking
-description: On-demand architect patterns — framework internals, tiered solutions, bank/DB/financial safety, repository policy. Use when Java/XML/Gradle work needs depth beyond the thin architect-thinking.mdc gate.
+description: "On-demand architect patterns \u2014 framework internals, tiered solutions, bank/DB/financial safety, repository policy. Use when Java/XML/Gradle work needs depth beyond the thin architect-thinking.md gate."
 ---
 
 # Architect thinking (on-demand)

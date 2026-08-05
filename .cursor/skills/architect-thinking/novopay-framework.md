@@ -1,4 +1,4 @@
-<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.mdc only routes here. -->
+<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.md only routes here. -->
 
 # Novopay framework deep awareness
 

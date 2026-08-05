@@ -1301,7 +1301,7 @@ def _kafka_publish_disburse(payload: dict[str, Any], timeout_s: int) -> tuple[in
     import subprocess
     import tempfile
 
-    publisher = Path("/home/darpan/Documents/sliProd/scripts/testing/disbursement/disburse_kafka_publish.py")
+    publisher = ROOT / "scripts" / "testing" / "disbursement" / "disburse_kafka_publish.py"
     if not publisher.is_file():
         publisher = Path(__file__).resolve().parent / "testing" / "disbursement" / "disburse_kafka_publish.py"
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json", delete=False) as f:
@@ -2082,10 +2082,40 @@ def _wait_for_disbursement_status_in(ext_ref: str, statuses: set[str], timeout_s
     raise RuntimeError(f"Loan not found in DB for external_ref_number={ext_ref}")
 
 
+def _dedupe_child_queue_rows() -> None:
+    """Restore uniqueness of loan_account_events_queue.filler_2 (child external ref).
+
+    Canonical group payloads reuse fixed member external refs, so every local run adds
+    another CLMT row with the same filler_2. `findOneByFiller2` (used by the NEFT child
+    callback) is a global single-result lookup, so from the second run on it throws
+    IncorrectResultSizeDataAccessException and the child can never leave
+    NEFT_STAGE_1_PENDING. Production external refs are unique per LOS application, so
+    this is a local fixture artifact only — the cleanup belongs in reset, not the product.
+    """
+    sql_file = str(
+        ROOT / "scripts" / "sql" / "reset" / "local_dedupe_child_queue_rows.sql"
+    )
+    try:
+        subprocess.run(
+            [
+                "bash",
+                str(ROOT / "scripts" / "bin" / "db-local-write.sh"),
+                "--file",
+                sql_file,
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        print("[suite] child queue rows deduped (filler_2 uniqueness restored)", flush=True)
+    except Exception as e:  # noqa: BLE001 — fixture hygiene must not fail the run
+        print(f"[suite] WARN child queue dedupe skipped: {e}", flush=True)
+
+
 def _run_local_reset_from_json(request_file: str, *, target_disb_status: str) -> None:
     cmd = [
         sys.executable,
-        "/home/darpan/Documents/sliProd/scripts/sql/reset/reset_disburse_loan_replay_mfi_from_json.py",
+        str(ROOT / "scripts" / "sql" / "reset" / "reset_disburse_loan_replay_mfi_from_json.py"),
         "--file",
         request_file,
         "--target-disb-status",
@@ -2100,6 +2130,7 @@ def _run_local_reset_from_json(request_file: str, *, target_disb_status: str) ->
             if killed:
                 print(f"[suite] terminated idle-in-txn blockers={killed}", flush=True)
             subprocess.run(cmd, check=True, text=True, env=env)
+            _dedupe_child_queue_rows()
             return
         except subprocess.CalledProcessError as e:
             last_err = e

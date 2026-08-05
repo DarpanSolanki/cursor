@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import unittest
@@ -25,8 +26,16 @@ class SessionShipTests(unittest.TestCase):
         self._backup: dict[Path, str | None] = {}
         for p in (self.touch, self.pending, self.passed, self.queue, self.state):
             self._backup[p] = p.read_text(encoding="utf-8") if p.is_file() else None
+            # Backing up is not isolating: a real `.ship-loop-passed.json` left in
+            # place made auto_close_mode() report "already satisfied" instead of the
+            # state under test. Each test writes the files it needs.
+            p.unlink(missing_ok=True)
+        self.fixture = ROOT / f"scripts/lib/.test-session-ship-{os.getpid()}.tmp"
+        self.fixture.write_text("fixture\n", encoding="utf-8")
+        self.fixture_rel = str(self.fixture.relative_to(ROOT))
 
     def tearDown(self) -> None:
+        self.fixture.unlink(missing_ok=True)
         for p, content in self._backup.items():
             if content is None:
                 p.unlink(missing_ok=True)
@@ -36,7 +45,7 @@ class SessionShipTests(unittest.TestCase):
     def test_stale_pending_no_session_touch_skips_close(self) -> None:
         self.pending.parent.mkdir(parents=True, exist_ok=True)
         self.pending.write_text(
-            json.dumps({"tier": "money", "files": ["scripts/dpic/foo.sh"]}) + "\n",
+            json.dumps({"tier": "money", "files": [self.fixture_rel]}) + "\n",
             encoding="utf-8",
         )
         self.touch.unlink(missing_ok=True)
@@ -45,10 +54,10 @@ class SessionShipTests(unittest.TestCase):
 
     def test_session_touch_money_fix_ship_runs_close(self) -> None:
         self.pending.write_text(
-            json.dumps({"tier": "money", "files": ["scripts/dpic/foo.sh"]}) + "\n",
+            json.dumps({"tier": "money", "files": [self.fixture_rel]}) + "\n",
             encoding="utf-8",
         )
-        ss.touch_session_ship(source="edit", paths=["scripts/dpic/foo.sh"])
+        ss.touch_session_ship(source="edit", paths=[self.fixture_rel])
         self.state.write_text(
             json.dumps({"last_classification": "FIX+SHIP"}) + "\n",
             encoding="utf-8",
@@ -57,7 +66,7 @@ class SessionShipTests(unittest.TestCase):
 
     def test_verified_queue_triggers_close(self) -> None:
         self.pending.write_text(
-            json.dumps({"tier": "money", "files": ["scripts/dpic/foo.sh"]}) + "\n",
+            json.dumps({"tier": "money", "files": [self.fixture_rel]}) + "\n",
             encoding="utf-8",
         )
         ss.touch_session_ship(source="edit")
@@ -70,9 +79,10 @@ class SessionShipTests(unittest.TestCase):
 
     def test_workspace_tier_close_mode(self) -> None:
         self.pending.write_text(
-            json.dumps({"tier": "workspace", "files": [".cursor/changelog.md"]}) + "\n",
+            json.dumps({"tier": "workspace", "files": [self.fixture_rel]}) + "\n",
             encoding="utf-8",
         )
+        self.passed.unlink(missing_ok=True)
         ss.touch_session_ship(source="edit")
         self.assertEqual(ss.auto_close_mode(), "workspace")
 

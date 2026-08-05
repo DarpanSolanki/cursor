@@ -1,0 +1,8 @@
+# file::pattern pairs grandfathered from the SHG accrual false-positive audit.
+# This list may only SHRINK. New entries mean a new weak assert — fix the
+# assert instead of extending this file.
+scripts/disbursement/disbursement_suite/column_audit.py::warn-not-fail 2
+scripts/testing/flowtest/dad_column_audit.py::presence-only-bool 4
+scripts/testing/flowtest/dad_column_audit.py::presence-only-nonnull 14
+scripts/testing/flowtest/iad_column_audit.py::presence-only-bool 2
+scripts/testing/flowtest/iad_column_audit.py::presence-only-nonnull 14

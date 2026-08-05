@@ -35,4 +35,4 @@ Significant perf in scope: Yes (<what>) | No — none material in this path
 Hot-path scan: PASS | WARN — scripts/bin/hot-path-scan.sh --from-pending
 ```
 
-Pairs with `no-flow-break-impact-check.mdc`, `discuss-before-updating.mdc`, and `hot-path-perf-gate.mdc`.
+Pairs with `no-flow-break-impact-check.md`, `discuss-before-updating.mdc`, and `hot-path-perf-gate.mdc`.

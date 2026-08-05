@@ -19,6 +19,17 @@ scripts:
   - scripts/bin/open-final.sh
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `open final`, `final version`, `no diff`, `forward file`, `open in IDE`, `open-final`
+- **requires:** []
+- **reads:** []
+- **writes:** []
+- **feeds:** []
+- **scripts:** `scripts/bin/open-final.sh`
+
 # Open final file (path-first — IDE open is opt-in)
 
 Cursor **Agent Review** links (`[Review](…#changes)`) open a **diff-style** view. That is the wrong surface when the user wants the **final file content** (ops SQL, handoff artifact) to read or forward.
@@ -60,7 +71,7 @@ Only if the user explicitly says **"open it"**, **"open in IDE"**, **"open final
 }
 ```
 
-URI must be under the workspace (or `~/.cursor`). Fragment `#L10` / `#L10:5` is allowed for line/column.
+URI must be under the workspace (or `~/.claude`). Fragment `#L10` / `#L10:5` is allowed for line/column.
 
 ## Review / diff
 

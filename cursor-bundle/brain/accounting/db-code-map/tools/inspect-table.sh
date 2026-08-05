@@ -14,17 +14,20 @@ set -euo pipefail
 TABLE="${1:-}"
 [[ -z "$TABLE" ]] && { echo "Usage: $0 <table_name>"; exit 1; }
 
-DARPAN=/home/darpan/darpan
-DB_TOOLS=$DARPAN/claude/db-tools/bin
-ACC_SRC=$DARPAN/novopay-platform-accounting-v2/src/main/java
-ACC_ORC=$DARPAN/novopay-platform-accounting-v2/deploy/application/orchestration
+# Workspace root = …/sliProd (this file lives under cursor-bundle/brain/.../tools/)
+WS="$(cd "$(dirname "$0")/../../../../.." && pwd)"
+DB_QA3="$WS/scripts/db-qa3.sh"
+ACC_SRC="$WS/trustt-platform-accounting/src/main/java"
+ACC_ORC="$WS/trustt-platform-accounting/deploy/application/orchestration"
+
+dbq() { bash "$DB_QA3" --sql "$1"; }
 
 echo "============================================================"
 echo "TABLE  : mfi_accounting.$TABLE"
 echo "============================================================"
 echo
 echo "--- SCHEMA (live from mfi_qa3) ---"
-$DB_TOOLS/db-query.sh mfi_qa3 --sql "
+dbq "
 SELECT column_name, data_type,
        CASE WHEN is_nullable='YES' THEN 'null' ELSE 'NOT NULL' END AS nullable,
        COALESCE(column_default, '') AS default_val
@@ -34,11 +37,11 @@ SELECT column_name, data_type,
 
 echo
 echo "--- ROW COUNT (mfi_qa3) ---"
-$DB_TOOLS/db-query.sh mfi_qa3 --sql "SELECT COUNT(*) AS rows FROM mfi_accounting.$TABLE;" 2>/dev/null || echo "(count failed)"
+dbq "SELECT COUNT(*) AS rows FROM mfi_accounting.$TABLE;" 2>/dev/null || echo "(count failed)"
 
 echo
 echo "--- INDEXES (mfi_qa3) ---"
-$DB_TOOLS/db-query.sh mfi_qa3 --sql "
+dbq "
 SELECT indexname, indexdef
   FROM pg_indexes
  WHERE schemaname = 'mfi_accounting' AND tablename = '$TABLE';" 2>/dev/null || echo "(indexes query failed)"

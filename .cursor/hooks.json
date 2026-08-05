@@ -3,6 +3,10 @@
   "hooks": {
     "sessionStart": [
       {
+        "command": "python3 scripts/bin/with-budget.py --budget 10 --label hook:memory-session-start -- bash .cursor/hooks/memory-session-start.sh",
+        "timeout": 10
+      },
+      {
         "command": "python3 scripts/bin/with-budget.py --budget 30 --label hook:kg-session-start -- bash .cursor/hooks/kg-session-start.sh",
         "timeout": 30
       },

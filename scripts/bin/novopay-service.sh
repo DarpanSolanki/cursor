@@ -74,10 +74,20 @@ case "$cmd" in
     svc="${1:-}"
     [[ -n "$svc" ]] || usage 1
     if nps_probe_service "$svc"; then
-      echo "  $svc: probe OK — no restart"
-      exit 0
+      # A green probe means "listening", not "running HEAD". When the caller asked
+      # for --compile it has already decided the build is stale (source or classes
+      # newer than the running JVM), so returning early here would keep serving
+      # tests from bytecode that is not on disk — how a stale 15:52 JVM produced a
+      # whole session of money-path evidence on 2026-08-03.
+      if [[ "$want_compile" == "1" ]]; then
+        echo "=== ensure $svc (probe OK but build is stale — rebuilding + restarting) ==="
+      else
+        echo "  $svc: probe OK — no restart"
+        exit 0
+      fi
+    else
+      echo "=== ensure $svc (probe failed — restarting) ==="
     fi
-    echo "=== ensure $svc (probe failed — restarting) ==="
     nps_stop_service "$svc" || true
     sleep 1
     nps_start_service "$svc" "$want_compile"

@@ -54,11 +54,11 @@ SET prepayment_status = 'EXPIRED', updated_on = NOW(), updated_by = 'SDCP11048'
 WHERE loan_account_id = $LOAN_ID AND prepayment_status = 'PENDING' AND is_deleted = false;
 " >/dev/null
 
-python3 - "$LAN" "$LOAN_ID" "$FD" "$USER_ID" "$OFFICE_ID" "$ACCT_URL" <<'PY'
+python3 - "$LAN" "$LOAN_ID" "$FD" "$USER_ID" "$OFFICE_ID" "$ACCT_URL" "$ROOT" <<'PY'
 import json, os, sys, time, urllib.request, subprocess
 from decimal import Decimal, ROUND_HALF_UP
 
-LAN, LOAN_ID, FD, USER, OFFICE, ACCT = sys.argv[1:7]
+LAN, LOAN_ID, FD, USER, OFFICE, ACCT, WS_ROOT = sys.argv[1:8]
 LOAN_ID = int(LOAN_ID)
 
 def post(api, body):
@@ -251,7 +251,7 @@ if ok_st.get("code") == "132268":
     raise SystemExit(f"FAIL: approve with billed DPI must not fail amount validation: {ok_st}")
 # with-DPI must clear ValidateFinal (code != 132268). TRIAL postTransaction may still 333.
 from pathlib import Path
-tail = Path("/home/darpan/Documents/sliProd/trustt-platform-accounting/logs/mfi/accounting-mfi.log").read_text(
+tail = Path(WS_ROOT, "trustt-platform-accounting/logs/mfi/accounting-mfi.log").read_text(
     encoding="utf-8", errors="ignore"
 ).splitlines()[-2000:]
 saw_validate = any("validateFinalPrepaymentProcessor took" in ln for ln in tail)

@@ -17,6 +17,15 @@ reads:
 writes: []
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `release details`, `please release details`, `release mail`, `QA handoff`
+- **requires:** `reuse-queries-java-filter`
+- **reads:** `cursor-bundle/memory/feedback_release_details_final.md`, `cursor-bundle/memory/feedback_qa_handoff_package.md`, `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`
+- **writes:** []
+
 # Release details (final)
 
 Read **`cursor-bundle/memory/feedback_release_details_final.md`** — canonical **paste** format (do not change detail level).

@@ -58,16 +58,18 @@ if python3 "$ROOT/cursor-bundle/kg/bin/kg.py" fixed-elsewhere --help >/dev/null 
 else
   fail "kg fixed-elsewhere --help"
 fi
-if PYTHONPATH="$ROOT/scripts/lib" python3 -m unittest scripts.lib.test_branch_train >/dev/null 2>&1; then
-  pass "cross-branch train tests"
+# harness audit — structural checks always; full gate-test sweep unless --quick
+if [[ "$QUICK" -eq 1 ]]; then
+  HARNESS_ARGS=(--quick)
 else
-  fail "cross-branch train tests"
+  HARNESS_ARGS=()
 fi
-if PYTHONPATH="$ROOT/cursor-bundle/kg/bin:$ROOT/scripts/lib" \
-  python3 -m unittest scripts.lib.test_build_cases >/dev/null 2>&1; then
-  pass "build_cases header parse tests"
+if harness_out="$(python3 "$ROOT/scripts/lib/harness_audit.py" "${HARNESS_ARGS[@]}" 2>&1)"; then
+  echo "$harness_out"
+  pass "harness audit"
 else
-  fail "build_cases header parse tests"
+  echo "$harness_out" >&2
+  fail "harness audit — gate/test/wiring defect above"
 fi
 
 # 3 — registry + ship gate lib

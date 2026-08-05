@@ -1,0 +1,78 @@
+---
+description: run-the-real-thing-locally
+globs: []
+alwaysApply: true
+---
+
+> Every fix must be proven by running the real job/API locally — never by SQL inserts alone
+
+
+# Run the real thing locally (STANDING, workspace-wide)
+
+Applies to **every** fix, enhancement or refactor in this workspace — Java, orchestration XML,
+SQL, batch, harness. Not money paths only.
+
+## The rule
+
+A change is **not** verified until the **real execution path** has run **locally** and the
+resulting DB state has been asserted.
+
+- **Real** = the actual batch job, orchestration `apiName`, Kafka consumer, or HTTP endpoint that
+  production would run.
+- **Not real** = `INSERT`/`UPDATE` that hand-crafts the rows the code was supposed to write,
+  reading code and reasoning about what it "would" do, or a green compile.
+
+Seeding **fixtures** with SQL is fine and expected. Seeding the **outcome** is not — if the rows
+under assert were written by your SQL rather than by the job, the test proves nothing.
+
+## Why this exists
+
+An SHG interest-accrual distribute change shipped with an amount-only parity assert and a
+presence-only `start_date` check. Sums matched, so it passed. The child rows carried a **stale
+installment FK**, merged windows, and (in the DPI port) the **parent's** `installment_id` — a
+cross-loan FK. Only running `interestAccrualCalculation → interestAccrualPosting →
+loanAccountBillingJob` for real surfaced it: the booking writer threw `Invalid amount` on a
+fractional accrual that no SQL-only check would ever have seen.
+
+## Required evidence before "done"
+
+State all four, or the task is not done:
+
+| Evidence | Meaning |
+|----------|---------|
+| `jobs=REAL(<names>)` | the actual job/API ran this session — name them |
+| exact column asserts | value-level on every column the path writes, fail-closed |
+| fixture provenance | which rows were seeded vs written by the run |
+| failure surfaced | the assert was shown to FAIL before the fix (red → green) |
+
+`LAYERS_DECLARE: jobs=REAL(...)` in flowtest output is the canonical marker. If a layer was
+simulated, say which and why — see the code-backed simulation ladder in `20-ship-gates.md`.
+
+## Red before green
+
+Strengthen or add the assert **first** and watch it fail on the broken code. An assert that has
+never failed is an assert of unknown value. If you cannot make it fail, you have not encoded the
+defect.
+
+## Fixture hygiene
+
+Re-runs accumulate state. Before trusting a result:
+
+- reseed **every** account the path touches (parent *and* children — wiping only one side is how a
+  polluted fixture produced a green run)
+- check for duplicate/stale rows (`COUNT(*)` vs `COUNT(DISTINCT ...)`) before asserting shape
+- a fixture that only ever grows will eventually pass by accident
+
+## Feeds the learning loop
+
+When a real local run finds something the suite missed:
+
+1. encode it as a value-level assert in the registry case (never presence-only)
+2. `ntest` registry + `acceptance.db_asserts` updated in the same change
+3. brain CHANGELOG entry so `kg cases` / `kg enhance` pick it up
+4. note the false-positive class in `cursor-bundle/memory/` so it is not reintroduced
+
+## Escape
+
+None for money paths. For non-money changes where the local stack genuinely cannot run the path,
+label the result `NOT VERIFIED — <reason>` and say so in the handoff. Never call it Pass.

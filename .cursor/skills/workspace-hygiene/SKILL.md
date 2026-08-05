@@ -21,6 +21,17 @@ scripts:
   - scripts/bin/ship-knowledge-gate.sh
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `session end`, `ship`, `task done`, `clutter`, `hygiene`
+- **requires:** []
+- **reads:** `.cursor/rules/00-workspace-core.mdc`
+- **writes:** []
+- **feeds:** `super-agent`, `capture-proof`
+- **scripts:** `scripts/bin/workspace-hygiene.sh`, `scripts/bin/ship-knowledge-gate.sh`
+
 # Workspace hygiene
 
 **One command:** `bash scripts/bin/workspace-hygiene.sh`  

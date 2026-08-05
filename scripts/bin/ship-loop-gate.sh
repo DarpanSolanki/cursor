@@ -463,6 +463,16 @@ _run_case_list() {
   done
 }
 
+# --- all tiers: harness must be sound before any tier work is trusted ---
+echo "→ harness audit (gates wired, hooks in sync, registry cmds resolve, self-tests green)"
+python3 "$ROOT/scripts/lib/harness_audit.py" --tests-fast || exit 1
+echo "→ assert strength (no new presence-only asserts)"
+python3 "$ROOT/scripts/bin/assert-strength-gate.py" || exit 1
+echo "→ schema refs (no assert or SQL names a column the schema lacks)"
+python3 "$ROOT/scripts/lib/schema_ref_gate.py" --sql || exit 1
+echo "→ hygiene (auto-clean; never leave the tree dirtier than we found it)"
+bash "$ROOT/scripts/bin/workspace-hygiene.sh" --clean >/dev/null 2>&1 || true
+
 case "$TIER" in
   workspace)
     echo "→ workspace tier: KG + registry validate"

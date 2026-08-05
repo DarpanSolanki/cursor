@@ -1,4 +1,4 @@
-<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.mdc only routes here. -->
+<!-- Relocated verbatim from .cursor/rules/architect-thinking.mdc. Edit skill topics; thin architect-thinking.md only routes here. -->
 
 # Principal architect context (sliProd)
 
@@ -30,7 +30,7 @@
 
 **Also**: `.cursor/docs/*.md` (glossary, patterns, anti-patterns, FAQ, testing) and **`system_brain/flows/*.md`** (indexed in `.cursor/architecture.md` §§11–12).
 
-These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+These complement — do not replace — `AGENTS.md`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
 
 ---
 

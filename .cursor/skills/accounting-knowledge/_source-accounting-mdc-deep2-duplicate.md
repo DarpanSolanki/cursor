@@ -1,6 +1,6 @@
-<!-- Relocated verbatim from .cursor/rules/accounting.mdc / accounting-module-knowledge.mdc. Edit these skill topic files; thin accounting.mdc only routes here. -->
+<!-- Relocated verbatim from .cursor/rules/accounting.mdc / accounting-module-knowledge.mdc. Edit these skill topic files; thin accounting.md only routes here. -->
 
-<!-- Near-duplicate deep copy from accounting.mdc (2nd Module reference). Kept for zero-loss. -->
+<!-- Near-duplicate deep copy from accounting.md (2nd Module reference). Kept for zero-loss. -->
 
 ## Module reference (LMS core knowledge)
 

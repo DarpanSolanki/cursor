@@ -10,7 +10,7 @@
 |------|----------|----------------|
 | Stable agent knowledge | `cursor-bundle/brain/`, `.cursor/gaps-and-risks.md`, `system_brain/` (orientation only) | Yes (brain bundle) |
 | Shipped-fix precedents | `cursor-bundle/brain/changelog/CHANGELOG.md` | Yes |
-| Service QA / release artifacts | `docs/<service>/` per `docs-outside-service-repos.mdc` | Workspace only |
+| Service QA / release artifacts | `docs/<service>/` per `docs-outside-service-repos.md` | Workspace only |
 | Reusable SQL / scripts | `scripts/sql/`, `scripts/bin/` | Yes |
 | **Session scratch / RCA temps** | **`scripts/scratch/<task>/`** | **No — delete when done** |
 | KG build output | `cursor-bundle/kg/data/` (cache LRU-managed) | Generated — do not hand-edit |

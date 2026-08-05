@@ -1,0 +1,101 @@
+---
+description: 40-knowledge-upkeep
+globs: []
+alwaysApply: true
+---
+
+> Knowledge upkeep — every change updates KG, testing suite and reference docs. No exceptions.
+
+
+# Knowledge upkeep (STANDING, workspace-wide)
+
+A change is not done when the code works. It is done when the **next agent or engineer can
+find out why it works** without re-deriving it. Every task — fix, feature, ops SQL, harness
+edit — closes three loops.
+
+## The three loops (all three, every time)
+
+| Loop | What must change | Where |
+|------|------------------|-------|
+| **KG** | flow / crud / why edges for the touched apiName, and a case if a defect class was found | `kg enhance`, `kg cases`, brain `CHANGELOG` (prepend, with sha + apiName + tables) |
+| **Testing suite** | the defect encoded as a **value-level** assert that FAILED before the fix; registry case updated to the real scope (APIs run, columns audited) | `scripts/testing/registry.json`, `scripts/testing/flowtest/**`, `scripts/dpic/**` |
+| **Reference docs** | the behaviour/contract that was previously undocumented or wrong | `.cursor/skills/accounting-knowledge/*`, `.cursor/rules/*`, `.cursor/gaps-and-risks.md`, `cursor-bundle/memory/*` |
+
+Output at task end: `Knowledge updated: [KG …] [suite …] [docs …]`. If a loop genuinely does not
+apply, say **which** and **why** — never omit it silently.
+
+## What counts as encoding a defect (fail-closed)
+
+- **Presence-only is not an assert.** `>= 0`, `non-null`, `count > 0` pass while the value is
+  wrong. TDPQA-234 shipped because `base_amount` was checked for `>= 0`.
+- **Tip-only is not coverage.** Auditing the latest row (`LIMIT 1`) misses the rows QA opens.
+  Audit every row the path writes.
+- **Totals can hide splits.** A sum that matches while the per-segment split is wrong is a pass
+  you have not earned. Assert the split *and* the total, and state which one rounding may move.
+- The assert must have been **seen to fail** on the broken code (`red → green`). An assert that
+  never failed is of unknown value.
+
+## Resolve every column before you name it (STANDING)
+
+A column name written from memory is a guess. Two money-tier asserts named
+`loan_account_payments_details.is_deleted` on an append-only table that has no such column.
+
+```bash
+python3 cursor-bundle/kg/bin/kg.py schema <table>[.<column>]   # structure + readers + error code + train
+bash scripts/bin/schema-sync.sh                                # refresh after migration/branch switch
+```
+
+- **Never** put a column into an assert, SQL, doc or claim without resolving it. `schema_ref_gate.py`
+  fails the ship gate on unresolvable references — do not work around it, fix the reference.
+- **Readers are the semantics** for config columns: `loan_product.prepayment_allowed` means
+  "`ValidateLoanPrepaymentProductProcessor` throws 134144 when false".
+- **Local-only columns are not contracts.** `train-diff.json` labels columns that match no
+  migration on the checked-out initial-setup branch (e.g. `loan_account.dpi_suspense_amount`,
+  GAP-076). Absence on one train is not proof a column does not exist — say which branch you read.
+
+## Distinguish contract from artifact
+
+Before asserting equality, know whether the system *guarantees* it. Whole-rupee splits drift by
+a bounded amount per segment while the total stays exact — asserting exact per-segment equality
+produces false failures and erodes trust in the suite. Write the bound and say why it exists.
+
+## Branches diverge in both directions (STANDING)
+
+Never reason "3.7.1 is higher than 3.5.2.2, so it contains that code." Trains carry
+different merges; a fix on a lower train may be absent from a higher one and vice versa.
+
+- **Absence on a train is not a regression.** Say "not present on `<branch>`", never
+  "regressed", until you have checked where it *is* present.
+- **Config-conformance gates must be train-aware.** A gate that hard-fails on every train
+  asserts an aspiration, not a contract. Take an explicit `--require-trains` list and
+  report-only elsewhere — precedent: `assert-notification-sms-throughput.sh`, which had
+  been permanently red because the SP-308 uplift exists on *no* train.
+- State the branch you read alongside any cross-train claim.
+
+## Code is the source of truth; the local DB is not
+
+The local Yugabyte is a long-lived dev fixture that accumulates state across aborted runs
+and older builds. It can be wrong.
+
+- **Derive contracts from code**, then use the DB to observe — never the reverse. Do not
+  change code, asserts, or thresholds to match what local rows happen to say.
+- A surprising DB reading is a prompt to go read the writer, not evidence by itself.
+- **Distinguish absolute invariants from flow-relative ones.** Per-transaction
+  double-entry, negative dues, and status legality must hold in *any* state. Bundle- or
+  scope-level deltas (FC-settlement AIR, whole-scope GL) legitimately differ while a LAN
+  sits mid-flow — asserting those absolutely produces false failures. See
+  `run_universal_invariants(..., absolute_only=True)`.
+- Known-open product issues (e.g. TDPQA-72 child/parent foreclosure legs) must not be
+  wired into a blocking gate before they are fixed.
+
+## Precedent discipline
+
+When mirroring an "analogous flow", first confirm that flow is **live in production**. Dead or
+unreleased code (e.g. penal/LPP) is not a precedent — copying it propagates unreviewed decisions.
+Mirror the production path for the same money concept, or derive it from the contract.
+
+## Pairs with
+
+`20-ship-gates.md` (enrichment tiers, post-ship knowledge gate) · `30-kg-discipline.md`
+(self-learning KG) · `run-the-real-thing-locally.md` (the run that produces the evidence) ·
+`cursor-bundle/memory/feedback_keep_code_simple.md` (how the code itself must read).

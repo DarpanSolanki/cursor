@@ -10,6 +10,9 @@ Thin map (Upgrade 3). Load-bearing gates live in thematic alwaysApply rules.
 | `.cursor/rules/10-quality-gates.mdc` | Discuss-before, minimal-fix, reuse-queries, hot-path, upstream, gates A–E |
 | `.cursor/rules/20-ship-gates.mdc` | Ship-loop, ship-test, enrichment, post-ship, sim, flyway, internal-api |
 | `.cursor/rules/30-kg-discipline.mdc` | KG safety, self-learning, flow-cross-learn, DPI branch; **KG MCP (`trustt-kg`) first for LOOKUPs** |
+| `.cursor/rules/40-knowledge-upkeep.mdc` | KG + suite + docs three loops; schema oracle before column claims |
+| `.cursor/rules/run-the-real-thing-locally.mdc` | Real local flow over sim-only for money evidence |
+| `.cursor/rules/agent-parallelism-and-token-budget.mdc` | Parallel agents as exception; token budget |
 | `.cursor/rules/darpan.mdc` | Personal boundary / identity (standalone) |
 
 Verbatim pre-merge bodies: `.cursor/skills/workspace-gates-reference/`. Mapping: `scripts/scratch/upgrade3-mapping.md`.
@@ -38,3 +41,13 @@ Policy: `multi-agent-spawning.mdc`. Parallel read-only OK; serialize money write
 ## Git
 
 Multi-repo: run `git` inside the correct `trustt-*` / `novopay-*` directory.
+
+## Bootstrap (new machine)
+
+```bash
+bash scripts/bin/new-machine-setup.sh --dry-run
+bash scripts/bin/kg-snapshot.sh status
+bash scripts/bin/schema-sync.sh --bindings
+```
+
+See `cursor-bundle/memory/reference_new_machine_setup.md`.

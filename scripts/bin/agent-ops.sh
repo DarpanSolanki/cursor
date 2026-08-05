@@ -18,12 +18,26 @@ shift || true
 
 case "$cmd" in
   preflight|state|write-state)
+    # The autopilot runs preflight on every user message. Re-probing services and
+    # nine env wrappers to rewrite state that is seconds old is pure wall-clock —
+    # the state file itself tells sessions to read it instead of re-probing.
+    state_file="$ROOT/.cursor/workspace-ops-state.md"
+    ttl="${AGENT_OPS_PREFLIGHT_TTL:-600}"
+    if [[ "$cmd" == "preflight" && -z "${AGENT_OPS_PREFLIGHT_FORCE:-}" && -f "$state_file" ]]; then
+      age=$(( $(date +%s) - $(stat -c %Y "$state_file" 2>/dev/null || echo 0) ))
+      if (( age < ttl )); then
+        head -20 "$state_file"
+        echo ""
+        echo "_(cached ${age}s ago; TTL ${ttl}s — AGENT_OPS_PREFLIGHT_FORCE=1 to re-probe)_"
+        exit 0
+      fi
+    fi
     aops_write_state
     # Refresh env reachability when matrix exists (non-fatal)
     if [[ -f "$ROOT/scripts/env/env-matrix.json" ]]; then
       bash "$ROOT/scripts/bin/env-smoke.sh" --write-state >/dev/null 2>&1 || true
     fi
-    cat "$ROOT/.cursor/workspace-ops-state.md" 2>/dev/null | head -20
+    head -20 "$state_file" 2>/dev/null
     ;;
   env-smoke|--env-smoke)
     bash "$ROOT/scripts/bin/env-smoke.sh" --write-state "$@"

@@ -13,10 +13,33 @@ import local_parity_gate as g
 
 class LocalParityTests(unittest.TestCase):
     def test_skip_when_no_schema(self):
-        r = g.check_parity({"files": ["scripts/testing/foo.py"], "updated_at": "2026-07-22T12:00:00Z"})
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(g, "HAND_PATCH_LOG", Path(td) / "hand.jsonl"):
+                r = g.check_parity(
+                    {"files": ["scripts/testing/foo.py"], "updated_at": "2026-07-22T12:00:00Z"}
+                )
         self.assertTrue(r["ok"])
         self.assertTrue(r.get("skipped"))
         self.assertIn("n/a", r["summary"])
+
+    def test_temp_table_ddl_is_not_a_money_hand_patch(self):
+        sql = (
+            "DROP TABLE IF EXISTS _dpi_txn_purge_ids;\n"
+            "CREATE TEMP TABLE _dpi_txn_purge_ids AS SELECT id FROM mfi_accounting.loan_account;\n"
+            "DELETE FROM mfi_accounting.loan_due_details WHERE id IN (SELECT id FROM _dpi_txn_purge_ids);\n"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(g, "HAND_PATCH_LOG", Path(td) / "hand.jsonl"):
+                self.assertIsNone(g.log_hand_patch(sql=sql, source="test", path="purge.sql"))
+
+    def test_real_money_ddl_is_logged(self):
+        sql = "ALTER TABLE mfi_accounting.loan_account ADD COLUMN IF NOT EXISTS dpi_suspense_amount numeric;"
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(g, "HAND_PATCH_LOG", Path(td) / "hand.jsonl"):
+                row = g.log_hand_patch(sql=sql, source="test", path="v1.sql")
+        self.assertIsNotNone(row)
+        self.assertIn("loan_account", row["tables"])
+        self.assertIn("dpi_suspense_amount", row["columns"])
 
     def test_local_setup_alone_fails(self):
         with tempfile.TemporaryDirectory() as td:

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/lib"))
 
+from impact_tests import _dpi_tree_present  # noqa: E402
 from ship_change_scope import (  # noqa: E402
     collapse_subsumed_cases,
     dpi_ship_modules,
@@ -50,6 +51,10 @@ class HarnessOnlyTest(unittest.TestCase):
 
 
 class ServiceOnlyDpiTest(unittest.TestCase):
+    @unittest.skipUnless(
+        _dpi_tree_present(),
+        "DPI cases are correctly dropped when the DPI tree is absent (3.4.2.x)",
+    )
     def test_billing_java_minimal_cases(self) -> None:
         paths = [
             "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpibilling/DpiBillingBatchService.java",

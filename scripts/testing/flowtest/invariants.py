@@ -294,8 +294,16 @@ def run_universal_invariants(
     *,
     baseline: dict[str, Any] | None = None,
     label: str = "post-scenario",
+    absolute_only: bool = False,
 ) -> dict[str, Any]:
-    """Fail-closed universal layer. Returns verdict dict; raises AssertionError on NEW violation."""
+    """Fail-closed universal layer. Returns verdict dict; raises AssertionError on NEW violation.
+
+    absolute_only=True asserts only invariants that must hold in ANY state (per-txn
+    double-entry, negative/orphan dues, status legality, negative excess) and skips the
+    bundle/scope deltas that legitimately differ while a LAN sits mid-flow. Use it when
+    there is no genuine before-baseline — a self-snapshot baseline neutralises every
+    delta check and makes the gate vacuous.
+    """
     if INVARIANTS_OFF:
         print(f"  invariants SKIP: FLOWTEST_INVARIANTS=0 ({label})")
         return {"skipped": True, "label": label}
@@ -335,7 +343,7 @@ def run_universal_invariants(
                 )
         d, c = scope_gl_totals(refs)
         scope_imb = abs(d - c)
-        if scope_imb > TOL and _new_violation(_dec(str(b.get("gl_imbalance", 0))), scope_imb):
+        if not absolute_only and scope_imb > TOL and _new_violation(_dec(str(b.get("gl_imbalance", 0))), scope_imb):
             failures.append(
                 f"inv GL whole-scope FAIL {lan}: debit={d} credit={c} diff={scope_imb} "
                 f"refs={len(refs)} (baseline_imb={b.get('gl_imbalance')})"
@@ -343,12 +351,12 @@ def run_universal_invariants(
         # product AIR (392164) — only when force-bill present in current state
         air_delta, air_refs = fc_settlement_air_delta(lan)
         bpi = bpi_air_credit_after_force_bill(lan)
-        if bpi > TOL and _new_violation(_dec(str(b.get("bpi_air", 0))), bpi):
+        if not absolute_only and bpi > TOL and _new_violation(_dec(str(b.get("bpi_air", 0))), bpi):
             failures.append(
                 f"inv BPI-after-FB FAIL {lan}: LOAN_PREPAYMENT BPI_AMT AIR credit={bpi} "
                 f"(TDPQA-72 392164 class; baseline={b.get('bpi_air')})"
             )
-        if air_delta > TOL and _new_violation(_dec(str(b.get("air_delta", 0))), air_delta):
+        if not absolute_only and air_delta > TOL and _new_violation(_dec(str(b.get("air_delta", 0))), air_delta):
             failures.append(
                 f"inv FC settlement AIR FAIL {lan}: |D-C|={air_delta} refs={air_refs} "
                 f"(product GL; baseline={b.get('air_delta')})"

@@ -7,12 +7,12 @@ metadata:
   originSessionId: 7fc30f42-df07-4d0a-8093-68fff3c6147e
 ---
 
-Answer from the `/home/darpan/darpan/claude/` brain docs **before** grepping service code. Follow the precedence ladder (CLAUDE.md §2), descending only when the layer above is exhausted:
+Answer from the `/home/darpan/Documents/sliProd/claude/` brain docs **before** grepping service code. Follow the precedence ladder (CLAUDE.md §2), descending only when the layer above is exhausted:
 1. **Memory** (this dir, indexed by MEMORY.md) — who the user is, standing corrections, conventions.
 2. **Brain docs** (`claude/`) — authored understanding of the LMS (engines, accounting flows, platform contracts, runbooks, per-service one-pagers). Use the `brain-find` skill to map a flow keyword → the right doc.
 3. **Skills** — encode *how* to do recurring work; prefer them over re-deriving a procedure.
 4. **Live data** — DB (`db-access`/`lan-360`), APM/Git/Jira read-only MCP — to ground a claim against reality.
-5. **System KG** (`claude/kg/`) — flow spine, cross-service deps, impact, case precedent; orient here before grepping.
+5. **System KG** (`cursor-bundle/kg/`) — flow spine, cross-service deps, impact, case precedent; orient here before grepping.
 6. **Service code** (the checkouts) — the final fallback; verify against code before any state-machine/CAS/posting change.
 
 **Why:** Re-reading large files every session is slow and error-prone; the brain docs are the curated substrate the KG indexes. Brain-first keeps responses fast and consistent.

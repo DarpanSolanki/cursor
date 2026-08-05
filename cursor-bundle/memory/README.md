@@ -20,5 +20,5 @@ Standing corrections and workflow discipline. **Read `MEMORY.md` first** — it 
 
 ## Hygiene
 
-- Paths use `/home/darpan/Documents/sliProd/` and `cursor-bundle/` — **not** legacy `claude/` or `/home/darpan/darpan/`.
+- Paths use `/home/darpan/Documents/sliProd/` and `cursor-bundle/` — **not** legacy `claude/` or `/home/darpan/Documents/sliProd/`.
 - Feedback files are **not** indexed into KG; brain docs + curated jsonl are.

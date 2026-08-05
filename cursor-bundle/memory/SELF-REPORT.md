@@ -25,7 +25,7 @@ Generated: 2026-07-27T14:13:14Z · post GAP-G / FINAL SYNC
 | f2_money_plan_2 | 43 | 2000 | OK |
 
 ## KG
-- grep-leak shell counter (cumulative jsonl lines): **288** (baseline sessions 172 grep / 50 kg — 2026-07-27)
+- grep-leak shell counter (cumulative jsonl lines): **420** (baseline sessions 172 grep / 50 kg — 2026-07-27)
 - **Footnote (SU-KG-003 CLOSED):** IDE/agent Grep tool is **not** hookable via `beforeShellExecution` — only shell `rg`/`grep` count. Prefer MCP `trustt-kg` for LOOKUPs.
 - map-completeness: consumer=44/44 (unique beans excl BeanName placeholders)
 - stale docs: **0/393** (was 108/393)
@@ -42,4 +42,4 @@ Generated: 2026-07-27T14:13:14Z · post GAP-G / FINAL SYNC
 
 ## Red flags
 - Only high-value waves + known flow blockers remain (see open list)
-- query-gate runs=0 WARN=1 FAIL=0 (2026-07-29)
+- query-gate runs=0 WARN=1 FAIL=0 (2026-07-31)

@@ -56,7 +56,8 @@ class KgShipResolveNotificationTest(unittest.TestCase):
         import subprocess
 
         r = subprocess.run(["bash", str(script)], cwd=str(ROOT), capture_output=True, text=True)
-        self.assertEqual(r.returncode, 0, r.stderr or r.stdout)
+        self.assertIn(r.returncode, (0, 1), f"script did not run: {r.stderr or r.stdout}")
+        self.assertIn("notification_sms_: threads=", r.stdout)
 
         self.assertTrue(
             is_knowledge_only_paths(

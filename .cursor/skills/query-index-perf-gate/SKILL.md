@@ -26,6 +26,15 @@ reads:
 writes: []
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `@Query`, `nativeQuery`, `batch reader WHERE`, `repository index`, `query performance`, `prod indexes`, `improvement`, `best solution`
+- **requires:** `reuse-queries-java-filter`
+- **reads:** `cursor-bundle/reference/db/prod-indexes-manifest.json`, `cursor-bundle/memory/reference_prod_db_indexes_baseline.md`, `cursor-bundle/memory/feedback_enhancement_all_fronts.md`, `.cursor/rules/20-ship-gates.mdc`, `.cursor/rules/10-quality-gates.mdc`, `scripts/lib/query_index_perf_audit.py`, `scripts/lib/prod_index_baseline.py`
+- **writes:** []
+
 # Query index + performance gate
 
 Use when a fix adds or changes **native SQL** (`@Query`, batch reader WHERE, `@Modifying` UPDATE).

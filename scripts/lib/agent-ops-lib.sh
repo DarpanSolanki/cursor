@@ -41,14 +41,45 @@ aops_repo_dir() {
   esac
 }
 
+aops_svc_port() {
+  case "$1" in
+    accounting) echo 8002 ;; actor) echo 8003 ;; los) echo 8013 ;;
+    task) echo 8019 ;; simulators) echo 8018 ;; *) echo "" ;;
+  esac
+}
+
+# Reference point for "is the build stale?".
+#
+# The boot LOG is the wrong reference: the running service appends to it, so its
+# mtime is always ~now and `find -newer` can never match. That silently let a JVM
+# started 15:52 serve money-path tests against classes compiled 16:02 on
+# 2026-08-03. The process start time (/proc/<pid> mtime) is the only sound anchor;
+# fall back to the boot log only when the service is not running.
+aops_runtime_ref() {
+  local svc="$1" port pid bl
+  port="$(aops_svc_port "$svc")"
+  if [[ -n "$port" ]]; then
+    pid="$(ss -ltnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -1)"
+    if [[ -n "$pid" && -d "/proc/$pid" ]]; then
+      echo "/proc/$pid"
+      return 0
+    fi
+  fi
+  bl="$(nps_boot_log "$svc")"
+  [[ -f "$bl" ]] && echo "$bl"
+}
+
 aops_java_newer_than_boot() {
   local svc="$1"
-  local repo bl
+  local repo ref
   repo="$(aops_repo_dir "$svc")" || return 1
-  bl="$(nps_boot_log "$svc")"
   [[ -d "$repo/src" ]] || return 1
-  [[ -f "$bl" ]] || return 0
-  find "$repo/src" -name '*.java' -newer "$bl" -print -quit 2>/dev/null | grep -q .
+  ref="$(aops_runtime_ref "$svc")"
+  [[ -n "$ref" ]] || return 0
+  # Source newer than the running JVM, or compiled classes newer than it (someone
+  # built without restarting) both mean the runtime is not what is on disk.
+  find "$repo/src" -name '*.java' -newer "$ref" -print -quit 2>/dev/null | grep -q . && return 0
+  find "$repo/build/classes/java/main" -name '*.class' -newer "$ref" -print -quit 2>/dev/null | grep -q .
 }
 
 aops_probe_ok() {
@@ -119,16 +150,28 @@ aops_before_test() {
   [[ "$compile" == "yes" ]] && compile=1 || compile=0
   echo "agent-ops: ensure $svc compile=$compile (api=$api)"
   aops_run_ensure "$svc" "$compile"
+  bash "$_AOPS_ROOT/scripts/bin/assert-build-current.sh" "$svc" || {
+    echo "agent-ops: STALE RUNTIME on $svc — evidence from it is not verified against HEAD" >&2
+    return 1
+  }
 
-  # Kafka-path disburse (TDPQA-54): accounting consumer + LOS producer + bank sim + actor + Kafka.
+  # Disburse needs actor + masterdata + bank simulator on every entry path. LOS and Kafka are
+  # required only when the run enters through the Kafka producer (TDPQA-54); a direct HTTP
+  # disburseLoan call never touches them, so declaring DISBURSE_ENTRY=http skips those two.
   if [[ "${api,,}" == *disburse* ]]; then
     local los_compile=0 sim_compile=0 actor_compile=0
-    if aops_java_newer_than_boot los 2>/dev/null; then los_compile=1; fi
-    echo "agent-ops: ensure los compile=$los_compile (kafka producer path)"
-    aops_run_ensure los "$los_compile" || {
-      echo "FAIL: LOS required for Kafka-path disburse (novopay-service ensure los)" >&2
-      return 1
-    }
+    local entry="${DISBURSE_ENTRY:-kafka}"
+    if [[ "$entry" == "kafka" ]]; then
+      if aops_java_newer_than_boot los 2>/dev/null; then los_compile=1; fi
+      echo "agent-ops: ensure los compile=$los_compile (kafka producer path)"
+      aops_run_ensure los "$los_compile" || {
+        echo "FAIL: LOS required for Kafka-path disburse (novopay-service ensure los)." >&2
+        echo "      Direct HTTP disburseLoan does not use LOS — set DISBURSE_ENTRY=http." >&2
+        return 1
+      }
+    else
+      echo "agent-ops: skip los + kafka readiness (DISBURSE_ENTRY=$entry, direct HTTP disburseLoan)"
+    fi
     if aops_java_newer_than_boot actor 2>/dev/null; then actor_compile=1; fi
     echo "agent-ops: ensure actor compile=$actor_compile (getCustomerDetails during disburse)"
     aops_run_ensure actor "$actor_compile" || {
@@ -145,7 +188,9 @@ aops_before_test() {
       echo "FAIL: bank simulator required at :8018" >&2
       return 1
     }
-    nps_assert_disburse_kafka_ready "${NPS_KAFKA_CONSUMER_WAIT:-120}" || return 1
+    if [[ "$entry" == "kafka" ]]; then
+      nps_assert_disburse_kafka_ready "${NPS_KAFKA_CONSUMER_WAIT:-120}" || return 1
+    fi
   fi
 }
 
@@ -168,25 +213,31 @@ aops_write_state() {
     echo "Updated: ${utc}"
     echo ""
     echo "## Local services"
+    # Independent health probes; serial cost is 5 x per-service timeout.
+    _svc_tmp="$(mktemp -d)"
     for svc in accounting actor task los simulators; do
-      if status="$(nps_status_service "$svc" 2>&1)"; then
-        echo "- **${svc}**: ${status}"
-      else
-        echo "- **${svc}**: ${status}"
-      fi
+      { nps_status_service "$svc" > "$_svc_tmp/$svc" 2>&1 || true; } &
     done
+    wait
+    for svc in accounting actor task los simulators; do
+      echo "- **${svc}**: $(cat "$_svc_tmp/$svc" 2>/dev/null)"
+    done
+    rm -rf "$_svc_tmp"
     echo ""
     echo "## Disburse Kafka (TDPQA-54)"
+    # Group assignment costs a JVM start (~6s). Never ask a broker we just saw DOWN.
     if nps_kafka_tcp_ok; then
       echo "- **Kafka :9092**: UP"
+      echo "- topic: \`${nps_disburse_topic}\` · group: \`${nps_disburse_group}\`"
+      if nps_kafka_consumer_assigned; then
+        echo "- consumer assigned: YES"
+      else
+        echo "- consumer assigned: NO (accounting LmsMessageBrokerConsumer)"
+      fi
     else
       echo "- **Kafka :9092**: DOWN"
-    fi
-    echo "- topic: \`${nps_disburse_topic}\` · group: \`${nps_disburse_group}\`"
-    if nps_kafka_consumer_assigned; then
-      echo "- consumer assigned: YES"
-    else
-      echo "- consumer assigned: NO (accounting LmsMessageBrokerConsumer)"
+      echo "- topic: \`${nps_disburse_topic}\` · group: \`${nps_disburse_group}\`"
+      echo "- consumer assigned: UNKNOWN (broker down — not probed)"
     fi
     echo ""
     echo "## Autonomous playbook (agents)"

@@ -1,6 +1,6 @@
 ---
 name: workspace-gates-reference
-description: Verbatim archives of pre-Upgrade-3 alwaysApply rule bodies. Use when a thematic rule routes here or when reconciling mandate checklist wording.
+description: "Verbatim archives of pre-Upgrade-3 alwaysApply rule bodies. Use when a thematic rule routes here or when reconciling mandate checklist wording."
 ---
 
 # Workspace gates reference (verbatim archives)

@@ -4,7 +4,7 @@
 
 You assist with Trustt LMS bug-fix / accounting work in **`/home/darpan/Documents/sliProd/`**
 (17 Java repos under `novopay-*`, `trustt-*`). Accuracy = **pinpoint root-cause, verified against
-live evidence, never guessed.** These rules complement `.cursorrules` and `always-on.mdc`; on conflict
+live evidence, never guessed.** These rules complement `AGENTS.md` and `always-on.mdc`; on conflict
 the **more restrictive** wins.
 
 ## Hard rules (never broken)

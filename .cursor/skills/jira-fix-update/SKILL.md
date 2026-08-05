@@ -31,6 +31,15 @@ triggers:
   - clarify on jira
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `update jira`, `update JIRA`, `fill RCA on ticket`, `SDCP handoff`, `TDPQA handoff`, `jira fix update`, `enrich jira for QA`, `jira discussion comment`, `clarify on jira`
+- **requires:** `release-details`
+- **reads:** `cursor-bundle/memory/feedback_release_details_final.md`, `cursor-bundle/memory/feedback_jira_enrich_forbidden_scan_assignee.md`, `cursor-bundle/memory/feedback_jira_tdpqa_comment_handoff.md`, `cursor-bundle/memory/feedback_jira_discussion_comment_plain.md`, `.cursor/skills/jira-fix-update/fields-reference.md`, `.cursor/skills/jira-fix-update/owners-defaults.json`, `.cursor/skills/jira-fix-update/mentions.json`, `scripts/bin/jira-fix-adf.py`, `scripts/bin/jira-enrich.sh`
+- **writes:** []
+
 # JIRA fix update (SDCP + TDPQA)
 
 After a code fix is shipped (or ready for QA), update the ticket with **business-language** handoff via **Atlassian MCP** (`plugin-atlassian-atlassian`).
@@ -179,7 +188,7 @@ JIRA enrich **requires** Cursor `CallMcpTool` → `plugin-atlassian-atlassian` (
 - Auth is Cursor OAuth to `mcp.atlassian.com` (plugin). Shell cannot read encrypted `mcpOAuth.secret` blobs from `state.vscdb`. If tools only show `mcp_auth`, user must re-auth Atlassian in Cursor Settings → MCP.
 - cloudId for novopay.atlassian.net: `2f9bec17-0fa3-45d7-8399-209b8a496a61` (or `novopay.atlassian.net` hostname).
 - Ready packs (example): `scripts/scratch/jira-sdcp11085-tdpqa127/call_*.json`.
-- Shell-only fallback (when CallMcpTool unavailable): `bash scripts/bin/jira-enrich.sh post <KEY> payload.json` — uses cached OAuth via `.venv-jira`. Low-level: `scripts/bin/jira-rest-from-cursor-oauth.py apply-pack`. Prefer CallMcpTool on the parent agent when available.
+- Shell-only fallback (when CallMcpTool unavailable): `bash scripts/bin/jira-enrich.sh post <KEY> payload.json` — uses cached OAuth via `.venv-jira`. Low-level: `scripts/bin/jira-rest-oauth.py apply-pack`. Prefer CallMcpTool on the parent agent when available.
 
 
 ## NEVER put internal information in JIRA (hard rule — repeated feedback)

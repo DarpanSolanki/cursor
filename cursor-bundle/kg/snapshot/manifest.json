@@ -1,0 +1,135 @@
+{
+  "key": "536f543ef4a31b6d",
+  "built_at": "2026-08-04T20:57:22Z",
+  "nodes": 15690,
+  "edges": 48949,
+  "composite": "novopay-platform-lib:mfi_integration_v3.5.2.2:016b38f95654504ce5f7405405fb64236fa7605b+d39a7fdaed123|trustt-platform-accounting:mfi_integration_v3.7.1:0da73285fd3cc87994e914ba7a74b4f343fb8b20|trustt-platform-actor:mfi_integration_v3.7.1:770b97aef43fb634feb7cdda37b19016c3ca8e35+d1d5b7fb6e21e|trustt-platform-ai-codegen-artifacts-java:mfi_integration_v3.2.8.4:1e61126c8cf0a9487ae0128c377ba89852520eb7+d8dc2ab79b449|trustt-platform-api-gateway:mfi_integration_v3.3.1.2:508eecdc9dd321a7526249b387a7980d641b146c+d8c59c6cb3f82|trustt-platform-approval:mfi_integration_v3.3.1.2:2168d8f02d23f06e7f58210c2350e0eab74c881c+da8b473235b9a|trustt-platform-audit:mfi_integration_v3.3.1.2:2ebff469f96548e882aa4f4db996eac22bd7b600+deb8fee0754fb|trustt-platform-authorization:mfi_integration_v3.7.1:0c315c5a6fb68c17c271bc1cab7289948d5f52ba+d1a740da26c03|trustt-platform-batch:mfi_integration_v3.3.1.2:37a9d4e26c5c8360a9250848de3917f0bd0bef00+dc7226d9b356b|trustt-platform-dependency-mgmt:mfi_integration_v3.3.1.2:8c4fd7380f2ea444e522382d19fe89ecc201b3e2|trustt-platform-dms:mfi_integration_v3.3.1.2:254e03def8ea0cdce8dea00d0ca17807e4d19b76+deb8fee0754fb|trustt-platform-initial-setup:feature/delayed_payment_interest:12690d16eefd14603836851383e4859b6d31f010|trustt-platform-lib:mfi_integration_v3.5.2.2:016b38f95654504ce5f7405405fb64236fa7605b+d39a7fdaed123|trustt-platform-los:mfi_integration_v3.4.2.4:44bba2c47a4e9d00733da881b685e74ed166c8c0+d93cdc9c4f19c|trustt-platform-masterdata-management:mfi_integration_v3.7.1:1bee8e315579c1d95f223894b30914447ac40490+d043f4eae7920|trustt-platform-notifications:mfi_integration_v3.7.1:72fd0358275dd5a30d2be1e0c208e1bad0989bd8+d204f6620f9d1|trustt-platform-payments:mfi_integration_v3.4.2.4:0dae3fc3eddaa8af21a42ff4de34bd43391cea56+dce771fa3434c|trustt-platform-reporting:mfi_integration_v3.3.1.2:ac93424d6c3eb4e4188494bea3e8543df850adab+dfad795c3b9b2|trustt-platform-simulators:mfi_integration_v3.3.1.2:ab5d94851764255c5b158e7eec189448ab2378e6+d718b5bbca896|trustt-platform-task:mfi_integration_v3.4.2.1:fc4b1646347f7972b62928b642228307971ef113+def31b21757e6|trustt-platform-webapp:feature/delayed_payment_interest:eca51498c4ab0663a61e9ebe667697735afcdddb|docs:6a183e29cab8|",
+  "repos": {
+    "novopay-platform-lib": {
+      "branch": "mfi_integration_v3.5.2.2",
+      "sha": "016b38f956",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-accounting": {
+      "branch": "mfi_integration_v3.7.1",
+      "sha": "0da73285fd",
+      "dirty": false,
+      "provisional": false
+    },
+    "trustt-platform-actor": {
+      "branch": "mfi_integration_v3.7.1",
+      "sha": "770b97aef4",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-ai-codegen-artifacts-java": {
+      "branch": "mfi_integration_v3.2.8.4",
+      "sha": "1e61126c8c",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-api-gateway": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "508eecdc9d",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-approval": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "2168d8f02d",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-audit": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "2ebff469f9",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-authorization": {
+      "branch": "mfi_integration_v3.7.1",
+      "sha": "0c315c5a6f",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-batch": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "37a9d4e26c",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-dependency-mgmt": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "8c4fd7380f",
+      "dirty": false,
+      "provisional": false
+    },
+    "trustt-platform-dms": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "254e03def8",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-initial-setup": {
+      "branch": "feature/delayed_payment_interest",
+      "sha": "12690d16ee",
+      "dirty": false,
+      "provisional": true
+    },
+    "trustt-platform-lib": {
+      "branch": "mfi_integration_v3.5.2.2",
+      "sha": "016b38f956",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-los": {
+      "branch": "mfi_integration_v3.4.2.4",
+      "sha": "44bba2c47a",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-masterdata-management": {
+      "branch": "mfi_integration_v3.7.1",
+      "sha": "1bee8e3155",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-notifications": {
+      "branch": "mfi_integration_v3.7.1",
+      "sha": "72fd035827",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-payments": {
+      "branch": "mfi_integration_v3.4.2.4",
+      "sha": "0dae3fc3ed",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-reporting": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "ac93424d6c",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-simulators": {
+      "branch": "mfi_integration_v3.3.1.2",
+      "sha": "ab5d948517",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-task": {
+      "branch": "mfi_integration_v3.4.2.1",
+      "sha": "fc4b164634",
+      "dirty": true,
+      "provisional": false
+    },
+    "trustt-platform-webapp": {
+      "branch": "feature/delayed_payment_interest",
+      "sha": "eca51498c4",
+      "dirty": false,
+      "provisional": true
+    }
+  }
+}

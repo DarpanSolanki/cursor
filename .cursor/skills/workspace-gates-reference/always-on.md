@@ -12,7 +12,7 @@
 2. `.cursor/gaps-and-risks-digest.md` — open **High** rows verbatim + Medium/Low index (generated from SoT). **Escalate** to full `.cursor/gaps-and-risks.md` only when the task touches a GAP-id/area the digest flags, Medium/Low narrative is needed, or the digest is missing/stale
 3. `.cursor/architecture.md`
 4. **If money, Kafka, multi-service, or cross-repo:** `.cursor/knowledge-graph.md` (name the **money path** + walk **Edge Registry**); add `.cursor/cross-service-transactions.md` when debugging **partial failure** across HTTP/Kafka.
-5. `.cursorrules` — **AGENT SELF-KNOWLEDGE SUMMARY** (and deeper sections when the task needs them)
+5. `AGENTS.md` — **AGENT SELF-KNOWLEDGE SUMMARY** (and deeper sections when the task needs them)
 
 **Hard gate:** Do **not** open user-supplied logs, run repo-wide search, or read service source **for that problem** until bootstrap (1)–(3) is done. For high blast-radius money/async topics, complete **(4)** before deep code. Narrow glossary-style exceptions below still load (1)–(3) if the term is domain-specific (money, services, flows).
 
@@ -85,7 +85,7 @@ If unsure whether the ask is high blast radius → **use expansion**.
 - **Gaps touched:** [GAP-ids or "none"]
 - **Changelog:** [appended | not needed — no platform knowledge change]
 
-Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-dive files for the task type.
+Use the **INTELLIGENT CONTEXT ROUTING** section in `AGENTS.md` to pick deep-dive files for the task type.
 
 ---
 
@@ -97,7 +97,7 @@ Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-d
 
 1. **Orient by symptom / domain** → `system_brain/` (maps, flows, runbooks, edge cases, glossary). **Not** a substitute for verifying code/DB.
 2. **Cross-service or “which hop failed?”** → **`.cursor/knowledge-graph.md`** + **`.cursor/cross-service-transactions.md`** before spelunking multiple repos.
-3. **Standards + gates** → `.cursorrules` (Java/XML); glob-scoped `.mdc` rules when editing matching paths (execution context, architect-thinking (thin + skill), contract safety, `accounting.mdc` gates + `accounting-knowledge` skill when in accounting-v2).
+3. **Standards + gates** → `AGENTS.md` (Java/XML); glob-scoped `.mdc` rules when editing matching paths (execution context, architect-thinking (thin + skill), contract safety, `accounting.mdc` gates + `accounting-knowledge` skill when in accounting-v2).
 4. **Accounting module behaviour (detailed)** → `.cursor/skills/accounting-knowledge/` (routed from thin `accounting.mdc`) after brain orientation when the change is in accounting-v2.
 5. **Framework / API templates** → `.cursor/index.mdc` and codegen paths it names (`trustt-platform-ai-codegen-artifacts-java/...`).
 6. **Source of truth** → service repos: orchestration XML, processors, services, `deploy/application/`, migrations, **actual DB state** for incidents.
@@ -122,15 +122,15 @@ Use the **INTELLIGENT CONTEXT ROUTING** section in `.cursorrules` to pick deep-d
 
 ## Other workspace artifacts
 
-- **Service-adjacent docs** that must not live inside a service git repo → `docs/<service>/` (see `docs-outside-service-repos.mdc`). When **editing** those files, follow **`docs-outside-service-repos.mdc (Workspace docs maintenance section)`**.
+- **Service-adjacent docs** that must not live inside a service git repo → `docs/<service>/` (see `docs-outside-service-repos.md`). When **editing** those files, follow **`docs-outside-service-repos.md (Workspace docs maintenance section)`**.
 - **Scripts / local SQL** → `scripts/` (e.g. disburse replay reset) as referenced by relevant rules.
 
 ## Efficiency for agents
 
 - Prefer **opening 1–2 brain files** matching the task flow before searching the whole repo; for **multi-service** work, add **`.cursor/knowledge-graph.md`** (correct money path) up front.
 - After orientation, go to **orchestration XML + processors** named in brain docs (or grep) rather than re-deriving from scratch.
-- **Parallel chats/agents**: only when tasks partition cleanly; see **`multi-agent-spawning.mdc`** (default: one agent for money/contract work).
-- **Thin or vague user message**: see **`effective-prompts-and-issue-triage.mdc`** (restate ask, infer from `system_brain/` + code, batch clarifying questions).
+- **Parallel chats/agents**: only when tasks partition cleanly; see **`multi-agent-spawning.md`** (default: one agent for money/contract work).
+- **Thin or vague user message**: see **`effective-prompts-and-issue-triage.md`** (restate ask, infer from `system_brain/` + code, batch clarifying questions).
 
 ## Session handoff (next agent / new chat)
 
@@ -149,9 +149,9 @@ When stopping mid-task, leave **concrete state** so another session can continue
 
 ## Workspace scripts (common entrypoints)
 
-- **`sync_branches_v2.sh`** — multi-repo branch sync (see `git-workflow.mdc`).
-- **`scripts/disburse_loan_sanity.py`** — local disburse sanity (see `disburse-loan-sanity-suite.mdc`).
-- **SQL under `scripts/`** — local DB resets/replay (see `local-dev-workflows.mdc`).
+- **`sync_branches_v2.sh`** — multi-repo branch sync (see `git-workflow.md`).
+- **`scripts/disburse_loan_sanity.py`** — local disburse sanity (see `disburse-loan-sanity-suite.md`).
+- **SQL under `scripts/`** — local DB resets/replay (see `local-dev-workflows.md`).
 
 ---
 
@@ -161,7 +161,7 @@ When this workspace (or its knowledge-sync mirror repo) updates any tracked know
 
 - `.cursor/**`
 - `system_brain/**`
-- `.cursorrules`
+- `AGENTS.md`
 - `AGENTS.md`
 - `docs/**` (knowledge/validation docs)
 
@@ -221,7 +221,7 @@ Apply when adding or editing files under **`system_brain/`**.
 - **Factual only**: Tie claims to **service paths** (e.g. `trustt-platform-accounting/.../FooProcessor.java`), orchestration XML filenames, or verified DB observations. Mark guesses as **UNVERIFIED** if you must keep them.
 - **No secrets**: No passwords, tokens, or production URLs; use placeholders.
 - **Symptom-first in edge_cases**: Title or opening line should match how someone searches (error code, stuck status, duplicate symptom).
-- **Flows**: State **entry API / consumer / batch**, **major status fields**, and **where partial failure** can occur; point to rules (`events.mdc`, `execution-context-discipline`) when relevant—do not duplicate full rule text.
+- **Flows**: State **entry API / consumer / batch**, **major status fields**, and **where partial failure** can occur; point to rules (`events.md`, `execution-context-discipline`) when relevant—do not duplicate full rule text.
 
 ## Cross-links
 
@@ -231,4 +231,4 @@ Apply when adding or editing files under **`system_brain/`**.
 
 ## What not to do
 
-- Do not move **service source** or **large copied code** into `system_brain/`; use `docs/<service>/` for lengthy QA/release artifacts per `docs-outside-service-repos.mdc`.
+- Do not move **service source** or **large copied code** into `system_brain/`; use `docs/<service>/` for lengthy QA/release artifacts per `docs-outside-service-repos.md`.

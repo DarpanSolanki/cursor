@@ -1,23 +1,32 @@
 ---
 name: reference_workspace_canonical_setup
-description: Canonical paths + self-contained setup for the darpan LMS workspace after the 2026-06-10 relocation cleanup.
-metadata: 
+description: Canonical paths for the Cursor sliProd LMS workspace (routing SoT — do not follow stale /home/darpan/darpan or .claude paths).
+metadata:
   node_type: memory
   type: reference
-  originSessionId: 7fc30f42-df07-4d0a-8093-68fff3c6147e
 ---
 
-The workspace lives entirely at **`/home/darpan/darpan/`** (user `darpan`); memory at **`/home/darpan/.claude/projects/-home-darpan-darpan/memory/`**. It was relocated across `/home/aitdp/` → `/home/rnd/` → `/home/darpan/` and the config had not followed — fixed 2026-06-10.
+**Canonical workspace root:** `/home/darpan/Documents/sliProd`
 
-Setup is **self-contained: no dependency on any other folder or user.** Verified:
-- All `/home/aitdp/darpan` + `/home/rnd/darpan` refs across CLAUDE.md, `claude/`, `.claude/skills`, `scripts/`, settings → normalized to `/home/darpan/darpan`. Audit is clean (zero foreign-home deps).
-- `.claude/settings.json`: discipline-gate hook now uses `$CLAUDE_PROJECT_DIR/.claude/hooks/...` (relocation-proof, was pointed at dead `/home/rnd/darpan`); db-tools allow-paths corrected to `/home/darpan/darpan`.
-- `.claude/settings.local.json`: memory-read perm → `/home/darpan/.claude/...`; broad `Read(//home/aitdp/**)` → `Read(//home/darpan/**)`; redundant `/home/aitdp/workspace/...UD docx` additionalDirectory removed (UD doc mirrored in-tree at `UDs/`).
-- **DB works**: `claude/db-tools/bin/db-query.sh mfi_qa3` → YugabyteDB responds; creds + `.venv` are in-tree.
-- **Jira works** (read-only): `mcp__aitdp-jira__jira_*`. Writes refused per boundary.
-- **KG** (`mcp__kms-kb__*`, namespace is `kms-kb` not `kms-aitdp`): supplement-only; service was down (connection refused) on 2026-06-10 — not a dependency, brain docs are the substrate.
-- **Build**: `cd <repo> && ./gradlew build -x test` (Java 17). Historical `./gbuild.sh` removed.
+| Layer | Path |
+|-------|------|
+| Agent rules / hooks / skills | `.cursor/` (`hooks.json`, `rules/*.mdc`, `skills/`) |
+| Brain + KG + memory | `cursor-bundle/` (`brain/`, `kg/`, `memory/`, `schema/`) |
+| Harness / ntest / ops | `scripts/` (`bin/`, `testing/`, `dpic/`, `sql/`) |
+| Service checkouts | `trustt-platform-*` / `novopay-*` under the same root |
+| Agent entry | `AGENTS.md` (not `CLAUDE.md` as Cursor SoT) |
 
-Cleanup done same day: deleted 19 `.aitdp/logs` dirs, `.gradle-verify`, and unreferenced `downloads/oracleJdk-26` (~383 MB reclaimed); archived loose `dfc-*`/`DFC-*`/`sdcp-10080-*` task docs to `claude/archive/`.
+**Do not use (stale / wrong product):**
+- `/home/darpan/darpan/` — old Claude Code home; dead for this workspace
+- `.claude/`, `claude-bundle/`, `CLAUDE_PROJECT_DIR` — Claude Code sibling (`sliProdClaude`); Cursor uses `.cursor/` + `cursor-bundle/` + `CURSOR_PROJECT_DIR`
+- Hardcoded absolute script paths — resolve via `ROOT="$(cd "$(dirname "$0")/../.." && pwd)"` or `Path(__file__).resolve().parents[N]`
 
-Related: [[feedback_darpan_git_via_darpansolanki]], [[feedback_fetch_latest_before_checking_code]].
+**Working tooling:**
+- DB: `scripts/db-qa3.sh` / `scripts/bin/db-local*.sh` (not `claude/db-tools`)
+- KG: `python3 cursor-bundle/kg/bin/kg.py` + MCP `trustt-kg` from `.mcp.json` / `.cursor/mcp.json`
+- Hooks: `.cursor/hooks.json` → `.cursor/hooks/*.sh`
+- Build: `cd <repo> && ./gradlew build -x test` (Java 17)
+
+Sibling clone for compare-only: `/home/darpan/Documents/sliProdClaude` (outside this tree). Never `chdir` harness smoke into it.
+
+Related: [[feedback_darpan_boundary]], [[reference_enforcement_hooks]], [[reference_system_kg]].

@@ -234,9 +234,19 @@ def load_registry() -> dict:
 
 
 def infer_repo_from_path(path: str) -> str | None:
+    """Return a service checkout dir name, never a filename.
+
+    Path parts like ``novopay-service.sh`` / ``novopay-framework.md`` start with
+    ``novopay-`` but are harness/docs — treating them as repos made harness pushes
+    fail workspace-safe skip and re-run sticky money ship-loop.
+    """
     for part in Path(path).parts:
-        if part.startswith("novopay-") or part.startswith("trustt-"):
-            return part
+        if not (part.startswith("novopay-") or part.startswith("trustt-")):
+            continue
+        # Service checkouts are directories (no suffix). Filenames are not repos.
+        if "." in part:
+            continue
+        return part
     return None
 
 
@@ -300,7 +310,29 @@ def classify_path(path: str) -> str:
     return "workspace"
 
 
+def normalize_worktree_path(path: str) -> str:
+    """Map a git-worktree checkout outside ROOT back to its in-repo path.
+
+    Every gate here keys on the path sitting under the workspace root, so editing a
+    service repo through `git worktree add /tmp/...` silently disabled all of them
+    (TDPQA-234 shipped that way). Re-anchor on the source-root tail.
+    """
+    s = str(path).replace("\\", "/")
+    if not s.startswith("/") or s.startswith(str(ROOT) + "/"):
+        return s
+    for marker in ("/src/main/", "/src/test/"):
+        idx = s.find(marker)
+        if idx == -1:
+            continue
+        tail = s[idx + 1 :]
+        for repo in sorted(ROOT.glob("*platform-*")) + sorted(ROOT.glob("*mfi-*")):
+            if (repo / tail).is_file():
+                return str(repo / tail)
+    return s
+
+
 def is_ship_path(path: str) -> bool:
+    path = normalize_worktree_path(path)
     if is_workspace_path(path):
         return True
     if is_service_path(path):

@@ -10,12 +10,12 @@ metadata:
 The darpan workspace was originally tuned almost entirely for bug-fix / RCA / accounting-debugging (rca-workflow, qa-handoff, lan-360, state-machine-safety, etc.). On 2026-06-11 a **green-field UD→feature capability** was added so a Product UD (User Document / BRD / FSD / PRD, usually `.docx` + sample-calc `.xlsx`) can be taken end-to-end from spec → verified design → code → QA, driven by brain + KG before any code is opened.
 
 **What was added (all in-boundary):**
-- `claude/guides/feature-development-playbook.md` — the green-field substrate: UD→behavioural-rules table → KG gap-analysis (`kg search/flow/crud/impact/writes/cases`) → **12-layer placement matrix** (entity·Flyway·constants·DAO·service·processor·orchestration-XML·batch·GL/appropriation·reversal/lifecycle·surfacing·events) → tiered design + rails → code/build/diff → open-Qs → qa-handoff → fold-into-brain+KG.
-- `.claude/skills/ud-to-feature/SKILL.md` — the repeatable pipeline skill driving that guide. Auto-activates on UD/BRD/FSD/PRD/"implement this feature"/`UDs/` references.
-- Wired into CLAUDE.md §2 topic map + §4 skill table.
+- `cursor-bundle/brain/guides/feature-development-playbook.md` — UD→behavioural-rules → KG gap-analysis → 12-layer placement matrix → tiered design → code/build → qa-handoff → fold-into-brain+KG.
+- `.cursor/skills/` feature / accounting skills (and related playbooks) — activate on UD/BRD/FSD/PRD/"implement this feature".
+- Wired into `AGENTS.md` + `.cursor/rules/` topic map.
 
 **Anchor facts:**
-- The one existing UD→implementation precedent is **DPI v1** ([UDs/](../../darpan/UDs/) → `claude/dpic/`) — the playbook cites it at every step as the worked example.
+- The one existing UD→implementation precedent is **DPI v1** (`UDs/` → `cursor-bundle/brain/dpic/` / `scripts/dpic/`) — the playbook cites it as the worked example.
 - "UD only" honestly means: scope + design + impact + plan + QA scenarios come purely from UD+KG+brain; the **code-writing step still drops to the checkouts** (precedence-ladder rung 6) — by design, not a gap.
 
 **Why:** A UD is a different workflow shape from a bug fix; without this, each feature re-derived the approach by hand (as DPI was).

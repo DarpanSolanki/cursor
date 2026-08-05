@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-30T11:45:43Z",
+  "updated": "2026-08-04T16:47:44Z",
   "proposals": [
     {
       "id": "proposal.unknown.unknownApi.20260722",
@@ -776,7 +776,7 @@
           ".cursor/skills/capture-proof/SKILL.md",
           ".cursor/skills/minimal-fix/SKILL.md",
           ".cursor/skills/release-details/SKILL.md",
-          ".cursor/rules/git-workflow.mdc"
+          ".cursor/rules/git-workflow.md"
         ],
         "tier": "service"
       },
@@ -904,7 +904,7 @@
           "getLoanAccountOverviewDetails"
         ],
         "pending_files": [
-          ".cursor/rules/harness-push-origin-main-only.mdc",
+          ".cursor/rules/harness-push-origin-main-only.md",
           "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi/dpiaccrualcalculation/DpiAccrualCalculationBatchService.java",
           "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/dpi/calculation/DPICalculationService.java",
           "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/repayment/processor/RepaymentApproppriationProcessor.java",
@@ -1554,6 +1554,3999 @@
           "scripts/scratch/shg_int_distribute/run_multi_lan_test.sh",
           "scripts/scratch/shg_int_distribute/run_live_multiwindow.py",
           ".cursor/changelog.md"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.interest_accrual.interestAccrualCalculation.20260731",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-31T07:38:14Z",
+      "domain": "interest_accrual",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "interestAccrualCalculation",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "interestAccrualCalculation"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualcalculation/InterestAccrualCalculationItemReader.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualcalculation/InterestAccrualCalculationBatchService.java"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.death_foreclosure.interestAccrualCalculation.20260731",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-07-31T10:24:53Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "interestAccrualCalculation",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "loan_account_billing_details",
+              "assert": "TODO: value-level expect for loan_account_billing_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_account_payments_details",
+              "assert": "TODO: value-level expect for loan_account_payments_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "interest_accrual_details",
+              "assert": "TODO: value-level expect for interest_accrual_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "interestAccrualCalculation"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/interest/service/InterestGroupLoanAccrualDistributionService.java",
+          "scripts/testing/flowtest/iad_column_audit.py",
+          "scripts/lib/money_behavior_parity_gate.py",
+          "scripts/lib/ship_discipline_gate.py",
+          "scripts/lib/acceptance_coverage_manifest.json",
+          "cursor-bundle/memory/feedback_money_behavior_parity_no_amount_only_ship.md",
+          "cursor-bundle/memory/MEMORY.md",
+          "scripts/testing/defects/LMS-DEFECT-child-iad-stuck-tip.md",
+          "scripts/lib/accounting_flow_domains.json",
+          "scripts/testing/registry.json"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.death_foreclosure.interestAccrualCalculation.20260803",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-08-03T15:27:20Z",
+      "domain": "death_foreclosure",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "interestAccrualCalculation",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "loan_account_billing_details",
+              "assert": "TODO: value-level expect for loan_account_billing_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_account_payments_details",
+              "assert": "TODO: value-level expect for loan_account_payments_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "interest_accrual_details",
+              "assert": "TODO: value-level expect for interest_accrual_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "interestAccrualCalculation"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/grouploan/interest/service/InterestGroupLoanAccrualDistributionService.java",
+          "scripts/testing/flowtest/iad_column_audit.py",
+          "scripts/testing/flowtest/scenarios/shg_int_accrual_stitch.py"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.interest_accrual.interestAccrualCalculation.20260803",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-08-03T16:03:46Z",
+      "domain": "interest_accrual",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "interestAccrualCalculation",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "interest_accrual_details",
+              "assert": "TODO: value-level expect for interest_accrual_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "interestAccrualCalculation"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/interest/normal/accrual/processor/InterestAccrualCalculationService.java"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.interest_accrual.interestAccrualCalculation.20260803",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-08-03T17:31:51Z",
+      "domain": "interest_accrual",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "interestAccrualCalculation",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "interest_accrual_details",
+              "assert": "TODO: value-level expect for interest_accrual_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "interestAccrualCalculation"
+        ],
+        "pending_files": [
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/interest/normal/accrual/entity/InterestAccrualDetailsEntity.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualcalculation/InterestAccrualCalculationBatchService.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/interest/interestaccrualcalculation/InterestAccrualCalculationItemWriter.java"
+        ],
+        "tier": "money"
+      }
+    },
+    {
+      "id": "proposal.unknown.unknownApi.20260803",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-08-03T18:27:28Z",
+      "domain": "unknown",
+      "suggested_tier": "smoke",
+      "case": {
+        "type": "flow",
+        "api": "unknownApi",
+        "smoke_tier": "smoke",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "transaction_master",
+              "assert": "TODO: value-level expect for transaction_master from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [],
+        "pending_files": [
+          "trustt-platform-accounting/settings.gradle"
+        ],
+        "tier": "service"
+      }
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInternalAccount",
+      "kind": "registry_case",
+      "api": "createOrUpdateInternalAccount",
+      "reason": "flow createOrUpdateInternalAccount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateSavingsAccount",
+      "kind": "registry_case",
+      "api": "createOrUpdateSavingsAccount",
+      "reason": "flow createOrUpdateSavingsAccount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateGeneralLedger",
+      "kind": "registry_case",
+      "api": "createOrUpdateGeneralLedger",
+      "reason": "flow createOrUpdateGeneralLedger impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateDisbursementAccountDetails",
+      "kind": "registry_case",
+      "api": "updateDisbursementAccountDetails",
+      "reason": "flow updateDisbursementAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountDetails",
+      "reason": "flow getLoanAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getBulkLoanAccountDetails",
+      "kind": "registry_case",
+      "api": "getBulkLoanAccountDetails",
+      "reason": "flow getBulkLoanAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanMaturityDateAndNumberOfInstallments",
+      "kind": "registry_case",
+      "api": "getLoanMaturityDateAndNumberOfInstallments",
+      "reason": "flow getLoanMaturityDateAndNumberOfInstallments impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanUpfrontInterestAmount",
+      "kind": "registry_case",
+      "api": "getLoanUpfrontInterestAmount",
+      "reason": "flow getLoanUpfrontInterestAmount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createRepaymentMandateDetails",
+      "kind": "registry_case",
+      "api": "createRepaymentMandateDetails",
+      "reason": "flow createRepaymentMandateDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateMandateStatus",
+      "kind": "registry_case",
+      "api": "updateMandateStatus",
+      "reason": "flow updateMandateStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountList",
+      "kind": "registry_case",
+      "api": "getLoanAccountList",
+      "reason": "flow getLoanAccountList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountRepaymentScheduleDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountRepaymentScheduleDetails",
+      "reason": "flow getLoanAccountRepaymentScheduleDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.loanProvisioningPosting",
+      "kind": "registry_case",
+      "api": "loanProvisioningPosting",
+      "reason": "flow loanProvisioningPosting impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountDisbursmentTransactions",
+      "kind": "registry_case",
+      "api": "getLoanAccountDisbursmentTransactions",
+      "reason": "flow getLoanAccountDisbursmentTransactions impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.registerLoanAccountRescheduleEvent",
+      "kind": "registry_case",
+      "api": "registerLoanAccountRescheduleEvent",
+      "reason": "flow registerLoanAccountRescheduleEvent impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.fetchRestructuringRepaymentSchedule",
+      "kind": "registry_case",
+      "api": "fetchRestructuringRepaymentSchedule",
+      "reason": "flow fetchRestructuringRepaymentSchedule impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.rescheduleLoanAccountRescheduleBatch",
+      "kind": "registry_case",
+      "api": "rescheduleLoanAccountRescheduleBatch",
+      "reason": "flow rescheduleLoanAccountRescheduleBatch impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCollectionBatchDetails",
+      "kind": "registry_case",
+      "api": "updateCollectionBatchDetails",
+      "reason": "flow updateCollectionBatchDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getDisbursementCancellationDetails",
+      "kind": "registry_case",
+      "api": "getDisbursementCancellationDetails",
+      "reason": "flow getDisbursementCancellationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountExcessAmountRefundDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountExcessAmountRefundDetails",
+      "reason": "flow getLoanAccountExcessAmountRefundDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountExcessAmountRefundList",
+      "kind": "registry_case",
+      "api": "getLoanAccountExcessAmountRefundList",
+      "reason": "flow getLoanAccountExcessAmountRefundList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountCASADetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountCASADetails",
+      "reason": "flow getLoanAccountCASADetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.validateCustomerAccountDetails",
+      "kind": "registry_case",
+      "api": "validateCustomerAccountDetails",
+      "reason": "flow validateCustomerAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getManualJournalEntryList",
+      "kind": "registry_case",
+      "api": "getManualJournalEntryList",
+      "reason": "flow getManualJournalEntryList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountDpdCount",
+      "kind": "registry_case",
+      "api": "getLoanAccountDpdCount",
+      "reason": "flow getLoanAccountDpdCount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getManualJournalEntryDetails",
+      "kind": "registry_case",
+      "api": "getManualJournalEntryDetails",
+      "reason": "flow getManualJournalEntryDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getDeathForeclosureDetails",
+      "kind": "registry_case",
+      "api": "getDeathForeclosureDetails",
+      "reason": "flow getDeathForeclosureDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountRebookingDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountRebookingDetails",
+      "reason": "flow getLoanAccountRebookingDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountRestructuringList",
+      "kind": "registry_case",
+      "api": "getLoanAccountRestructuringList",
+      "reason": "flow getLoanAccountRestructuringList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountRestructuringDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountRestructuringDetails",
+      "reason": "flow getLoanAccountRestructuringDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerAccountList",
+      "kind": "registry_case",
+      "api": "getCustomerAccountList",
+      "reason": "flow getCustomerAccountList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.validateLoanAccountTransaction",
+      "kind": "registry_case",
+      "api": "validateLoanAccountTransaction",
+      "reason": "flow validateLoanAccountTransaction impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.calculateStampDutyCharges",
+      "kind": "registry_case",
+      "api": "calculateStampDutyCharges",
+      "reason": "flow calculateStampDutyCharges impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGTransactionReversalJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGTransactionReversalJob",
+      "reason": "flow bulkFileToSGTransactionReversalJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.viewBulkTransactionReversalFileStatus",
+      "kind": "registry_case",
+      "api": "viewBulkTransactionReversalFileStatus",
+      "reason": "flow viewBulkTransactionReversalFileStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.downloadTransactionReversalUploadedFile",
+      "kind": "registry_case",
+      "api": "downloadTransactionReversalUploadedFile",
+      "reason": "flow downloadTransactionReversalUploadedFile impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToTransactionReversalJob",
+      "kind": "registry_case",
+      "api": "bulkSGToTransactionReversalJob",
+      "reason": "flow bulkSGToTransactionReversalJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.loanAccountServicingDocumentEventsJob",
+      "kind": "registry_case",
+      "api": "loanAccountServicingDocumentEventsJob",
+      "reason": "flow loanAccountServicingDocumentEventsJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getActiveLoansForCustomer",
+      "kind": "registry_case",
+      "api": "getActiveLoansForCustomer",
+      "reason": "flow getActiveLoansForCustomer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.checkLoanAccountExistsByCustomerId",
+      "kind": "registry_case",
+      "api": "checkLoanAccountExistsByCustomerId",
+      "reason": "flow checkLoanAccountExistsByCustomerId impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountGenericDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountGenericDetails",
+      "reason": "flow getLoanAccountGenericDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCasaBalanceDetails",
+      "kind": "registry_case",
+      "api": "getCasaBalanceDetails",
+      "reason": "flow getCasaBalanceDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.calculateAnnualPercentageRate",
+      "kind": "registry_case",
+      "api": "calculateAnnualPercentageRate",
+      "reason": "flow calculateAnnualPercentageRate impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generatePreEMIRepaymentSchedule",
+      "kind": "registry_case",
+      "api": "generatePreEMIRepaymentSchedule",
+      "reason": "flow generatePreEMIRepaymentSchedule impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerLoanAccountBounces",
+      "kind": "registry_case",
+      "api": "getCustomerLoanAccountBounces",
+      "reason": "flow getCustomerLoanAccountBounces impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.validateLMSRestrictedActivitiesForPTrfr",
+      "kind": "registry_case",
+      "api": "validateLMSRestrictedActivitiesForPTrfr",
+      "reason": "flow validateLMSRestrictedActivitiesForPTrfr impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getVillageAccountingPortFolioSummary",
+      "kind": "registry_case",
+      "api": "getVillageAccountingPortFolioSummary",
+      "reason": "flow getVillageAccountingPortFolioSummary impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getActiveDisbursedLoanByCustomerId",
+      "kind": "registry_case",
+      "api": "getActiveDisbursedLoanByCustomerId",
+      "reason": "flow getActiveDisbursedLoanByCustomerId impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInternalAccountDefinition",
+      "kind": "registry_case",
+      "api": "createOrUpdateInternalAccountDefinition",
+      "reason": "flow createOrUpdateInternalAccountDefinition impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateTaxComponent",
+      "kind": "registry_case",
+      "api": "createOrUpdateTaxComponent",
+      "reason": "flow createOrUpdateTaxComponent impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateTaxGroup",
+      "kind": "registry_case",
+      "api": "createOrUpdateTaxGroup",
+      "reason": "flow createOrUpdateTaxGroup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePriceMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdatePriceMaster",
+      "reason": "flow createOrUpdatePriceMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePriceSetup",
+      "kind": "registry_case",
+      "api": "createOrUpdatePriceSetup",
+      "reason": "flow createOrUpdatePriceSetup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateStampDutyMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdateStampDutyMaster",
+      "reason": "flow createOrUpdateStampDutyMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateBaseInterestRate",
+      "kind": "registry_case",
+      "api": "createOrUpdateBaseInterestRate",
+      "reason": "flow createOrUpdateBaseInterestRate impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInterestSetup",
+      "kind": "registry_case",
+      "api": "createOrUpdateInterestSetup",
+      "reason": "flow createOrUpdateInterestSetup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAssetClassificationMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdateAssetClassificationMaster",
+      "reason": "flow createOrUpdateAssetClassificationMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAssetCriteriaMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdateAssetCriteriaMaster",
+      "reason": "flow createOrUpdateAssetCriteriaMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateProductScheme",
+      "kind": "registry_case",
+      "api": "createOrUpdateProductScheme",
+      "reason": "flow createOrUpdateProductScheme impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateSavingsProduct",
+      "kind": "registry_case",
+      "api": "createOrUpdateSavingsProduct",
+      "reason": "flow createOrUpdateSavingsProduct impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateWorkingDay",
+      "kind": "registry_case",
+      "api": "createOrUpdateWorkingDay",
+      "reason": "flow createOrUpdateWorkingDay impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateHoliday",
+      "kind": "registry_case",
+      "api": "createOrUpdateHoliday",
+      "reason": "flow createOrUpdateHoliday impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInsuranceProduct",
+      "kind": "registry_case",
+      "api": "createOrUpdateInsuranceProduct",
+      "reason": "flow createOrUpdateInsuranceProduct impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePremiumCalculationMatrixDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdatePremiumCalculationMatrixDetails",
+      "reason": "flow createOrUpdatePremiumCalculationMatrixDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateTransactionCatalogue",
+      "kind": "registry_case",
+      "api": "createOrUpdateTransactionCatalogue",
+      "reason": "flow createOrUpdateTransactionCatalogue impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteTransactionCatalogue",
+      "kind": "registry_case",
+      "api": "deleteTransactionCatalogue",
+      "reason": "flow deleteTransactionCatalogue impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePlaceholderMasterListForProductType",
+      "kind": "registry_case",
+      "api": "createOrUpdatePlaceholderMasterListForProductType",
+      "reason": "flow createOrUpdatePlaceholderMasterListForProductType impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePlaceholderMasterListForProductType",
+      "kind": "registry_case",
+      "api": "deletePlaceholderMasterListForProductType",
+      "reason": "flow deletePlaceholderMasterListForProductType impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePlaceholderMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdatePlaceholderMaster",
+      "reason": "flow createOrUpdatePlaceholderMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAccountingRules",
+      "kind": "registry_case",
+      "api": "createOrUpdateAccountingRules",
+      "reason": "flow createOrUpdateAccountingRules impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteAccountingRule",
+      "kind": "registry_case",
+      "api": "deleteAccountingRule",
+      "reason": "flow deleteAccountingRule impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInventoryItem",
+      "kind": "registry_case",
+      "api": "createOrUpdateInventoryItem",
+      "reason": "flow createOrUpdateInventoryItem impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.linkCard",
+      "kind": "registry_case",
+      "api": "linkCard",
+      "reason": "flow linkCard impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.setCardPin",
+      "kind": "registry_case",
+      "api": "setCardPin",
+      "reason": "flow setCardPin impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.replaceCard",
+      "kind": "registry_case",
+      "api": "replaceCard",
+      "reason": "flow replaceCard impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateInsuranceProvider",
+      "kind": "registry_case",
+      "api": "createOrUpdateInsuranceProvider",
+      "reason": "flow createOrUpdateInsuranceProvider impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAgency",
+      "kind": "registry_case",
+      "api": "createOrUpdateAgency",
+      "reason": "flow createOrUpdateAgency impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteAgency",
+      "kind": "registry_case",
+      "api": "deleteAgency",
+      "reason": "flow deleteAgency impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateMasterData",
+      "kind": "registry_case",
+      "api": "createOrUpdateMasterData",
+      "reason": "flow createOrUpdateMasterData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.forgotAuthValue",
+      "kind": "registry_case",
+      "api": "forgotAuthValue",
+      "reason": "flow forgotAuthValue impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.authenticateUser",
+      "kind": "registry_case",
+      "api": "authenticateUser",
+      "reason": "flow authenticateUser impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateEmployeeStatus",
+      "kind": "registry_case",
+      "api": "updateEmployeeStatus",
+      "reason": "flow updateEmployeeStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.customerLogin",
+      "kind": "registry_case",
+      "api": "customerLogin",
+      "reason": "flow customerLogin impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateBankEmployeeStatus",
+      "kind": "registry_case",
+      "api": "updateBankEmployeeStatus",
+      "reason": "flow updateBankEmployeeStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateAgentEmployeeStatus",
+      "kind": "registry_case",
+      "api": "updateAgentEmployeeStatus",
+      "reason": "flow updateAgentEmployeeStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateAgentStatus",
+      "kind": "registry_case",
+      "api": "updateAgentStatus",
+      "reason": "flow updateAgentStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCorporateEmployeeStatus",
+      "kind": "registry_case",
+      "api": "updateCorporateEmployeeStatus",
+      "reason": "flow updateCorporateEmployeeStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCorporateStatus",
+      "kind": "registry_case",
+      "api": "updateCorporateStatus",
+      "reason": "flow updateCorporateStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEffectiveInterestRateForInterestSetupCode",
+      "kind": "registry_case",
+      "api": "getEffectiveInterestRateForInterestSetupCode",
+      "reason": "flow getEffectiveInterestRateForInterestSetupCode impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEffectiveInterestRateForProductScheme",
+      "kind": "registry_case",
+      "api": "getEffectiveInterestRateForProductScheme",
+      "reason": "flow getEffectiveInterestRateForProductScheme impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteGeneralLedger",
+      "kind": "registry_case",
+      "api": "deleteGeneralLedger",
+      "reason": "flow deleteGeneralLedger impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateGeneralLedgerStatus",
+      "kind": "registry_case",
+      "api": "updateGeneralLedgerStatus",
+      "reason": "flow updateGeneralLedgerStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGeneralLedgerDetails",
+      "kind": "registry_case",
+      "api": "getGeneralLedgerDetails",
+      "reason": "flow getGeneralLedgerDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInternalAccountDefinition",
+      "kind": "registry_case",
+      "api": "deleteInternalAccountDefinition",
+      "reason": "flow deleteInternalAccountDefinition impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInternalAccountDefinitionDetails",
+      "kind": "registry_case",
+      "api": "getInternalAccountDefinitionDetails",
+      "reason": "flow getInternalAccountDefinitionDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaxGroupDetails",
+      "kind": "registry_case",
+      "api": "getTaxGroupDetails",
+      "reason": "flow getTaxGroupDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInternalAccount",
+      "kind": "registry_case",
+      "api": "deleteInternalAccount",
+      "reason": "flow deleteInternalAccount impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInternalAccountDetails",
+      "kind": "registry_case",
+      "api": "getInternalAccountDetails",
+      "reason": "flow getInternalAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getStampDutyMasterDetails",
+      "kind": "registry_case",
+      "api": "getStampDutyMasterDetails",
+      "reason": "flow getStampDutyMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteBaseInterestRate",
+      "kind": "registry_case",
+      "api": "deleteBaseInterestRate",
+      "reason": "flow deleteBaseInterestRate impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getBaseInterestRateDetails",
+      "kind": "registry_case",
+      "api": "getBaseInterestRateDetails",
+      "reason": "flow getBaseInterestRateDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getProductSchemeDetails",
+      "kind": "registry_case",
+      "api": "getProductSchemeDetails",
+      "reason": "flow getProductSchemeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getSavingsAccountDetails",
+      "kind": "registry_case",
+      "api": "getSavingsAccountDetails",
+      "reason": "flow getSavingsAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAccountDetails",
+      "kind": "registry_case",
+      "api": "getAccountDetails",
+      "reason": "flow getAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getHolidayDetails",
+      "kind": "registry_case",
+      "api": "getHolidayDetails",
+      "reason": "flow getHolidayDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteHoliday",
+      "kind": "registry_case",
+      "api": "deleteHoliday",
+      "reason": "flow deleteHoliday impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInsuranceProduct",
+      "kind": "registry_case",
+      "api": "deleteInsuranceProduct",
+      "reason": "flow deleteInsuranceProduct impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePremiumCalculationMatrixDetails",
+      "kind": "registry_case",
+      "api": "deletePremiumCalculationMatrixDetails",
+      "reason": "flow deletePremiumCalculationMatrixDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInsuranceProductDetails",
+      "kind": "registry_case",
+      "api": "getInsuranceProductDetails",
+      "reason": "flow getInsuranceProductDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPremiumCalculationMatrixDetails",
+      "kind": "registry_case",
+      "api": "getPremiumCalculationMatrixDetails",
+      "reason": "flow getPremiumCalculationMatrixDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeeDetails",
+      "kind": "registry_case",
+      "api": "getEmployeeDetails",
+      "reason": "flow getEmployeeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.login",
+      "kind": "registry_case",
+      "api": "login",
+      "reason": "flow login impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.agentLogin",
+      "kind": "registry_case",
+      "api": "agentLogin",
+      "reason": "flow agentLogin impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.registerDevice",
+      "kind": "registry_case",
+      "api": "registerDevice",
+      "reason": "flow registerDevice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateOffice",
+      "kind": "registry_case",
+      "api": "createOrUpdateOffice",
+      "reason": "flow createOrUpdateOffice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInventoryItemDetails",
+      "kind": "registry_case",
+      "api": "getInventoryItemDetails",
+      "reason": "flow getInventoryItemDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInventoryItem",
+      "kind": "registry_case",
+      "api": "deleteInventoryItem",
+      "reason": "flow deleteInventoryItem impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.lockOrUnlockCard",
+      "kind": "registry_case",
+      "api": "lockOrUnlockCard",
+      "reason": "flow lockOrUnlockCard impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.requestNewCard",
+      "kind": "registry_case",
+      "api": "requestNewCard",
+      "reason": "flow requestNewCard impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerDetails",
+      "kind": "registry_case",
+      "api": "getCustomerDetails",
+      "reason": "flow getCustomerDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.setAuthValue",
+      "kind": "registry_case",
+      "api": "setAuthValue",
+      "reason": "flow setAuthValue impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAgentEmployeeDetails",
+      "kind": "registry_case",
+      "api": "getAgentEmployeeDetails",
+      "reason": "flow getAgentEmployeeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAgentDetails",
+      "kind": "registry_case",
+      "api": "getAgentDetails",
+      "reason": "flow getAgentDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCorporateDetails",
+      "kind": "registry_case",
+      "api": "getCorporateDetails",
+      "reason": "flow getCorporateDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInsuranceProvider",
+      "kind": "registry_case",
+      "api": "deleteInsuranceProvider",
+      "reason": "flow deleteInsuranceProvider impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInsuranceProviderDetails",
+      "kind": "registry_case",
+      "api": "getInsuranceProviderDetails",
+      "reason": "flow getInsuranceProviderDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerDetailsByFormattedId",
+      "kind": "registry_case",
+      "api": "getCustomerDetailsByFormattedId",
+      "reason": "flow getCustomerDetailsByFormattedId impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateBankEmployee",
+      "kind": "registry_case",
+      "api": "createOrUpdateBankEmployee",
+      "reason": "flow createOrUpdateBankEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getBankEmployeeDetails",
+      "kind": "registry_case",
+      "api": "getBankEmployeeDetails",
+      "reason": "flow getBankEmployeeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAgencyDetails",
+      "kind": "registry_case",
+      "api": "getAgencyDetails",
+      "reason": "flow getAgencyDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCorporateEmployeeDetails",
+      "kind": "registry_case",
+      "api": "getCorporateEmployeeDetails",
+      "reason": "flow getCorporateEmployeeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.requestNewCardInternal",
+      "kind": "registry_case",
+      "api": "requestNewCardInternal",
+      "reason": "flow requestNewCardInternal impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.rejectApplication",
+      "kind": "registry_case",
+      "api": "rejectApplication",
+      "reason": "flow rejectApplication impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePriceMaster",
+      "kind": "registry_case",
+      "api": "deletePriceMaster",
+      "reason": "flow deletePriceMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePriceSetup",
+      "kind": "registry_case",
+      "api": "deletePriceSetup",
+      "reason": "flow deletePriceSetup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteStampDutyMaster",
+      "kind": "registry_case",
+      "api": "deleteStampDutyMaster",
+      "reason": "flow deleteStampDutyMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteInterestSetup",
+      "kind": "registry_case",
+      "api": "deleteInterestSetup",
+      "reason": "flow deleteInterestSetup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateLoanProduct",
+      "kind": "registry_case",
+      "api": "createOrUpdateLoanProduct",
+      "reason": "flow createOrUpdateLoanProduct impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGManualHoldRemovalJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGManualHoldRemovalJob",
+      "reason": "flow bulkFileToSGManualHoldRemovalJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToManualHoldRemovalJob",
+      "kind": "registry_case",
+      "api": "bulkSGToManualHoldRemovalJob",
+      "reason": "flow bulkSGToManualHoldRemovalJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToManualHoldMarkingJob",
+      "kind": "registry_case",
+      "api": "bulkSGToManualHoldMarkingJob",
+      "reason": "flow bulkSGToManualHoldMarkingJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGManualHoldMarkingJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGManualHoldMarkingJob",
+      "reason": "flow bulkFileToSGManualHoldMarkingJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToEnachRepresentationJob",
+      "kind": "registry_case",
+      "api": "bulkSGToEnachRepresentationJob",
+      "reason": "flow bulkSGToEnachRepresentationJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGEnachRepresentationJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGEnachRepresentationJob",
+      "reason": "flow bulkFileToSGEnachRepresentationJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGRefundMarkingJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGRefundMarkingJob",
+      "reason": "flow bulkFileToSGRefundMarkingJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGAssetCriteriaGroupUpdateJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGAssetCriteriaGroupUpdateJob",
+      "reason": "flow bulkFileToSGAssetCriteriaGroupUpdateJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGForeclosureChargeUpdateJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGForeclosureChargeUpdateJob",
+      "reason": "flow bulkFileToSGForeclosureChargeUpdateJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGManualJournalEntriesJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGManualJournalEntriesJob",
+      "reason": "flow bulkFileToSGManualJournalEntriesJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToManualJournalEntriesJob",
+      "kind": "registry_case",
+      "api": "bulkSGToManualJournalEntriesJob",
+      "reason": "flow bulkSGToManualJournalEntriesJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGNocBlockUnblockJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGNocBlockUnblockJob",
+      "reason": "flow bulkFileToSGNocBlockUnblockJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGDispatchDetailsJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGDispatchDetailsJob",
+      "reason": "flow bulkFileToSGDispatchDetailsJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGFinsallRepaymentJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGFinsallRepaymentJob",
+      "reason": "flow bulkFileToSGFinsallRepaymentJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToFinsallRepaymentJob",
+      "kind": "registry_case",
+      "api": "bulkSGToFinsallRepaymentJob",
+      "reason": "flow bulkSGToFinsallRepaymentJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePlaceholderMaster",
+      "kind": "registry_case",
+      "api": "deletePlaceholderMaster",
+      "reason": "flow deletePlaceholderMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteOffice",
+      "kind": "registry_case",
+      "api": "deleteOffice",
+      "reason": "flow deleteOffice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.assignInventoryItem",
+      "kind": "registry_case",
+      "api": "assignInventoryItem",
+      "reason": "flow assignInventoryItem impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.unassignInventoryItem",
+      "kind": "registry_case",
+      "api": "unassignInventoryItem",
+      "reason": "flow unassignInventoryItem impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGOfficeUpsertJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGOfficeUpsertJob",
+      "reason": "flow bulkFileToSGOfficeUpsertJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.revokeEmployee",
+      "kind": "registry_case",
+      "api": "revokeEmployee",
+      "reason": "flow revokeEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateEmployeeRole",
+      "kind": "registry_case",
+      "api": "updateEmployeeRole",
+      "reason": "flow updateEmployeeRole impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdatePromoCode",
+      "kind": "registry_case",
+      "api": "createOrUpdatePromoCode",
+      "reason": "flow createOrUpdatePromoCode impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deletePromoCodeDetails",
+      "kind": "registry_case",
+      "api": "deletePromoCodeDetails",
+      "reason": "flow deletePromoCodeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteBankEmployee",
+      "kind": "registry_case",
+      "api": "deleteBankEmployee",
+      "reason": "flow deleteBankEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.revokeBankEmployee",
+      "kind": "registry_case",
+      "api": "revokeBankEmployee",
+      "reason": "flow revokeBankEmployee impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkFileToSGUcicUpdateJob",
+      "kind": "registry_case",
+      "api": "bulkFileToSGUcicUpdateJob",
+      "reason": "flow bulkFileToSGUcicUpdateJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.blockOrUnblockCustomer",
+      "kind": "registry_case",
+      "api": "blockOrUnblockCustomer",
+      "reason": "flow blockOrUnblockCustomer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateQuestionnaireMaster",
+      "kind": "registry_case",
+      "api": "createOrUpdateQuestionnaireMaster",
+      "reason": "flow createOrUpdateQuestionnaireMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteQuestionnaireMaster",
+      "kind": "registry_case",
+      "api": "deleteQuestionnaireMaster",
+      "reason": "flow deleteQuestionnaireMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateMappedQuestionnaire",
+      "kind": "registry_case",
+      "api": "createOrUpdateMappedQuestionnaire",
+      "reason": "flow createOrUpdateMappedQuestionnaire impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteMappedQuestionnaire",
+      "kind": "registry_case",
+      "api": "deleteMappedQuestionnaire",
+      "reason": "flow deleteMappedQuestionnaire impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateConfiguration",
+      "kind": "registry_case",
+      "api": "createOrUpdateConfiguration",
+      "reason": "flow createOrUpdateConfiguration impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateTask",
+      "kind": "registry_case",
+      "api": "createOrUpdateTask",
+      "reason": "flow createOrUpdateTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteTask",
+      "kind": "registry_case",
+      "api": "deleteTask",
+      "reason": "flow deleteTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaskList",
+      "kind": "registry_case",
+      "api": "getTaskList",
+      "reason": "flow getTaskList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createTaskWorkflow",
+      "kind": "registry_case",
+      "api": "createTaskWorkflow",
+      "reason": "flow createTaskWorkflow impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateTaskWorkflow",
+      "kind": "registry_case",
+      "api": "updateTaskWorkflow",
+      "reason": "flow updateTaskWorkflow impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.rejectExpiredBatchJob",
+      "kind": "registry_case",
+      "api": "rejectExpiredBatchJob",
+      "reason": "flow rejectExpiredBatchJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateTaskMfi",
+      "kind": "registry_case",
+      "api": "createOrUpdateTaskMfi",
+      "reason": "flow createOrUpdateTaskMfi impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteTaskMfi",
+      "kind": "registry_case",
+      "api": "deleteTaskMfi",
+      "reason": "flow deleteTaskMfi impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriceMasterDetails",
+      "kind": "registry_case",
+      "api": "getPriceMasterDetails",
+      "reason": "flow getPriceMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriceMasterList",
+      "kind": "registry_case",
+      "api": "getPriceMasterList",
+      "reason": "flow getPriceMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriceSetupDetails",
+      "kind": "registry_case",
+      "api": "getPriceSetupDetails",
+      "reason": "flow getPriceSetupDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriceSetupList",
+      "kind": "registry_case",
+      "api": "getPriceSetupList",
+      "reason": "flow getPriceSetupList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getStampDutyMasterList",
+      "kind": "registry_case",
+      "api": "getStampDutyMasterList",
+      "reason": "flow getStampDutyMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInterestSetupDetails",
+      "kind": "registry_case",
+      "api": "getInterestSetupDetails",
+      "reason": "flow getInterestSetupDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInterestSetupList",
+      "kind": "registry_case",
+      "api": "getInterestSetupList",
+      "reason": "flow getInterestSetupList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanProductDetails",
+      "kind": "registry_case",
+      "api": "getLoanProductDetails",
+      "reason": "flow getLoanProductDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanProductList",
+      "kind": "registry_case",
+      "api": "getLoanProductList",
+      "reason": "flow getLoanProductList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getSavingsProductDetails",
+      "kind": "registry_case",
+      "api": "getSavingsProductDetails",
+      "reason": "flow getSavingsProductDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getSavingsProductList",
+      "kind": "registry_case",
+      "api": "getSavingsProductList",
+      "reason": "flow getSavingsProductList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getHolidayList",
+      "kind": "registry_case",
+      "api": "getHolidayList",
+      "reason": "flow getHolidayList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountApplicableCharges",
+      "kind": "registry_case",
+      "api": "getLoanAccountApplicableCharges",
+      "reason": "flow getLoanAccountApplicableCharges impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountAppliedCharges",
+      "kind": "registry_case",
+      "api": "getLoanAccountAppliedCharges",
+      "reason": "flow getLoanAccountAppliedCharges impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getForeclosureChargeDetails",
+      "kind": "registry_case",
+      "api": "getForeclosureChargeDetails",
+      "reason": "flow getForeclosureChargeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountNocDetails",
+      "kind": "registry_case",
+      "api": "getLoanAccountNocDetails",
+      "reason": "flow getLoanAccountNocDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTransactionCatalogueList",
+      "kind": "registry_case",
+      "api": "getTransactionCatalogueList",
+      "reason": "flow getTransactionCatalogueList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPlaceholderMasterList",
+      "kind": "registry_case",
+      "api": "getPlaceholderMasterList",
+      "reason": "flow getPlaceholderMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAccountingRuleList",
+      "kind": "registry_case",
+      "api": "getAccountingRuleList",
+      "reason": "flow getAccountingRuleList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeeList",
+      "kind": "registry_case",
+      "api": "getEmployeeList",
+      "reason": "flow getEmployeeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getOfficeDetails",
+      "kind": "registry_case",
+      "api": "getOfficeDetails",
+      "reason": "flow getOfficeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getOfficeList",
+      "kind": "registry_case",
+      "api": "getOfficeList",
+      "reason": "flow getOfficeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeeListWithRoles",
+      "kind": "registry_case",
+      "api": "getEmployeeListWithRoles",
+      "reason": "flow getEmployeeListWithRoles impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOfficeLinkage",
+      "kind": "registry_case",
+      "api": "createOfficeLinkage",
+      "reason": "flow createOfficeLinkage impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateEmpWorkAreaLinkage",
+      "kind": "registry_case",
+      "api": "createOrUpdateEmpWorkAreaLinkage",
+      "reason": "flow createOrUpdateEmpWorkAreaLinkage impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateMeetingCenter",
+      "kind": "registry_case",
+      "api": "createOrUpdateMeetingCenter",
+      "reason": "flow createOrUpdateMeetingCenter impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.allocateMeetingCenter",
+      "kind": "registry_case",
+      "api": "allocateMeetingCenter",
+      "reason": "flow allocateMeetingCenter impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.reallocateMeetingCenter",
+      "kind": "registry_case",
+      "api": "reallocateMeetingCenter",
+      "reason": "flow reallocateMeetingCenter impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteMeetingCenter",
+      "kind": "registry_case",
+      "api": "deleteMeetingCenter",
+      "reason": "flow deleteMeetingCenter impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getBankEmployeeList",
+      "kind": "registry_case",
+      "api": "getBankEmployeeList",
+      "reason": "flow getBankEmployeeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateEmployeeCashInHandLimit",
+      "kind": "registry_case",
+      "api": "updateEmployeeCashInHandLimit",
+      "reason": "flow updateEmployeeCashInHandLimit impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.requestToExtendDepositCutoffTime",
+      "kind": "registry_case",
+      "api": "requestToExtendDepositCutoffTime",
+      "reason": "flow requestToExtendDepositCutoffTime impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createPortfolioTransferRequest",
+      "kind": "registry_case",
+      "api": "createPortfolioTransferRequest",
+      "reason": "flow createPortfolioTransferRequest impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAgentEmployeeList",
+      "kind": "registry_case",
+      "api": "getAgentEmployeeList",
+      "reason": "flow getAgentEmployeeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCorporateEmployeeList",
+      "kind": "registry_case",
+      "api": "getCorporateEmployeeList",
+      "reason": "flow getCorporateEmployeeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerList",
+      "kind": "registry_case",
+      "api": "getCustomerList",
+      "reason": "flow getCustomerList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getConfigurationList",
+      "kind": "registry_case",
+      "api": "getConfigurationList",
+      "reason": "flow getConfigurationList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGeneralLedgerList",
+      "kind": "registry_case",
+      "api": "getGeneralLedgerList",
+      "reason": "flow getGeneralLedgerList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInternalAccountDefinitionList",
+      "kind": "registry_case",
+      "api": "getInternalAccountDefinitionList",
+      "reason": "flow getInternalAccountDefinitionList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaxComponentList",
+      "kind": "registry_case",
+      "api": "getTaxComponentList",
+      "reason": "flow getTaxComponentList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaxComponentDetails",
+      "kind": "registry_case",
+      "api": "getTaxComponentDetails",
+      "reason": "flow getTaxComponentDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteTaxComponent",
+      "kind": "registry_case",
+      "api": "deleteTaxComponent",
+      "reason": "flow deleteTaxComponent impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaxGroupList",
+      "kind": "registry_case",
+      "api": "getTaxGroupList",
+      "reason": "flow getTaxGroupList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteTaxGroup",
+      "kind": "registry_case",
+      "api": "deleteTaxGroup",
+      "reason": "flow deleteTaxGroup impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInternalAccountList",
+      "kind": "registry_case",
+      "api": "getInternalAccountList",
+      "reason": "flow getInternalAccountList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getBaseInterestRateList",
+      "kind": "registry_case",
+      "api": "getBaseInterestRateList",
+      "reason": "flow getBaseInterestRateList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAssetClassificationMasterList",
+      "kind": "registry_case",
+      "api": "getAssetClassificationMasterList",
+      "reason": "flow getAssetClassificationMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAssetClassificationMasterDetails",
+      "kind": "registry_case",
+      "api": "getAssetClassificationMasterDetails",
+      "reason": "flow getAssetClassificationMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteAssetClassificationMaster",
+      "kind": "registry_case",
+      "api": "deleteAssetClassificationMaster",
+      "reason": "flow deleteAssetClassificationMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAssetCriteriaMasterDetails",
+      "kind": "registry_case",
+      "api": "getAssetCriteriaMasterDetails",
+      "reason": "flow getAssetCriteriaMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAssetCriteriaMasterList",
+      "kind": "registry_case",
+      "api": "getAssetCriteriaMasterList",
+      "reason": "flow getAssetCriteriaMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteAssetCriteriaMaster",
+      "kind": "registry_case",
+      "api": "deleteAssetCriteriaMaster",
+      "reason": "flow deleteAssetCriteriaMaster impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getProductSchemeList",
+      "kind": "registry_case",
+      "api": "getProductSchemeList",
+      "reason": "flow getProductSchemeList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEntryLookupCodesOfTransaction",
+      "kind": "registry_case",
+      "api": "getEntryLookupCodesOfTransaction",
+      "reason": "flow getEntryLookupCodesOfTransaction impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCurrencyMasterList",
+      "kind": "registry_case",
+      "api": "getCurrencyMasterList",
+      "reason": "flow getCurrencyMasterList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getFinancialTransactionPlaceholderList",
+      "kind": "registry_case",
+      "api": "getFinancialTransactionPlaceholderList",
+      "reason": "flow getFinancialTransactionPlaceholderList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getProductList",
+      "kind": "registry_case",
+      "api": "getProductList",
+      "reason": "flow getProductList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteWorkingDay",
+      "kind": "registry_case",
+      "api": "deleteWorkingDay",
+      "reason": "flow deleteWorkingDay impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getWorkingDayList",
+      "kind": "registry_case",
+      "api": "getWorkingDayList",
+      "reason": "flow getWorkingDayList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getWorkingDayDetails",
+      "kind": "registry_case",
+      "api": "getWorkingDayDetails",
+      "reason": "flow getWorkingDayDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getTaskDataFromLMS",
+      "kind": "registry_case",
+      "api": "getTaskDataFromLMS",
+      "reason": "flow getTaskDataFromLMS impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateUniqueReferenceNumber",
+      "kind": "registry_case",
+      "api": "generateUniqueReferenceNumber",
+      "reason": "flow generateUniqueReferenceNumber impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateSIPresentationDetails",
+      "kind": "registry_case",
+      "api": "updateSIPresentationDetails",
+      "reason": "flow updateSIPresentationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.fetchMandateDetails",
+      "kind": "registry_case",
+      "api": "fetchMandateDetails",
+      "reason": "flow fetchMandateDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.fetchMandateDetailsHistory",
+      "kind": "registry_case",
+      "api": "fetchMandateDetailsHistory",
+      "reason": "flow fetchMandateDetailsHistory impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.childLoanRebookingAdjustmentTransaction",
+      "kind": "registry_case",
+      "api": "childLoanRebookingAdjustmentTransaction",
+      "reason": "flow childLoanRebookingAdjustmentTransaction impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.loanRepaymentInquiry",
+      "kind": "registry_case",
+      "api": "loanRepaymentInquiry",
+      "reason": "flow loanRepaymentInquiry impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPlaceholderMasterDetails",
+      "kind": "registry_case",
+      "api": "getPlaceholderMasterDetails",
+      "reason": "flow getPlaceholderMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEncryptionKey",
+      "kind": "registry_case",
+      "api": "getEncryptionKey",
+      "reason": "flow getEncryptionKey impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.forgotPassword",
+      "kind": "registry_case",
+      "api": "forgotPassword",
+      "reason": "flow forgotPassword impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.forgotPin",
+      "kind": "registry_case",
+      "api": "forgotPin",
+      "reason": "flow forgotPin impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.changePassword",
+      "kind": "registry_case",
+      "api": "changePassword",
+      "reason": "flow changePassword impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteCorporate",
+      "kind": "registry_case",
+      "api": "deleteCorporate",
+      "reason": "flow deleteCorporate impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateDevice",
+      "kind": "registry_case",
+      "api": "createOrUpdateDevice",
+      "reason": "flow createOrUpdateDevice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.mapDevice",
+      "kind": "registry_case",
+      "api": "mapDevice",
+      "reason": "flow mapDevice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getDeviceList",
+      "kind": "registry_case",
+      "api": "getDeviceList",
+      "reason": "flow getDeviceList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getDeviceDetails",
+      "kind": "registry_case",
+      "api": "getDeviceDetails",
+      "reason": "flow getDeviceDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getParentHierarchyList",
+      "kind": "registry_case",
+      "api": "getParentHierarchyList",
+      "reason": "flow getParentHierarchyList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateHierarchyElement",
+      "kind": "registry_case",
+      "api": "createOrUpdateHierarchyElement",
+      "reason": "flow createOrUpdateHierarchyElement impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.addOrRemoveHierarchyElementEntityMapping",
+      "kind": "registry_case",
+      "api": "addOrRemoveHierarchyElementEntityMapping",
+      "reason": "flow addOrRemoveHierarchyElementEntityMapping impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateHierarchyElementEntityMapping",
+      "kind": "registry_case",
+      "api": "updateHierarchyElementEntityMapping",
+      "reason": "flow updateHierarchyElementEntityMapping impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getHierarchyLevels",
+      "kind": "registry_case",
+      "api": "getHierarchyLevels",
+      "reason": "flow getHierarchyLevels impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getChildHierarchyElements",
+      "kind": "registry_case",
+      "api": "getChildHierarchyElements",
+      "reason": "flow getChildHierarchyElements impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInventoryItemList",
+      "kind": "registry_case",
+      "api": "getInventoryItemList",
+      "reason": "flow getInventoryItemList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInventoryManufacturerList",
+      "kind": "registry_case",
+      "api": "getInventoryManufacturerList",
+      "reason": "flow getInventoryManufacturerList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInventoryBrandList",
+      "kind": "registry_case",
+      "api": "getInventoryBrandList",
+      "reason": "flow getInventoryBrandList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getInventoryProductList",
+      "kind": "registry_case",
+      "api": "getInventoryProductList",
+      "reason": "flow getInventoryProductList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGeoHierarchyEntityDetails",
+      "kind": "registry_case",
+      "api": "getGeoHierarchyEntityDetails",
+      "reason": "flow getGeoHierarchyEntityDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEntityGeoHierarchyDetails",
+      "kind": "registry_case",
+      "api": "getEntityGeoHierarchyDetails",
+      "reason": "flow getEntityGeoHierarchyDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeeServiceableOffices",
+      "kind": "registry_case",
+      "api": "getEmployeeServiceableOffices",
+      "reason": "flow getEmployeeServiceableOffices impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCorporateList",
+      "kind": "registry_case",
+      "api": "getCorporateList",
+      "reason": "flow getCorporateList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.verifyHandle",
+      "kind": "registry_case",
+      "api": "verifyHandle",
+      "reason": "flow verifyHandle impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.authenticateCollectionUser",
+      "kind": "registry_case",
+      "api": "authenticateCollectionUser",
+      "reason": "flow authenticateCollectionUser impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAgentList",
+      "kind": "registry_case",
+      "api": "getAgentList",
+      "reason": "flow getAgentList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCollection",
+      "kind": "registry_case",
+      "api": "createOrUpdateCollection",
+      "reason": "flow createOrUpdateCollection impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCollectionLead",
+      "kind": "registry_case",
+      "api": "createOrUpdateCollectionLead",
+      "reason": "flow createOrUpdateCollectionLead impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCorporateSubClientMapping",
+      "kind": "registry_case",
+      "api": "createOrUpdateCorporateSubClientMapping",
+      "reason": "flow createOrUpdateCorporateSubClientMapping impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getSubClientCodeDetailsList",
+      "kind": "registry_case",
+      "api": "getSubClientCodeDetailsList",
+      "reason": "flow getSubClientCodeDetailsList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEligibleUserListForTaskAllocation",
+      "kind": "registry_case",
+      "api": "getEligibleUserListForTaskAllocation",
+      "reason": "flow getEligibleUserListForTaskAllocation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.verifyMobileNumber",
+      "kind": "registry_case",
+      "api": "verifyMobileNumber",
+      "reason": "flow verifyMobileNumber impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getOfficeWorkAreaLinkageList",
+      "kind": "registry_case",
+      "api": "getOfficeWorkAreaLinkageList",
+      "reason": "flow getOfficeWorkAreaLinkageList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateOfficeWorkAreaLinkage",
+      "kind": "registry_case",
+      "api": "createOrUpdateOfficeWorkAreaLinkage",
+      "reason": "flow createOrUpdateOfficeWorkAreaLinkage impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getParentEmployeeContactsDetailAtLevel",
+      "kind": "registry_case",
+      "api": "getParentEmployeeContactsDetailAtLevel",
+      "reason": "flow getParentEmployeeContactsDetailAtLevel impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getListOfMeetingCenters",
+      "kind": "registry_case",
+      "api": "getListOfMeetingCenters",
+      "reason": "flow getListOfMeetingCenters impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getServiceableProductsForOffices",
+      "kind": "registry_case",
+      "api": "getServiceableProductsForOffices",
+      "reason": "flow getServiceableProductsForOffices impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeesUnderEmployeeV2",
+      "kind": "registry_case",
+      "api": "getEmployeesUnderEmployeeV2",
+      "reason": "flow getEmployeesUnderEmployeeV2 impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getEmployeeUnderServicableOffice",
+      "kind": "registry_case",
+      "api": "getEmployeeUnderServicableOffice",
+      "reason": "flow getEmployeeUnderServicableOffice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateGeographicalLocation",
+      "kind": "registry_case",
+      "api": "createOrUpdateGeographicalLocation",
+      "reason": "flow createOrUpdateGeographicalLocation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGlmmElementsByLevel",
+      "kind": "registry_case",
+      "api": "getGlmmElementsByLevel",
+      "reason": "flow getGlmmElementsByLevel impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGlmmList",
+      "kind": "registry_case",
+      "api": "getGlmmList",
+      "reason": "flow getGlmmList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGlmmDetails",
+      "kind": "registry_case",
+      "api": "getGlmmDetails",
+      "reason": "flow getGlmmDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.reallocateVtc",
+      "kind": "registry_case",
+      "api": "reallocateVtc",
+      "reason": "flow reallocateVtc impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.exportOfficeWorkAreaData",
+      "kind": "registry_case",
+      "api": "exportOfficeWorkAreaData",
+      "reason": "flow exportOfficeWorkAreaData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.exportEmployeeWorkAreaData",
+      "kind": "registry_case",
+      "api": "exportEmployeeWorkAreaData",
+      "reason": "flow exportEmployeeWorkAreaData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getMfiChildHierarchyElements",
+      "kind": "registry_case",
+      "api": "getMfiChildHierarchyElements",
+      "reason": "flow getMfiChildHierarchyElements impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.allowCashLimitAndDepExtReq",
+      "kind": "registry_case",
+      "api": "allowCashLimitAndDepExtReq",
+      "reason": "flow allowCashLimitAndDepExtReq impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.biometricValidationDummy",
+      "kind": "registry_case",
+      "api": "biometricValidationDummy",
+      "reason": "flow biometricValidationDummy impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOffice",
+      "kind": "registry_case",
+      "api": "createOffice",
+      "reason": "flow createOffice impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCorporateHierarchyLevels",
+      "kind": "registry_case",
+      "api": "getCorporateHierarchyLevels",
+      "reason": "flow getCorporateHierarchyLevels impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getUsers",
+      "kind": "registry_case",
+      "api": "getUsers",
+      "reason": "flow getUsers impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getUser",
+      "kind": "registry_case",
+      "api": "getUser",
+      "reason": "flow getUser impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.internalLogout",
+      "kind": "registry_case",
+      "api": "internalLogout",
+      "reason": "flow internalLogout impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateDraftApplication",
+      "kind": "registry_case",
+      "api": "createOrUpdateDraftApplication",
+      "reason": "flow createOrUpdateDraftApplication impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteDraftApplication",
+      "kind": "registry_case",
+      "api": "deleteDraftApplication",
+      "reason": "flow deleteDraftApplication impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.submitApplication",
+      "kind": "registry_case",
+      "api": "submitApplication",
+      "reason": "flow submitApplication impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.sendApplicationForClarification",
+      "kind": "registry_case",
+      "api": "sendApplicationForClarification",
+      "reason": "flow sendApplicationForClarification impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.approveApplication",
+      "kind": "registry_case",
+      "api": "approveApplication",
+      "reason": "flow approveApplication impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateRole",
+      "kind": "registry_case",
+      "api": "createOrUpdateRole",
+      "reason": "flow createOrUpdateRole impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteRole",
+      "kind": "registry_case",
+      "api": "deleteRole",
+      "reason": "flow deleteRole impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getRoleList",
+      "kind": "registry_case",
+      "api": "getRoleList",
+      "reason": "flow getRoleList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getRoleDetails",
+      "kind": "registry_case",
+      "api": "getRoleDetails",
+      "reason": "flow getRoleDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateLoanApp",
+      "kind": "registry_case",
+      "api": "createOrUpdateLoanApp",
+      "reason": "flow createOrUpdateLoanApp impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.processEligibilityRules",
+      "kind": "registry_case",
+      "api": "processEligibilityRules",
+      "reason": "flow processEligibilityRules impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.processBetEligibilityRules",
+      "kind": "registry_case",
+      "api": "processBetEligibilityRules",
+      "reason": "flow processBetEligibilityRules impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.processGroupFormationEligibilityRules",
+      "kind": "registry_case",
+      "api": "processGroupFormationEligibilityRules",
+      "reason": "flow processGroupFormationEligibilityRules impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.processAllEligibilityRules",
+      "kind": "registry_case",
+      "api": "processAllEligibilityRules",
+      "reason": "flow processAllEligibilityRules impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateBorrowerKycDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateBorrowerKycDetails",
+      "reason": "flow createOrUpdateBorrowerKycDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateGroupFlcc",
+      "kind": "registry_case",
+      "api": "createOrUpdateGroupFlcc",
+      "reason": "flow createOrUpdateGroupFlcc impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createAndCompleteTask",
+      "kind": "registry_case",
+      "api": "createAndCompleteTask",
+      "reason": "flow createAndCompleteTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateFamilyMemberDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateFamilyMemberDetails",
+      "reason": "flow createOrUpdateFamilyMemberDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.addUpdateExpenseDetails",
+      "kind": "registry_case",
+      "api": "addUpdateExpenseDetails",
+      "reason": "flow addUpdateExpenseDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.submitAccountDetails",
+      "kind": "registry_case",
+      "api": "submitAccountDetails",
+      "reason": "flow submitAccountDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateIncomeDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateIncomeDetails",
+      "reason": "flow createOrUpdateIncomeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateExpenseDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateExpenseDetails",
+      "reason": "flow createOrUpdateExpenseDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateAssetsAndAmenities",
+      "kind": "registry_case",
+      "api": "createOrUpdateAssetsAndAmenities",
+      "reason": "flow createOrUpdateAssetsAndAmenities impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateBorrowerDetails",
+      "kind": "registry_case",
+      "api": "updateBorrowerDetails",
+      "reason": "flow updateBorrowerDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.saveDocumentClarificationDetails",
+      "kind": "registry_case",
+      "api": "saveDocumentClarificationDetails",
+      "reason": "flow saveDocumentClarificationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateBulkIncomeDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateBulkIncomeDetails",
+      "reason": "flow createOrUpdateBulkIncomeDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPanVerificationDetails",
+      "kind": "registry_case",
+      "api": "getPanVerificationDetails",
+      "reason": "flow getPanVerificationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getMasterDataList",
+      "kind": "registry_case",
+      "api": "getMasterDataList",
+      "reason": "flow getMasterDataList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getMasterDataDetails",
+      "kind": "registry_case",
+      "api": "getMasterDataDetails",
+      "reason": "flow getMasterDataDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.deleteMasterData",
+      "kind": "registry_case",
+      "api": "deleteMasterData",
+      "reason": "flow deleteMasterData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getConfigurationDetails",
+      "kind": "registry_case",
+      "api": "getConfigurationDetails",
+      "reason": "flow getConfigurationDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollection",
+      "kind": "registry_case",
+      "api": "getCollection",
+      "reason": "flow getCollection impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.doCollections",
+      "kind": "registry_case",
+      "api": "doCollections",
+      "reason": "flow doCollections impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.fetchCollectionRecordsForRecon",
+      "kind": "registry_case",
+      "api": "fetchCollectionRecordsForRecon",
+      "reason": "flow fetchCollectionRecordsForRecon impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.ackCollectionRecordForRecon",
+      "kind": "registry_case",
+      "api": "ackCollectionRecordForRecon",
+      "reason": "flow ackCollectionRecordForRecon impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.reconcileCollectionPayments",
+      "kind": "registry_case",
+      "api": "reconcileCollectionPayments",
+      "reason": "flow reconcileCollectionPayments impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.markCollectionsAsSettled",
+      "kind": "registry_case",
+      "api": "markCollectionsAsSettled",
+      "reason": "flow markCollectionsAsSettled impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.doMfiCollections",
+      "kind": "registry_case",
+      "api": "doMfiCollections",
+      "reason": "flow doMfiCollections impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateRecordAttempt1",
+      "kind": "registry_case",
+      "api": "createOrUpdateRecordAttempt1",
+      "reason": "flow createOrUpdateRecordAttempt1 impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.forwardSupervisoryReview",
+      "kind": "registry_case",
+      "api": "forwardSupervisoryReview",
+      "reason": "flow forwardSupervisoryReview impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.reassignSupervisoryReview",
+      "kind": "registry_case",
+      "api": "reassignSupervisoryReview",
+      "reason": "flow reassignSupervisoryReview impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.submitSupervisoryReview",
+      "kind": "registry_case",
+      "api": "submitSupervisoryReview",
+      "reason": "flow submitSupervisoryReview impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.reviewerVerificationHistory",
+      "kind": "registry_case",
+      "api": "reviewerVerificationHistory",
+      "reason": "flow reviewerVerificationHistory impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkUploadFile",
+      "kind": "registry_case",
+      "api": "bulkUploadFile",
+      "reason": "flow bulkUploadFile impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.processBulkUploadFile",
+      "kind": "registry_case",
+      "api": "processBulkUploadFile",
+      "reason": "flow processBulkUploadFile impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateSupervisoryReviewStatus",
+      "kind": "registry_case",
+      "api": "updateSupervisoryReviewStatus",
+      "reason": "flow updateSupervisoryReviewStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCollectionTempData",
+      "kind": "registry_case",
+      "api": "createOrUpdateCollectionTempData",
+      "reason": "flow createOrUpdateCollectionTempData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionTempData",
+      "kind": "registry_case",
+      "api": "getCollectionTempData",
+      "reason": "flow getCollectionTempData impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriorityCollectionDetailsOld",
+      "kind": "registry_case",
+      "api": "getPriorityCollectionDetailsOld",
+      "reason": "flow getPriorityCollectionDetailsOld impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriorityCountForCalendarOld",
+      "kind": "registry_case",
+      "api": "getPriorityCountForCalendarOld",
+      "reason": "flow getPriorityCountForCalendarOld impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getVisitStatus",
+      "kind": "registry_case",
+      "api": "getVisitStatus",
+      "reason": "flow getVisitStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionInfoListOld",
+      "kind": "registry_case",
+      "api": "getCollectionInfoListOld",
+      "reason": "flow getCollectionInfoListOld impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCollectionOfficeInfo",
+      "kind": "registry_case",
+      "api": "updateCollectionOfficeInfo",
+      "reason": "flow updateCollectionOfficeInfo impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getIndvidualCollBannerDetails",
+      "kind": "registry_case",
+      "api": "getIndvidualCollBannerDetails",
+      "reason": "flow getIndvidualCollBannerDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getGroupCollBannerDetails",
+      "kind": "registry_case",
+      "api": "getGroupCollBannerDetails",
+      "reason": "flow getGroupCollBannerDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getContactDetailsForFinnoneCustomer",
+      "kind": "registry_case",
+      "api": "getContactDetailsForFinnoneCustomer",
+      "reason": "flow getContactDetailsForFinnoneCustomer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.panNameMatchLogicValidation",
+      "kind": "registry_case",
+      "api": "panNameMatchLogicValidation",
+      "reason": "flow panNameMatchLogicValidation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.addContactForExternalCollectionCustomer",
+      "kind": "registry_case",
+      "api": "addContactForExternalCollectionCustomer",
+      "reason": "flow addContactForExternalCollectionCustomer impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createCollectionOfficeInfo",
+      "kind": "registry_case",
+      "api": "createCollectionOfficeInfo",
+      "reason": "flow createCollectionOfficeInfo impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateCollectionRectification",
+      "kind": "registry_case",
+      "api": "createOrUpdateCollectionRectification",
+      "reason": "flow createOrUpdateCollectionRectification impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCollectionRectificationOnApproval",
+      "kind": "registry_case",
+      "api": "updateCollectionRectificationOnApproval",
+      "reason": "flow updateCollectionRectificationOnApproval impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateCancelCds",
+      "kind": "registry_case",
+      "api": "updateCancelCds",
+      "reason": "flow updateCancelCds impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectedDetailsForRectification",
+      "kind": "registry_case",
+      "api": "getCollectedDetailsForRectification",
+      "reason": "flow getCollectedDetailsForRectification impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.collectAmountAfterRectification",
+      "kind": "registry_case",
+      "api": "collectAmountAfterRectification",
+      "reason": "flow collectAmountAfterRectification impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.doMfiBranchCollection",
+      "kind": "registry_case",
+      "api": "doMfiBranchCollection",
+      "reason": "flow doMfiBranchCollection impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollListForDelegation",
+      "kind": "registry_case",
+      "api": "getCollListForDelegation",
+      "reason": "flow getCollListForDelegation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.submitCollForDelegation",
+      "kind": "registry_case",
+      "api": "submitCollForDelegation",
+      "reason": "flow submitCollForDelegation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialMode",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialMode",
+      "reason": "flow getAttemptsTrialMode impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialOutcome",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialOutcome",
+      "reason": "flow getAttemptsTrialOutcome impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialNonPayReason",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialNonPayReason",
+      "reason": "flow getAttemptsTrialNonPayReason impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialPersonContacted",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialPersonContacted",
+      "reason": "flow getAttemptsTrialPersonContacted impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialPlaceContacted",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialPlaceContacted",
+      "reason": "flow getAttemptsTrialPlaceContacted impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getAttemptsTrialNextAction",
+      "kind": "registry_case",
+      "api": "getAttemptsTrialNextAction",
+      "reason": "flow getAttemptsTrialNextAction impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateRecordAttempt",
+      "kind": "registry_case",
+      "api": "createOrUpdateRecordAttempt",
+      "reason": "flow createOrUpdateRecordAttempt impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.captureForeclosureState",
+      "kind": "registry_case",
+      "api": "captureForeclosureState",
+      "reason": "flow captureForeclosureState impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionDetailsForInfoIcon",
+      "kind": "registry_case",
+      "api": "getCollectionDetailsForInfoIcon",
+      "reason": "flow getCollectionDetailsForInfoIcon impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateVisitDetails",
+      "kind": "registry_case",
+      "api": "createOrUpdateVisitDetails",
+      "reason": "flow createOrUpdateVisitDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionCountForCollectorV2",
+      "kind": "registry_case",
+      "api": "getCollectionCountForCollectorV2",
+      "reason": "flow getCollectionCountForCollectorV2 impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriorityCollectionDetails",
+      "kind": "registry_case",
+      "api": "getPriorityCollectionDetails",
+      "reason": "flow getPriorityCollectionDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getPriorityCountForCalendar",
+      "kind": "registry_case",
+      "api": "getPriorityCountForCalendar",
+      "reason": "flow getPriorityCountForCalendar impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionInfoList",
+      "kind": "registry_case",
+      "api": "getCollectionInfoList",
+      "reason": "flow getCollectionInfoList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createTaskDelegation",
+      "kind": "registry_case",
+      "api": "createTaskDelegation",
+      "reason": "flow createTaskDelegation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateDataCurrentTaskAndCreateNewTask",
+      "kind": "registry_case",
+      "api": "updateDataCurrentTaskAndCreateNewTask",
+      "reason": "flow updateDataCurrentTaskAndCreateNewTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionLimitIncreaseHistory",
+      "kind": "registry_case",
+      "api": "getCollectionLimitIncreaseHistory",
+      "reason": "flow getCollectionLimitIncreaseHistory impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionDepositTimeExtensionHistory",
+      "kind": "registry_case",
+      "api": "getCollectionDepositTimeExtensionHistory",
+      "reason": "flow getCollectionDepositTimeExtensionHistory impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.increaseOrDecreaseCashInHandForDay",
+      "kind": "registry_case",
+      "api": "increaseOrDecreaseCashInHandForDay",
+      "reason": "flow increaseOrDecreaseCashInHandForDay impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getDataForOfflineColletions",
+      "kind": "registry_case",
+      "api": "getDataForOfflineColletions",
+      "reason": "flow getDataForOfflineColletions impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateBatch",
+      "kind": "registry_case",
+      "api": "generateBatch",
+      "reason": "flow generateBatch impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCustomerInteractionForCollectionList",
+      "kind": "registry_case",
+      "api": "getCustomerInteractionForCollectionList",
+      "reason": "flow getCustomerInteractionForCollectionList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getCollectionDetailsForCustomerInteractionListOLd",
+      "kind": "registry_case",
+      "api": "getCollectionDetailsForCustomerInteractionListOLd",
+      "reason": "flow getCollectionDetailsForCustomerInteractionListOLd impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToPriorityCalendarJob",
+      "kind": "registry_case",
+      "api": "bulkSGToPriorityCalendarJob",
+      "reason": "flow bulkSGToPriorityCalendarJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToRescheduleDataUploadJob",
+      "kind": "registry_case",
+      "api": "bulkSGToRescheduleDataUploadJob",
+      "reason": "flow bulkSGToRescheduleDataUploadJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToLoanCategoryUploadJob",
+      "kind": "registry_case",
+      "api": "bulkSGToLoanCategoryUploadJob",
+      "reason": "flow bulkSGToLoanCategoryUploadJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToExcelAgencyUploadJob",
+      "kind": "registry_case",
+      "api": "bulkSGToExcelAgencyUploadJob",
+      "reason": "flow bulkSGToExcelAgencyUploadJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToLoanExceptionUploadJob",
+      "kind": "registry_case",
+      "api": "bulkSGToLoanExceptionUploadJob",
+      "reason": "flow bulkSGToLoanExceptionUploadJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToStaticDtTypeJob",
+      "kind": "registry_case",
+      "api": "bulkSGToStaticDtTypeJob",
+      "reason": "flow bulkSGToStaticDtTypeJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToNpRevTrailsJob",
+      "kind": "registry_case",
+      "api": "bulkSGToNpRevTrailsJob",
+      "reason": "flow bulkSGToNpRevTrailsJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToDynamicOneJob",
+      "kind": "registry_case",
+      "api": "bulkSGToDynamicOneJob",
+      "reason": "flow bulkSGToDynamicOneJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToDynamicTwoJob",
+      "kind": "registry_case",
+      "api": "bulkSGToDynamicTwoJob",
+      "reason": "flow bulkSGToDynamicTwoJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToNpHandoffJob",
+      "kind": "registry_case",
+      "api": "bulkSGToNpHandoffJob",
+      "reason": "flow bulkSGToNpHandoffJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkSGToFinoneReverseJob",
+      "kind": "registry_case",
+      "api": "bulkSGToFinoneReverseJob",
+      "reason": "flow bulkSGToFinoneReverseJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateUAMPopulationExtractJob",
+      "kind": "registry_case",
+      "api": "generateUAMPopulationExtractJob",
+      "reason": "flow generateUAMPopulationExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateUAMRoleRightExtractJob",
+      "kind": "registry_case",
+      "api": "generateUAMRoleRightExtractJob",
+      "reason": "flow generateUAMRoleRightExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateUAMLoginLogoutExtractJob",
+      "kind": "registry_case",
+      "api": "generateUAMLoginLogoutExtractJob",
+      "reason": "flow generateUAMLoginLogoutExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateLoanCardIndividualReportExtractJob",
+      "kind": "registry_case",
+      "api": "generateLoanCardIndividualReportExtractJob",
+      "reason": "flow generateLoanCardIndividualReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateDisbursementAdviceReportExtractJob",
+      "kind": "registry_case",
+      "api": "generateDisbursementAdviceReportExtractJob",
+      "reason": "flow generateDisbursementAdviceReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateRepaymentScheduleExtractJob",
+      "kind": "registry_case",
+      "api": "generateRepaymentScheduleExtractJob",
+      "reason": "flow generateRepaymentScheduleExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateMergeReportExtractJob",
+      "kind": "registry_case",
+      "api": "generateMergeReportExtractJob",
+      "reason": "flow generateMergeReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateSIOTRExtractJob",
+      "kind": "registry_case",
+      "api": "generateSIOTRExtractJob",
+      "reason": "flow generateSIOTRExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.cicMonthlyMemberLevelExtractJob",
+      "kind": "registry_case",
+      "api": "cicMonthlyMemberLevelExtractJob",
+      "reason": "flow cicMonthlyMemberLevelExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.cicMonthlyGroupLevelExtractJob",
+      "kind": "registry_case",
+      "api": "cicMonthlyGroupLevelExtractJob",
+      "reason": "flow cicMonthlyGroupLevelExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.creditProductivityExtractJob",
+      "kind": "registry_case",
+      "api": "creditProductivityExtractJob",
+      "reason": "flow creditProductivityExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateCustomerLevelDumpExtractJob",
+      "kind": "registry_case",
+      "api": "generateCustomerLevelDumpExtractJob",
+      "reason": "flow generateCustomerLevelDumpExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateGroupLevelDumpExtractJob",
+      "kind": "registry_case",
+      "api": "generateGroupLevelDumpExtractJob",
+      "reason": "flow generateGroupLevelDumpExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateAPYBaseNetDataExtractJob",
+      "kind": "registry_case",
+      "api": "generateAPYBaseNetDataExtractJob",
+      "reason": "flow generateAPYBaseNetDataExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateDemandListReportExtractJob",
+      "kind": "registry_case",
+      "api": "generateDemandListReportExtractJob",
+      "reason": "flow generateDemandListReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateSOPLPBaseExtractJob",
+      "kind": "registry_case",
+      "api": "generateSOPLPBaseExtractJob",
+      "reason": "flow generateSOPLPBaseExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateSOBaseExtractJob",
+      "kind": "registry_case",
+      "api": "generateSOBaseExtractJob",
+      "reason": "flow generateSOBaseExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateCscVleDataExtractJob",
+      "kind": "registry_case",
+      "api": "generateCscVleDataExtractJob",
+      "reason": "flow generateCscVleDataExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateOpsDumpDataExtractJob",
+      "kind": "registry_case",
+      "api": "generateOpsDumpDataExtractJob",
+      "reason": "flow generateOpsDumpDataExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateLoginGroupBaseExtractJob",
+      "kind": "registry_case",
+      "api": "generateLoginGroupBaseExtractJob",
+      "reason": "flow generateLoginGroupBaseExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateLoginBaseGroupDumpExtractJob",
+      "kind": "registry_case",
+      "api": "generateLoginBaseGroupDumpExtractJob",
+      "reason": "flow generateLoginBaseGroupDumpExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateGroupLevelDemandListReportExtractJob",
+      "kind": "registry_case",
+      "api": "generateGroupLevelDemandListReportExtractJob",
+      "reason": "flow generateGroupLevelDemandListReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generatePosReportExtractJob",
+      "kind": "registry_case",
+      "api": "generatePosReportExtractJob",
+      "reason": "flow generatePosReportExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateGroupLevelPosExtractJob",
+      "kind": "registry_case",
+      "api": "generateGroupLevelPosExtractJob",
+      "reason": "flow generateGroupLevelPosExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateUAMAdminActivityExtractJob",
+      "kind": "registry_case",
+      "api": "generateUAMAdminActivityExtractJob",
+      "reason": "flow generateUAMAdminActivityExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateDeviceDetailsExtractJob",
+      "kind": "registry_case",
+      "api": "generateDeviceDetailsExtractJob",
+      "reason": "flow generateDeviceDetailsExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateNrlmNonRegisteredGroupReportJob",
+      "kind": "registry_case",
+      "api": "generateNrlmNonRegisteredGroupReportJob",
+      "reason": "flow generateNrlmNonRegisteredGroupReportJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.nrlmMasterDataReportJob",
+      "kind": "registry_case",
+      "api": "nrlmMasterDataReportJob",
+      "reason": "flow nrlmMasterDataReportJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.nrlmClaimAmountReportJob",
+      "kind": "registry_case",
+      "api": "nrlmClaimAmountReportJob",
+      "reason": "flow nrlmClaimAmountReportJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateGroupDataExtractJob",
+      "kind": "registry_case",
+      "api": "generateGroupDataExtractJob",
+      "reason": "flow generateGroupDataExtractJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateRecordAttemptReportSftpJob",
+      "kind": "registry_case",
+      "api": "generateRecordAttemptReportSftpJob",
+      "reason": "flow generateRecordAttemptReportSftpJob impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateTaskStatus",
+      "kind": "registry_case",
+      "api": "updateTaskStatus",
+      "reason": "flow updateTaskStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkUpdateTaskStatus",
+      "kind": "registry_case",
+      "api": "bulkUpdateTaskStatus",
+      "reason": "flow bulkUpdateTaskStatus impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.bulkCreateTask",
+      "kind": "registry_case",
+      "api": "bulkCreateTask",
+      "reason": "flow bulkCreateTask impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateMfiTaskByCode",
+      "kind": "registry_case",
+      "api": "createOrUpdateMfiTaskByCode",
+      "reason": "flow createOrUpdateMfiTaskByCode impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateTaskStatusAndCallApi",
+      "kind": "registry_case",
+      "api": "updateTaskStatusAndCallApi",
+      "reason": "flow updateTaskStatusAndCallApi impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.updateTaskDelegation",
+      "kind": "registry_case",
+      "api": "updateTaskDelegation",
+      "reason": "flow updateTaskDelegation impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateOnDemandDocument",
+      "kind": "registry_case",
+      "api": "generateOnDemandDocument",
+      "reason": "flow generateOnDemandDocument impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateCDSForCasaPayment",
+      "kind": "registry_case",
+      "api": "generateCDSForCasaPayment",
+      "reason": "flow generateCDSForCasaPayment impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.generateReport",
+      "kind": "registry_case",
+      "api": "generateReport",
+      "reason": "flow generateReport impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:38:03Z"
+    },
+    {
+      "id": "impact.not_covered.getChildLoanAccountList",
+      "kind": "registry_case",
+      "api": "getChildLoanAccountList",
+      "reason": "flow getChildLoanAccountList impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T12:39:30Z"
+    },
+    {
+      "id": "impact.not_covered.getAccountBalances",
+      "kind": "registry_case",
+      "api": "getAccountBalances",
+      "reason": "flow getAccountBalances impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T13:15:34Z"
+    },
+    {
+      "id": "impact.not_covered.getAccountStatement",
+      "kind": "registry_case",
+      "api": "getAccountStatement",
+      "reason": "flow getAccountStatement impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T13:15:34Z"
+    },
+    {
+      "id": "impact.not_covered.getTransactionPartitionDetails",
+      "kind": "registry_case",
+      "api": "getTransactionPartitionDetails",
+      "reason": "flow getTransactionPartitionDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T13:15:34Z"
+    },
+    {
+      "id": "impact.not_covered.getCurrencyMasterDetails",
+      "kind": "registry_case",
+      "api": "getCurrencyMasterDetails",
+      "reason": "flow getCurrencyMasterDetails impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T13:15:34Z"
+    },
+    {
+      "id": "impact.not_covered.getLoanAccountStatement",
+      "kind": "registry_case",
+      "api": "getLoanAccountStatement",
+      "reason": "flow getLoanAccountStatement impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-04T13:15:34Z"
+    },
+    {
+      "id": "proposal.disbursement.loanAccountBillingJob.20260804",
+      "status": "draft",
+      "source": "ship_auto_draft",
+      "created_at": "2026-08-04T16:47:44Z",
+      "domain": "disbursement",
+      "suggested_tier": "money",
+      "case": {
+        "type": "flow",
+        "api": "loanAccountBillingJob",
+        "smoke_tier": "money",
+        "verify_mode": "runtime",
+        "note": "AUTO-DRAFT from ship/RCA \u2014 human must promote to registry.json after filling expects",
+        "acceptance": {
+          "verify_mode": "runtime",
+          "dimensions": [
+            "happy_path",
+            "dirty_state"
+          ],
+          "db_asserts": [
+            {
+              "table": "loan_account",
+              "assert": "TODO: value-level expect for loan_account from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_installment_details",
+              "assert": "TODO: value-level expect for loan_installment_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_due_details",
+              "assert": "TODO: value-level expect for loan_due_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            },
+            {
+              "table": "loan_disbursement_mode_details",
+              "assert": "TODO: value-level expect for loan_disbursement_mode_details from RCA evidence",
+              "expect": {
+                "TODO": "fill from ship DB readback"
+              },
+              "checked_by": "AUTO-DRAFT \u2014 promote after human fills expects"
+            }
+          ]
+        },
+        "defaults": {},
+        "expect": {
+          "status": "SUCCESS"
+        }
+      },
+      "evidence": {
+        "pending_apis": [
+          "loanAccountBillingJob",
+          "loanPrepayment"
+        ],
+        "pending_files": [
+          "scripts/testing/foreclosure/fc_on_emi_due_date_e2e.py",
+          "scripts/testing/foreclosure/run_fc_on_emi_due_date_e2e.sh",
+          "cursor-bundle/memory/feedback_foreclosure_local_fixture_gates.md",
+          "cursor-bundle/memory/feedback_local_disburse_gst_simulator_block.md",
+          "cursor-bundle/memory/feedback_force_bill_double_bills_already_billed_cycle.md",
+          "scripts/testing/foreclosure/assert_last_child_parent_closure.py",
+          "cursor-bundle/memory/feedback_yugabyte_id_order_is_not_recency.md",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/billing/dao/LoanAccountBillingDetailsDaoService.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/billing/dao/LoanAccountBillingDetailsRepository.java",
+          "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/foreclosure/forcebill/PartialCycleForceBillAmountResolver.java"
         ],
         "tier": "money"
       }

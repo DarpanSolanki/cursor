@@ -29,6 +29,7 @@ def classify(text: str) -> dict:
         skills = ["pr-review"]
         scripts = [
             "scripts/bin/pr-review.sh <PR_URL|owner/repo#number> [--jira KEY] [--env ENV]",
+            "python3 scripts/lib/pr_review_gate.py --report <draft.md> --artifacts <collector dir>",
         ]
         risk = "Medium"
     elif re.search(r"\b(sanity|ntest|test|verify|regression|smoke|batch job|eod|dpi)\b", t):

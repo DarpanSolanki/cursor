@@ -23,7 +23,8 @@ if gf_path.is_file():
 blobs = []
 for pat in (
     "scripts/bin/*.sh", "scripts/lib/*", "scripts/testing/**/*.py",
-    ".cursor/hooks/*.sh", ".cursor/rules/*.mdc", ".cursor/skills/**/SKILL.md",
+    ".cursor/hooks/*.sh", ".cursor/rules/*.md", ".cursor/rules/*.mdc",
+    ".cursor/skills/**/*.md",
     "AGENTS.md", "sync_branches_v2.sh", "scripts/env/*",
 ):
     for p in root.glob(pat):

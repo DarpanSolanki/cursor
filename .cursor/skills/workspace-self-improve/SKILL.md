@@ -1,6 +1,6 @@
 ---
 name: workspace-self-improve
-description: Standing self-improvement loop for sliProd — corroborate, drain safe backlog, perf-first hooks. Use when user asks to improve workspace or "super machine".
+description: "Standing self-improvement loop for sliProd \u2014 corroborate, drain safe backlog, perf-first hooks. Use when user asks to improve workspace or \"super machine\"."
 ---
 
 # Workspace self-improve

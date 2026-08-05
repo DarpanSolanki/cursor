@@ -8,6 +8,12 @@ Rules (any match → FAIL):
   consecutive_slashes — 3+ consecutive // lines (agent narrative blocks)
   ticket_or_essay — TDPQA/SDCP ticket ids, Sheet rule, mirrors/parity essays, date-arrow examples
   long_essay_javadoc — javadoc with >2 body lines AND essay markers (bare long class docs allowed)
+  added_comment_volume (--diff) — >2 comment lines ADDED to one file in a diff
+
+The shape rules above all key on a single block being long or essay-like. They pass
+a change that sprinkles many short 1-2 line javadocs, which is the shape agents
+actually produce (TDPQA-234: 16 comment lines over 90 code lines, all rules PASS).
+--diff closes that by counting added comment lines per file instead of per block.
 """
 from __future__ import annotations
 
@@ -131,6 +137,51 @@ def pending_java_paths(pending_path: Path = PENDING, *, root: Path = ROOT) -> li
     return out
 
 
+MAX_ADDED_COMMENT_LINES = 2
+_ADDED_COMMENT = re.compile(r"^\+\s*(//|/\*|\*[^/])")
+_ADDED_CODE = re.compile(r"^\+(?!\+\+)")
+
+
+def diff_findings(repo: Path, base: str) -> list[dict]:
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "diff", "--unified=0", base, "--", "*.java"],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as e:
+        return [{"file": str(repo), "line": 0, "kind": "diff_unavailable", "snippet": str(e)[:160]}]
+
+    findings: list[dict] = []
+    cur = None
+    counts: dict[str, list] = {}
+    for line in out.splitlines():
+        if line.startswith("+++ b/"):
+            cur = line[6:]
+            counts.setdefault(cur, [0, 0, []])
+            continue
+        if cur is None or not _ADDED_CODE.match(line):
+            continue
+        body = line[1:]
+        if _ADDED_COMMENT.match(line):
+            counts[cur][0] += 1
+            counts[cur][2].append(body.strip())
+        elif body.strip():
+            counts[cur][1] += 1
+
+    for f, (ncom, ncode, samples) in sorted(counts.items()):
+        if ncom > MAX_ADDED_COMMENT_LINES:
+            findings.append({
+                "file": f,
+                "line": 0,
+                "kind": "added_comment_volume",
+                "snippet": f"{ncom} comment lines added over {ncode} code lines "
+                           f"(max {MAX_ADDED_COMMENT_LINES}) — e.g. {samples[0][:80]}",
+            })
+    return findings
+
+
 def scan_paths(paths: list[Path], *, root: Path = ROOT) -> list[dict]:
     findings: list[dict] = []
     for p in paths:
@@ -145,7 +196,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--from-pending", action="store_true", help="Scan DPI Java from pending ship work")
     ap.add_argument("--dpi-tree", action="store_true", help="Scan accounting **/dpi/**/*.java and Dpi*.java")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--diff", metavar="BASE", help="count comment lines added vs BASE (per repo)")
+    ap.add_argument("--repo", default=".", help="repo dir for --diff")
     args = ap.parse_args(argv)
+
+    if args.diff:
+        repo = Path(args.repo)
+        if not repo.is_absolute():
+            repo = (ROOT / repo).resolve()
+        findings = diff_findings(repo, args.diff)
+        if args.json:
+            print(json.dumps({"findings": findings}, indent=2))
+        elif findings:
+            print(f"java-comment-lint FAIL: {len(findings)} finding(s) vs {args.diff}", file=sys.stderr)
+            for f in findings:
+                print(f"  {f['file']} [{f['kind']}] {f['snippet']}", file=sys.stderr)
+            print("Default to ZERO comments (cursor-bundle/memory/feedback_keep_code_simple.md RULE 1). "
+                  "Rationale belongs in the commit message and .cursor/changelog.md, not inline.",
+                  file=sys.stderr)
+            return 1
+        else:
+            print(f"java-comment-lint PASS (diff vs {args.diff})")
+        return 0
 
     paths: list[Path] = []
     if args.from_pending:

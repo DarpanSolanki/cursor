@@ -77,6 +77,13 @@ def _simulate(lan: str, fd: str) -> dict:
     return resp
 
 
+def _charge_tax(charge: dict) -> Decimal:
+    components = charge.get("tax_components") or []
+    if components:
+        return sum((Decimal(str(t.get("tax_amount") or "0")) for t in components), Decimal(0))
+    return Decimal(str(charge.get("total_tax_amount") or "0"))
+
+
 def _build_request(sim: dict, lan: str, fd: str, receipt: str) -> dict:
     fs = sim.get("foreclosure_simulation_details") or {}
     charges = sim.get("charges_details") or []
@@ -117,17 +124,17 @@ def _build_request(sim: dict, lan: str, fd: str, receipt: str) -> dict:
     if excess > 0:
         total -= excess
 
+    # Mirrors ValidateFinalPrepaymentProcessor.calculateTotalChargeAmount: every charge contributes
+    # its amount, plus its tax whenever the charge is not inclusive of tax. The fee identifiers are
+    # already counted above from the simulation block, but their tax still has to be added.
     for ch in charges:
         ident = str(ch.get("charge_identifier") or "")
-        if ident in ("current_lpp", "foreclosure_fee", "cbc_fee", "future_lpp"):
-            continue
+        already_counted = ident in ("current_lpp", "foreclosure_fee", "cbc_fee", "future_lpp")
         val = Decimal(str(ch.get("charge_value") or "0"))
-        tax = Decimal(str(ch.get("total_tax_amount") or "0"))
-        inclusive = ch.get("charge_inclusive_of_tax")
-        if inclusive is not None and str(inclusive).lower() == "false":
-            total += val + tax
-        else:
+        if not already_counted:
             total += val
+        if str(ch.get("charge_inclusive_of_tax") or "").lower() == "false":
+            total += _charge_tax(ch)
 
     rounded = total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     round_off = rounded - total
@@ -155,9 +162,10 @@ def _build_request(sim: dict, lan: str, fd: str, receipt: str) -> dict:
 
 
 def _processor_verified_in_log(stan: str) -> bool:
+    ws = Path(__file__).resolve().parents[3]
     log_path = os.environ.get(
         "ACCOUNTING_LOG",
-        "/home/darpan/Documents/sliProd/trustt-platform-accounting/logs/mfi/accounting-mfi.log",
+        str(ws / "trustt-platform-accounting" / "logs" / "mfi" / "accounting-mfi.log"),
     )
     try:
         tail = Path(log_path).read_text(encoding="utf-8", errors="ignore").splitlines()[-1200:]

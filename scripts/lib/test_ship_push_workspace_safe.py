@@ -23,6 +23,16 @@ from ship_push_gate import (  # noqa: E402
 
 
 class WorkspacePushSafeShipRoutingTest(unittest.TestCase):
+    def test_novopay_service_sh_is_push_safe(self) -> None:
+        """Filenames starting with novopay- must not look like service repos."""
+        paths = [
+            "scripts/bin/novopay-service.sh",
+            ".cursor/skills/architect-thinking/novopay-framework.md",
+            "scripts/lib/path_leak_gate.py",
+            ".cursor/changelog.md",
+        ]
+        self.assertTrue(is_workspace_push_safe_paths(paths))
+
     def test_harness_paths_are_push_safe(self) -> None:
         paths = [
             "scripts/disburse_loan_sanity.py",

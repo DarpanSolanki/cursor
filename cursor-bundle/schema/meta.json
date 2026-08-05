@@ -1,0 +1,27 @@
+{
+  "source": "localhost:5433 yugabyte (local fixture)",
+  "tables": 878,
+  "columns": 14619,
+  "schemas": {
+    "mfi_accounting": 185,
+    "mfi_los": 172,
+    "mfi_actor": 160,
+    "mfi_payments": 97,
+    "mfi_reporting": 87,
+    "mfi_batch": 28,
+    "mfi_task": 26,
+    "mfi_masterdata": 22,
+    "mfi_notifications": 16,
+    "mfi_audit": 15,
+    "mfi_authorization": 15,
+    "mfi_bre": 13,
+    "mfi_gateway": 11,
+    "platform_master": 7,
+    "mfi_consents": 6,
+    "mfi_dms": 6,
+    "mfi_simulator": 6,
+    "mfi_approval": 5,
+    "lock": 1
+  },
+  "train_note": "Local fixture. Absence means 'not on this checkout', not 'does not exist'. Cross-check Flyway in trustt-platform-initial-setup before cross-train claims."
+}

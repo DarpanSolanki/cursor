@@ -7,7 +7,7 @@ metadata:
   originSessionId: 80227870-3ec2-4675-8e0f-670133d28a14
 ---
 
-For every repo under `/home/darpan/darpan/` (the 17 service checkouts), all git operations — **especially push** — must be performed **as the DarpanSolanki user**, not the gh-logged-in account (`AiTdpBugFixer`).
+For every repo under `/home/darpan/Documents/sliProd/` (the 17 service checkouts), all git operations — **especially push** — must be performed **as the DarpanSolanki user**, not the gh-logged-in account (`AiTdpBugFixer`).
 
 **Why:** the user owns these forks as DarpanSolanki (`origin = https://github.com/DarpanSolanki/<repo>.git`); authorship is already pinned to `DarpanSolanki <darpan@novopay.in>` per [[feedback_darpan_boundary]] / CLAUDE.md rule 4. Pushes must match that identity, not leak AiTdpBugFixer.
 

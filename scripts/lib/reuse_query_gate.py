@@ -27,6 +27,10 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Callable, Iterable
+import sys
+
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from ws_paths import norm_rel
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,7 +92,7 @@ def diff_query_signals(diff_text: str) -> list[str]:
 
 
 def _repo_and_rel(path: str) -> tuple[str, str]:
-    norm = path.replace("\\", "/").lstrip("./")
+    norm = norm_rel(path)
     parts = norm.split("/", 1)
     if len(parts) == 2:
         return parts[0], parts[1]

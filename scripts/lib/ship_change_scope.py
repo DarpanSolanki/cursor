@@ -9,6 +9,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any
+import sys
+
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from ws_paths import norm_rel
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -44,7 +48,7 @@ _MONEY_HARNESS_MARKERS = (
 
 
 def _norm(rel: str) -> str:
-    return rel.replace("\\", "/").lstrip("./")
+    return norm_rel(rel)
 
 
 def _to_workspace_rel(path: str) -> str:
@@ -118,15 +122,20 @@ def is_workspace_push_safe_paths(paths: list[str]) -> bool:
         p = _to_workspace_rel(raw)
         if not p or is_scratch_path(p):
             continue
+        # Harness/kb/testing first — filenames like novopay-service.sh must not
+        # trip infer_repo_from_path and force a money close on harness push.
+        if (
+            is_harness_path(p)
+            or is_testing_infra_path(p)
+            or is_workspace_kb_path(p)
+            or is_knowledge_path(p)
+        ):
+            continue
         if is_service_path(p) or infer_repo_from_path(p):
             return False
-        if is_knowledge_path(p):
-            continue
         parts = partition_ship_paths([p])
         if parts["service"]:
             return False
-        # harness / kb / testing_infra / .gitignore-style root files OK
-    # At least one non-scratch path required
     usable = [_to_workspace_rel(p) for p in paths if _to_workspace_rel(p) and not is_scratch_path(p)]
     return bool(usable)
 

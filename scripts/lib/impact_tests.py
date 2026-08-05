@@ -15,6 +15,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from ws_paths import norm_rel
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/lib"))
 sys.path.insert(0, str(ROOT / "scripts/testing"))
@@ -132,7 +135,7 @@ def _to_rel(path: str) -> str:
             return str(p.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
         except ValueError:
             return str(p).replace("\\", "/")
-    return path.replace("\\", "/").lstrip("./")
+    return norm_rel(path)
 
 
 def _is_noise_path(rel: str) -> bool:
@@ -213,6 +216,23 @@ def collect_shipped_code_paths(pending: dict | None = None) -> list[str]:
     return out
 
 
+_DPI_JOB_RE = re.compile(
+    r"dpiAccrual|dpiBilling|dpi_accrual|dpi-sanity|verify-dpi|purge-local-dpi", re.I
+)
+
+
+def _dpi_tree_present() -> bool:
+    """DPI batch sources land on 3.7.1 / DPI feature trains, not on 3.4.2.x."""
+    return (
+        ROOT
+        / "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+    ).is_dir()
+
+
+def _case_requires_dpi(meta: dict) -> bool:
+    return bool(_DPI_JOB_RE.search(json.dumps(meta)))
+
+
 def _infer_case_train(meta: dict) -> str | None:
     """Train tag from registry case metadata (note / train field)."""
     if meta.get("train"):
@@ -225,18 +245,31 @@ def _infer_case_train(meta: dict) -> str | None:
 def _filter_cases_by_train(
     ordered: list[str], reg: dict, pending: dict | None
 ) -> tuple[list[str], list[str]]:
-    """Skip cases whose train tag mismatches shipped repo branch (C4)."""
+    """Skip cases whose train tag mismatches shipped repo branch (C4).
+
+    Also skips cases that drive DPI jobs when the checkout carries no DPI source tree —
+    those jobs do not exist to bind on a 3.4.2.x train, so the case cannot verify anything.
+    """
     pending = pending or {}
+    dpi_present = _dpi_tree_present()
     repos = primary_ship_repos(pending) if primary_ship_repos else []
     train_by_repo: dict[str, str | None] = {}
     for name, path in repos:
         train_by_repo[name] = repo_train_version(path) if repo_train_version else None
-    if not train_by_repo:
-        return ordered, []
     kept: list[str] = []
     skipped: list[str] = []
+    if not train_by_repo:
+        for cid in ordered:
+            if not dpi_present and _case_requires_dpi(reg.get(cid) or {}):
+                skipped.append(f"SKIP_NO_DPI_TREE {cid}: case drives DPI jobs, no DPI tree in checkout")
+            else:
+                kept.append(cid)
+        return kept, skipped
     for cid in ordered:
         meta = reg.get(cid) or {}
+        if not dpi_present and _case_requires_dpi(meta):
+            skipped.append(f"SKIP_NO_DPI_TREE {cid}: case drives DPI jobs, no DPI tree in checkout")
+            continue
         case_train = _infer_case_train(meta)
         if not case_train:
             kept.append(cid)

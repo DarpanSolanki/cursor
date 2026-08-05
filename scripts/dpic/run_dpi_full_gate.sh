@@ -51,7 +51,7 @@ bash "$ROOT/scripts/bin/agent-ops.sh" ensure accounting --compile 2>/dev/null ||
 bash "$DPIC/run_dpi_ud_compliance.sh" || fail "ud_compliance"
 DUAL_BILLING_MODE=fixture bash "$DPIC/run_dpi_dual_billing_e2e.sh" || fail "dual_billing_fixture"
 
-if [[ -f "$EVIDENCE ]]; then
+if [[ -f "$EVIDENCE" ]]; then
   # shellcheck disable=SC1090
   source "$EVIDENCE"
   phase "replay QA verify on recorded fresh LAN ${ACCOUNT_NUMBER:-?}"

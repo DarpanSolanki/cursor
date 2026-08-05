@@ -64,10 +64,20 @@ PY
 
 RESULTS=()
 echo "=== env-smoke ==="
+# Probes are independent network round trips; serial cost 9 envs x TIMEOUT_S.
+TMPD="$(mktemp -d)"
+trap 'rm -rf "$TMPD"' EXIT
+i=0
 for row in "${ROWS[@]}"; do
   name="${row%%$'\t'*}"
   wrap="${row#*$'\t'}"
-  line="$(ping_one "$name" "$wrap")"
+  ping_one "$name" "$wrap" > "$TMPD/$i" &
+  i=$((i + 1))
+done
+wait
+for ((j = 0; j < i; j++)); do
+  line="$(cat "$TMPD/$j" 2>/dev/null)"
+  [[ -n "$line" ]] || continue
   RESULTS+=("$line")
   echo "  $line"
 done

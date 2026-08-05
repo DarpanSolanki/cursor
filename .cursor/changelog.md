@@ -1,3 +1,634 @@
+## 2026-08-05 — Ship/impact: harness push no longer false-maps DPI/repos
+
+**What.** `infer_repo_from_path` ignores filenames (`novopay-service.sh`, `novopay-framework.md`); `kg_ship_resolve` skips domain API hints for `scripts/`/`.cursor/`/`cursor-bundle/` and uses `/dpi/` not bare `/dpi` (was matching `scripts/dpic/`). `is_workspace_push_safe_paths` checks harness/kb before repo. Tests: `test_impact_mapping_harness.py`.
+**Why.** Harness pushes lagged on impact mapping and re-ran sticky money ship-loop for non-service work.
+**Proof.** workspace_push_safe=True on staged harness set; apis=[]; path-leak PASS; harness_audit 26/26.
+
+## 2026-08-05 — Path/routing leak scrub (capacity)
+
+**What.** Removed hardcoded sibling-clone / legacy-home / absolute-ROOT paths from harness runners; fixed MEMORY + enforcement docs that still pointed agents at `/home/darpan/darpan` and `.claude/settings.json`. Added `scripts/lib/path_leak_gate.py` into `harness_audit --tests-fast`.
+**Why.** Wrong routing made smoke/gates/tools look at Claude clone or dead roots — workspace could not run at capacity.
+**Proof.** `path-leak: PASS`; `harness_audit --quick` path_leak clean; `smoke-workspace` ALL PASSED.
+
+## 2026-08-05 — L2+ completion: skills, MCP, rules index, path scrub
+
+**What.** Second pass after L2+ process port: remapped Claude skills (pr-review
+machine gate + refuter protocol, jira/ship/close/autopilot bodies), rules
+`INDEX.md` + `manifest.json`, dual `.mcp.json` + `.cursor/mcp.json` (trustt-kg
+relative path + Atlassian SSE), `check-mcp-wiring` dual-config, accounting
+dpi-base routing row, brain discoveries inbox, CURSOR_PROJECT_DIR scrub.
+
+**Verified.** harness_audit 25/25; schema_ref PASS; kg-mcp-smoke PASS; check-mcp-wiring OK.
+
+## 2026-08-05 — L2+ port from sliProdClaude (process + flow + schema)
+
+**What.** Ported Claude workspace harness/process linking into Cursor paths: schema oracle +
+`schema_ref_gate`, `harness_audit --tests-fast`, `assert-strength-gate`, `assert-build-current`,
+ship-loop middle wiring, worktree normalize, DPI impact skip, push-origin comment lint,
+memory-session-start hook, absolute invariants gate, dpic wrong-schema SQL fix, foreclosure +
+fresh-loan INT e2e cases, kg `schema` + snapshot/new-machine, knowledge-upkeep rules + memory.
+
+**Verified.** `harness_audit --tests-fast` 25/25; `schema_ref_gate --sql` PASS; assert-strength OK.
+
+**Out of scope.** Train-specific Java money fixes (accounting 3.7.1 vs 3.5.2.2); Claude-only hook
+chrome (`sync-claude-hooks`, hook-dispatch).
+
+## 2026-08-05 — New-machine bootstrap: KG travels with the repo
+
+**Why.** Nothing in the workspace cloned the repos — `workspace-bootstrap.sh` was a thin alias to
+the health checker — so a fresh machine had no path at all. And the built KG was local-only: 50MB
+sqlite plus a 620MB LRU cache of 29 branch-set snapshots, all correctly gitignored.
+
+**`kg-snapshot.sh save|restore|status`.** Ships **`kg.jsonl` (19MB text), not the sqlite** — text
+diffs and compresses; a binary rewritten every build does neither. `build_db.py` already
+materialised jsonl → db, so restore is one call. Tracked under `cursor-bundle/kg/snapshot/`.
+
+The point is ordering: the snapshot restores **with zero repos cloned**, which matters because
+accounting is 418MB and los 571MB. Knowledge answers before the ~10GB lands.
+
+**Staleness is visible, not assumed.** The KG is keyed to a composite hash of all 21 repos'
+`branch+HEAD+dirty`. `kg-snapshot.sh status` compares the snapshot's key against the live checkout
+and says `MATCHES` or `STALE`; `restore` tells you to run `kg fresh`. A committed KG that silently
+disagreed with your checkout would be worse than none.
+
+**`new-machine-setup.sh [--dry-run] [--no-clone]`.** Six idempotent steps: prerequisites → KG
+restore → clone missing repos (fork `DarpanSolanki`, per-repo branch from
+`.cursor/git-workspace-state.json` `manifest.overrides`, plus the `novopay-platform-lib` symlink) →
+`schema-sync.sh --bindings` → `install-user-claude-gates.sh` + `install-kg-git-hooks.sh` → a report
+of what stays manual. Existing repos are never touched.
+
+It clones the **declared** train (`manifest.default_branch`, currently `mfi_integration_v3.7.1`),
+not whatever a given machine has drifted to — this one has accounting on `3.4.2.4`. The script says
+so and points at `sync-branches.sh --train` rather than propagating drift.
+
+**Stated as manual, because it is machine state and not repo content:** the local Yugabyte fixture,
+the running services, and the one-time interactive Atlassian MCP auth. Note the schema oracle still
+answers read-only without a DB — `tables.jsonl` is tracked — so `kg schema` works on a fresh clone;
+only a *rebuild* needs the database.
+
+## 2026-08-05 — trustt-platform-lib scanned end-to-end; four gaps closed
+
+**Why it was invisible.** The binding keyed schema off the repo, and lib owns none, so it was
+skipped entirely — 2346 Java files across 32 subprojects, unmapped. `build_tables.py` compounded it
+by globbing `repo/src/main/java`, a path that does not exist in a composite build.
+
+**Subproject census (33 in `settings.gradle`, 32 with sources):** infra-transaction-hdfc 1650 java ·
+infra-batch 116 · infra-transaction-interface 94 · infra-platform 68 · infra-actor 43 ·
+infra-navigation 43 · infra-masterdata 33 · adapter-aadhaar-xsd 32 · infra-message-broker 23 ·
+infra-notifications 23 · infra-transaction-internal-interface 22 · util-platform 19 ·
+infra-authorization 16 · infra-cache-gateway 16 · infra-rule-engine 13 · rest ≤12.
+**8 entities, ~101 `AbstractProcessor` subclasses, 14 `@Configuration` classes.**
+
+**Gap 1 — repo ≠ schema.** `resolve_schema()` now resolves each entity's table against the oracle
+instead of assuming the repo's schema, with the repo as a preference only. This was not
+lib-specific: `hierarchy-builder` (lib) writes **`mfi_actor`**, and `Sequence` maps `sequences`,
+which exists in **17 schemas**. lib is now mapped — `schemas_touched: [mfi_actor, platform_master]`,
+32 columns, 9 code-bound. Column totals fell 13,444 → 12,603 because entities whose table exists in
+no schema are now excluded rather than force-assigned.
+
+**Gap 2 — quoted identifiers.** `@Table(name="\"user\"")` maps the reserved word `user` as a quoted
+identifier; the regex captured the backslash, so actor's `user` table was recorded as `\` and lost.
+Actor 150 → **151 tables**.
+
+**Gap 3 — lib tables missing from the KG.** `build_tables.py` now falls back to the
+`*/src/main/java` layout, so lib's 7 entity tables (`transaction_audit`,
+`transaction_components_details`, `validate_beneficiary_details`, `hierarchy_level`,
+`hierarchy_element`, `sequences`, `transaction_audit_additional_data`) are indexed. Previously zero.
+
+**Gap 4 — symlink double-count.** `novopay-platform-lib` is a **symlink** to `trustt-platform-lib`.
+Following it made every lib table owned twice, and since the alias sorts first it won the name. The
+builder now skips a symlinked repo when its target is also in the list — matching the exclusion
+`build_config.json` already declared. `owned by: trustt-platform-lib` confirmed after rebuild.
+
+**Checked, not fixed — and why.** lib has **zero `processor` nodes**, which is correct rather than
+broken: processors are derived from orchestration XML `<Request>` beans, and lib's framework
+processors are not Request-wired — exactly what `build_config.json` records as
+"orch coverage N/A. Optional class index only". Symbol nodes stay accounting-only by design;
+`build_java_symbols.py` filters to money packages (`loan|interest|foreclosure|dpi|…`) and lib's
+`in/novopay/infra/**` is out of scope on purpose.
+
+**Open, now tracked in `service-map.json`.** 39 entity tables exist in no local schema —
+lib 4 (`transaction_audit*`, `transaction_components_details`, `validate_beneficiary_details`),
+actor 15, reporting 7, accounting 5, batch 3 (Spring Batch metadata), los 2, task 2, masterdata 1.
+These are train/env absences, not proven defects. Three schemas have no owning repo in this
+workspace: `lock` (`locked_keys` — **zero references anywhere**), `mfi_consents`, `mfi_simulator`.
+`mfi_bre` is LOS-owned; `platform_master` is lib-owned (`tenant_service_db_config`, read by
+infra-platform and infra-batch, via native SQL rather than JPA).
+
+KG rebuilt: 15,360 nodes / 48,445 edges, validate OK, FRESH.
+
+## 2026-08-05 — All 14 services mapped; binding accuracy fixed; caches cleaned
+
+**Service map (`cursor-bundle/schema/service-map.json`).** Bindings extended from accounting to
+every repo that owns a schema — 14 services, **744/845 tables carry an entity, 13,444 columns
+mapped, 10,748 code-bound (79%)**. Per-service counts are in the artifact; `column_binding.py
+--coverage` prints them.
+
+**Three accuracy defects found and fixed while extending it — the extension is what exposed them:**
+
+1. **Cross-schema merge.** 18 table names live in more than one schema and **6 carry different
+   columns** — `client_request_response_log` exists in accounting, audit and los. The oracle keyed
+   on bare table name, so `has_column` answered from the union: a column that exists only in the
+   los copy passed a check against the accounting one. Lookups are now `(schema, table)`, with
+   `SCHEMA_PREFERENCE` resolving unqualified names and `mfi_los.client_request_response_log`
+   available to target a sibling. Verified: `api_name` is now False unqualified, True qualified.
+
+2. **Field-name collision across entities.** Readers were keyed by field name, so every entity with
+   a `status` field inherited every `getStatus()` caller in the service. `status` had picked up
+   **nine unrelated error codes**. Callers are now disambiguated by receiver
+   (`loanProductEntity.isPrepaymentAllowed()` → `LoanProductEntity`), applied only where a field
+   name is declared by more than one entity — which is **73% of columns**. Guards additionally
+   require the read to sit in a condition with a throw within five lines. `status` now carries zero
+   spurious codes; `prepayment_allowed` keeps 134144 and its three real readers. Bound counts fell
+   (accounting 2222→2097, reporting 3649→2472) because those bindings were false. Ambiguous columns
+   are marked `ambiguous_field` and say so on lookup: precision over recall, stated rather than hidden.
+
+3. **Cross-repo accessor bleed.** A single accessor index over all repos would bind a los reader to
+   an accounting column, since `getAmount()` exists in several services. Each repo is now indexed
+   against its own sources only.
+
+**New gate check — wrong-schema table reference.** `scripts/dpic/sql/helpers/clear_batch_failure_audit.sql`
+deleted from `mfi_batch.batch_failure_audit`; the table is in `mfi_accounting`, so the cleanup
+silently did nothing. Fixed, and `schema_ref_gate.py` now fails when a `schema.table` names a table
+that demonstrably lives elsewhere. Deliberately narrow — unknown schemas (`mfi_config__hdfc.bank`)
+and harness temp tables are not flagged, because a noisy gate gets disabled. Proven red on the old
+form, green on the fix.
+
+**Performance.** Steady-state autopilot is **1.5–2.0s** (from 31.3s), with a ~6s re-probe only when
+the 600s ops-state TTL expires. Per-tool-call hooks measured: afterShellExec 0.03s, afterFileEdit
+0.24s, rule-router 0.01s — already fast, left alone. `harness_audit --tests-fast` 8.75s,
+`schema_ref_gate --sql` 0.10s, `corroborate` 0.46s, `kg validate` 2.11s.
+
+**Hygiene.** Removed 137 `__pycache__` directories (~15MB, none tracked; venv preserved).
+`bindings.jsonl` (9.4MB) is now gitignored — it regenerates in ~1s from tracked Java, while
+`tables.jsonl` stays tracked because it needs a live DB. Nothing else was deleted, and two earlier
+assumptions were wrong: the 16 `dcf_bak_*` schemas are **live flowtest fixture snapshots**
+(`profiles.py:24,57`), all 16 mapping to LANs that still exist — not junk; and
+`scripts/scratch/flowtest-f5` and `bone-close` are cited as **defect evidence**, so they stay.
+
+## 2026-08-05 — Schema oracle: columns become checkable, and the loop gets 9x faster
+
+**Why:** agents reasoned about columns from code and memory, so asserts named columns that do not
+exist. `loan_account_payments_details.is_deleted` sat in two money-tier registry cases
+(`dpic.repayment_e2e`, `foreclosure.individual_child`) while that table is append-only and has no
+such column — copied from the `loan_due_details` context in `verify_dpi_repayment.sql`. Measured
+before this change: of 60 `loan_product` business columns, **47 were never mentioned anywhere** in
+the 1.97 MB knowledge corpus, `prepayment_allowed` among them.
+
+**Oracle (`cursor-bundle/schema/`, refresh `scripts/bin/schema-sync.sh`):**
+- `tables.jsonl` — 878 tables / 14,619 columns across 19 schemas from the live local DB, with
+  type, nullability, default, PK and FK. One JSON line per table, diffable.
+- `bindings.jsonl` — every column bound to its JPA entity field, readers, writers, native-query
+  repositories, and the error codes its readers throw. Entities carry no `@Column(name=…)`, so the
+  implicit CamelCaseToUnderscores mapping is applied. **1784/2048 accounting business columns
+  entity-mapped (87%), 1660 with code binding (81%), 394 with an error-code gate** — against 49%
+  bare name-mention before.
+- `train-diff.json` — local schema vs the initial-setup Flyway corpus. 2515 columns matched a
+  migration, 196 are local-only. `loan_account.dpi_suspense_amount` (GAP-076) is correctly flagged.
+
+**Gate:** `scripts/lib/schema_ref_gate.py` fails closed when a registry assert or `scripts/**/*.sql`
+names a column the schema lacks. Wired blocking into `ship-loop-gate.sh`. Found 4 real defects on
+first run, zero false positives after two refinements: qualified `other_table.column` references are
+validated against their own table rather than the assert's, and prose shorthand is separated from
+column claims by requiring the token to be a real column elsewhere in the schema — `debit`,
+`pending`, `prin_pending` exist on no table and are not column claims; `is_deleted`,
+`installment_amount`, `original_amount` are columns of other tables, which is what mis-attribution
+looks like. SQL comments are stripped first (they carry request-JSON paths like
+`group_details.group_id`).
+
+**Lookup:** `kg schema <table>[.<column>]` merges structure, binding and train label.
+`loan_product.prepayment_allowed` → read by `ValidateLoanPrepaymentProductProcessor`, throws
+**134144** when false.
+
+**Performance:** `workspace-autopilot.sh task` ran **31.3s on every user message**. `env-smoke`
+probed 9 envs serially at 5s timeout (21.5s) and `aops_write_state` spent 6.05s asking a broker it
+had just seen DOWN for consumer-group assignment. Probes now run in parallel, the Kafka group probe
+is skipped when the broker is down, and `agent-ops.sh preflight` honours a 600s TTL
+(`AGENT_OPS_PREFLIGHT_FORCE=1` to override) — the state file already told sessions to read it rather
+than re-probe. **preflight 31.3s → 0.02s cached / 5.98s forced; autopilot 31.3s → 3.4s.**
+
+**Harness self-tests 22/26 → 26/26, and no longer invisible.** `ship-loop-gate.sh` ran
+`harness_audit.py --quick`, documented as "skip syntax + tests", so four red files never blocked a
+ship. Three were train-blind — `resolve_ship_cases` correctly drops DPI cases when
+`batchnew/dpi/` is absent on 3.4.2.x, but the tests asserted them unconditionally, the same class
+`40-knowledge-upkeep.md` warns about. One (`test_session_ship`) backed up `.ship-loop-passed.json`
+without clearing it, so ambient state answered "already satisfied". Now train-aware via
+`skipUnless(_dpi_tree_present())`, hermetic, and run by a new `--tests-fast` mode (9s, excludes the
+60s MCP e2e) wired blocking into the ship gate.
+
+## 2026-08-04 — TDPQA-240 foreclosure force-bill re-billed an already-billed cycle
+
+**Code (acct 3.4.2.4):** when the foreclosure date falls on an EMI due date, that day's billing has
+already swept every accrual period of the installment into the EMI. Force-bill read the newest
+accrual row outright and billed it a second time, writing a dedicated interest-only labd on the
+installment the EMI labd already covered. On QA4 (`6011430325`, INDL) the cycle was billed 2355
+(131+1962+262) and foreclosure billed the 262 again: the quote charged 355 of billed interest while
+the settlement legs credited 617, so the legs summed 104,977 against a 104,715 collection and left
+262 in the termination suspense account.
+
+Force-bill now bills only the accrual on the foreclosure installment that billing has not already
+taken — accrued summed across every accrual period of that installment, less the non-reversed billed
+interest, floored at zero. Summing per installment rather than per accrual period matters: several
+periods share one installment, so comparing the newest period against the installment's total billed
+would under-bill a genuine mid-cycle foreclosure. `findByLoanInstallmentDetailsId` kept its exact
+behaviour; the query it wraps now returns every row so the DAO can also sum them.
+
+**Harness:** new money case `foreclosure.fc_on_emi_due_date` (RUNTIME_VERIFIED). Fresh INDL loan
+disbursed 60 days back with its first EMI today — `loanPrepayment` rejects any foreclosure_date that
+is not the system date (132282), so the EMI has to fall on today — aged by the real accrual, posting
+and billing jobs, then foreclosed by real `loanPrepayment` DEFAULT/APPROVE_TASK/APPROVE. Red on
+pre-fix accounting: labd rows 1 -> 2, an extra 62.00 billed on a cycle already billed 1229.00. Green
+with the fix: 1 -> 1, INT_AMT credited 1229.00 against billed interest charged 1229.00. Termination
+suspense nets to zero locally on *both* builds, so the labd row count is the assert that encodes this
+defect — an amount-only or GL-only check passes while the loan is double-billed.
+
+Regression green: `foreclosure.child_fc_parent_rsch_gl` (genuine mid-cycle force-bill of 311 still
+fires and still mirrors to the parent), `foreclosure.last_child_parent_closure`.
+
+## 2026-08-04 — SHG INT distribute: legacy child accrual rows
+
+**Code (acct `00c1a81af`, 3.4.2.4):** children accrued independently before the distribute shipped,
+so their segment boundaries need not match the parent's. Rows were paired to parent segments by
+exact `start_date`; an unmatched segment inserted a new row while the unaligned legacy row stayed
+put with its old accrued, and `interest_accrual_details` has no `is_deleted` to supersede it. The
+child then ended the window accruing more than the group did, which reaches billing.
+
+An unposted in-window row matching no segment is now re-stamped onto a segment lacking a row of its
+own; only a surplus beyond that is zeroed. Posted rows remain untouched. Rows from earlier windows
+are out of the distributed window and are deliberately not touched.
+
+Measured on groups seeded into the legacy shape (`scripts/scratch/tdpqa-72-seq/legacy_shg_iad_probe.py`):
+old code took a child 6 rows → 11, added 77 of accrued the group never accrued and left 4 overlapping
+windows; the job itself never failed, so it was silent. New code holds the row count, moves neither
+accrued nor unbilled interest (0.00), and leaves no overlap. Regression green: shg_int_accrual_stitch,
+accrual_billing, interest_accrual_calc, interest_accrual_posting.
+
+## 2026-08-04 — TDPQA-72 last-member group closure + impact-mapping DPI guard
+
+**Code (acct `c0a3e012c`, `df044b61e`, 3.4.2.4):** the group force-bill reference now carries the
+originating member, so two members foreclosing on one date no longer collide (134497). When the last
+member forecloses the group no longer reschedules — with no principal left the schedule generator
+threw 134203 and stranded the member in FORECLOSURE_FREEZE. It now posts its RSCH mirror, settles
+outstanding principal as paid, marks installments settled and closes. Dues are settled, not deleted
+(deleting is the cancellation contract); unbilled future interest is left alone — nothing was billed
+beyond the foreclosure date, so there is nothing to write off. The settlement posting carries its own
+reference: `receipt_number` is remapped earlier in that request, so it did not resolve and every
+posting after the first collided as a duplicate.
+
+**Harness:** fixture builder takes N members (2-member output byte-identical); GL assert fixed for
+round-down (product sheet3 confirms `ROUND_DOWN_AMT: ROUND_OFF -> TRMN_SUSP` is the mirror of
+round-up, so the round-up expectation was wrong, not the posting); child↔parent postings now paired
+explicitly instead of "latest parent RSCH", which compared every member against the last one.
+New case `foreclosure.last_child_parent_closure` (money, RUNTIME_VERIFIED).
+
+**Impact mapping:** cases that drive DPI jobs are no longer selected when the checkout has no DPI
+source tree — those jobs cannot bind on a 3.4.2.x train, so the case verifies nothing while appearing
+to pass. Classified by what a case runs, not by its `dpic.` namespace: general flows living in that
+namespace are still selected. Both foreclosure cases now path-trigger on the group orch and the new
+processors.
+
+## 2026-08-04 — TDPQA-72 parent RSCH GL after child foreclosure
+
+**Code (acct `4f23792b10`, 3.4.2.4):** parent `RSCH_LOAN_PREPAYMENT` could not render the settlement
+the child hands it, so it posted ₹5,021 of ₹22,385 — unbilled principal, penal and round-off had no
+rule and were dropped silently, and interest/principal landed in AIR/loan-account instead of the
+billed ledgers. Fixed with the product sheet's rule set (one `TRMN_SUSP_AMT` funding leg, every
+component debited from termination suspense), 104 placeholder→IAD maps, and a bridge restating the
+inherited child codes. Separately, force-bill billed only the newest accrual period, stranding the
+rest of the broken cycle; the charged BPI is now authoritative so `BPI_AMT` settles to zero.
+
+**Harness:** `foreclosure.child_fc_parent_rsch_gl` registered. Also fixed an over-broad LOS preflight
+that blocked every direct-HTTP disburse, a fixture builder that hand-inserted the billing row when
+the billing job failed (`FIXTURE_STRICT=1` now refuses), and a foreclosure ntest that dropped tax on
+tax-exclusive fees.
+
+## 2026-08-04 — TDPQA-234 rewritten properly + genuine all-column DPI audit + knowledge-upkeep rule
+
+**Code (acct `dfbf1e365`, 3.7.1):** child DPI `base_amount` now resolved, not inferred. The earlier
+fix derived the cut-off from `MIN(parent start_date)` — fragile because this workspace purges and
+rebuilds accruals, which silently moves that floor. Go-live + grace are now the values the calc
+batch already resolved for the parent, carried on `DpiAccrualCalculationVo`, and admission uses
+`DPICalculationService.resolveAdmissionOverdueDate` — the same gate the parent day-walk uses.
+Net **-72 lines**; dead `distributeForAccount` / `distributeAllActiveParents` removed; zero comments
+
+## 2026-08-04 | workspace | discovery | DISC-20260804-092649 | flowtest.invariants_universal was vacuous; de-vacuumed gate surfaces 1381 FC-settlement AIR imbalance on fixture LAN 6000137440 (High)
+Evidence: run_universal_invariants_gate.py passed baseline=snapshot_invariants(lans) taken moments before, so every baseline-delta invariant was neutralised and the money-tier case could never fail. Fixed to baseline=None (absolute). First strict run: inv FC settlement AIR FAIL 6000137440 |D-C|=1381.000000 refs=['261319e97c3233fe74e27bc19acad2fc6b653','251340004ab4fd8aa4d5b849b70366b8900c1'] (TDPQA-72 392164 class). Needs triage: real GL defect vs accumulated local fixture state.. Inbox: cursor-bundle/brain/discoveries/INBOX.md
+
+added. Penal/LPP was deliberately NOT used as precedent — not live in production.
+
+**Suite:** `audit_shg_child_dad_all_rows` walks EVERY child row (the old audit checked the tip only,
+`LIMIT 1`) and re-derives each expected value in SQL: end_date/rate/days_in_year vs the mirrored
+parent segment, carry=0, is_deleted, installment ownership, txn-ref-iff-posted for both accrual and
+billing, and base_amount vs the child's own post-go-live admitted overdue. Per segment:
+`SUM(children base) == parent base` EXACT + one row per ACTIVE child. Total accrued EXACT.
+
+**Contract learned:** accrued is split at scale 0 (booking rejects a fractional accrual), so a
+segment may drift by up to the child count — `23/3 → 8+8+8 = 24`, next segment gives it back.
+Asserting exact per-segment equality on *accrued* is a false failure; on *base* it is mandatory.
+The first version of this audit got that wrong and was corrected against real data.
+
+**Verified:** red on `19bcb3cdd` (children 50161/50167/50161 vs parent 17021), green on `dfbf1e365`
+(5673+5674+5674 = 17021; 11346+11348+11348 = 34042) across calc→booking→billing, 79 tip + 103
+all-row checks after each job. `dpic.three_job_verify` PASS — non-SHG DPI unaffected.
+
+**Standing rule:** `.cursor/rules/40-knowledge-upkeep.md` (imported in AGENTS.md) — every change
+closes three loops: KG, testing suite, reference docs. Presence-only asserts, tip-only coverage and
+totals-hiding-splits are named as fail-closed anti-patterns.
+
+**Docs:** `.cursor/skills/accounting-knowledge/dpi-base-and-shg-distribute.md` (new, routed from
+`accounting.md`); brain CHANGELOG + `kg enhance` — the fix is now precedent #1 for
+`dpiAccrualCalculation`.
+
+## 2026-08-04 — Enforcement audit: why written rules were not honoured
+
+Rules existed, were indexed, and had a gate — none of it ran. Traced end to end:
+
+1. **Nothing loaded the memory layer.** Consultation order puts `cursor-bundle/memory/MEMORY.md`
+   at #1, but no hook or script read it — `grep -rln MEMORY.md .cursor/hooks/ scripts/bin/workspace-autopilot.sh`
+   returned nothing. RULE 1/2/3 never entered context. FIX: `.cursor/hooks/memory-session-start.sh`,
+   registered FIRST in `hooks.json` sessionStart.
+2. **Worktree edits bypassed every path-based gate.** All gates key on the path being under the
+   workspace root; TDPQA-234 was written in `/tmp/.../acct-371`, so `is_ship_path` said NO →
+   no pending-ship → `push-origin` skipped the ship loop → `ship-loop-gate` and `java-comment-lint`
+   never ran. FIX: `normalize_worktree_path()` in `scripts/lib/infer_ship_apis.py` re-anchors on the
+   `src/main/` tail. Verified: worktree path now registers pending ship work.
+3. **The comment lint could not catch the actual shape.** Its rules fire on 3+ consecutive `//` or
+   essay-marker javadocs; TDPQA-234 added 16 comment lines over 90 code lines as short 1-2 line
+   javadocs and PASSED. FIX: `--diff BASE --repo R` mode, fail-closed above 2 added comment lines
+   per file, with a unit test.
+4. **`push-origin.sh` was ungated for comments.** It runs `git push` in-process so the
+   `beforeShellExecution` pre-push hook never sees it. FIX: lint the outgoing diff vs `@{upstream}`
+   before pushing; `JAVA_COMMENT_LINT_SKIP=1` to override. Proven to BLOCK commit d2945087c.
+5. **Dead hook removed.** `.cursor/hooks/after-money-path-edit.sh` was unregistered since 2026-07-02
+   and still matched pre-rename `novopay-*` dirs; deleted with its OPS-INDEX reference.
+
+Memory: `feedback_worktree_bypasses_all_gates.md` (new), `feedback_keep_code_simple.md` (gate line).
+
+## 2026-08-04 — TDPQA-234: SHG child DPI base_amount must honour the DPI cut-off (3.7.1, d2945087c)
+
+**Defect:** `DpiGroupLoanAccrualDistributionService` stamped child `base_amount` from
+`getTotalOverdueAmountByAccountIdsAndDate` — a query with no go-live filter and no per-row
+outstanding guard. The parent's day-walk (`DpiAccrualCalculationBatchService.precomputeDaySnapshots`)
+admits only installments whose stored `overdue_date` is on/after the DPI cut-off. On QA1, parent
+8010460 held 14528/29056/43584 while children 8010566/8010567 held 27346/34193/41040 and
+30788/38469/46150 — four pre-cut-off installments the parent never charged on; children summed to
+58134 against a parent base of 14528.
+
+**Fix:** child base = its OWN PRIN+INT admitted on/after the parent's DPI inception (earliest parent
+accrual `start_date`), using the same stored-`overdue_date` admission gate the parent uses, evaluated
+at each segment's start. Loaded once per parent — not per window or segment. The parent's accrual
+path is untouched: its base feeds `accrueOneDay` and drives money, the child column is audit-only.
+
+**Verified (real local run, red→green):** `dpiAccrualCalculation` → `dpiAccrualBooking` → `dpiBilling`
+on the SHG fixture family 116360. RED (pre-fix 19bcb3cdd): children 50161/50167/50161, sum 133468 vs
+parent base 17021. GREEN (d2945087c): 5673+5674+5674=17021 and 11346+11348+11348=34042 — exact parent
+parity per segment; 79 column-audit checks pass after each of the three jobs.
+
+**Suite:** `dad_column_audit` `base_amount` was presence-only (`>= 0`) — that is what let this ship.
+Now a value-level MUST-MATCH re-derived independently in SQL, plus per-segment
+`sum(children base) == parent base`. `run_dpi_shg_parent_child_parity.sh` now runs the full three-job
+chain and re-runs the audit after every job. Registry `dpic.shg_parent_child_parity` updated to match.
+
+## 2026-08-04 — PR-review skill: Claude-standard uplift (was a path-rewrite-only Cursor port)
+
+**Audit:** `.cursor/skills/pr-review/SKILL.md` and `scripts/bin/pr-review.sh` were ported from the
+Cursor workspace mechanically — collector byte-identical, SKILL.md differing only in three
+`.cursor`->`.claude` path lines. Collector verified working live (PR 7859, head a576b8634).
+
+**Enhanced:** (1) removed the Cursor-only **Bugbot** reference in step 6 and replaced it with the
+Claude-native lens table (`security-review`, `review` agent-invocable; `/code-review ultra` is
+user-triggered and billed - never launch it). (2) Step 8 adversarial falsification is now
+**independent refuter subagents** (one per candidate, refute-by-default, three distinct lenses for
+money/contract findings) instead of same-context self-review. (3) New step 9: the proof contract is
+**machine-enforced** by `scripts/lib/pr_review_gate.py` - fail-closed on incomplete provenance, a
+report citing a SHA the collector never recorded, disagreeing initial/final SHAs, non-CONFIRMED
+findings, findings without file:line/check id, directive-phrased questions, APPROVE/COMMENT over a
+confirmed blocker, APPROVE on STALE/MIXED train, blocker downgraded to NOT VERIFIED, missing
+self-review line. Plus optional `ReportFindings` emission.
+
+**Proof:** `scripts/lib/test_pr_review_gate.py` 25/25 PASS, 17 of them red-proofs (each contract
+violation must fail). End-to-end CLI run against the real PR-7859 artifact dir caught all 12
+seeded violations including fabricated SHAs. Gate wired into `agent_router.py` PR_REVIEW scripts.
+
+## 2026-08-03 — Delete dead calc loop + full interest-jobs scenario matrix (accounting 3.4.2.4)
+
+**Removed in-PR:** `InterestAccrualCalculationBatchService.processActiveAccountList` (+ now-unused
+`ThreadLocalContext` / `PlatformTenant` imports). Full-repo scan (src/main, src/test, deploy/**)
+shows the method only as its own definition — no caller anywhere. It is the pre-Spring-Batch
+in-memory loop left behind when the job moved to partitioned reader/processor/writer (`process()`
+-> `parallelJob.runJob`). It also has no writer, so the `distributeForAccount` branch the SHG commit
+bolted onto it could never have run. Deleting it removes the only route to the `tHasChildAccounts`
+silent-false (a revived caller feeding 16-column data would read `hasChildAccounts=false`).
+Note the same-named `InterestAccrualCalculationService.processActiveAccountList` is ALIVE (3 callers
++ 1 test) — that is where the claim-set concurrency fix lives. Do not confuse them.
+
+**Booking-fix mechanism confirmed (was reasoned, now evidenced):** `InterestAccrualBookingBatchService`
+fetches rows via `interestAccrualDetailsDaoService.findAllByAccountId(accountId)` — a derived query
+with **no ORDER BY**. Row order is whatever the DB returns, so a mid-month unposted row can be
+returned BEFORE month-end/due rows; the old `return false` then aborted the walk and left those
+rows unbooked, intermittently. This is why the `return true` change matters and why the failure was
+order-dependent rather than deterministic.
+
+**Scenario matrix — 12/12 PASS** (`interest_jobs_matrix.py`, REAL jobs, fixtures seeded / outcomes
+always job-produced):
+  S1 mid-window month-end     sum(children)==parent (183+123=306)
+  S2 due-date true-up         each child == its OWN loan_due_details INT (605/403, sum 1008)
+  S3 idempotent re-fire       re-running calc+post changed no value and added no row
+  S4 second window            true-up holds (509/339, sum 848)
+  S5 child not calculated     children own exactly the parent's 4 segments, 0 extra
+  S6 stop_interest_accrual    parent still distributes (slab flipped to a stop=true slab, restored)
+  S7 booking order safety     with a mid-month unposted row present, 0 booking-day rows left unposted
+  S8 standalone untouched     no children, no null/zero base or rate
+
+**Registry PASS:** `flowtest.shg_int_accrual_stitch`, `flowtest.fresh_loan_int_accrual_e2e`,
+`flowtest.accrual_billing`, `flowtest.w3_batch_billing_overlap`, `flowtest.w4_reversal_after_billing`,
+`batch.interest_accrual_calc`, `batch.interest_accrual_posting`, `batch.loan_account_billing`.
+
+**NOT run (neither reflects this change):** `flowtest.penal_accrual` — deliberately quarantined out
+of the money suite (SU-FLOW-PENAL-READER-ELIG, 2026-07-30). `dpic.shg_parent_child_parity` — a DPI
+case (`dpiAccrualCalculation`); that job does not exist on the 3.4.2.4 train.
+
+**Local fixture gap fixed (not a code defect):** full-portfolio `loanAccountBillingJob` was FAILING
+with 134207 because product **6367** (3 active loans) has no BILLING/NORMAL_BILLING
+`product__transaction_catalogue` link at all — the SkipListener treats 134207 as fatal, so the whole
+partition and job fail (read 200 / write 143). Nothing in this PR touches transaction rules or
+product config; the flowtest cases had hidden it because they quarantine billing to a few LANs.
+Added `scripts/sql/setup/local_setup_product6367_billing_catalogue_placeholder_iad.sql` (IAD ids
+copied from golden product 1, never invented — same pattern as the product-2 script). Full-portfolio
+billing now COMPLETED.
+
+## 2026-08-03 — PERF reader-carried group flag + PR 7859 cleanup (accounting 3.4.2.4)
+
+**Perf change (kept, with an honest caveat).** `interestAccrualCalculation` reader now selects
+`la.has_child_accounts, la.parent_loan_account_id` (appended last — `ResultMapper` is positional,
+`arr[i] = rs.getObject(i+1)`, so data[] 0-15 do not move). `processIndividualActiveAccount` reads
+data[16]/data[17] instead of `findOneByLoanAccountId`, and stamps a new `@Transient
+tHasChildAccounts` on the produced rows so `InterestAccrualCalculationItemWriter` distributes only
+for SHG parents instead of probing the account for every written loan. Removes ~2 DB round trips
+per active loan per EOD run.
+
+Contained: `InterestAccrualCalculationBatchService.processActiveAccountList` has **no caller**, so
+the batch `processIndividualActiveAccount` is reachable only from `InterestAccrualCalculationItemProcessor`
+with reader data. (This corrects an earlier claim in this changelog that the reader change would
+shift indices across "two call paths" — it does not.)
+
+**Measured: NO local wall-clock gain.** Controlled A/B, same script, 8 identical calc fires each,
+back-to-back rebuilds on the same fixture:
+  PRE  (DAO lookup/loan): avg 1013ms median 939ms min 773 max 1593
+  POST (reader column)  : avg  989ms median 981ms min 764 max 1201
+Median is 4% WORSE; only the tail improved. An earlier reading of "27% avg / 48% p90 better" was
+WRONG — it compared 521 mixed session runs against 42 recent ones, i.e. different workloads, not
+different builds. Do not cite it. Local cannot detect the change: 790 active non-child accounts
+against localhost Postgres with a warm cache is ~1580 sub-ms calls inside ~1s of job noise. The
+saving is round-trip arithmetic (2 x active loans) which only shows on a distributed cluster under
+EOD volume — **still unvalidated in a perf environment.**
+
+**Coupling to know about:** the writer now depends on calc having stamped `tHasChildAccounts`. A
+future caller that saves accrual rows without going through calc would silently not distribute.
+
+**PR 7859 cleanup — code removed as not required:**
+- `InterestAccrualBookingBatchService`: removed the skipped-row counter + two INFO log statements
+  (commit `ad2ccc623`, "ops visibility only"). It called `isAccrualPostingDate` an EXTRA time per
+  IAD row purely to feed the counter, and that method hits the DB
+  (`loanDueDetailsDAOService.getLoanDueDetailsForDueDate`) on any non-month-end date — an N+1
+  introduced for logging, in the batch being optimised. It also logged per account, which is noise
+  at portfolio volume. File diff: 26+ changed lines -> **3**. The one-line behaviour fix
+  (`return false` -> `return true`) is kept.
+- `InterestAccrualCalculationBatchService.processActiveAccountList`: reverted to the upstream body.
+  The PR had added a `distributeForAccount` else-branch to a method with no caller. Reverted rather
+  than deleted, so the PR stops touching unreachable pre-existing code instead of growing the diff.
+- Removed the now-unused `LoanAccountEntity` import from the batch service.
+
+**Verified after cleanup:** two-window roll byte-identical (605/403, 509/339; totals 1114+742=1856),
+`flowtest.shg_int_accrual_stitch` PASS, `flowtest.fresh_loan_int_accrual_e2e` PASS,
+`flowtest.accrual_billing` PASS, java-comment-lint PASS (5 files), `jobs=REAL`.
+
+## 2026-08-03 — PR 7859 full verification pass (upstream vs origin, accounting 3.4.2.4)
+
+PR `trusttai/trustt-platform-accounting#7859` is OPEN, base `mfi_integration_v3.4.2.4`, +608/-58.
+Every file verified for business logic, downstream impact, performance and runtime evidence.
+
+**settings.gradle REMOVED from the PR (was file 9 of 9).** Evidence: every sibling repo
+(los, payments, task) shows `includeBuild '../novopay-platform-lib'` on upstream and
+`'../trustt-platform-lib'` locally as an **uncommitted** edit. Accounting alone had it
+COMMITTED, which leaked a workspace-local convention into an interest PR. Reverted to the
+upstream value and re-applied as an uncommitted working-tree edit, matching the siblings.
+PR diff is now 8 files, all interest-related; local build unaffected.
+
+**postTransaction validators — now RUNTIME VERIFIED** (was code-read only). Probe against a
+live local service, same body, only `client_reference_number` varying, correct JTF shape
+(`request.basic_details.client_reference_number` — an earlier probe using
+`request.client_reference_number` was INCONCLUSIVE, not a failure, because the EC key was
+never set):
+  - 12-char cref -> not 132181 (falls through to downstream 333 on a partial payload)
+  - 65-char cref -> **132181 "Length of client_reference_number should be between 1 and 64"**
+  - cref absent  -> not 132181 (StringLengthValidator skips blank/absent)
+Backward compatible: callers that omit cref are unaffected. Confirms the commit's intent of
+replacing an opaque 333 / Hibernate varchar(64) 22001 with a fail-closed API error.
+
+**Booking `return false -> return true` — regression verified.** Standalone path
+`flowtest.accrual_billing` PASS (GL BILLING balanced 2822/2822, IAD formula assert on-row,
+`jobs=REAL`). Re-read confirms a non-posting-day row is skipped WITHOUT booking, so no row
+books that was not already eligible; the change only stops the account walk from aborting.
+**Downstream note for QA/ops:** on first deploy the posting run may book a BACKLOG of
+accruals that the old early-abort had suppressed. Expected and correct, but it will show as
+a one-off spike in interest booking volume.
+
+**Removal of `adjustChildLoanAccountsInterestAccrual` — reasoned safe.** The pad existed
+because children were calculated independently and drifted. Children are now SET from the
+parent at CALC, and EOD order is calc -> posting, so booking no longer needs to reconcile.
+Running booking WITHOUT a preceding calc leaves children at their last calc value, which is
+correct by construction.
+
+**claimedGroups memory challenge — answered with the bound.** The set is local to
+`processActiveAccountList`, which is called once per page of `interest.accrual.processing.batch.size`
+(default **1000**), and is GC'd per page. It does NOT scale with total LANs; it scales with
+page size, and is strictly smaller than the `List<Object[]>` (16 columns/row) already
+materialised for that page. If the set could OOM, the list it iterates OOM'd first.
+
+**Still not fixed (flagged, deferred):** ~2 extra `findOneByLoanAccountId` per active loan per
+EOD (`processIndividualActiveAccount` + writer-side distribute probe). Carrying
+`has_child_accounts` in the reader SELECT would remove both; needs its own perf run to size.
+
+## 2026-08-03 — REVIEW of origin-vs-upstream 3.4.2.4 + FIX concurrent parent accrual (online path)
+
+**Scope reviewed:** 14 commits / 9 files ahead of `upstream/mfi_integration_v3.4.2.4`. Verdicts below.
+
+**GENUINE — keep**
+- `InterestAccrualCalculationItemReader` + `PARTITIONER_DATA_QUERY`: `AND la.parent_loan_account_id IS NULL`. Parent is accrual SoT; excluding children at reader is both correct and a throughput win.
+- `InterestAccrualBookingBatchService.processAccrualDetails`: `if (!isAccrualPostingDate(...)) return false` -> `return true`. **High value.** A mid-month IAD row previously ABORTED the whole account walk, so later month-end/due rows never booked. Now skipped-and-continue, matching the online `InterestAccrualBookingService`.
+- Removal of `InterestAccrualBookingService.adjustChildLoanAccountsInterestAccrual` (SDCP-3245 "dump cycle delta onto last child"). That was the forceful pad the new distribute replaces; keeping both would double-correct.
+- `product_transaction_orc.xml` postTransaction `stringLengthValidator` on `client_reference_number` + `stan`, max 64. Verified `StringLengthValidator` exists (`trustt-platform-lib/infra-platform/.../validator/common/StringLengthValidator.java`, `@Validator`) and **skips blank/absent** (`StringUtils.isNotBlank` guard), so absent-field callers are unaffected. Columns are varchar(64), so an over-length caller fails today at the DB with 22001 — this fails earlier with 132181. Additive-safe.
+- `131e57a2f` reverts `896c02a56` (GAP-062 writeoff EC aliases): net-zero, no writeoff file in the diff. History noise only.
+
+**DEFECT FOUND AND FIXED — concurrent parent accrual on the online path**
+- `InterestAccrualCalculationService.processIndividualActiveAccount` redirected every CHILD to re-process its PARENT. `processActiveAccountList` runs `parallelStream()`, and both bulk callers pass parent + all children together (`CheckLoanAccountInterestAndPenalAccrualService` L58-63 builds parent then `findAllAccountNumberByAccountId`; `getPaginatedActiveAccounts` has NO parent filter). Result: for an N-member SHG the parent's accrual + distribute ran **N+1 times, concurrently, writing the same child `interest_accrual_details` rows** — lost-update and duplicate-row exposure on a money table. Introduced by `ffa882cdf`; the batch path is unaffected (its reader filters children).
+- **Fix:** claim-set dedupe in `processActiveAccountList` — each entry resolves to its group owner (parent id, else own id) and the first claim runs it; the rest skip. Body split into `processResolvedAccount` so the resolved entity is reused and the per-account lookup count is unchanged.
+- **Why not simply skip children in the loop:** `InterestAccrualCalculationProcessor` takes a caller-supplied `account_number_list` (request field), so a child-only or two-members-without-parent list is reachable. A plain skip would silently stop accruing those; the claim set keeps the redirect for that case and still guarantees one pass per group.
+- Verified: `flowtest.shg_int_accrual_stitch` PASS, `flowtest.fresh_loan_int_accrual_e2e` PASS, two-window roll unchanged (605/403, 509/339), `jobs=REAL`.
+
+**FLAGGED — do not send upstream**
+- `settings.gradle`: `includeBuild '../novopay-platform-lib'` -> `'../trustt-platform-lib'`. Local workspace rename only; upstream still uses the old directory name. Required to build here, unrelated to any fix — must be excluded from any upstream PR under the zero-unrelated-diff rule.
+
+**NOT FIXED (flagged, hot path)**
+- `processIndividualActiveAccount` (batch + online) adds one `findOneByLoanAccountId` per active loan per EOD, and `InterestAccrualCalculationItemWriter` calls `distributeInstallmentWindowAccrued` for EVERY written account, which does another PK lookup before returning for non-parents. ~2 extra PK lookups per active loan per EOD run. The reader already filters children, so the batch-side guard is redundant there; carrying `has_child_accounts` in the reader SELECT would remove both. Deferred — needs its own perf run to size.
+
+## 2026-08-03 — FIX GAP-082 (b): child accrual reads its own scheduled INT (3.4.2.4)
+
+- **Repo:** trustt-platform-accounting @ mfi_integration_v3.4.2.4 — `InterestGroupLoanAccrualDistributionService.distributeInstallmentWindowAccrued`
+- **RCA (code-verified, corrects the earlier read):** the child's scheduled INT is NEVER produced by splitting the parent's INT. `BookChildLoanProcessor` (CLB) splits **PRIN only** (L205-213) and derives interest as a residual `child EMI - child PRIN` (L271), then `settleTillBalanced` (L121) rebalances across the WHOLE schedule so each child's PRIN column lands exactly on its own loan amount. Traced on installment 1 (EMI 4771 / PRIN 3763 / INT 1008): EMI splits 2862/1909, PRIN splits 2257/1506 -> INT 605/403 (stored PRIN is 2258/1505 after the rebalance). Accrual distribute instead split parent INT directly -> 604/404. Same utility (`shgLoanUtility` and `groupLoanUtility` are both `GroupLoanUtility`), different operand.
+- **Why replay/ordering cannot fix it:** `getFinalAmountListUsingCarryOver` self-sorts by loanAccountId (L52), so caller order is not a variable; and installment 1's INT depends on installments 2-12 through `settleTillBalanced`. Reproducing the child's INT from the parent would mean re-running CLB's whole-schedule rebalance.
+- **Change (minimal):** when the window is fully accrued (`parentWindowAccrued >= SUM(child scheduled INT)`), each child is assigned its OWN persisted `loan_due_details` INT — no split, no float. Mid-window keeps the existing principal-fraction path unchanged. Reuses `getDueDetailsForDueDateAndComponentType` (existing DAO, one call per child per window; no new `@Query`).
+- **Closed-member policy (b):** a closing member drops out of `findAllByParentAccountId`, so SUM(survivor scheduled INT) < parent accrued, the fully-accrued branch triggers and each survivor gets exactly its own scheduled INT — the residue stays on the parent, where closure settlement is already parent-scoped (`applyClaimOverpaymentAsPrincipalPaid` / `nettedPrincipalOutstanding` / `assertPrincipalDuesCleared`). Survivors can no longer be billed past their own schedule.
+- **Rejected en route (recorded so it is not retried):** weighting the split by `childInt/parentInt` through the carry-over utility. `getFinalAmountListUsingCarryOver` works in `double` with `(int)` truncation, so `1008 x (605/1008)` evaluates to `604.9999999999999` -> 604. Any fix that routes an exact value through that double fraction reintroduces the rupee.
+- **Verified red->green (REAL jobs, rebuilt bytecode, `assert-build-current` OK):** parent 6004162825, two installment windows.
+  - before: w1 child 604/403 (Σ 1007 vs parent 1008), w2 508/340; after: w1 **605/403** (Σ 1008 ✓), w2 **509/339** (Σ 848 ✓); totals 1114+742 = 1856 = parent ✓.
+  - mid-window rows (183/123, 102/68) byte-identical before and after — only the true-up moves.
+  - assert proven red on the exact pre-fix value (scheduled 605 vs accrued 604) by perturbation, then restored via the REAL job, not SQL.
+  - `flowtest.shg_int_accrual_stitch` PASS, `flowtest.fresh_loan_int_accrual_e2e` PASS, `jobs=REAL(interestAccrualCalculation,interestAccrualPosting,loanAccountBillingJob)`.
+- **New guard:** `iad_column_audit.closed_window_accrued_eq_own_scheduled_int` — parent-sum parity cannot see a rupee moved BETWEEN children; this asserts each child against its own RPS INT once a window closes. Scoped to the caller's roll window (`scheduled_int_since`) because the stitch case reseeds only the last installment.
+- **Harness gap found (pre-existing, not fixed):** `shg_int_accrual_stitch` seeds by wiping IAD after `prior_due` but never the matching LABD, so back-to-back re-runs fail `no LABD increase`. Reseed LABD for the rolled installment to re-run.
+- **Withdrawn:** the "children stall after window 1" concern — disproved by a REAL 2-window roll (children track the parent 4/4 rows, bases 30000->27742, 20000->18495). It was residue from an earlier trace reseed.
+- **Withdrawn:** "IAC parent base carry-forward is stale" — data refutes it; every parent row tracks outstanding principal (50000 / 46237 / 42405 ...). L244 refreshes before every non-zero write; only zero-accrual rows carry a stale base (cosmetic, absent in this fixture).
+
+## 2026-08-03 — FIX child accrual base/rate + DPI port (3.4.2.4 pushed, 3.7.1 pushed)
+
+- **accounting `mfi_integration_v3.4.2.4`** — pushed `916bda7f8` (posted-pin), `c3501cd63` (comment trim, java-comment-lint), `e0437001b` (child base/rate).
+  - `InterestGroupLoanAccrualDistributionService`: child rows were written with `base_amount=0` and `interest_rate=0` while carrying real accrued. Base now comes from the child's OWN outstanding principal (reuses `getPrincipalOutstandingAmountByDueDate`, the same query the parent calc uses — one call per window, not per segment), rate from the parent segment, stored **whole**.
+  - Verified: child 8211260 base=30000 rate=22, child 8211261 base=20000 rate=22; rows now reconcile by formula (30000 x 22%/360 x 10 = 183 = stored accrued) and child bases sum to the parent (30000+20000=50000). Per-segment parity still PASS; JLG 24/24 no regression.
+- **accounting `mfi_integration_v3.7.1`** — pushed `19bcb3cdd` (rebased onto upstream tip `54d5f50fb`).
+  - `DpiGroupLoanAccrualDistributionService`: same posted-pin fix, plus child base from each child's OWN overdue PRIN+INT via `getTotalOverdueAmountByAccountIdsAndDate` (bulk, one call per window). Previously `newChildRow` fell back to the PARENT's latest row, so on QA1 both children of 8010460 carried **43584 on every row** — the parent's cumulative overdue, constant across periods, summing to 2x the parent.
+  - **Verification status: compile + java-comment-lint only. NO runtime red->green** — proving it needs the local stack on the 3.7.1 train and :8002 currently serves 3.4.2.4. Must be run before QA sign-off.
+- **Base semantics confirmed (QA1 evidence):** DPI base = overdue installment PRIN+INT, cumulative (parent 8010460: 10928+3600 = 14528, then 29056, 43584 — correct). IAC base = outstanding principal, NOT the installment amount (306 = 50000 x 22%/360 x 10; the installment 4771 would give 29).
+- **Still open:** IAC parent base is carried forward from the prior IAD row (`InterestAccrualCalculationBatchService` L189) and refreshed only on the due-date true-up branch (L244) — masked here because the fixture has no repayments. GAP-082 (b) child accrued vs own scheduled INT (604 vs 605) remains a product policy decision.
+
+## 2026-08-03 — FIX GAP-082 L1: posted accrual is immutable in SHG INT distribute (3.4.2.4)
+
+- **Repo:** trustt-platform-accounting @ mfi_integration_v3.4.2.4 — `InterestGroupLoanAccrualDistributionService.mirrorParentSegments`
+- **Change:** posted segments are now PINNED (`segShare = posted`) and only the unposted remainder is split across unposted parent segments. Was `childRow.setTotalAccruedAmount(segShare.max(posted))` — posted used as a mere floor.
+- **RCA (day-by-day trace, not inference):** at 08-31 the split was exact (183+123=306=parent). On the 09-12 calc the re-split recomputed child0 seg1 = 385x306/642 = **183.504 -> HALF_UP 184**, OVERWRITING an already-posted 183; posting then booked the extra rupee. child1 seg1 = 122.495 -> 122 but was floored back up to posted 123. Each child's window total stayed exact (184+201=385), so nothing constrained SUM(children per segment) == parent segment -> seg1 307 vs 306, seg2 335 vs 336.
+- **Not a distribution bug:** `GroupLoanUtility.getFinalAmountListUsingCarryOver` is exact and self-guards. The rupee is introduced by the second-level re-split of an already-rounded window target.
+- **Verified red->green** on rebuilt bytecode: trace shows child0 seg1 holds 183 through the 09-12 recompute; `flowtest.fresh_loan_int_accrual_e2e` per-segment asserts PASS (delta 0.000000) both segments; JLG standalone 24/24 PASS (no regression).
+- **Still open (K3, policy):** child accrued 604 vs its own scheduled INT 605 — distribute allocates trunc(parent_rounded_total x fraction)+carry-to-last, while the child schedule is computed from its own principal (30000x22%/360x33 = 605.00). Product decision, deliberately not folded into this fix.
+- **Same defect on 3.7.1 DPI (unfixed):** `DpiGroupLoanAccrualDistributionService` L404 `segShare.max(posted)` + L388-389 identical per-child HALF_UP re-split.
+- **base_amount:** child IAD rows are written with base_amount=0 AND interest_rate=0 (`newChildRow` copies from a non-existent prior child row). DPI 3.7.1 falls back to the PARENT's row instead — non-zero but the wrong loan's base. Parent base_amount=50000 is correct for window 1 (outstanding, not installment amount) but is carried forward (`InterestAccrualCalculationBatchService` L189) and only refreshed on the due-date true-up branch (L244). Not yet fixed.
+
+## 2026-08-03 — Stale-runtime provenance bug + disbursement child-NEFT completion (harness)
+
+- **Stale JVM served money tests all session.** accounting JVM started 15:52, classes compiled 16:02, HEAD `ad399c5f2` committed 16:03 — the running bytecode did not contain the SHG fix under test. **GAP-082 marked UNVERIFIED** pending re-run.
+- **Root cause (2 bugs, both fixed):** (1) `aops_java_newer_than_boot` compared source mtime to the service's boot LOG, which the running service appends to — so `find -newer` could never match. Now anchors on `/proc/<pid>` start time and also checks compiled classes newer than the JVM. (2) `novopay-service.sh ensure` returned early on "probe OK" and ignored `--compile`, so a stale-but-listening service was never restarted. Now rebuilds+restarts when the caller flags staleness; fast path unchanged.
+- **New gate** `scripts/bin/assert-build-current.sh <svc>` — fail-closed on JVM-start vs newest `.class` / `.java` / HEAD commit time. Proven red (exit 1) then green.
+- **Disbursement suite — child NEFT (CLMT) now completes locally.** `complete_neft_v2_via_callbacks.py --parent-lan <LAN>`: child CRR is booked under the PARENT LAN as `..._EXTREF<childRef>_NEFT_NEF`, so the old `--lan <child>` lookup always failed. Drives ST_NEF→ST_NEI→`COMPLETED`/`event_status=C`, then fires `childLoanEventProcessingBatchJob`. Verified on 3 independent fresh groups.
+- **Fixture collision fixed:** canonical group payloads reuse fixed member ext refs, so each local run adds a CLMT row with the same `filler_2`; `findOneByFiller2` is single-result and threw `IncorrectResultSizeDataAccessException` (27 results). `scripts/sql/reset/local_dedupe_child_queue_rows.sql`, wired into `--reset-before` and into the completion helper (must run AFTER disbursement). Local-only artifact — production ext refs are unique per LOS application.
+- **Open:** SHG parent stays `PARENT_SUCCESS` with all CLMT+CLB `C` on current bytecode; cause not isolated, needs instrumentation. Not filed as a product defect.
+
+## 2026-08-03 — Fresh-disburse interest chain e2e (3.4.2.4) + 2 findings
+
+- **New case** `flowtest.fresh_loan_int_accrual_e2e` (`scripts/testing/flowtest/scenarios/fresh_loan_int_accrual_e2e.py`): first interest case that walks a loan from **0 IAD / 0 LABD** across its first month-end and first due date. Existing `flowtest.shg_int_accrual_stitch` / `flowtest.accrual_billing` seed their roll window from existing IAD and cannot see first-cycle defects. Reseeds parent+children on re-run.
+- **Finding 1 (local setup):** product 2 (JLG) had no `product__transaction_catalogue` row for BILLING/NORMAL_BILLING → `loanAccountBillingJob` FAILED 134207 on the first due date after 30 clean days of calc+posting. Fix `scripts/sql/setup/local_setup_jlg_billing_catalogue_placeholder_iad.sql` (IADs copied from golden product 1). Case now preflights this before burning the roll.
+- **Finding 2 (LMS-DEFECT, product decision open):** SHG distribute per-SEGMENT children sum != parent (+/-1) and child accrued != child scheduled INT (+/-1); nets to zero at window+group level so `verify_shg_interest_accrual_parity.sql` reports **PASS**. `InterestGroupLoanAccrualDistributionService.mirrorParentSegments` L282-295 splits each child independently (HALF_UP, last segment absorbs remainder) with no cross-child reconciliation to the parent segment.
+- Evidence (REAL local jobs, acc `mfi_integration_v3.4.2.4`): JLG 6004162725 accrued 354+250=604 == scheduled INT == LABD interest == GL leg, GL D=C=2424. SHG parent 6004162825 seg 306/702; children 184+123=307, 420+281=701; child 6004163026 accrued 604 vs scheduled 605; 6004163027 accrued 404 vs scheduled 403.
+
 ## 2026-08-03 — TDPQA-207 BY_LATEST soft-deleted REJECTED blank
 
 - **Repo:** trustt-platform-accounting @ mfi_integration_v3.5.2.2

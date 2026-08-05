@@ -11,7 +11,7 @@ fail() { echo "  FAIL $1 — $2"; FAIL=$((FAIL + 1)); }
 
 echo "=== cursor-bundle inventory ==="
 for f in cursor-bundle/kg/data/kg.db cursor-bundle/memory/MEMORY.md cursor-bundle/kg/bin/build.sh \
-         cursor-bundle/kg/bin/kg.py cursor-bundle/kg/BRANCH-SAFETY.md .cursor/rules/30-kg-discipline.mdc \
+         cursor-bundle/kg/bin/kg.py cursor-bundle/kg/BRANCH-SAFETY.md \
          .cursor/rules/30-kg-discipline.mdc cursor-bundle/brain/CANONICAL-MAP.md \
          .cursor/hooks.json .cursor/workspace-kg-state.md; do
   [[ -e "$f" ]] && pass "$f" || fail "$f" "missing"
@@ -48,14 +48,14 @@ cases = c.execute("SELECT count(*) FROM nodes WHERE kind='case'").fetchone()[0]
 # Opt-in precedents only (| kg-flow | rows) — not full audit log
 assert cases >= 5, f"case nodes {cases} < 5 (run changelog-add --kg-flow + refresh_cases)"
 assert c.execute("SELECT 1 FROM node_fts WHERE node_fts MATCH 'disburseLoan*'").fetchone()
-claude = c.execute("SELECT count(*) FROM nodes WHERE json LIKE '%claude/%'").fetchone()[0]
-if claude > 5:
+legacy = c.execute("SELECT count(*) FROM nodes WHERE json LIKE '%cursor-bundle/%' OR json LIKE '%.cursor/%'").fetchone()[0]
+if legacy > 5:
     # Legacy path strings folded into node JSON from older brain docs — not a smoke blocker.
-    print(f"  WARN claude/ refs in kg nodes: {claude} (legacy doc text; rebuild when convenient)")
-elif claude:
-    print(f"  OK  claude/ refs in kg nodes: {claude} (legacy doc text only)")
+    print(f"  WARN stale cursor refs in kg nodes: {legacy} (rebuild KG)")
+elif legacy:
+    print(f"  OK  stale cursor refs in kg nodes: {legacy} (residual doc text only)")
 else:
-    print("  OK  no claude/ paths in kg nodes")
+    print("  OK  no stale cursor paths in kg nodes")
 print(f"  OK  case nodes (opt-in precedents): {cases}")
 wm = json.load(open("cursor-bundle/kg/data/stats.json"))["watermark"]["repos"]
 assert len(wm) >= 10
@@ -67,8 +67,17 @@ echo "=== kg integrity + orient ==="
 python3 cursor-bundle/kg/bin/kg_validate.py >/dev/null 2>&1 && pass "kg_validate (pre-CLI)" || fail "kg_validate" ""
 orient_out=$($KG --no-drift-check orient disburseLoan 2>/dev/null) || true
 # U6+ banner is evidence-only ORIENT (not legacy IMPLEMENTATION GATE); header-aware
-echo "$orient_out" | grep -qE "ORIENT \(evidence only|IMPLEMENTATION GATE" && pass "kg orient disclaimer" || fail "kg orient" "missing gate banner"
-echo "$orient_out" | grep -q "populateUserDetails" && pass "kg orient flow spine" || fail "kg orient flow" ""
+# pure-bash match: `echo … | grep -q` races SIGPIPE under `set -o pipefail`
+if [[ "$orient_out" == *"ORIENT (evidence only"* || "$orient_out" == *"IMPLEMENTATION GATE"* ]]; then
+  pass "kg orient disclaimer"
+else
+  fail "kg orient" "missing gate banner"
+fi
+if [[ "$orient_out" == *"populateUserDetails"* ]]; then
+  pass "kg orient flow spine"
+else
+  fail "kg orient flow" ""
+fi
 
 echo ""
 echo "=== kg.py CLI ==="
@@ -123,7 +132,7 @@ for h in kg-session-watermark.sh pre-commit-kg-reminder.sh pre-push-checklist.sh
 done
 python3 - <<'PY' || FAIL=$((FAIL + 1))
 import json, subprocess, os
-os.chdir("/home/darpan/Documents/sliProd")
+# ROOT already set by bash `cd "$ROOT"` above — never hardcode a sibling clone path.
 with open(".cursor/hooks.json") as f:
     hooks = json.load(f)["hooks"]
 assert any(
@@ -136,7 +145,6 @@ print("  OK  hooks.json post-push + post-checkout registered")
 PY
 python3 - <<'PY' || FAIL=$((FAIL + 1))
 import json, subprocess, os
-os.chdir("/home/darpan/Documents/sliProd")
 p = subprocess.run(["bash", ".cursor/hooks/pre-commit-kg-reminder.sh"], input='{"command":"git commit -m t"}', text=True, capture_output=True)
 assert json.loads(p.stdout)["permission"] == "allow"
 # origin: allow when clean ship gates, or deny with ship-loop/workspace-close message when dirty
@@ -153,6 +161,30 @@ p = subprocess.run(["bash", ".cursor/hooks/pre-push-checklist.sh"], input=json.d
 assert json.loads(p.stdout)["permission"] == "deny"
 print("  OK  hook JSON contracts")
 PY
+
+echo ""
+echo "=== hooks sync (Claude Code only) ==="
+if [[ -f scripts/bin/sync-claude-hooks.py ]]; then
+  if python3 scripts/bin/sync-claude-hooks.py >/dev/null 2>&1; then
+    pass "settings.json in sync with hooks.json"
+  else
+    fail "claude hooks sync" "run: python3 scripts/bin/sync-claude-hooks.py --write"
+  fi
+else
+  pass "hooks.json is Cursor SoT (no sync-claude-hooks)"
+fi
+
+echo ""
+echo "=== mcp wiring ==="
+# kg-mcp-smoke spawns the server itself, so it passes even when Claude Code cannot
+# launch it. Validate the launch contract the client actually uses.
+mcp_out="$(python3 scripts/bin/check-mcp-wiring.py 2>&1)" && pass "mcp launch contract" \
+  || fail "mcp launch contract" "$mcp_out"
+
+echo ""
+echo "=== assert strength ==="
+as_out="$(python3 scripts/bin/assert-strength-gate.py 2>&1)" && pass "no new presence-only asserts" \
+  || fail "assert strength" "$as_out"
 
 echo ""
 echo "=== workspace hygiene ==="

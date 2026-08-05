@@ -39,7 +39,10 @@ DOMAIN_PRIMARY_API: tuple[tuple[str, str], ...] = (
     ("/repayment/", "loanRepayment"),
     ("/repay/", "loanRepayment"),
     ("/interest/accrual", "interestAccrualCalculation"),
-    ("/dpi", "getLoanAccountOverviewDetails"),
+    # Trailing slash required: bare "/dpi" matched scripts/dpic/ and dpi-*.md
+    # → false getLoanAccountOverviewDetails and lagged harness impact mapping.
+    ("/batchnew/dpi/", "getLoanAccountOverviewDetails"),
+    ("/dpi/", "getLoanAccountOverviewDetails"),
     ("/billing/", "dpiBilling"),
 )
 
@@ -123,12 +126,17 @@ def _grep_java_referencing(class_name: str, repo_dir: Path) -> list[str]:
     src = repo_dir / "src/main/java"
     if not src.is_dir():
         return []
-    out = subprocess.run(
-        ["rg", "-l", class_name, str(src)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    # `rg` may be absent (or only a shell function, which subprocess cannot see);
+    # fall back to POSIX grep so ship-path resolution never hard-fails on tooling.
+    for argv in (["rg", "-l", class_name, str(src)],
+                 ["grep", "-rl", class_name, str(src)]):
+        try:
+            out = subprocess.run(argv, capture_output=True, text=True, check=False)
+            break
+        except FileNotFoundError:
+            continue
+    else:
+        return []
     beans: list[str] = []
     for line in out.stdout.strip().splitlines():
         if not line:
@@ -173,6 +181,10 @@ def _domain_hint_api(path: str) -> str | None:
     if mapped:
         return mapped
     s = path.replace("\\", "/").lower()
+    # Workspace harness/docs are not service code — never invent apiNames from
+    # path needles (scripts/dpic matched "/dpi" → overview API).
+    if s.startswith(("scripts/", ".cursor/", "cursor-bundle/", "system_brain/", "docs/")):
+        return None
     for needle, api in DOMAIN_PRIMARY_API:
         if needle in s:
             return api
@@ -200,10 +212,10 @@ def resolve_apis_for_path(path: str) -> list[str]:
     s = str(p)
     apis: set[str] = set()
 
-    # Repo-relative for grep
+    # Repo-relative for grep (dirs only — not novopay-service.sh / *.md)
     repo = None
     for part in p.parts:
-        if part.startswith("novopay-") or part.startswith("trustt-"):
+        if (part.startswith("novopay-") or part.startswith("trustt-")) and "." not in part:
             repo = part
             break
     repo_dir = _repo_dir(repo) if repo else None

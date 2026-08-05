@@ -23,6 +23,17 @@ scripts:
   - scripts/bin/workspace-autopilot.sh
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `any task`, `session start`, `substantive message`, `logs attached`
+- **requires:** []
+- **reads:** `.cursor/workspace-intelligence-state.md`, `.cursor/workspace-ops-state.md`
+- **writes:** `.cursor/.autopilot-state.json`
+- **feeds:** `super-agent`, `autonomous-workspace-ops`, `workspace-close`
+- **scripts:** `scripts/bin/super-machine.sh`, `scripts/bin/workspace-autopilot.sh`
+
 # Workspace autopilot
 
 **The user does not run commands.** They describe the problem in plain English (+ logs optional). **You** run the workspace.

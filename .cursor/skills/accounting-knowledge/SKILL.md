@@ -1,6 +1,6 @@
 ---
 name: accounting-knowledge
-description: On-demand deep knowledge for trustt-platform-accounting — transaction types, column semantics, GL, flows, preflight/signoff, batch maps. Read topic files when accounting money-path work needs detail beyond the thin accounting.mdc gates.
+description: "On-demand deep knowledge for trustt-platform-accounting \u2014 transaction types, column semantics, GL, flows, preflight/signoff, batch maps. Read topic files when accounting money-path work needs detail beyond the thin accounting.md gates."
 ---
 
 # Accounting knowledge (on-demand)
@@ -26,6 +26,6 @@ Auto-attached gate: `.cursor/rules/accounting.mdc` (financial signoff + routing 
 | `batchnew-jobs.md` | Job inventory |
 | `job-owned-tables.md` | Tables jobs own — **never** hand-mutate Accrued/IAD/etc. |
 | `_source-accounting-module-knowledge.md` | Full prior module-knowledge body |
-| `_source-accounting-mdc-deep2-duplicate.md` | Second deep copy from old accounting.mdc |
+| `_source-accounting-mdc-deep2-duplicate.md` | Second deep copy from old accounting.md |
 
 Future knowledge writes → the matching topic file (not a mega rule).

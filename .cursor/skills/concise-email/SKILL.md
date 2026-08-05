@@ -1,6 +1,6 @@
 ---
 name: concise-email
-description: Draft concise, professional emails. Use when the user asks to "create an email/mail" or "draft a mail". For RCA/fix/issue mails with impact and dev scenarios, use fix-rca-email skill instead. Keep it minimal, avoid code-level details unless necessary for clarity, and avoid tier labels like L0/L1—use neutral headings like "Immediate actions" and "Follow-up".
+description: "Draft concise, professional emails. Use when the user asks to \"create an email/mail\" or \"draft a mail\". For RCA/fix/issue mails with impact and dev scenarios, use fix-rca-email skill instead. Keep it minimal, avoid code-level details unless necessary for clarity, and avoid tier labels like L0/L1\u2014use neutral headings like \"Immediate actions\" and \"Follow-up\"."
 ---
 
 # Concise Email Drafting

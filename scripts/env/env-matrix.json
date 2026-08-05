@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated": "2026-07-31",
-  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability from env-smoke 2026-07-31.",
+  "updated": "2026-08-03",
+  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability re-probed 2026-08-03 (all qa1-qa6 REACHABLE from sliProd).",
   "environments": {
     "local": {
       "db_wrapper": "scripts/db-local.sh",
@@ -38,7 +38,7 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
       "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned deploy train",
       "allowed_suites": [
@@ -56,10 +56,10 @@
       "api_base": "not-applicable: QA-team owned",
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
-      "reachable_from_here": false,
+      "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
-      "reachability_status": "UNREACHABLE",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
+      "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned (UNREACHABLE)",
       "allowed_suites": [],
       "reachability_detail": "2026-07-31 env-smoke: connection refused/fail to 172.31.2.70:5433"
@@ -76,7 +76,7 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
       "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned deploy train",
       "allowed_suites": [
@@ -95,7 +95,7 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
       "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned deploy train",
       "allowed_suites": [
@@ -114,7 +114,7 @@
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
       "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned deploy train",
       "allowed_suites": [
@@ -131,10 +131,10 @@
       "api_base": "not-applicable: QA-team owned",
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
-      "reachable_from_here": false,
+      "reachable_from_here": true,
       "write_policy": "read-only unless user explicitly directs write",
-      "reachable_checked_at": "2026-07-31T06:29:27Z",
-      "reachability_status": "UNREACHABLE",
+      "reachable_checked_at": "2026-08-03T09:05:00Z",
+      "reachability_status": "REACHABLE",
       "deployed_train": "not-applicable: QA-team owned (UNREACHABLE)",
       "allowed_suites": [],
       "reachability_detail": "2026-07-31 env-smoke: timeout 5s"

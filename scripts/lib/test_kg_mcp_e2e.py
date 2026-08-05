@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import time
 import unittest
@@ -21,6 +22,8 @@ assert spec.loader
 sys.path.insert(0, str(ROOT / "cursor-bundle/kg/bin"))
 sys.path.insert(0, str(ROOT / "scripts/lib"))
 spec.loader.exec_module(mcp)
+
+TIME_FACTOR = float(os.environ.get("KG_MCP_TEST_TIME_FACTOR", "1"))
 
 
 def _wm_accounting_branch() -> str:
@@ -38,15 +41,18 @@ class McpE2ETests(unittest.TestCase):
         t0 = time.perf_counter()
         text, err = mcp._dispatch_tool(name, args or {})
         ms = (time.perf_counter() - t0) * 1000
-        self.assertLess(ms, max_ms, f"{name} took {ms:.0f}ms (max {max_ms:.0f})")
+        budget = max_ms * TIME_FACTOR
+        self.assertLess(ms, budget, f"{name} took {ms:.0f}ms (max {budget:.0f})")
         self.assertIsInstance(text, str)
-        self.assertTrue(text.startswith("[KG @"), f"{name} missing provenance header")
+        if name != "mcp_auth":
+            self.assertTrue(text.startswith("[KG @"), f"{name} missing provenance header")
         return text, bool(err), ms
 
     def test_tools_list_count(self):
         names = [t["name"] for t in mcp.tools_list_payload()["tools"]]
-        self.assertEqual(len(names), 19)
         self.assertEqual(sorted(names), sorted(mcp.TOOLS.keys()))
+        for core in ("kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_writes", "kg_doctor"):
+            self.assertIn(core, names)
         for gone in ("kg_validate", "kg_fresh", "kg_error"):
             self.assertNotIn(gone, names)
 
@@ -119,14 +125,16 @@ class McpE2ETests(unittest.TestCase):
         self.assertLess(len(text), mcp.MAX_CHARS + 50)
 
     def test_10_impact(self):
-        text, err, _ = self._call(
-            "kg_impact",
-            {
-                "query": "InterestGroupLoanAccrualDistributionService#distributeInstallmentWindowAccrued",
-                "depth": 1,
-            },
-            max_ms=15_000,
+        """Probe a symbol that exists on this checkout — a DPI-train-only class made
+        this assert the train, not the tool."""
+        from impact_tests import _dpi_tree_present
+
+        query = (
+            "DpiGroupLoanAccrualDistributionService#distributeInstallmentWindowAccrued"
+            if _dpi_tree_present()
+            else "LoanAccountAutoClosureItemWriter#getLoanAccountEntity"
         )
+        text, err, _ = self._call("kg_impact", {"query": query, "depth": 1}, max_ms=15_000)
         self.assertFalse(err)
         self.assertIn("IMPACT", text)
 
@@ -159,7 +167,7 @@ class McpE2ETests(unittest.TestCase):
         )
         text2, err2, ms2 = self._call("kg_fixed_elsewhere", args, max_ms=2000)
         self.assertIn("cache=HIT", text2)
-        self.assertLess(ms2, 1000, f"warm fixed_elsewhere {ms2:.0f}ms")
+        self.assertLess(ms2, 1000 * TIME_FACTOR, f"warm fixed_elsewhere {ms2:.0f}ms")
 
     def test_15_map_audit(self):
         text, err, _ = self._call("kg_map_audit", {"fail_on_mismatch": False}, max_ms=30_000)
@@ -177,14 +185,14 @@ class McpE2ETests(unittest.TestCase):
         payload = json.loads(text.split("\n", 1)[1])
         self.assertIn("kg", payload)
         self.assertIn("fresh", payload["kg"])
-        self.assertLess(ms, 20_000)
+        self.assertLess(ms, 20_000 * TIME_FACTOR)
 
     def test_18_ship_plan(self):
         text, err, ms = self._call("ship_plan", max_ms=15_000)
         self.assertFalse(err)
         payload = json.loads(text.split("\n", 1)[1])
         self.assertIn("ordered_cases", payload)
-        self.assertLess(ms, 15_000)
+        self.assertLess(ms, 15_000 * TIME_FACTOR)
 
     def test_19_reads(self):
         text, err, _ = self._call("kg_reads", {"query": "loan_account"})

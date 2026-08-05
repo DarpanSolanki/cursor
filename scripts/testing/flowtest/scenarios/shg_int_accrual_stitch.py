@@ -172,6 +172,14 @@ WHERE account_id={parent_id}
 DELETE FROM mfi_accounting.interest_accrual_details
 WHERE account_id={parent_id}
   AND end_date > DATE '{prior.isoformat()}';
+-- Children must be reseeded with the parent. Wiping only the parent left stale child
+-- rows behind on every rerun, which is how a polluted fixture produced a green run.
+DELETE FROM mfi_accounting.interest_accrual_details
+WHERE account_id IN (
+    SELECT account_id FROM mfi_accounting.loan_account
+    WHERE parent_loan_account_id={parent_id}
+  )
+  AND end_date > DATE '{prior.isoformat()}';
 UPDATE mfi_accounting.interest_accrual_details
 SET total_accrual_posted_amount = COALESCE(total_accrued_amount, 0),
     last_accrual_posted_date = COALESCE(last_accrual_posted_date, end_date)
@@ -364,6 +372,7 @@ WHERE (la.account_id={parent_id} OR la.parent_loan_account_id={parent_id})
             parent_lan=PARENT,
             query_rows=_query_rows,
             require_tip_sync=os.environ.get("IAD_TIP_SYNC_STRICT", "1") == "1",
+            scheduled_int_since=start.isoformat(),
         )
     )
     print("  PASS IAD column audit (children)")

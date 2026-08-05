@@ -148,10 +148,17 @@ Use `.cursor/rules/10-quality-gates.mdc`, `darpan.mdc`,
 
 ### 6. Use automated reviewers as secondary lenses
 
-- Bugbot and Security Review are optional and never determine the verdict by themselves.
-- Run them only when their local-diff contract can be satisfied in an isolated worktree at the collected base/head SHAs.
-- Independently verify every bot finding against the reviewed SHA and source.
-- Record bot failures or unavailable execution as missing evidence, not as a clean result.
+Secondary lenses are optional and never determine the verdict by themselves.
+
+| Lens | Invocation | Note |
+|------|-----------|------|
+| `security-review` | agent-invocable skill | Security lens over the diff |
+| `review` | agent-invocable skill | GitHub PR lens |
+| `/code-review ultra` | **user-triggered and billed** | Never launch it yourself — offer it |
+
+- Run a lens only when its local-diff contract can be satisfied in an isolated worktree at the collected base/head SHAs.
+- Independently verify every lens finding against the reviewed SHA and source before it may enter Findings.
+- Record lens failure or unavailable execution as missing evidence, not as a clean result.
 
 ### 7. Compile and test proportionately
 
@@ -167,19 +174,59 @@ Use `.cursor/rules/10-quality-gates.mdc`, `darpan.mdc`,
   `feedback_qa_acceptance_not_subset_verify.md` and
   `feedback_real_flow_db_write_validate.md`.
 
-### 8. Adversarially falsify every candidate
+### 8. Adversarially falsify every candidate — independently
 
-Before emitting the report, attempt to disprove each candidate against source at the
-head SHA and any tied runtime evidence:
+Self-review by the context that produced a finding is the weakest possible check: it
+re-reads its own reasoning and agrees. Falsification must come from a reader that has
+not seen the argument.
 
-- look for an earlier guard, alternate caller/path, scoped context, configuration,
-  rollback/retry behavior, or test that invalidates the concern;
-- verify cited lines still exist at the final collected SHA;
-- drop disproved items;
-- downgrade unprovable items to a clearly marked question or missing evidence;
-- never send speculative fixes or unverified suggestions to the developer.
+**Spawn one refuter subagent per candidate finding** (`Explore` for read-only source
+work), in a single message so they run concurrently. Give each:
+
+- the claim, the cited `file:line`, and the collected head SHA — **not** your reasoning;
+- the instruction to **refute**, defaulting to `refuted=true` when uncertain;
+- a required output shape: `{refuted, evidence file:line, why}`.
+
+Refuters look for an earlier guard, an alternate caller or path, a scoped context, a
+configuration or flag, rollback/retry behavior, or a test that invalidates the concern —
+and confirm the cited lines still exist at the final collected SHA.
+
+Resolution, fail-closed:
+
+| Refuter outcome | Action |
+|-----------------|--------|
+| refuted with evidence | drop the item |
+| not refuted, evidence holds | keep as `CONFIRMED` |
+| refuter blocked or inconclusive | downgrade to `SUSPECTED` question or missing evidence |
+
+For a money-path or contract finding, use three refuters with **distinct lenses**
+(correctness, downstream/caller impact, does-it-reproduce) and keep the item only when
+at most one refutes. Redundant identical refuters do not catch what lens diversity does.
+
+Never send a speculative fix or an unverified suggestion to the developer.
 
 The report must state: `Self-review: attempted to falsify each finding against the reviewed head; unproven items were dropped or downgraded.`
+
+### 9. Pass the machine gate before emitting
+
+The proof contract is machine-enforced. Write the drafted report to a file, then:
+
+```bash
+python3 scripts/lib/pr_review_gate.py --report <draft.md> --artifacts <collector dir>
+```
+
+It fails closed on: incomplete provenance, a report citing a SHA the collector did not
+record, disagreeing initial/final SHAs, a finding that is not `CONFIRMED`, a finding
+without `file:line` or a tied check id, a question that is phrased as a directive,
+`APPROVE`/`COMMENT` over a confirmed blocker, `APPROVE` on a `STALE`/`MIXED` train, a
+blocker downgraded to `NOT VERIFIED`, and a missing self-review line.
+
+Exit 1 means the review must not be sent — fix the report, do not weaken the gate.
+Exit 2 means the gate could not run; that is also not a pass.
+
+When the host supports it, additionally emit the surviving findings through
+`ReportFindings` (most severe first, `verdict: CONFIRMED`). The text report stays the
+source of truth; the typed list is a rendering of it, never a substitute for provenance.
 
 ## Verdict taxonomy
 

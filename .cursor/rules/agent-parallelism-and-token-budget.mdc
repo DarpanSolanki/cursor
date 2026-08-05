@@ -1,0 +1,90 @@
+---
+description: agent-parallelism-and-token-budget
+globs: []
+alwaysApply: true
+---
+
+> Default solo. Cheapest tool that can answer wins. Spawn agents only on a met trigger.
+
+
+# Agent parallelism and token budget
+
+The workspace has ~100 scripts, a KG and 20 MCP tools. Most questions are already
+answerable by one of them for a few hundred tokens.
+
+## Default: solo, no subagent
+
+Work the task directly. A subagent is an **exception**, not a step. Spawning one for
+a question a script or the KG could answer costs ~50k tokens and proves less.
+
+## Cost ladder — go down only when the rung above cannot answer
+
+| Rung | Cost | Use for |
+|------|------|---------|
+| 1. Existing script / gate | ~0 | counts, greps, drift, schema, hygiene — anything mechanical |
+| 2. Targeted `grep -n` on a named file/dir | 0.1–0.5k | a symbol whose location you can already name |
+| 3. KG MCP — measured, not assumed (see below) | 2–4k | what runs / what breaks / who calls / who writes |
+| 4. Windowed `Read` (offset+limit) | ~1–3k | verify a `file:line` the KG named |
+| 5. `Explore` subagent | 30–60k | judgment across many files of unknown shape |
+| 6. Full-file reads / repo-wide grep | 10k+ | last resort; almost always avoidable |
+
+**Measured KG response cost** (2026-08-04, `MAX_CHARS=24000`) — the KG is the *right* rung
+for "what runs / what breaks", not the *cheapest* rung. A targeted grep on a file you can
+already name is 10× cheaper:
+
+| Tool | tokens |
+|------|-------:|
+| `kg_why` | ~2.0k |
+| `kg_orient` (brief, default) | ~3.4k |
+| `kg_writes` | ~3.7k |
+| `kg_flow` | ~4.3k |
+| `kg_orient` (`brief:false`) | ~6.0k |
+
+`brief` is **on by default** and caps the flow spine at 20 processors; pass `brief:false`
+only when you need the whole chain. Re-measure with
+`scripts/lib/harness_audit.py` companions rather than trusting these numbers forever.
+
+## Spawn test — all three must be YES
+
+1. **Unknown shape?** You cannot name the files up front. (Named files → windowed Read.)
+2. **Conclusion, not contents?** You want a verdict, not text to quote. (Need the text → Read.)
+3. **No script can answer it?** The question is judgment, not a pattern. (Pattern → write the scan.)
+
+Any NO → do it yourself. If two+ independent investigations pass the test, launch them
+in **one message** so they run concurrently; otherwise one is enough.
+
+**Never** parallelise money writes, edits to the same files, or anything that must
+serialise through a state machine. Read-only fan-out only. Partitioning rules:
+`multi-agent-spawning.md`.
+
+**Prefer a script over an agent** when the question is pattern-shaped (counts, weak
+asserts, stale refs, drift). A 20-line scan costs ~500 tokens and becomes a reusable
+gate; the agent's answer costs ~50k and is gone. Precedents: `assert-strength-gate.py`,
+`check-mcp-wiring.py` — both replaced a planned agent.
+
+Give every spawned agent a narrow scope, an output shape, a cap ("top 15, money
+first"), and require `file:line` evidence.
+
+## Background, not blocking
+
+Builds, restarts and long suites go `run_in_background: true` — a Gradle build and a
+DB query should overlap, not queue. Poll with a targeted command, never a blind
+`sleep`. Check `PIPESTATUS`: `./gradlew … | tail` reports `tail`'s exit code, so a
+failed build reads as success.
+
+## Plan mode
+
+`EnterPlanMode` before multi-file or money-path implementation — the harness enforces
+the approval that prose STOP-AND-WAIT does not. Skip for single-line fixes and pure
+analysis.
+
+## Context discipline
+
+- Per-service `AGENTS.md` is 4–11k tokens and loads on **any** touch in that repo —
+  batch edits per repo instead of alternating.
+- Never re-read a file already in context or re-derive an established fact.
+- `grep -n` + windowed `Read` beats reading a 2000-line file.
+- Relay a subagent's conclusion; never paste its transcript.
+
+Pairs with `30-kg-discipline.md` (MCP-first for lookups) and
+`run-the-real-thing-locally.md` (verification is not optional because it is expensive).

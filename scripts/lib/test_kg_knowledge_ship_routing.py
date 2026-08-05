@@ -59,6 +59,10 @@ class KgKnowledgeShipRoutingTest(unittest.TestCase):
                 "apis": ["getLoanForeclosureDetails"],
                 "repos": ["trustt-platform-accounting"],
             }
+            for rel in pending["files"]:
+                f = root / rel
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text("fixture\n", encoding="utf-8")
             (cursor / ".pending-ship-work.json").write_text(
                 json.dumps(pending), encoding="utf-8"
             )

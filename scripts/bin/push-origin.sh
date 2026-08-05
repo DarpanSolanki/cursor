@@ -111,6 +111,24 @@ if [[ $# -eq 0 ]]; then
   set -- -u origin HEAD
 fi
 
+# Java comment volume on what is about to leave. push-origin runs `git push` in-process,
+# so the beforeShellExecution pre-push hook never sees it — gate here or nowhere.
+_comment_lint_outgoing() {
+  local repo upstream_ref base
+  repo="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "$repo" && "$repo" != "$ROOT" ]] || return 0
+  [[ -z "${JAVA_COMMENT_LINT_SKIP:-}" ]] || { echo "push-origin: JAVA_COMMENT_LINT_SKIP set — comment lint skipped" >&2; return 0; }
+  upstream_ref="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  base="${upstream_ref:-}"
+  [[ -n "$base" ]] || return 0
+  git rev-parse --verify -q "$base" >/dev/null || return 0
+  python3 "$ROOT/scripts/lib/java_comment_lint.py" --diff "$base" --repo "$repo" || {
+    echo "push-origin: BLOCKED — strip the comments, amend, retry (JAVA_COMMENT_LINT_SKIP=1 to override)" >&2
+    exit 1
+  }
+}
+_comment_lint_outgoing
+
 # Block upstream — origin only
 for arg in "$@"; do
   if [[ "$arg" =~ upstream|khoslalabs|trusttai ]]; then

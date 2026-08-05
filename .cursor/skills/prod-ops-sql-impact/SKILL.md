@@ -26,6 +26,17 @@ scripts:
   - scripts/bin/open-final.sh
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `prod sql`, `ops sql`, `adhoc update`, `soft-archive CRR`, `client_request_response_log`, `prod patch`, `DTFC reset`
+- **requires:** []
+- **reads:** `.cursor/rules/prod-ops-sql-impact-gate.mdc`, `cursor-bundle/memory/feedback_prod_ops_sql_crr_impact_gate.md`, `scripts/sql/reset/local_reset_disburse_loan_replay_mfi_yugabyte.sql`
+- **writes:** `scripts/sql/adhoc/**`
+- **feeds:** `open-final-file`
+- **scripts:** `scripts/bin/open-final.sh`
+
 # Prod / ops SQL impact (skill)
 
 ## When to load

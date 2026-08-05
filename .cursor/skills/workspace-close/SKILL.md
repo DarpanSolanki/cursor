@@ -24,6 +24,17 @@ feeds:
   - capture-proof
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `task done`, `ship`, `workspace-close`, `from-pending`, `analysis done`
+- **requires:** `autonomous-workspace-ops`
+- **reads:** `.cursor/.pending-ship-work.json`, `cursor-bundle/brain/changelog/CHANGELOG.md`
+- **writes:** `.cursor/.ship-loop-passed.json`
+- **feeds:** `super-agent`, `workspace-hygiene`, `capture-proof`
+- **scripts:** `scripts/bin/workspace-close.sh`
+
 # Workspace close (all tiers)
 
 ## When

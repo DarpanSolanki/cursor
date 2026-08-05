@@ -20,6 +20,10 @@ import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+from ws_paths import norm_rel
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -39,7 +43,7 @@ def _load(path: Path) -> dict:
 
 
 def _norm(rel: str) -> str:
-    return rel.replace("\\", "/").lstrip("./")
+    return norm_rel(rel)
 
 
 def _repo_and_rel(root: Path, rel: str) -> tuple[Path, str]:

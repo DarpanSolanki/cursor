@@ -17,6 +17,15 @@ reads:
 writes: []
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `minimal fix`, `overkill`, `dedupe guard`, `stacked fix`, `SDCP fix`
+- **requires:** `super-agent`
+- **reads:** `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`, `.cursor/rules/10-quality-gates.mdc`
+- **writes:** []
+
 # Minimal fix (mandatory gate)
 
 **Default:** smallest change that stops **new** bad state. **Do not** stack write guard + read dedupe + refactor in one PR without proving each layer.

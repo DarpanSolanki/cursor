@@ -2,7 +2,7 @@
 """
 build_docs.py — fold brain / digests / skills into doc nodes (Upgrade 10).
 
-Paths via _paths.py (no hardcoded /home/darpan/darpan). Auto-link to requests
+Paths via _paths.py (no hardcoded legacy home roots). Auto-link to requests
 and tables named in the text (grep/word-boundary). Provenance = file path.
 
 Usage: build_docs.py <existing-nodes.jsonl>

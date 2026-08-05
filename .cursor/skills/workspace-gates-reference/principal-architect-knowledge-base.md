@@ -26,4 +26,4 @@
 | `.cursor/gaps-and-risks-digest.md` | Session High gaps (SoT: `gaps-and-risks.md`) |
 | `.cursor/conventions.md` | Naming, DB, orchestration habits |
 
-These complement — do not replace — `.cursorrules`, `.cursor/rules/*.mdc`, and `AGENTS.md`.
+These complement — do not replace — `AGENTS.md`, `.cursor/rules/*.mdc`, and `AGENTS.md`.

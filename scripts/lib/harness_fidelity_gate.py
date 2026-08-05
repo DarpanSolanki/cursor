@@ -102,6 +102,11 @@ ALLOWED_SEEDED_HINTS = frozenset(
         "aging_seed",
         "excess_seed",
         "docs_stub_payload",
+        # EOD chain fired on selected days instead of every calendar day. Only valid
+        # when the reduced cadence is PROVEN to reproduce the same defects as the full
+        # daily walk — posting-days-only under-fires SHG distribute and hides the
+        # per-segment break, whereas +1 intermediate calc per gap does not.
+        "roll_cadence_hop",
     }
 )
 

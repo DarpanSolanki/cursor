@@ -141,11 +141,17 @@ LIMIT 20;
     return ids[:count]
 
 
+def split_member_amounts(total: int, members: int) -> list[int]:
+    base = total // members
+    amounts = [base] * members
+    amounts[0] += total - base * members
+    return amounts
+
+
 def build_disburse_payload(
     *,
     parent_cust: str,
-    member1_cust: str,
-    member2_cust: str,
+    member_custs: list[str],
     dates: dict[str, str],
     ext_ref: str,
     group_id: str,
@@ -162,13 +168,29 @@ def build_disburse_payload(
     req["repayment_details"]["first_repayment_date"] = dates["first_emi_ms"]
     req["group_details"]["group_id"] = group_id
     req["group_details"]["primary_sig_lan"] = f"LAN{group_id[-6:]}"
-    members = req.get("member_details") or []
-    if len(members) < 2:
+    template = req.get("member_details") or []
+    if len(template) < 2:
         raise RuntimeError("canonical SHG payload needs 2 member_details[] rows")
-    members[0]["customer_id"] = member1_cust
-    members[1]["customer_id"] = member2_cust
-    members[0]["external_ref_number"] = f"{ext_ref}M1"
-    members[1]["external_ref_number"] = f"{ext_ref}M2"
+    amounts = (
+        [int(m["loan_amount"]) for m in template]
+        if len(member_custs) == len(template)
+        else split_member_amounts(int(req["loan_details"]["loan_amount"]), len(member_custs))
+    )
+    members = []
+    for index, (cust, amount) in enumerate(zip(member_custs, amounts)):
+        member = json.loads(json.dumps(template[index % len(template)]))
+        member["customer_id"] = cust
+        member["external_ref_number"] = f"{ext_ref}M{index + 1}"
+        for field in ("loan_amount", "approved_amount", "requested_amount"):
+            member[field] = str(amount)
+        for account in member.get("disbursement_repayment_account_details") or []:
+            codes = {p.get("code") for p in account.get("purpose") or []}
+            if "DSBR_ACCT" in codes:
+                account["account_number"] = f"{account['account_number'][:-2]}{index:02d}"
+                if account.get("external_account_number"):
+                    account["external_account_number"] = f"{account['external_account_number'][:-2]}{index:02d}"
+        members.append(member)
+    req["member_details"] = members
     data["headers"]["stan"] = crn
     data["headers"]["transmission_datetime"] = dates["disburse_ms"]
     scratch_path.parent.mkdir(parents=True, exist_ok=True)
@@ -203,7 +225,7 @@ def run_disburse(payload_path: Path, report_path: Path) -> None:
     subprocess.check_call(cmd, cwd=str(ROOT))
 
 
-def resolve_parent_and_children(ext_ref: str) -> tuple[str, list[str]]:
+def resolve_parent_and_children(ext_ref: str, expected: int = 2) -> tuple[str, list[str]]:
     parent_id = psql(f"""
 SELECT la.account_id::text FROM mfi_accounting.loan_account la
 WHERE la.external_ref_number LIKE '{ext_ref}%' AND la.has_child_accounts = true
@@ -223,13 +245,13 @@ ORDER BY la_account_number;
         text=True,
     ).strip().split("\n")
     children = [k.strip() for k in kids if k.strip()]
-    if len(children) != 2:
-        raise RuntimeError(f"expected 2 children under {parent_lan}, got {children}")
+    if len(children) != expected:
+        raise RuntimeError(f"expected {expected} children under {parent_lan}, got {children}")
     return parent_lan, children
 
 
-def drive_child_events(parent_lan: str, timeout_s: int = 180) -> None:
-    """Run childLoanEventProcessingBatchJob until both children COMPLETED/ACTIVE with schedule."""
+def drive_child_events(parent_lan: str, expected: int = 2, timeout_s: int = 180) -> None:
+    """Run childLoanEventProcessingBatchJob until every child is COMPLETED/ACTIVE with schedule."""
     parent_id = int(psql(
         f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{parent_lan}';"
     ))
@@ -245,7 +267,7 @@ WHERE c.parent_loan_account_id={parent_id} AND c.is_deleted=false
     WHERE lid.loan_account_id=c.account_id AND lid.is_deleted=false
   );
 """)
-        if ready_cnt == "2":
+        if ready_cnt == str(expected):
             print(f"  child events OK: parent={parent_lan} children disbursed with schedule")
             return
         dedupe_clb_rep_acct_for_parent(parent_id)
@@ -360,10 +382,14 @@ ORDER BY 1;
             try:
                 fire_batch("interestAccrualPosting", jt)
             except RuntimeError as e:
+                if os.environ.get("FIXTURE_STRICT") == "1":
+                    raise
                 print(f"  WARN: interestAccrualPosting skipped ({e}) — continuing to billing")
             try:
                 fire_batch("loanAccountBillingJob", jt)
             except RuntimeError as e:
+                if os.environ.get("FIXTURE_STRICT") == "1":
+                    raise
                 print(f"  WARN: loanAccountBillingJob failed ({e}) — EMI labd harness may apply")
             time.sleep(1)
     finally:
@@ -379,7 +405,17 @@ ORDER BY 1;
 
 
 def ensure_emi_labd_harness(child_lan: str) -> None:
-    """Harness: insert one EMI-shaped labd from real schedule when billing batch cannot run locally."""
+    """Harness: insert one EMI-shaped labd from real schedule when billing batch cannot run locally.
+
+    This writes the row the billing job was supposed to write, so any assert that reads billed
+    amounts downstream is proving the harness, not the product. Callers that need billing to be
+    real must set FIXTURE_STRICT=1, which refuses the fallback instead of faking it.
+    """
+    if os.environ.get("FIXTURE_STRICT") == "1":
+        raise RuntimeError(
+            f"FIXTURE_STRICT: loanAccountBillingJob produced no labd for {child_lan}; "
+            "refusing to hand-insert one. Fix the billing run — do not seed the outcome."
+        )
     account_id = psql(
         f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{child_lan}';"
     )
@@ -472,19 +508,19 @@ WHERE c.parent_loan_account_id={parent_id} AND ldd.component_type='PRIN' AND ldd
     return death
 
 
-def create_fresh_dcf_group_fixture() -> tuple[str, str, str, str]:
+def create_fresh_dcf_group_fixture(members: int = 2) -> tuple[str, list[str], str]:
     ts = int(time.time() * 1000)
     ext_ref = os.environ.get("DCF_FRESH_EXT_REF", f"DCFGRP{ts}")
     group_id = os.environ.get("DCF_FRESH_GROUP_ID", str(ts)[-8:])
     dates = plan_disburse_dates()
-    custs = pick_customers(3)
-    parent_cust, m1, m2 = custs[0], custs[1], custs[2]
+    custs = pick_customers(members + 1)
+    parent_cust, member_custs = custs[0], custs[1:]
     scratch = ROOT / "scripts/scratch/dcf_fresh_group" / f"disburse_{ts}.json"
     report = ROOT / "scripts/scratch/dcf_fresh_group" / f"report_{ts}.json"
 
     print("=== create fresh DCF group fixture (real disburse + billing) ===")
     print(f"  ext_ref={ext_ref} group_id={group_id} dates={dates}")
-    print(f"  customers parent={parent_cust} m1={m1} m2={m2}")
+    print(f"  customers parent={parent_cust} members={member_custs}")
 
     subprocess.check_call(
         ["bash", str(ROOT / "scripts/dcf_sanity/ensure_dcf_local_stack.sh")],
@@ -494,19 +530,18 @@ def create_fresh_dcf_group_fixture() -> tuple[str, str, str, str]:
 
     payload = build_disburse_payload(
         parent_cust=parent_cust,
-        member1_cust=m1,
-        member2_cust=m2,
+        member_custs=member_custs,
         dates=dates,
         ext_ref=ext_ref,
         group_id=group_id,
         scratch_path=scratch,
     )
     run_disburse(payload, report)
-    parent_lan, children = resolve_parent_and_children(ext_ref)
+    parent_lan, children = resolve_parent_and_children(ext_ref, expected=members)
     if parent_lan in BLOCKLIST_PARENTS:
         raise RuntimeError(f"fresh disburse landed on blocklisted parent {parent_lan}")
 
-    drive_child_events(parent_lan)
+    drive_child_events(parent_lan, expected=members)
     ensure_life_insurance(children)
 
     death_date = compute_death_date(parent_lan)
@@ -551,17 +586,17 @@ SELECT to_char(GREATEST(
         print(f"  SEED_EXTRA_EXTEND_GROUP_BILLING billing_through → {billing_through}")
     sync_billing_for_group(parent_lan, children, billing_through)
 
-    child1, child2 = children[0], children[1]
-    print(f"=== FRESH FIXTURE READY parent={parent_lan} child1={child1} child2={child2} death_date={death_date} ===")
-    return parent_lan, child1, child2, death_date
+    print(f"=== FRESH FIXTURE READY parent={parent_lan} children={children} death_date={death_date} ===")
+    return parent_lan, children, death_date
 
 
 def main() -> int:
     try:
-        parent, c1, c2, death = create_fresh_dcf_group_fixture()
+        members = int(os.environ.get("DCF_FIXTURE_MEMBERS", "2"))
+        parent, children, death = create_fresh_dcf_group_fixture(members)
         print(f"PARENT_LAN={parent}")
-        print(f"CHILD1_LAN={c1}")
-        print(f"CHILD2_LAN={c2}")
+        for index, child in enumerate(children):
+            print(f"CHILD{index + 1}_LAN={child}")
         print(f"DEATH_DATE={death}")
         return 0
     except (RuntimeError, subprocess.CalledProcessError) as e:

@@ -13,6 +13,14 @@ reads:
 writes: []
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **requires:** `release-details`
+- **reads:** `cursor-bundle/memory/feedback_fix_rca_email.md`, `cursor-bundle/memory/feedback_release_details_final.md`, `cursor-bundle/memory/feedback_minimal_fix_impact_gate.md`
+- **writes:** []
+
 # Fix RCA email
 
 Read **`cursor-bundle/memory/feedback_fix_rca_email.md`** — canonical paste format.

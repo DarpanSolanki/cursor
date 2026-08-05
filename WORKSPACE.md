@@ -26,7 +26,13 @@ done
 # KG
 python3 cursor-bundle/kg/bin/kg.py why disburseLoan
 python3 cursor-bundle/kg/bin/kg.py flow disburseLoan
+python3 cursor-bundle/kg/bin/kg.py schema loan_account.loan_status
 cursor-bundle/kg/bin/build.sh
+
+# New machine / schema oracle
+bash scripts/bin/new-machine-setup.sh --dry-run
+bash scripts/bin/kg-snapshot.sh status
+bash scripts/bin/schema-sync.sh --bindings
 
 # Local DB (read-only)
 scripts/db-local.sh --sql "SELECT 1"

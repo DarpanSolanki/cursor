@@ -1,0 +1,278 @@
+{
+  "note": "Per-service map. `tables_in_db` counts the live local schema; `entity_tables_absent_from_db` are entities whose table is not in that schema on this checkout \u2014 a train or naming signal, not automatically a defect.",
+  "services": {
+    "trustt-platform-accounting": {
+      "schema": "mfi_accounting",
+      "schemas_touched": [
+        "mfi_accounting"
+      ],
+      "java_files": 2101,
+      "entities": 172,
+      "tables_in_db": 185,
+      "tables_mapped_by_an_entity": 171,
+      "columns_mapped": 2349,
+      "columns_with_code_binding": 2072,
+      "columns_with_ambiguous_field_name": 1661,
+      "entity_tables_absent_from_db": [
+        "customer_nominee_details",
+        "disbursment_transaction_history",
+        "file_staging_transactionReversal",
+        "loan_due_details__repayment_transaction",
+        "waiver_workflow"
+      ],
+      "entity_tables_absent_count": 5
+    },
+    "trustt-platform-actor": {
+      "schema": "mfi_actor",
+      "schemas_touched": [
+        "mfi_actor"
+      ],
+      "java_files": 2219,
+      "entities": 152,
+      "tables_in_db": 160,
+      "tables_mapped_by_an_entity": 151,
+      "columns_mapped": 1676,
+      "columns_with_code_binding": 1545,
+      "columns_with_ambiguous_field_name": 1287,
+      "entity_tables_absent_from_db": [
+        "agent",
+        "agent__partner__mapping",
+        "agent_custom_details",
+        "corporate_product",
+        "custom_card",
+        "custom_card_request",
+        "custom_customer_timeout",
+        "dsa_employee",
+        "employee__corporate_product__mapping",
+        "employee_custom_details",
+        "employment_custom_details",
+        "office_work_area",
+        "user_doc",
+        "user_role"
+      ],
+      "entity_tables_absent_count": 14
+    },
+    "trustt-platform-los": {
+      "schema": "mfi_los",
+      "schemas_touched": [
+        "mfi_los"
+      ],
+      "java_files": 1932,
+      "entities": 163,
+      "tables_in_db": 172,
+      "tables_mapped_by_an_entity": 162,
+      "columns_mapped": 2610,
+      "columns_with_code_binding": 2376,
+      "columns_with_ambiguous_field_name": 1914,
+      "entity_tables_absent_from_db": [
+        "external_interface",
+        "external_interface_log"
+      ],
+      "entity_tables_absent_count": 2
+    },
+    "trustt-platform-payments": {
+      "schema": "mfi_payments",
+      "schemas_touched": [
+        "mfi_payments"
+      ],
+      "java_files": 1044,
+      "entities": 82,
+      "tables_in_db": 97,
+      "tables_mapped_by_an_entity": 82,
+      "columns_mapped": 1759,
+      "columns_with_code_binding": 1414,
+      "columns_with_ambiguous_field_name": 1584,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-task": {
+      "schema": "mfi_task",
+      "schemas_touched": [
+        "mfi_task"
+      ],
+      "java_files": 307,
+      "entities": 23,
+      "tables_in_db": 26,
+      "tables_mapped_by_an_entity": 23,
+      "columns_mapped": 374,
+      "columns_with_code_binding": 249,
+      "columns_with_ambiguous_field_name": 227,
+      "entity_tables_absent_from_db": [
+        "task_type_version__device_event",
+        "task_type_version_attribute"
+      ],
+      "entity_tables_absent_count": 2
+    },
+    "trustt-platform-masterdata-management": {
+      "schema": "mfi_masterdata",
+      "schemas_touched": [
+        "mfi_masterdata"
+      ],
+      "java_files": 169,
+      "entities": 18,
+      "tables_in_db": 22,
+      "tables_mapped_by_an_entity": 18,
+      "columns_mapped": 187,
+      "columns_with_code_binding": 145,
+      "columns_with_ambiguous_field_name": 103,
+      "entity_tables_absent_from_db": [
+        "sli_app_version_configuration"
+      ],
+      "entity_tables_absent_count": 1
+    },
+    "trustt-platform-batch": {
+      "schema": "mfi_batch",
+      "schemas_touched": [
+        "mfi_batch"
+      ],
+      "java_files": 99,
+      "entities": 10,
+      "tables_in_db": 28,
+      "tables_mapped_by_an_entity": 10,
+      "columns_mapped": 116,
+      "columns_with_code_binding": 79,
+      "columns_with_ambiguous_field_name": 85,
+      "entity_tables_absent_from_db": [
+        "BATCH_JOB_EXECUTION",
+        "BATCH_JOB_INSTANCE",
+        "BATCH_STEP_EXECUTION_CONTEXT"
+      ],
+      "entity_tables_absent_count": 3
+    },
+    "trustt-platform-notifications": {
+      "schema": "mfi_notifications",
+      "schemas_touched": [
+        "mfi_notifications"
+      ],
+      "java_files": 100,
+      "entities": 13,
+      "tables_in_db": 16,
+      "tables_mapped_by_an_entity": 13,
+      "columns_mapped": 92,
+      "columns_with_code_binding": 61,
+      "columns_with_ambiguous_field_name": 54,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-audit": {
+      "schema": "mfi_audit",
+      "schemas_touched": [
+        "mfi_audit"
+      ],
+      "java_files": 50,
+      "entities": 8,
+      "tables_in_db": 15,
+      "tables_mapped_by_an_entity": 8,
+      "columns_mapped": 101,
+      "columns_with_code_binding": 13,
+      "columns_with_ambiguous_field_name": 66,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-authorization": {
+      "schema": "mfi_authorization",
+      "schemas_touched": [
+        "mfi_authorization"
+      ],
+      "java_files": 104,
+      "entities": 13,
+      "tables_in_db": 15,
+      "tables_mapped_by_an_entity": 13,
+      "columns_mapped": 68,
+      "columns_with_code_binding": 54,
+      "columns_with_ambiguous_field_name": 48,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-approval": {
+      "schema": "mfi_approval",
+      "schemas_touched": [
+        "mfi_approval",
+        "mfi_authorization"
+      ],
+      "java_files": 59,
+      "entities": 4,
+      "tables_in_db": 5,
+      "tables_mapped_by_an_entity": 3,
+      "columns_mapped": 40,
+      "columns_with_code_binding": 33,
+      "columns_with_ambiguous_field_name": 11,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-reporting": {
+      "schema": "mfi_reporting",
+      "schemas_touched": [
+        "mfi_reporting"
+      ],
+      "java_files": 1119,
+      "entities": 78,
+      "tables_in_db": 87,
+      "tables_mapped_by_an_entity": 78,
+      "columns_mapped": 3106,
+      "columns_with_code_binding": 2121,
+      "columns_with_ambiguous_field_name": 2172,
+      "entity_tables_absent_from_db": [
+        "flat_group_stage_tat",
+        "flat_loan_app_stage_tat",
+        "flat_user_task_tat",
+        "neft_transaction_summary",
+        "performance_summary_staging",
+        "report_configuration_role",
+        "report_filter_field_master_map"
+      ],
+      "entity_tables_absent_count": 7
+    },
+    "trustt-platform-api-gateway": {
+      "schema": "mfi_gateway",
+      "schemas_touched": [
+        "mfi_gateway"
+      ],
+      "java_files": 87,
+      "entities": 9,
+      "tables_in_db": 11,
+      "tables_mapped_by_an_entity": 9,
+      "columns_mapped": 81,
+      "columns_with_code_binding": 54,
+      "columns_with_ambiguous_field_name": 48,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-dms": {
+      "schema": "mfi_dms",
+      "schemas_touched": [
+        "mfi_dms"
+      ],
+      "java_files": 67,
+      "entities": 4,
+      "tables_in_db": 6,
+      "tables_mapped_by_an_entity": 4,
+      "columns_mapped": 30,
+      "columns_with_code_binding": 24,
+      "columns_with_ambiguous_field_name": 14,
+      "entity_tables_absent_from_db": [],
+      "entity_tables_absent_count": 0
+    },
+    "trustt-platform-lib": {
+      "schema": "platform_master",
+      "schemas_touched": [
+        "mfi_actor",
+        "platform_master"
+      ],
+      "java_files": 2346,
+      "entities": 3,
+      "tables_in_db": 7,
+      "tables_mapped_by_an_entity": 1,
+      "columns_mapped": 32,
+      "columns_with_code_binding": 9,
+      "columns_with_ambiguous_field_name": 17,
+      "entity_tables_absent_from_db": [
+        "transaction_audit",
+        "transaction_audit_additional_data",
+        "transaction_components_details",
+        "validate_beneficiary_details"
+      ],
+      "entity_tables_absent_count": 4
+    }
+  }
+}

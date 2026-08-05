@@ -43,7 +43,8 @@ DDL_RE = re.compile(
     r"CREATE\s+(UNIQUE\s+)?INDEX|ALTER\s+COLUMN)\b"
 )
 TABLE_RE = re.compile(
-    r"(?is)\b(?:ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|UPDATE|INTO|FROM|JOIN)\s+"
+    r"(?is)\b(?:ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|ADD\s+COLUMN|DROP\s+COLUMN|"
+    r"CREATE\s+(?:UNIQUE\s+)?INDEX\s+\w+\s+ON|ALTER\s+COLUMN)\s+"
     r"(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:\w+\.)?(\w+)",
 )
 COLUMN_HINT_RE = re.compile(r"(?i)\bADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)")

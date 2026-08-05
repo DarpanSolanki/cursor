@@ -36,6 +36,7 @@ Node ids are typed: request:  processor:  service:  api:  doc:  table:  case:  e
 Partial ids resolve when unambiguous (e.g. `flow disburseLoan`, `deps accounting`).
 """
 import os, sys, sqlite3, re, json
+from pathlib import Path
 
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
@@ -319,6 +320,13 @@ def cmd_flow(c,a):
     rows=c.execute("SELECT seq,cond,dst_id,src,json FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
     nested=c.execute("SELECT dst_id,note,src FROM edges WHERE src_id=? AND rel='calls'",(nid,)).fetchall()
     print(f"FLOW {nid}  ({len(rows)} processors)")
+    _cap = getattr(cmd_flow, "_brief_cap", None)
+    if _cap and len(rows) > _cap:
+        head, tail_n = rows[:_cap], len(rows) - _cap
+        print(f"  [brief] showing first {_cap} of {len(rows)} — `kg flow {nid.split('/')[-1]}` for the full chain")
+        rows = head
+    else:
+        tail_n = 0
     for e in rows:
         cond="" if (e[1] or "*")=="*" else f"  [if function_code={e[1]}]"
         # prefer orch path repo over shared processor.repo (ATTR fix)
@@ -333,6 +341,8 @@ def cmd_flow(c,a):
         print("  external API calls:")
         for e in apis: print(f"     -> {e[0]}  [{e[1]}]")
     docs=c.execute("SELECT src_id FROM edges WHERE dst_id=? AND rel='documents'",(nid,)).fetchall()
+    if tail_n:
+        print(f"  … +{tail_n} more processor(s) elided in brief mode")
     if docs: print("  documented in:", ", ".join(d[0] for d in docs))
     dbf=dict(c.execute("SELECT rel,count(DISTINCT dst_id) FROM edges WHERE rel IN('reads','writes','deletes') "
                        "AND src_id IN (SELECT dst_id FROM edges WHERE src_id=? AND rel='invokes') GROUP BY rel",(nid,)).fetchall())
@@ -1214,7 +1224,12 @@ def cmd_orient(c,a):
     _pop_require_align._nested = True  # type: ignore[attr-defined]
     try:
         print("--- flow ---")
-        cmd_flow(c,a)
+        if brief:
+            cmd_flow._brief_cap = 20  # type: ignore[attr-defined]
+        try:
+            cmd_flow(c,a)
+        finally:
+            cmd_flow._brief_cap = None  # type: ignore[attr-defined]
         print("--- why (silent failure surface) ---")
         prev_cap = getattr(cmd_why, "_auto_cap", None)
         if brief:
@@ -1285,7 +1300,30 @@ def cmd_fixed_elsewhere(c,a):
     if p.returncode:
         raise SystemExit(p.returncode)
 
+
+def cmd_schema(c,a):
+    """Structure + code binding + train label for a table or column.
+
+    Not a KG read — the oracle is generated from the live DB and the Java tree, so
+    this serves without a KG rebuild.
+    """
+    if not a: print("usage: kg schema <table>[.<column>]"); return
+    ws=Path(__file__).resolve().parents[3]
+    sys.path.insert(0,str(ws/"scripts"/"lib"))
+    import schema_oracle, column_binding
+    ref=a[0]
+    print(schema_oracle.describe(ref))
+    if "." in ref:
+        print(column_binding.describe(ref))
+        diff=ws/"cursor-bundle"/"schema"/"train-diff.json"
+        if diff.is_file():
+            data=json.loads(diff.read_text(encoding="utf-8"))
+            if ref in set(data.get("local_only_columns") or []):
+                print(f"  TRAIN    local-only — no migration on initial-setup@{data.get('flyway_branch')}; "
+                      "do not build a cross-train contract on it")
+
 CMDS={"stats":cmd_stats,"search":cmd_search,"node":cmd_node,"flow":cmd_flow,"deps":cmd_deps,
+      "schema":cmd_schema,
       "docs":cmd_docs,"neighbors":cmd_neighbors,"impact":cmd_impact,"path":cmd_path,"sql":cmd_sql,
       "cases":cmd_cases,"table":cmd_table,"concept":cmd_concept,"error":cmd_error,"why":cmd_why,"config":cmd_why,"doctor":cmd_doctor,"stale":cmd_stale,
       "watermark":cmd_watermark,"crud":cmd_crud,"writes":cmd_writes,"reads":cmd_reads,"deletes":cmd_deletes,

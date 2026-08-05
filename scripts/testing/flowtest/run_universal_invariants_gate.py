@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts/testing"))
 
-from flowtest.invariants import run_universal_invariants, snapshot_invariants  # noqa: E402
+from flowtest.invariants import run_universal_invariants  # noqa: E402
 
 
 def _default_lans() -> list[str]:
@@ -30,10 +30,16 @@ def _default_lans() -> list[str]:
 
 def main() -> int:
     lans = _default_lans()
-    baseline = snapshot_invariants(lans)
-    # Immediate re-check over baseline: validates runtime invariants contract
-    # for current fixture and prints verdict lines consumed by gate logs.
-    run_universal_invariants(lans, baseline=baseline, label="flowtest.invariants_universal.gate")
+    verdict = run_universal_invariants(
+        lans, baseline=None, label="flowtest.invariants_universal.gate", absolute_only=True
+    )
+    if verdict.get("skipped"):
+        print(
+            "FAIL: flowtest.invariants_universal was SKIPPED "
+            f"({verdict.get('label')}) — relax flags never produce a Pass",
+            file=sys.stderr,
+        )
+        return 1
     print(f"PASS: flowtest.invariants_universal gate lans={lans}")
     return 0
 

@@ -121,10 +121,11 @@ spec.loader.exec_module(m)
 print(len(m.TOOLS))
 PY
 )"
-if [[ "$_mcp_n" == "19" ]]; then
-  ok "MCP TOOLS len=${_mcp_n} (expected 19; Cursor IDE may lag until MCP restart)"
+# Band must track kg-mcp-smoke.sh (19..22), else adding a tool fails doctor spuriously.
+if [[ "$_mcp_n" -ge 19 && "$_mcp_n" -le 22 ]]; then
+  ok "MCP TOOLS len=${_mcp_n} (expected 19..22; client may lag until MCP restart)"
 else
-  die "MCP TOOLS len=${_mcp_n} != 19 — registration drift vs kg-mcp-smoke"
+  die "MCP TOOLS len=${_mcp_n} outside 19..22 — registration drift vs kg-mcp-smoke"
 fi
 
 echo ""

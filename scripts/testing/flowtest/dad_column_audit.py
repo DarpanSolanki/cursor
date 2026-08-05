@@ -232,6 +232,38 @@ def audit_shg_child_dad_distribute(
         )
     )
 
+    # Base parity per segment: a group's overdue base is the sum of its members'.
+    # Compared only across rows that share a start_date, so segment shape is not assumed.
+    base_parity = query_rows(
+        f"""
+        SELECT p.start_date::date::text,
+               p.base_amount::text,
+               COALESCE(SUM(c.base_amount),0)::text
+        FROM {schema}.dpi_accrual_details p
+        JOIN {schema}.dpi_accrual_details c ON c.start_date = p.start_date
+                                          AND COALESCE(c.is_deleted,false) = false
+        JOIN {schema}.loan_account la ON la.account_id = c.loan_account_id
+                                     AND la.parent_loan_account_id = {int(parent_id)}
+                                     AND la.loan_status = 'ACTIVE'
+                                     AND COALESCE(la.is_deleted,false) = false
+        WHERE p.loan_account_id = {int(parent_id)}
+          AND COALESCE(p.is_deleted,false) = false
+        GROUP BY p.start_date, p.base_amount
+        ORDER BY p.start_date
+        """
+    )
+    for seg_start, p_base, c_base in base_parity or []:
+        out.checks.append(
+            ColumnCheck(
+                name=f"parent_child_base_sum_parity[{seg_start}]",
+                table="dpi_accrual_details",
+                ok=_dec(p_base) == _dec(c_base),
+                expect=p_base,
+                actual=c_base,
+                details="sum(children base_amount) == parent base_amount for the same segment",
+            )
+        )
+
     for child_id, child_lan in children:
         tip_rows = query_rows(
             f"""
@@ -306,12 +338,73 @@ def audit_shg_child_dad_distribute(
         _ck("col.installment_id", inst_ok, "non-null FK bigint", inst or "NULL")
         if inst_ok:
             lid_row = query_rows(
-                f"SELECT id::text FROM {schema}.loan_installment_details WHERE id = {int(inst)} LIMIT 1"
+                f"SELECT id::text, loan_account_id::text FROM {schema}.loan_installment_details "
+                f"WHERE id = {int(inst)} LIMIT 1"
             )
             _ck("col.installment_id_fk", bool(lid_row), f"exists id={inst}", "missing" if not lid_row else inst)
+            # Existence is not ownership: distribute used to write the PARENT's installment
+            # id, which still "exists". Fail closed on a cross-loan FK (TDPQA-229).
+            if lid_row:
+                owner = lid_row[0][1]
+                _ck(
+                    "col.installment_id_owned_by_child",
+                    owner == child_id,
+                    f"loan_account_id={child_id}",
+                    f"loan_account_id={owner}",
+                    details="child DPI row must not reference another account's installment",
+                )
+            # DPI anchors a slice on the window START (latest EMI due on/before start_date),
+            # unlike interest accrual which anchors on the end. Do not swap these.
+            if start_d:
+                expected = query_rows(
+                    f"""
+                    SELECT loan_installment_details_id::text
+                    FROM {schema}.loan_due_details
+                    WHERE loan_account_id = {int(child_id)}
+                      AND COALESCE(is_deleted,false) = false
+                      AND loan_installment_details_id IS NOT NULL
+                      AND due_date::date <= {_q(start_d)}::date
+                    ORDER BY due_date DESC
+                    LIMIT 1
+                    """
+                )
+                if expected and expected[0][0]:
+                    _ck(
+                        "col.installment_id_tracks_segment_start",
+                        inst == expected[0][0],
+                        expected[0][0],
+                        inst,
+                        details="MUST-MATCH independent: resolveSliceInstallment(segStart)",
+                    )
 
-        base_d = _dec(base)
-        _ck("col.base_amount", base_d is not None and base_d >= 0, "non-null numeric >=0", base or "NULL")
+        if start_d:
+            expected_base = query_rows(
+                f"""
+                SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - ldd.waived_amount),0)::text
+                FROM {schema}.loan_due_details ldd
+                WHERE ldd.loan_account_id = {int(child_id)}
+                  AND ldd.component_type IN ('PRIN','INT')
+                  AND COALESCE(ldd.is_deleted,false) = false
+                  AND (ldd.due_amount - ldd.paid_amount - ldd.waived_amount) > 0
+                  AND ldd.overdue_date IS NOT NULL
+                  AND ldd.overdue_date::date <= {_q(start_d)}::date
+                  AND ldd.overdue_date::date >= (
+                        SELECT MIN(p.start_date)::date
+                        FROM {schema}.dpi_accrual_details p
+                        WHERE p.loan_account_id = {int(parent_id)}
+                          AND COALESCE(p.is_deleted,false) = false
+                  )
+                """
+            )
+            if expected_base and expected_base[0][0] is not None:
+                want = _dec(expected_base[0][0])
+                _ck(
+                    "col.base_amount_is_child_own_post_cutoff_overdue",
+                    base_d is not None and want is not None and base_d == want,
+                    str(want),
+                    base or "NULL",
+                    details="MUST-MATCH: child's own admitted overdue, not the parent's",
+                )
         _ck("col.start_date", bool(start_d), "non-null date", start_d or "NULL")
         _ck("col.end_date", bool(end_d), "non-null date", end_d or "NULL")
         if start_d and end_d:
@@ -462,4 +555,159 @@ def audit_shg_child_dad_distribute(
         """
     )
     out.evidence["active_children"] = (readers[0][0] if readers else "0")
+    return out
+
+
+def audit_shg_child_dad_all_rows(
+    *,
+    parent_lan: str,
+    query_rows: QueryRows,
+    go_live: str,
+    schema: str = "mfi_accounting",
+) -> ColumnAuditResult:
+    """Value-level audit of EVERY child DAD row against its parent segment.
+
+    audit_shg_child_dad_distribute only inspects the tip row (LIMIT 1) and checks most
+    columns for presence (">= 0", "non-null"). TDPQA-234 passed it while every child row
+    carried the wrong base_amount. This walks all rows and re-derives each expected value
+    from the parent row or from loan_due_details, independently of the writer.
+    """
+    out = ColumnAuditResult(evidence={"parent_lan": parent_lan, "go_live": go_live, "mode": "all_rows"})
+
+    meta = query_rows(
+        f"""
+        SELECT la.account_id::text
+        FROM {schema}.loan_account la
+        JOIN {schema}.account a ON a.id = la.account_id
+        WHERE a.account_number = {_q(parent_lan)} AND COALESCE(la.is_deleted,false) = false
+        LIMIT 1
+        """
+    )
+    if not meta:
+        out.checks.append(ColumnCheck("parent_lan_present", "loan_account", False, parent_lan, "missing"))
+        return out
+    parent_id = meta[0][0]
+
+    rows = query_rows(
+        f"""
+        SELECT c.loan_account_id::text, ac.account_number,
+               c.start_date::date::text, c.end_date::date::text,
+               c.base_amount::text, c.dpi_annual_rate::text,
+               COALESCE(c.days_in_year::text,'NULL'), c.carry_over_amount::text,
+               c.total_accrued_amount::text,
+               COALESCE(c.accrual_posting_date::date::text,'NULL'),
+               COALESCE(c.accrual_transaction_ref_number,'NULL'),
+               COALESCE(c.billing_posting_date::date::text,'NULL'),
+               COALESCE(c.billing_transaction_ref_number,'NULL'),
+               COALESCE(c.is_deleted::text,'false'),
+               COALESCE(c.installment_id::text,'NULL'),
+               p.end_date::date::text, p.dpi_annual_rate::text,
+               COALESCE(p.days_in_year::text,'NULL'), p.base_amount::text,
+               COALESCE(lid.loan_account_id::text,'NULL')
+        FROM {schema}.dpi_accrual_details c
+        JOIN {schema}.loan_account la ON la.account_id = c.loan_account_id
+                                     AND la.parent_loan_account_id = {int(parent_id)}
+                                     AND la.loan_status = 'ACTIVE'
+        JOIN {schema}.account ac ON ac.id = la.account_id
+        LEFT JOIN {schema}.dpi_accrual_details p ON p.loan_account_id = {int(parent_id)}
+                                                AND p.start_date = c.start_date
+                                                AND COALESCE(p.is_deleted,false) = false
+        LEFT JOIN {schema}.loan_installment_details lid ON lid.id = c.installment_id
+        WHERE COALESCE(c.is_deleted,false) = false
+        ORDER BY ac.account_number, c.start_date
+        """
+    )
+    if not rows:
+        out.checks.append(ColumnCheck("child_dad_rows_present", "dpi_accrual_details", False, ">=1 row", "0"))
+        return out
+    out.evidence["rows_audited"] = str(len(rows))
+
+    for r in rows:
+        (cid, clan, sd, ed, base, rate, diy, carry, accrued, apd, atr, bpd, btr, deleted,
+         inst, p_ed, p_rate, p_diy, p_base, inst_owner) = r
+        pfx = f"{clan}@{sd}"
+
+        def ck(name, ok, expect, actual, details=""):
+            out.checks.append(ColumnCheck(f"{pfx}.{name}", "dpi_accrual_details", ok, str(expect), str(actual), details))
+
+        ck("has_parent_segment", p_ed is not None, "parent row with same start_date", p_ed or "MISSING",
+           "child rows mirror parent segments one-for-one")
+        if p_ed is None:
+            continue
+
+        ck("end_date", ed == p_ed, p_ed, ed)
+        ck("dpi_annual_rate", _dec(rate) == _dec(p_rate), p_rate, rate)
+        ck("days_in_year", diy == p_diy, p_diy, diy)
+        ck("carry_over_amount", _dec(carry) == Decimal("0"), "0", carry)
+        ck("is_deleted", deleted == "false", "false", deleted)
+        ck("installment_id_owned_by_child", inst_owner == cid, f"loan_account_id={cid}", inst_owner,
+           "a parent (or sibling) installment FK here is a cross-loan defect")
+
+        expected = query_rows(
+            f"""
+            SELECT COALESCE(SUM(due_amount - paid_amount - waived_amount),0)::text
+            FROM {schema}.loan_due_details
+            WHERE loan_account_id = {int(cid)}
+              AND component_type IN ('PRIN','INT')
+              AND COALESCE(is_deleted,false) = false
+              AND (due_amount - paid_amount - waived_amount) > 0
+              AND overdue_date IS NOT NULL
+              AND overdue_date::date >= {_q(go_live)}::date
+              AND overdue_date::date <= {_q(sd)}::date
+            """
+        )
+        want = _dec(expected[0][0]) if expected else None
+        ck("base_amount", want is not None and _dec(base) == want, want, base,
+           "child's own overdue PRIN+INT admitted between go-live and this segment start")
+
+        ck("accrual_ref_iff_posted", (atr != "NULL") == (apd != "NULL"),
+           f"ref set iff accrual_posting_date set (apd={apd})", atr)
+        ck("billing_ref_iff_billed", (btr != "NULL") == (bpd != "NULL"),
+           f"ref set iff billing_posting_date set (bpd={bpd})", btr)
+        if bpd != "NULL":
+            ck("billed_implies_posted", apd != "NULL", "accrual posted before billing", apd)
+
+    seg = query_rows(
+        f"""
+        SELECT p.start_date::date::text, p.total_accrued_amount::text, p.base_amount::text,
+               COALESCE(SUM(c.total_accrued_amount),0)::text, COALESCE(SUM(c.base_amount),0)::text,
+               COUNT(c.id)::text
+        FROM {schema}.dpi_accrual_details p
+        JOIN {schema}.dpi_accrual_details c ON c.start_date = p.start_date
+                                          AND COALESCE(c.is_deleted,false) = false
+        JOIN {schema}.loan_account la ON la.account_id = c.loan_account_id
+                                     AND la.parent_loan_account_id = {int(parent_id)}
+                                     AND la.loan_status = 'ACTIVE'
+        WHERE p.loan_account_id = {int(parent_id)} AND COALESCE(p.is_deleted,false) = false
+        GROUP BY p.start_date, p.total_accrued_amount, p.base_amount
+        ORDER BY p.start_date
+        """
+    )
+    n_children = query_rows(
+        f"SELECT COUNT(*)::text FROM {schema}.loan_account WHERE parent_loan_account_id = {int(parent_id)} "
+        f"AND loan_status = 'ACTIVE' AND COALESCE(is_deleted,false) = false"
+    )
+    expect_n = int((n_children[0][0] if n_children else "0") or "0")
+    tot_p_acc = Decimal("0")
+    tot_c_acc = Decimal("0")
+    for start, p_acc, p_base, c_acc, c_base, n in seg:
+        tot_p_acc += _dec(p_acc) or Decimal("0")
+        tot_c_acc += _dec(c_acc) or Decimal("0")
+        # Accrued is split across children at scale 0 (booking rejects a fractional accrual),
+        # so a segment may drift by the per-child rounding bound; the window total may not.
+        drift = abs((_dec(p_acc) or Decimal("0")) - (_dec(c_acc) or Decimal("0")))
+        out.checks.append(ColumnCheck(f"segment[{start}].accrued_sum_rounding_bound", "dpi_accrual_details",
+                                      drift <= Decimal(expect_n), f"|diff| <= {expect_n}", str(drift),
+                                      "whole-rupee split drift, bounded by child count"))
+        # base_amount is NOT divided — each child carries its own overdue, so this is exact.
+        out.checks.append(ColumnCheck(f"segment[{start}].base_sum", "dpi_accrual_details",
+                                      _dec(p_base) == _dec(c_base), p_base, c_base,
+                                      "parent base == sum(children) for this segment (EXACT)"))
+        out.checks.append(ColumnCheck(f"segment[{start}].child_row_count", "dpi_accrual_details",
+                                      int(n) == expect_n, expect_n, n,
+                                      "exactly one row per ACTIVE child — no dupes, no orphans"))
+
+    out.checks.append(ColumnCheck("total.accrued_sum_exact", "dpi_accrual_details",
+                                  tot_p_acc == tot_c_acc, str(tot_p_acc), str(tot_c_acc),
+                                  "no money created or lost across the whole family (EXACT)"))
     return out

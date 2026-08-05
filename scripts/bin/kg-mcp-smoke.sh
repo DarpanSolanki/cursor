@@ -4,10 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SRV="$ROOT/cursor-bundle/kg/mcp/kg_mcp_server.py"
 PY="${PYTHON:-python3}"
-ACC_BRANCH="$("$PY" - <<'PY' 2>/dev/null || echo ""
+ACC_BRANCH="$("$PY" - <<PY 2>/dev/null || echo ""
 import subprocess
 from pathlib import Path
-repo = Path("/home/darpan/Documents/sliProd/trustt-platform-accounting")
+repo = Path(${ROOT@Q}) / "trustt-platform-accounting"
 r = subprocess.run(
     ["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
     capture_output=True, text=True, check=False,

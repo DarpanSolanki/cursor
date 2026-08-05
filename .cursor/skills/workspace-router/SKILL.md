@@ -19,6 +19,16 @@ feeds:
   - capture-proof
 ---
 
+## Routing metadata
+
+<!-- ported from Cursor skill frontmatter -->
+
+- **triggers:** `session start`, `any substantive task`, `orient`
+- **requires:** []
+- **reads:** `cursor-bundle/memory/MEMORY.md`, `.cursor/workspace-intelligence-state.md`, `cursor-bundle/brain/CANONICAL-MAP.md`, `cursor-bundle/brain/skills-manifest.json`
+- **writes:** []
+- **feeds:** `autonomous-workspace-ops`, `capture-proof`
+
 # Workspace router
 
 ## Mandatory order
