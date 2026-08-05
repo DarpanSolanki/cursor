@@ -33,13 +33,15 @@ SELF = Path(__file__).resolve()
 _SIBLING = "sliProd" + "Claude"
 _WRONG_BUNDLE = "claude" + "-bundle"
 _LEGACY = "/home/darpan/" + "darpan"
-_WS_ABS = "/home/darpan/Documents/" + "sliProd/"
+_WS_ABS = "/home/darpan/Documents/" + "sliProd"
 
 BANNED = [
     ("sibling_clone", re.compile(re.escape(_SIBLING))),
     ("wrong_bundle", re.compile(re.escape(_WRONG_BUNDLE))),
     ("legacy_home", re.compile(re.escape(_LEGACY) + r"(?!/Documents)")),
-    ("hardcoded_ws_abs", re.compile(r'["\']' + re.escape(_WS_ABS))),
+    # Trailing char class, not a literal "/": a bare root ("…/sliProd")
+    # with no trailing slash is just as hardcoded and slipped the earlier pattern.
+    ("hardcoded_ws_abs", re.compile(r'["\']' + re.escape(_WS_ABS) + r'(?:/|["\'])')),
     ("dot_claude_live", re.compile(r'["\']\.claude/|/home/[^"\']*/\.claude/')),
 ]
 

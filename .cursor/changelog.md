@@ -1,3 +1,16 @@
+## 2026-08-05 — path-leak gate: bare workspace root slipped the pattern
+
+**Why.** While porting this workspace's harness fixes into the Claude workspace, the gate itself was
+found to have a hole in **both** copies: `hardcoded_ws_abs` required a **trailing slash**, so
+`Path("/home/darpan/Documents/sliProd")` was invisible to it.
+
+Proven by planting `scripts/lib/_probe_leak_tmp.py` containing exactly that string — the gate
+reported `PASS`. The pattern now ends in a char class (`/` or a closing quote) instead of a literal
+slash; the planted leak fails, and the real tree is still clean.
+
+sliProd's own tree had no such occurrence outside the allow-listed `scripts/cursor-user-gates/`, so
+this is a regression guard, not a live-bug fix. The Claude workspace had four.
+
 ## 2026-08-05 — Ship/impact: harness push no longer false-maps DPI/repos
 
 **What.** `infer_repo_from_path` ignores filenames (`novopay-service.sh`, `novopay-framework.md`); `kg_ship_resolve` skips domain API hints for `scripts/`/`.cursor/`/`cursor-bundle/` and uses `/dpi/` not bare `/dpi` (was matching `scripts/dpic/`). `is_workspace_push_safe_paths` checks harness/kb before repo. Tests: `test_impact_mapping_harness.py`.
