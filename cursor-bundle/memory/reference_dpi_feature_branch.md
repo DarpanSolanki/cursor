@@ -35,8 +35,9 @@ Leaving a repo parked there poisons every KG answer: the branch is not a release
 `kg_composite.repo_state` marks it `provisional` and the whole watermark reads `[PROVISIONAL]`,
 which gates money and cross-service conclusions workspace-wide.
 
-`trustt-platform-initial-setup` is parked there as of 2026-08-06. To clear it:
-`git checkout mfi_integration_v3.7.1 && bash scripts/bin/kg-switch.sh`.
+Cleared 2026-08-06: `trustt-platform-initial-setup` and `trustt-platform-webapp` were both parked
+there and are now on `mfi_integration_v3.7.1` — the watermark reads `[ALIGNED]`. If any repo lands
+back on it: `git checkout mfi_integration_v3.7.1 && bash scripts/bin/kg-switch.sh`.
 
 
 ## Product rules (3.7.1 — harness-encoded)

@@ -31,7 +31,8 @@ clean 3.7.1; the truth was the reverse), which sends a DPI task hunting in the w
 | `trustt-platform-los` | `mfi_integration_v3.4.2.4` @ `44bba2c47a` | Mixed train — scope cross-service carefully |
 | `trustt-platform-actor` | `mfi_integration_v3.7.1` @ `770b97aef4` | |
 | `trustt-platform-payments` | `mfi_integration_v3.4.2.4` @ `0dae3fc3ed` | Older train |
-| `trustt-platform-initial-setup` | `feature/delayed_payment_interest` @ `12690d16ee` | ⚠ **parked on a RETIRED branch** — forces `[PROVISIONAL]`. Move: `git checkout mfi_integration_v3.7.1 && bash scripts/bin/kg-switch.sh` |
+| `trustt-platform-initial-setup` | `mfi_integration_v3.7.1` @ `e4ade8c3f8` | Moved off retired `feature/delayed_payment_interest` 2026-08-06. ⚠ **82 commits behind `upstream/mfi_integration_v3.7.1`** — fast-forward before trusting Flyway/migration reads |
+| `trustt-platform-webapp` | `mfi_integration_v3.7.1` @ `f0216081f8` | Also moved off the retired branch 2026-08-06; branch created from `upstream` (none existed locally) |
 
 **Workspace root:** `/home/darpan/Documents/sliProd` (not `/home/darpan/darpan`).
 
