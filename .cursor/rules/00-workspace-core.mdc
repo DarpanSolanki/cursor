@@ -42,6 +42,41 @@ After bootstrap, for every user instruction except narrow exceptions below, prin
 
 If unsure whether mutation will follow → treat as **MUTATION** (STOP-AND-WAIT).
 
+## Minimal path + terminal state (router v2)
+
+Autopilot prints two computed lines per task — never hand-write them:
+
+```
+PLAN [<class>] ~<wave_s>s (<n> waves, serial <est_s>s): RUN … · SKIP … · CACHED … (saved ~Ns)
+GOAL [<class>]: <terminal predicates>
+```
+
+- **PLAN** is the cheapest **ordered** gate path for the class: `process_matrix.json` is a weighted
+  DAG (`cost_s` seeds, `requires` edges, measured costs relax the weights). Independent gates run
+  as concurrent **waves**; `wave_s` is the real wall estimate.
+- **CACHED** = TTL-fresh **or** already run in this open task (orient phase only — `gate`/`verify`/
+  `close` always re-evaluate because the diff may have moved). No process runs twice for one task.
+- **GOAL** = `terminal_state` for the class: the predicates that must hold before "done".
+  `auto` predicates are machine-checked; `evidence_cited` / `knowledge_loops` / `options_board`
+  are **declared by the agent** and are a claim you are accountable for.
+
+**Speed is bought by selection, ordering and caching — never by dropping a gate.** The money floor
+stays `required` and `process_router.py ratchet` fails closed on any weakening.
+
+**Escalation (fail-closed):** the `route-escalation` hook compares each edited path against the
+planned class. A lighter plan that starts writing a money path is escalated, the missing gates are
+named, and the terminal state is raised. Never dismiss that banner — run the added gates.
+
+```bash
+bash scripts/bin/route-ledger.sh resume     # where the task is (cheap, no subprocess)
+bash scripts/bin/route-ledger.sh terminal   # what is still unmet
+bash scripts/bin/route-ledger.sh learn      # router tuning report (report-only)
+```
+
+Task end closes the ledger: `workspace-autopilot.sh end --declared evidence_cited,knowledge_loops
+--evidence-tier RUNTIME_VERIFIED`. Declaring a tier you did not reach is the one failure this
+system cannot catch for you — see the simulation ladder in `20-ship-gates.mdc`.
+
 ## Post-analysis OPTIONS BOARD (mandatory — planning engine)
 
 After **any** analysis / RCA / Jira triage / performance review / “what’s next?”, the response **must** include an **OPTIONS BOARD** before a single recommended next step:

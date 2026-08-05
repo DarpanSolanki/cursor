@@ -56,7 +56,7 @@ if [[ -f "$PENDING" && -f "$CHANGELOG" ]]; then
   cl_mtime=$(stat -c %Y "$CHANGELOG" 2>/dev/null || echo 0)
   pend_mtime=$(stat -c %Y "$PENDING" 2>/dev/null || echo 0)
   if [[ "$cl_mtime" -lt "$pend_mtime" ]]; then
-    warn "commit without brain CHANGELOG — run changelog-add.sh before push"
+    warn "commit without brain CHANGELOG — run cursor-bundle/kg/bin/changelog-add.sh before push"
   fi
 fi
 
@@ -106,6 +106,14 @@ if find scripts/testing -type d -name __pycache__ 2>/dev/null | grep -q .; then
   else
     warn "testing __pycache__ ($n dir(s))"
   fi
+fi
+
+# Runnable references to repo dirs that no longer exist (novopay-* renamed to trustt-* 2026-07-15).
+# History and prose are left alone; only positions a shell or agent executes are checked.
+if ! dead_out="$(python3 "$ROOT/scripts/lib/dead_repo_ref_gate.py" check 2>&1)"; then
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && warn "dead repo ref: $line"
+  done < <(echo "$dead_out" | sed -n 's/^  \([^ ].*\)$/\1/p' | head -10)
 fi
 
 # Misplaced temps in .cursor/

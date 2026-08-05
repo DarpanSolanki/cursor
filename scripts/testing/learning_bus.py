@@ -28,7 +28,14 @@ VALID_TYPES = frozenset({
     "learning_adopted",
     "learning_verified",
     "learning_stale",
+    "plan_computed",
+    "plan_escalation",
+    "task_closed",
 })
+
+# Housekeeping types kept as counters, never as bus rows — they drowned real signal
+COUNTER_ONLY_TYPES = frozenset({"hub_refresh"})
+COUNTERS = ROOT / "cursor-bundle/flow-test/bus_counters.json"
 
 # High-signal types shown in hub (exclude noisy hub_refresh spam)
 SIGNAL_TYPES = frozenset({
@@ -45,11 +52,14 @@ SIGNAL_TYPES = frozenset({
     "learning_proposed",
     "learning_adopted",
     "learning_verified",
+    "plan_escalation",
+    "task_closed",
 })
 
 # Rate-limit noisy event types (seconds between same type+source)
 DEDUP_RATE_LIMIT_S: dict[str, int] = {
     "hub_refresh": 300,
+    "plan_computed": 60,
 }
 
 BUS_MAX_EVENTS = 5000
@@ -174,7 +184,10 @@ def compact_bus(*, max_events: int = BUS_MAX_EVENTS, max_age_days: int = BUS_MAX
     if not rows:
         return {"before": 0, "after": 0, "removed": 0, "graph_promote": promo}
     cutoff = time.time() - max_age_days * 86400
-    kept = [r for r in rows if _parse_ts(r.get("ts", "")) >= cutoff]
+    kept = [
+        r for r in rows
+        if _parse_ts(r.get("ts", "")) >= cutoff and r.get("type") not in COUNTER_ONLY_TYPES
+    ]
     if len(kept) > max_events:
         kept = kept[-max_events:]
     removed = len(rows) - len(kept)
@@ -200,6 +213,27 @@ def _maybe_rotate() -> None:
     compact_bus()
 
 
+def load_counters() -> dict:
+    if COUNTERS.is_file():
+        try:
+            return json.loads(COUNTERS.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
+def bump_counter(event_type: str, source: str) -> dict:
+    data = load_counters()
+    key = f"{event_type}:{source}"
+    row = data.get(key) or {"count": 0}
+    row["count"] = int(row.get("count") or 0) + 1
+    row["last"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    data[key] = row
+    COUNTERS.parent.mkdir(parents=True, exist_ok=True)
+    COUNTERS.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return {"counter": True, "type": event_type, "source": source, "count": row["count"]}
+
+
 def append_event(
     event_type: str,
     *,
@@ -212,6 +246,8 @@ def append_event(
 ) -> dict:
     if event_type not in VALID_TYPES:
         raise ValueError(f"invalid event_type {event_type!r}; allowed: {sorted(VALID_TYPES)}")
+    if event_type in COUNTER_ONLY_TYPES:
+        return bump_counter(event_type, source)
     if not force and _is_rate_limited(event_type, source, detail):
         return {"skipped": True, "type": event_type, "source": source}
     row = {

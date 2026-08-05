@@ -33,9 +33,17 @@ case "$cmd" in
       fi
     fi
     aops_write_state
-    # Refresh env reachability when matrix exists (non-fatal)
+    # Remote env reachability changes far slower than local service state. process_matrix.json
+    # declares env_smoke at 3600s; preflight's own 600s cycle was re-probing 9 remote envs six
+    # times more often than that contract asks for, at ~5s a pass.
     if [[ -f "$ROOT/scripts/env/env-matrix.json" ]]; then
-      bash "$ROOT/scripts/bin/env-smoke.sh" --write-state >/dev/null 2>&1 || true
+      env_ttl="${AGENT_OPS_ENV_SMOKE_TTL:-3600}"
+      env_stamp="$ROOT/.cursor/.env-smoke-stamp"
+      env_age=$(( $(date +%s) - $(stat -c %Y "$env_stamp" 2>/dev/null || echo 0) ))
+      if (( env_age >= env_ttl )) || [[ -n "${AGENT_OPS_PREFLIGHT_FORCE:-}" ]]; then
+        bash "$ROOT/scripts/bin/env-smoke.sh" --write-state >/dev/null 2>&1 || true
+        touch "$env_stamp"
+      fi
     fi
     head -20 "$state_file" 2>/dev/null
     ;;

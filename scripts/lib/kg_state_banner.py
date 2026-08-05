@@ -21,11 +21,14 @@ RELEASE = re.compile(r"^mfi_(integration|release)_v[0-9]")
 # Import composite helpers without hardcoding paths
 sys.path.insert(0, str(ROOT / "cursor-bundle" / "kg" / "bin"))
 try:
-    from kg_composite import composite_key, list_repos, repo_state  # type: ignore
+    from kg_composite import _cached, composite_key, list_repos, repo_state  # type: ignore
 except Exception:  # noqa: BLE001
     composite_key = None  # type: ignore
     list_repos = None  # type: ignore
     repo_state = None  # type: ignore
+
+    def _cached(key, fn):  # type: ignore
+        return fn()
 
 try:
     from train_banner import money_or_cross_service  # type: ignore
@@ -107,6 +110,12 @@ def _key_mismatch(live: str, stored: str, wm: dict) -> bool:
     # Drift: live HEAD/branch vs watermark
     if repo_state is None or list_repos is None:
         return False
+    try:
+        from kg_composite import prefetch_repo_states  # type: ignore
+
+        prefetch_repo_states([r for r in (wm.get("repos") or {})])
+    except Exception:  # noqa: BLE001
+        pass
     for repo, info in (wm.get("repos") or {}).items():
         try:
             live_rs = repo_state(repo)
@@ -124,6 +133,10 @@ def _key_mismatch(live: str, stored: str, wm: dict) -> bool:
 
 
 def compute_kg_state() -> dict:
+    return _cached("kg_state", _compute_kg_state_uncached)
+
+
+def _compute_kg_state_uncached() -> dict:
     wm = _load_wm()
     live = _live_key()
     stored = _stored_key()
@@ -167,7 +180,7 @@ def provenance_header() -> str:
         sys.path.insert(0, str(ROOT / "cursor-bundle" / "kg" / "bin"))
         import kg as _kg  # type: ignore
 
-        _b, drift, _d, files = _kg._drift_check()
+        _b, drift, _d, files = _cached("drift_check", _kg._drift_check)
         if drift or files:
             n = len(files) if files else len(drift)
             base += f" STALE:{n}"

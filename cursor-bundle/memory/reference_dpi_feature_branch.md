@@ -14,25 +14,30 @@ metadata:
 
 | Repo | Branch | Why |
 |------|--------|-----|
-| `novopay-platform-accounting-v2` | **`mfi_integration_v3.7.1`** | DPI calc/booking/billing product rules + booking fix `77921d275f` |
-| `novopay-platform-initial-setup` | match release train / task | Flyway + go-live seeds |
+| `trustt-platform-accounting` | **`mfi_integration_v3.7.1`** | DPI calc/booking/billing product rules + booking fix `77921d275f` |
+| `trustt-platform-initial-setup` | match release train / task | Flyway + go-live seeds |
 | Workspace harness | `scripts/dpic/` on workspace **`main`** only (`origin/main`) | Quick regression + column audit — **never push harness to train branches** |
 
 Confirm booking fix in HEAD:
 
 ```bash
-git -C novopay-platform-accounting-v2 merge-base --is-ancestor 77921d275f HEAD && echo OK
+git -C trustt-platform-accounting merge-base --is-ancestor 77921d275f HEAD && echo OK
 ```
 
-### Legacy feature branch (only if task explicitly says unmerged WIP)
+### `feature/delayed_payment_interest` — RETIRED (2026-08-06)
 
-| Repo | Branch |
-|------|--------|
-| `novopay-platform-accounting-v2` | `feature/delayed_payment_interest` |
-| `novopay-platform-initial-setup` | `feature/delayed_payment_interest` |
-| `novopay-platform-webapp` | `feature/delayed_payment_interest` (if UI) |
+**DPIC is live on `mfi_integration_v3.7.1`. Do not check out, analyse, or cite this branch.**
 
-Then: `scripts/bin/kg-switch.sh` so KG watermark matches the branch under test.
+It is not "WIP to use when the task says so" — it is dead. A recent merge *into* it from
+`upstream/mfi_integration_v3.7.1` is not evidence of use; it was merged into, not worked on.
+
+Leaving a repo parked there poisons every KG answer: the branch is not a release train, so
+`kg_composite.repo_state` marks it `provisional` and the whole watermark reads `[PROVISIONAL]`,
+which gates money and cross-service conclusions workspace-wide.
+
+`trustt-platform-initial-setup` is parked there as of 2026-08-06. To clear it:
+`git checkout mfi_integration_v3.7.1 && bash scripts/bin/kg-switch.sh`.
+
 
 ## Product rules (3.7.1 — harness-encoded)
 

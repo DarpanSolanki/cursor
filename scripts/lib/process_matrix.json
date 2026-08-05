@@ -1,7 +1,7 @@
 {
-  "version": 1,
-  "updated": "2026-07-23",
-  "description": "Process selection matrix \u2014 speed by selection, never by weakening money gates. Cell: required | conditional(<trigger>) | skip.",
+  "version": 2,
+  "updated": "2026-08-06",
+  "description": "Process selection matrix — speed by selection, never by weakening money gates. Cell: required | conditional(<trigger>) | skip. v2 adds cost_s (learned weights), requires (dependency edges) and terminal_state (goal predicates) so the planner computes a minimal ordered path, not an unordered set.",
   "classes": [
     "question",
     "read-only-rca",
@@ -11,6 +11,18 @@
     "release",
     "docs-kb"
   ],
+  "phases": [
+    "orient",
+    "gate",
+    "verify",
+    "close"
+  ],
+  "dedup_phases": {
+    "comment": "Phases safe to skip on later turns of the SAME open task — orienting twice tells you nothing new. gate/verify/close always re-evaluate because the diff may have moved since the last turn.",
+    "phases": [
+      "orient"
+    ]
+  },
   "ttls_seconds": {
     "kg_fresh": 900,
     "env_smoke": 3600,
@@ -19,7 +31,7 @@
     "train_banner": 120
   },
   "money_floor": {
-    "comment": "These processes stay required on money-fix \u2014 ratchet forbids weaken to conditional/skip",
+    "comment": "These processes stay required on money-fix — ratchet forbids weaken to conditional/skip",
     "processes": [
       "train_banner",
       "kg_watermark_gate",
@@ -29,9 +41,85 @@
       "enrichment_tier"
     ]
   },
+  "predicates": {
+    "kg_fresh": {
+      "check": "auto",
+      "how": "ttl:kg_fresh",
+      "label": "KG fresh for the live branch set"
+    },
+    "impact_ran": {
+      "check": "auto",
+      "how": "cmd:python3 scripts/lib/impact_tests.py --check-ran",
+      "label": "impact plan ran this session"
+    },
+    "ship_loop_passed": {
+      "check": "auto",
+      "how": "file:.cursor/.ship-loop-passed.json",
+      "label": "ship-loop passed at the required tier"
+    },
+    "pending_clear": {
+      "check": "auto",
+      "how": "pending_ship_satisfied",
+      "label": "no unsatisfied pending ship work"
+    },
+    "evidence_cited": {
+      "check": "declared",
+      "label": "claims backed by this-turn evidence (file:line / SQL / log)"
+    },
+    "knowledge_loops": {
+      "check": "declared",
+      "label": "KG + testing suite + reference docs updated"
+    },
+    "options_board": {
+      "check": "declared",
+      "label": "OPTIONS BOARD L0-L3 emitted after analysis"
+    }
+  },
+  "terminal_state": {
+    "question": [
+      "evidence_cited"
+    ],
+    "read-only-rca": [
+      "evidence_cited",
+      "options_board"
+    ],
+    "non-money-fix": [
+      "evidence_cited",
+      "impact_ran",
+      "ship_loop_passed",
+      "knowledge_loops"
+    ],
+    "money-fix": [
+      "evidence_cited",
+      "kg_fresh",
+      "impact_ran",
+      "ship_loop_passed",
+      "pending_clear",
+      "knowledge_loops"
+    ],
+    "batch-dpi": [
+      "evidence_cited",
+      "kg_fresh",
+      "impact_ran",
+      "ship_loop_passed",
+      "knowledge_loops"
+    ],
+    "release": [
+      "evidence_cited",
+      "ship_loop_passed",
+      "pending_clear",
+      "knowledge_loops"
+    ],
+    "docs-kb": [
+      "knowledge_loops"
+    ]
+  },
   "processes": {
     "bootstrap_digest": {
       "ttl_key": null,
+      "phase": "orient",
+      "cost_s": 0.5,
+      "requires": [],
       "cells": {
         "question": "required",
         "read-only-rca": "required",
@@ -44,6 +132,11 @@
     },
     "expansion_gate": {
       "ttl_key": null,
+      "phase": "orient",
+      "cost_s": 0.1,
+      "requires": [
+        "bootstrap_digest"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "required",
@@ -56,6 +149,11 @@
     },
     "kg_validate": {
       "ttl_key": "kg_fresh",
+      "phase": "orient",
+      "cost_s": 1.5,
+      "requires": [
+        "bootstrap_digest"
+      ],
       "cells": {
         "question": "conditional(api_or_flow_named)",
         "read-only-rca": "required",
@@ -68,6 +166,11 @@
     },
     "kg_fresh_sync": {
       "ttl_key": "kg_fresh",
+      "phase": "orient",
+      "cost_s": 6.0,
+      "requires": [
+        "kg_validate"
+      ],
       "cells": {
         "question": "conditional(api_or_flow_named)",
         "read-only-rca": "required",
@@ -80,6 +183,11 @@
     },
     "kg_watermark_gate": {
       "ttl_key": "kg_fresh",
+      "phase": "gate",
+      "cost_s": 1.0,
+      "requires": [
+        "kg_fresh_sync"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "conditional(cross_service_or_money_words)",
@@ -92,6 +200,11 @@
     },
     "train_banner": {
       "ttl_key": "train_banner",
+      "phase": "orient",
+      "cost_s": 0.8,
+      "requires": [
+        "bootstrap_digest"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "conditional(cross_service_or_money_words)",
@@ -104,6 +217,9 @@
     },
     "env_smoke": {
       "ttl_key": "env_smoke",
+      "phase": "orient",
+      "cost_s": 12.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "conditional(qa_env_named)",
@@ -116,6 +232,9 @@
     },
     "services_probe": {
       "ttl_key": "services",
+      "phase": "orient",
+      "cost_s": 3.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "conditional(needs_runtime)",
@@ -128,6 +247,9 @@
     },
     "compile_java": {
       "ttl_key": "compile",
+      "phase": "verify",
+      "cost_s": 90.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -140,6 +262,11 @@
     },
     "acceptance_coverage": {
       "ttl_key": null,
+      "phase": "gate",
+      "cost_s": 2.0,
+      "requires": [
+        "kg_validate"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -152,6 +279,11 @@
     },
     "ship_discipline": {
       "ttl_key": null,
+      "phase": "gate",
+      "cost_s": 1.5,
+      "requires": [
+        "acceptance_coverage"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -164,6 +296,11 @@
     },
     "verify_mode_ratchet": {
       "ttl_key": null,
+      "phase": "gate",
+      "cost_s": 1.0,
+      "requires": [
+        "ship_discipline"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -176,6 +313,11 @@
     },
     "dpi_sanity": {
       "ttl_key": null,
+      "phase": "verify",
+      "cost_s": 45.0,
+      "requires": [
+        "services_probe"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -188,6 +330,9 @@
     },
     "flyway_pack": {
       "ttl_key": null,
+      "phase": "verify",
+      "cost_s": 3.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -200,7 +345,10 @@
     },
     "local_parity": {
       "ttl_key": null,
-      "comment": "GAP-076/077 class \u2014 only when schema/masterdata or DDL hand-patch on money tables",
+      "phase": "verify",
+      "cost_s": 4.0,
+      "requires": [],
+      "comment": "GAP-076/077 class — only when schema/masterdata or DDL hand-patch on money tables",
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -213,6 +361,11 @@
     },
     "dev_test_bridge": {
       "ttl_key": null,
+      "phase": "close",
+      "cost_s": 2.0,
+      "requires": [
+        "ship_discipline"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -225,6 +378,11 @@
     },
     "enrichment_tier": {
       "ttl_key": null,
+      "phase": "close",
+      "cost_s": 2.0,
+      "requires": [
+        "kg_fresh_sync"
+      ],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -237,6 +395,9 @@
     },
     "hot_path_scan": {
       "ttl_key": null,
+      "phase": "gate",
+      "cost_s": 3.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -249,7 +410,12 @@
     },
     "impact_tests": {
       "ttl_key": null,
-      "comment": "Dynamic KG blast-radius plan (git diff \u2192 flows \u2192 registry cases). Required on money/batch-dpi; conditional when code touched otherwise.",
+      "phase": "verify",
+      "cost_s": 8.0,
+      "requires": [
+        "kg_fresh_sync"
+      ],
+      "comment": "Dynamic KG blast-radius plan (git diff → flows → registry cases). Required on money/batch-dpi; conditional when code touched otherwise.",
       "cells": {
         "question": "skip",
         "read-only-rca": "skip",
@@ -262,6 +428,9 @@
     },
     "query_plan_gate": {
       "ttl_key": null,
+      "phase": "gate",
+      "cost_s": 5.0,
+      "requires": [],
       "comment": "Upgrade 11-LEAN — EXPLAIN heuristics when @Query/native SQL/repo methods in diff. reuse_query_gate + query-index-perf-audit remain SoT for ladder/matrix.",
       "cells": {
         "question": "skip",
@@ -275,6 +444,9 @@
     },
     "learn_phase": {
       "ttl_key": null,
+      "phase": "close",
+      "cost_s": 2.0,
+      "requires": [],
       "cells": {
         "question": "skip",
         "read-only-rca": "conditional(new_gotcha)",

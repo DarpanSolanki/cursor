@@ -13,6 +13,7 @@ import shlex
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,7 @@ class Step:
     auto: bool = True
     tier: str = "fast"
     note: str = ""
+    par: bool = False
 
 
 @dataclass
@@ -210,7 +212,13 @@ def build_plan(
     train_plan: dict | None = None
     if not light_preflight:
         steps.append(
-            Step("preflight", "bash scripts/bin/agent-ops.sh preflight", auto=True, tier="fast")
+            Step(
+                "preflight",
+                "bash scripts/bin/agent-ops.sh preflight",
+                auto=True,
+                tier="fast",
+                par=True,
+            )
         )
 
     if not light_preflight:
@@ -245,7 +253,13 @@ def build_plan(
     )
     if not skip_kg:
         steps.append(
-            Step("kg_validate", "python3 cursor-bundle/kg/bin/kg.py validate", auto=True, tier="fast")
+            Step(
+                "kg_validate",
+                "python3 cursor-bundle/kg/bin/kg.py validate",
+                auto=True,
+                tier="fast",
+                par=True,
+            )
         )
 
     if task_shift:
@@ -515,22 +529,48 @@ def build_plan(
     try:
         from process_router import compute_plan as proc_plan  # type: ignore
 
-        pp = proc_plan(kind, text, api_hint=api)
+        already: set[str] = set()
+        if not task_shift:
+            try:
+                from route_ledger import load as ledger_load
+
+                led = ledger_load()
+                if led.get("status") == "open":
+                    already = {s.get("id") for s in led.get("ran") or [] if s.get("ok")}
+                    already |= set(led.get("cached") or [])
+            except Exception:
+                already = set()
+
+        pp = proc_plan(kind, text, api_hint=api, already_ran=already)
         directives.insert(0, pp["line"])
+        directives.insert(1, pp["goal_line"] + "  (close with `route-ledger.sh close`)")
+        if not light_preflight and not is_continuation(text):
+            try:
+                from route_ledger import open_task
+
+                open_task(
+                    process_class=pp["process_class"],
+                    classification=kind,
+                    text=text,
+                    plan=pp,
+                )
+            except Exception:
+                pass
+        else:
+            try:
+                from route_ledger import resume_line
+
+                rl = resume_line()
+                if rl:
+                    directives.insert(2, rl)
+            except Exception:
+                pass
         # Honor SKIP/CACHED: drop matching auto steps (never weaken money required — those stay RUN)
         skip_names = {n for n, _ in pp.get("skip") or []}
         cached_names = {n for n, _ in pp.get("cached") or []}
-        step_map = {
-            "kg_validate": "kg_validate",
-            "kg_fresh": "kg_fresh_sync",
-            "hot_path_scan": "hot_path_scan",
-            "ship_test_plan": "ship_discipline",
-            "before_test": "services_probe",
-            "dpi_sanity": "dpi_sanity",
-        }
         filtered: list[Step] = []
         for s in steps:
-            pname = step_map.get(s.id)
+            pname = STEP_TO_PROCESS.get(s.id)
             if pname and pname in skip_names:
                 continue
             if pname and pname in cached_names:
@@ -562,25 +602,146 @@ def _run_cmd(cmd: str, quiet: bool) -> tuple[int, str]:
     return p.returncode, out
 
 
+# Steps the router may drop when its process is skipped/cached — a step here must be
+# fully covered by that process, or dropping it silently loses work.
+STEP_TO_PROCESS = {
+    "kg_validate": "kg_validate",
+    "kg_fresh": "kg_fresh_sync",
+    "hot_path_scan": "hot_path_scan",
+    "ship_test_plan": "ship_discipline",
+    "before_test": "services_probe",
+    "dpi_sanity": "dpi_sanity",
+}
+
+# Cost attribution only — never used to drop a step. `preflight` does more than probe
+# services, so it is priced against services_probe but always runs when planned.
+STEP_COST_KEY = {
+    **STEP_TO_PROCESS,
+    "preflight": "services_probe",
+    "kg_state": "kg_watermark_gate",
+    "impact_tests": "impact_tests",
+    "compile": "compile_java",
+}
+
+
+def _record_step(step_id: str, ok: bool, elapsed: float) -> None:
+    """Feed the measured cost back into the router weights and the task ledger.
+
+    Autopilot step ids are commands; the matrix is keyed by process name. Record under the
+    process name so the learned weight lands on the node the planner actually prices.
+    """
+    pname = STEP_COST_KEY.get(step_id, step_id)
+    try:
+        from route_ledger import note_step
+
+        note_step(pname, ok=ok, elapsed_s=elapsed)
+    except Exception:
+        pass
+    if not ok:
+        return
+    try:
+        from process_router import load_matrix, stamp_ttl
+
+        ttl_key = ((load_matrix().get("processes") or {}).get(pname) or {}).get("ttl_key")
+        if ttl_key:
+            stamp_ttl(ttl_key)
+    except Exception:
+        pass
+
+
+def _run_batch(batch: list[Step], quiet: bool) -> list[dict]:
+    """Run independent steps concurrently; output is buffered so it still reads in order."""
+    if len(batch) == 1:
+        step = batch[0]
+        t0 = time.time()
+        rc, out = _run_cmd(step.cmd, quiet=quiet)
+        return [
+            {
+                "id": step.id,
+                "rc": rc,
+                "elapsed_s": round(time.time() - t0, 2),
+                "ok": rc == 0,
+                "_out": out,
+            }
+        ]
+    with ThreadPoolExecutor(max_workers=min(len(batch), 4)) as pool:
+        futures = {pool.submit(_timed_run, s): s for s in batch}
+        done = {}
+        for fut in as_completed(futures):
+            step = futures[fut]
+            try:
+                done[step.id] = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                done[step.id] = {"id": step.id, "rc": 1, "ok": False, "_out": str(exc)}
+    ordered = [done[s.id] for s in batch if s.id in done]
+    if not quiet:
+        for r in ordered:
+            if r.get("_out"):
+                print(r["_out"], end="" if r["_out"].endswith("\n") else "\n")
+    return ordered
+
+
+def _timed_run(step: Step) -> dict:
+    t0 = time.time()
+    rc, out = _run_cmd(step.cmd, quiet=True)
+    return {
+        "id": step.id,
+        "rc": rc,
+        "elapsed_s": round(time.time() - t0, 2),
+        "ok": rc == 0,
+        "_out": out,
+    }
+
+
 def execute_steps(steps: list[Step], *, quiet: bool = False, dry_run: bool = False) -> list[dict]:
     results: list[dict] = []
     state = load_state()
+    pending: list[Step] = []
+    halt = False
+
+    def flush() -> bool:
+        nonlocal pending
+        if not pending:
+            return True
+        batch_results = _run_batch(pending, quiet)
+        pending = []
+        keep_going = True
+        for r in batch_results:
+            out = r.pop("_out", "")
+            results.append(r)
+            _record_step(r["id"], r.get("ok", False), r.get("elapsed_s", 0))
+            if r["id"] == "kg_validate" and r.get("rc") == 0:
+                state["kg_validate_at"] = time.time()
+            tier = next((s.tier for s in steps if s.id == r["id"]), "fast")
+            if r.get("rc") != 0 and tier != "fast":
+                r["tail"] = out[-800:]
+                keep_going = False
+        return keep_going
+
     for step in steps:
+        if halt:
+            break
         if not step.auto:
+            if not flush():
+                break
             results.append({"id": step.id, "skipped": True, "reason": "manual"})
             continue
         if dry_run:
             results.append({"id": step.id, "cmd": step.cmd, "dry_run": True})
             continue
-        t0 = time.time()
-        rc, out = _run_cmd(step.cmd, quiet=quiet)
-        elapsed = round(time.time() - t0, 2)
-        results.append({"id": step.id, "rc": rc, "elapsed_s": elapsed, "ok": rc == 0})
-        if step.id == "kg_validate" and rc == 0:
-            state["kg_validate_at"] = time.time()
-        if rc != 0 and step.tier != "fast":
-            results[-1]["tail"] = out[-800:]
+        if step.par:
+            pending.append(step)
+            continue
+        if not flush():
+            halt = True
             break
+        pending = [step]
+        if not flush():
+            halt = True
+            break
+    if not halt:
+        flush()
+
     state["last_task_at"] = time.time()
     save_state(state)
     return results
@@ -729,7 +890,7 @@ def cmd_task(args: argparse.Namespace) -> int:
 
     print("## Workspace autopilot — task plan")
     # Always surface PLAN + train + KG banners first when present
-    top_prefixes = ("PLAN [", "TRAINS:", "KG STATE:", "HARD STOP")
+    top_prefixes = ("PLAN [", "GOAL [", "RESUME [", "TRAINS:", "KG STATE:", "HARD STOP")
     top_lines = [d for d in plan.agent_directives if d.startswith(top_prefixes)]
     for line in top_lines:
         print(f"**{line}**")
@@ -849,6 +1010,22 @@ def cmd_end(args: argparse.Namespace) -> int:
         results.append({"id": "learn_close", "ok": False, "error": str(exc)})
         if not args.quiet:
             print(f"  · learn_close skipped: {exc}")
+
+    try:
+        from route_ledger import close_task
+
+        declared = {x.strip() for x in (args.declared or "").split(",") if x.strip()}
+        closed = close_task(declared=declared, evidence_tier=args.evidence_tier)
+        term = closed.get("terminal") or {}
+        results.append({"id": "terminal_check", "ok": bool(term.get("ok")), **closed})
+        if not args.quiet and term.get("results"):
+            print(f"  {'✓' if term.get('ok') else '✗'} terminal_check "
+                  f"[{term.get('process_class')}] {'MET' if term.get('ok') else 'UNMET'}")
+            for r in term["results"]:
+                if not r["ok"]:
+                    print(f"      ✗ {r['predicate']} — {r['note']}")
+    except Exception as exc:  # noqa: BLE001
+        results.append({"id": "terminal_check", "ok": False, "error": str(exc)})
 
     ship = ship_and_continue(force=False, quiet=args.quiet)
     results.append({"id": "ship_and_continue", **ship})
@@ -1045,6 +1222,16 @@ def main() -> int:
     pe = sub.add_parser("end")
     pe.add_argument("--json", action="store_true")
     pe.add_argument("--quiet", action="store_true")
+    pe.add_argument(
+        "--declared",
+        default="",
+        help="Comma-list of declared terminal predicates (evidence_cited,knowledge_loops,options_board)",
+    )
+    pe.add_argument(
+        "--evidence-tier",
+        default="UNSTATED",
+        help="RUNTIME_VERIFIED | STAGE_PARTIAL | ORCH_SIBLING_SIM | PROCESSOR_MIRROR_SIM | NOT_VERIFIED",
+    )
     pe.set_defaults(func=cmd_end)
 
     pm = sub.add_parser("mark-verified", help="Record test/sanity PASS; optional auto-push")

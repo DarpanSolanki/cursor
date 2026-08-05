@@ -114,6 +114,10 @@ if [[ "$_validate_ok" != 1 ]]; then
 fi
 
 write_manifest "$KEY" 2>/dev/null || true
+# A rebuild without a restamp leaves .kg-composite-key on the old branch set, so every later
+# banner reads mismatch_stored=<old> and stays [PROVISIONAL] forever. kg-enrich.sh stamps;
+# kg-switch did not.
+python3 "$BIN/kg_session.py" stamp >/dev/null 2>&1 || true
 ELAPSED=$(( $(date +%s) - START ))
 log "✓ KG ready (key $KEY) in ${ELAPSED}s"
 bash "$ROOT/.cursor/hooks/kg-write-state.sh" >/dev/null 2>&1 || true

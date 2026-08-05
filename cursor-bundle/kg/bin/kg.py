@@ -854,11 +854,22 @@ def _drift_check():
         _DRIFT_CACHE = (now, None, [], False, [])
         return None, [], False, []
     root=ROOT; drift=[]; stale_files=[]
+    # Serial on purpose. This runs inside the MCP server's provenance header, under a per-tool
+    # wall-clock cap enforced by a daemon thread. A ThreadPoolExecutor here re-creates the
+    # 2026-07-30 hang: `with` calls shutdown(wait=True), which blocks on a worker the server has
+    # already abandoned, and its non-daemon threads then block process exit. See _run_timed in
+    # cursor-bundle/kg/mcp/kg_mcp_server.py.
+    _pre={}
+    for _r in wm.get("repos",{}):
+        _d=os.path.join(root,_r)
+        if not os.path.isdir(os.path.join(_d,".git")) and not os.path.isdir(_d):
+            continue
+        _pre[_r]=(_git(_d,"rev-parse","--short=10","HEAD"),_porcelain_paths(_d))
     for repo,info in wm.get("repos",{}).items():
         d=os.path.join(root,repo)
-        if not os.path.isdir(os.path.join(d,".git")) and not os.path.isdir(d):
+        if repo not in _pre:
             continue
-        live=_git(d,"rev-parse","--short=10","HEAD")
+        live,_paths=_pre[repo]
         if not live: continue
         wm_sha=(info.get("sha") or "")[:10]
         if live!=wm_sha:
@@ -875,7 +886,7 @@ def _drift_check():
                     if _is_kg_path(p):
                         stale_files.append(f"{repo}/{p}")
             continue
-        paths=_porcelain_paths(d)
+        paths=_paths
         kg_paths=[p for p in paths if _is_kg_path(p)]
         if kg_paths:
             if _dirty_hash(d)!=(info.get("dirty_hash") or ""):
@@ -1299,7 +1310,6 @@ def cmd_fixed_elsewhere(c,a):
         print(p.stdout, end="" if p.stdout.endswith("\n") else "\n")
     if p.returncode:
         raise SystemExit(p.returncode)
-
 
 def cmd_schema(c,a):
     """Structure + code binding + train label for a table or column.

@@ -17,17 +17,21 @@ If this file disagrees with `kg watermark` / git status, **live state wins**.
 |---------|----------------------------|--------|
 | DPI harness / QA | **`mfi_integration_v3.7.1`** | Booking fix `77921d275f`; see `cursor-bundle/memory/reference_dpi_feature_branch.md` |
 | DFC / SDCP-10199 | **`mfi_integration_v3.7.1`** | 3.4.2.x tips are ancestors; runbook `runbooks/sdcp-10199-group-parent-last-child-dfc.md` |
-| Unmerged DPI WIP only | `feature/delayed_payment_interest` | Use **only** when task explicitly says WIP |
+| ~~`feature/delayed_payment_interest`~~ | **RETIRED 2026-08-06** | Dead — DPIC ships on `3.7.1`. Never check out; parking a repo there forces the whole KG watermark `[PROVISIONAL]` |
 
-## Point-in-time snapshot (2026-07-17)
+## Point-in-time snapshot (2026-08-06)
+
+Regenerate rather than hand-edit — `bash scripts/bin/git-workspace-status.sh`. The 2026-07-17
+revision had the DPI rows **inverted** (it named `actor` as the WIP repo and `initial-setup` as
+clean 3.7.1; the truth was the reverse), which sends a DPI task hunting in the wrong repo.
 
 | Repo | Branch | Notes |
 |------|--------|-------|
-| `trustt-platform-accounting` | **`mfi_integration_v3.7.1`** | Canonical for DPI + DFC; live HEAD `8a1a7cd077` at refresh |
-| `trustt-platform-los` | `mfi_integration_v3.4.2.4` | Mixed train — scope cross-service carefully |
-| `trustt-platform-actor` | `feature/delayed_payment_interest` | ⚠ WIP / provisional |
-| `trustt-platform-payments` | `mfi_integration_v3.4.2` | Older train |
-| `trustt-platform-initial-setup` | `mfi_integration_v3.7.1` | Clean at fresh upstream tip `e4ade8c3f8`; read-only Flyway source (no local commits/pushes) |
+| `trustt-platform-accounting` | `mfi_integration_v3.7.1` @ `566dc68ace` | Canonical for DPI + DFC |
+| `trustt-platform-los` | `mfi_integration_v3.4.2.4` @ `44bba2c47a` | Mixed train — scope cross-service carefully |
+| `trustt-platform-actor` | `mfi_integration_v3.7.1` @ `770b97aef4` | |
+| `trustt-platform-payments` | `mfi_integration_v3.4.2.4` @ `0dae3fc3ed` | Older train |
+| `trustt-platform-initial-setup` | `feature/delayed_payment_interest` @ `12690d16ee` | ⚠ **parked on a RETIRED branch** — forces `[PROVISIONAL]`. Move: `git checkout mfi_integration_v3.7.1 && bash scripts/bin/kg-switch.sh` |
 
 **Workspace root:** `/home/darpan/Documents/sliProd` (not `/home/darpan/darpan`).
 

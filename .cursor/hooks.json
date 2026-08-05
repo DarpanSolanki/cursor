@@ -31,6 +31,10 @@
       {
         "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:kg-after-file-edit -- bash .cursor/hooks/kg-after-file-edit.sh",
         "timeout": 15
+      },
+      {
+        "command": "python3 .cursor/hooks/route-escalation.py",
+        "timeout": 15
       }
     ],
     "beforeShellExecution": [

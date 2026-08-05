@@ -48,6 +48,15 @@ PY
 
 PENDING_JSON="$(_read_pending)"
 
+# Anything the MCP server can reach must survive being abandoned by its wall-clock cap.
+# A thread pool there re-creates the 2026-07-30 hang (see kg_mcp_server._run_timed); it was
+# reintroduced on 2026-08-06 and no gate caught it. Static, sub-second, fail-closed.
+if ! _ABANDON_OUT="$(python3 "$ROOT/scripts/lib/mcp_abandonable_gate.py" check 2>&1)"; then
+  echo "$_ABANDON_OUT"
+  echo "FAIL: MCP-reachable code is not abandonable — fix before ship."
+  exit 1
+fi
+
 # Drop clean+pushed zombies before selecting cases (sticky pending).
 python3 "$ROOT/scripts/lib/pending_ship_gc.py" >/dev/null 2>&1 || true
 PENDING_JSON="$(_read_pending)"
