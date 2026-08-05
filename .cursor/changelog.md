@@ -1,3 +1,9 @@
+## 2026-08-05 — L1/L2 MCP: IDE catalog gate + Atlassian dedupe
+
+**What.** `mcp_wiring_gate.py` fails when Cursor's `~/.cursor/projects/<ws>/mcps/` lacks trustt-kg (or Atlassian). Project `.mcp.json` keeps **only** `trustt-kg`; Atlassian SoT is the marketplace plugin (Streamable HTTP — no project `/v1/sse` duplicate).
+**Why.** Stdio `kg-mcp-smoke` could PASS while IDE tools were missing; dual Atlassian + SSE was a capacity/reliability trap.
+**Proof.** `test_check_mcp_wiring.py`; live `check-mcp-wiring.py` exit 0.
+
 ## 2026-08-05 — path-leak gate: bare workspace root slipped the pattern
 
 **Why.** While porting this workspace's harness fixes into the Claude workspace, the gate itself was

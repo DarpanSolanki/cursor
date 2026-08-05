@@ -18,6 +18,7 @@ Thin map (Upgrade 3). Load-bearing gates live in thematic alwaysApply rules.
 Verbatim pre-merge bodies: `.cursor/skills/workspace-gates-reference/`. Mapping: `scripts/scratch/upgrade3-mapping.md`.
 
 KG tools: project MCP `trustt-kg` → `cursor-bundle/kg/mcp/kg_mcp_server.py` (wraps `kg.py`).
+Atlassian: **Cursor marketplace plugin only** (`plugin-atlassian-atlassian`) — do **not** also declare `atlassian` in project `.mcp.json` (duplicate + legacy SSE). Gate: `python3 scripts/bin/check-mcp-wiring.py` (file contract **and** `~/.cursor/projects/<ws>/mcps/` IDE catalog).
 
 ## How to ask for a fix
 

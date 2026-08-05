@@ -3,10 +3,6 @@
     "trustt-kg": {
       "command": "python3",
       "args": ["cursor-bundle/kg/mcp/kg_mcp_server.py"]
-    },
-    "atlassian": {
-      "type": "sse",
-      "url": "https://mcp.atlassian.com/v1/sse"
     }
   }
 }

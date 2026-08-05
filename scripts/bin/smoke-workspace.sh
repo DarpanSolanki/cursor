@@ -175,11 +175,11 @@ else
 fi
 
 echo ""
-echo "=== mcp wiring ==="
-# kg-mcp-smoke spawns the server itself, so it passes even when Claude Code cannot
-# launch it. Validate the launch contract the client actually uses.
-mcp_out="$(python3 scripts/bin/check-mcp-wiring.py 2>&1)" && pass "mcp launch contract" \
-  || fail "mcp launch contract" "$mcp_out"
+echo "=== mcp wiring + IDE catalog ==="
+# kg-mcp-smoke spawns the server itself, so it can PASS while Cursor never loaded
+# trustt-kg. check-mcp-wiring also reads ~/.cursor/projects/<ws>/mcps/.
+mcp_out="$(python3 scripts/bin/check-mcp-wiring.py 2>&1)" && pass "mcp launch + IDE catalog" \
+  || fail "mcp launch + IDE catalog" "$mcp_out"
 
 echo ""
 echo "=== assert strength ==="
