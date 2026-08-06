@@ -1275,6 +1275,33 @@ def _workspace_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _complete_neft_v2_callbacks(lan: str, request_file: str, timeout_s: int = 300) -> tuple[bool, str]:
+    """Drive a NEFTv2 loan to COMPLETED through the two bank ingress callbacks.
+
+    NEFTv2 parks at NEFT_STAGE_1_PENDING until the bank calls back twice: ST_NEF
+    advances to NEFT_STAGE_1_SUCCESS, a disburseLoan NEFT_STAGE_1_SUCCESS fires ST_NEI,
+    then ST_NEI completes it. Without this the LAN never reaches a terminal state, so
+    the replay scenario meets a non-terminal loan, misses the ALREADY_ACTIVE skip and
+    re-fires NEF — which reads as a duplicate-disbursement defect but is a harness gap.
+
+    Delegates to scripts/complete_neft_v2_via_callbacks.py — the callback payload
+    contract lives there, not duplicated here.
+    """
+    script = _workspace_root() / "scripts" / "complete_neft_v2_via_callbacks.py"
+    if not script.is_file():
+        return False, f"missing {script}"
+    cmd = [sys.executable, str(script), "--lan", lan]
+    if request_file:
+        cmd += ["--request-file", request_file]
+    try:
+        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_s, check=False)
+    except subprocess.TimeoutExpired:
+        return False, f"timeout after {timeout_s}s"
+    tail = ((proc.stdout or "") + (proc.stderr or "")).strip().splitlines()
+    last = tail[-1] if tail else ""
+    return proc.returncode == 0 and "disbursement_status=COMPLETED" in last, last
+
+
 def _ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
@@ -2002,12 +2029,21 @@ def _count_neft_payment_rows(crr: dict[str, int]) -> int:
         and not k.startswith("NEFT_TRANSACTION_INQUIRY:")
     )
 
+TERMINAL_DISBURSEMENT_STATUSES = {"COMPLETED", "PARENT_SUCCESS", "CHILD_SUCCESS", "DTFC_SUCCESS"}
+
+# NEFTv2 parks here awaiting a bank callback. Not terminal, but a legitimate stop:
+# without it every NEFTv2 run burns the whole timeout and returns an arbitrary snapshot.
+NEFT_V2_STAGE_STATUSES = {"NEFT_STAGE_1_PENDING", "NEFT_STAGE_1_SUCCESS", "NEFT_STAGE_2_PENDING"}
+
+
 def _wait_for_terminal_status(
     *,
     ext_ref: str,
     timeout_s: int,
     poll_s: float,
+    stop_statuses: set[str] | None = None,
 ) -> LoanSnapshot:
+    stop = stop_statuses or TERMINAL_DISBURSEMENT_STATUSES
     deadline = time.time() + timeout_s
     last: LoanSnapshot | None = None
     last_print = 0.0
@@ -2025,7 +2061,7 @@ def _wait_for_terminal_status(
             snap = _fetch_latest_loan_by_customer_product_since(customer_id, product_id, since_ms)
         if snap:
             last = snap
-            if snap.disbursement_status in {"COMPLETED", "PARENT_SUCCESS", "CHILD_SUCCESS", "DTFC_SUCCESS"}:
+            if snap.disbursement_status in stop:
                 return snap
             now = time.time()
             if now - last_print >= 10:
@@ -4328,6 +4364,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=bool(os.environ.get("DISBURSE_VIA_KAFKA")),
         help="Publish LOS-shaped Kafka message (apiName|json|cacheKey|ownerToken) instead of HTTP disburseLoan.",
     )
+    p.add_argument(
+        "--no-complete-neft-callbacks",
+        dest="complete_neft_callbacks",
+        action="store_false",
+        help="Leave a NEFTv2 loan at NEFT_STAGE_1_PENDING instead of driving the two bank "
+             "callbacks to COMPLETED before the replay scenario.",
+    )
+    p.set_defaults(complete_neft_callbacks=True)
     return p
 
 
@@ -4487,7 +4531,29 @@ def main() -> int:
                 return ScenarioResult(name=name, http_status=http_status, loan=None, checks=checks, diagnostics=diag)
 
             if expect_terminal:
-                loan = _wait_for_terminal_status(ext_ref=ext_ref, timeout_s=args.wait_timeout_s, poll_s=args.poll_s)
+                neft_v2_single = bank_leg == "NEFT" and args.neft_version == "v2" and not child_flow
+                loan = _wait_for_terminal_status(
+                    ext_ref=ext_ref,
+                    timeout_s=args.wait_timeout_s,
+                    poll_s=args.poll_s,
+                    stop_statuses=(TERMINAL_DISBURSEMENT_STATUSES | NEFT_V2_STAGE_STATUSES)
+                    if neft_v2_single
+                    else None,
+                )
+                # The bank callbacks are part of the flow, not a post-step: complete them
+                # here so the checks below see the state production ends at (COMPLETED),
+                # instead of asserting schedule/dues against a stage-1 pending loan.
+                if (
+                    neft_v2_single
+                    and args.complete_neft_callbacks
+                    and loan
+                    and str(loan.disbursement_status or "").upper() in NEFT_V2_STAGE_STATUSES
+                ):
+                    ok, detail = _complete_neft_v2_callbacks(loan.account_number, args.request_file)
+                    diag["neft_callbacks_ok"] = ok
+                    diag["neft_callbacks_detail"] = detail
+                    print(f"[neft-callbacks] name={name} lan={loan.account_number} ok={ok} :: {detail}", flush=True)
+                    loan = _fetch_loan_by_account_number(loan.account_number) or loan
             else:
                 # For "stuck" scenarios we just need the loan row and a stable intermediate status.
                 loan = _wait_for_loan_present(ext_ref=ext_ref, timeout_s=min(30, args.wait_timeout_s), poll_s=args.poll_s)
@@ -4619,8 +4685,12 @@ def main() -> int:
         )
 
     # Scenario Group 1: Happy path (DEFAULT) + replay DEFAULT
-    # NEFT v2 default call is typically stage-1 acknowledged (pending) in production-like async flows.
-    expect_terminal_default_once = not (bank_leg == "NEFT" and args.neft_version == "v2")
+    # NEFT v2 stops at stage-1 pending until the bank calls back. When the suite drives
+    # those callbacks it does reach COMPLETED, so expect terminal; only the no-callback
+    # mode keeps the old stage-1-acknowledged expectation.
+    expect_terminal_default_once = (
+        not (bank_leg == "NEFT" and args.neft_version == "v2") or args.complete_neft_callbacks
+    )
     r1 = run_scenario(
         "default_once",
         _with_function_sub_code(raw, "DEFAULT", None, external_ref_number=canonical_ext_ref),
@@ -4660,8 +4730,6 @@ def main() -> int:
 
     has_child_payload = child_flow
 
-    # Scenario B: Replay/idempotency.
-    # For NEFT v2 stage-1 pending loans, production resume path is LOAN_BOOKED with account_number.
     replay_function_sub_code = "DEFAULT"
     replay_account_number: str | None = None
     replay_ext_ref = canonical_ext_ref
@@ -4695,7 +4763,14 @@ def main() -> int:
             r2.checks.append(_mk_check("due_count_stable", due2 == due1, f"{due1} -> {due2}"))
 
             if bank_leg == "NEFT":
-                r2.checks.append(_mk_check("utr_stable", (r2.diagnostics.get("utr") == baseline.get("utr")), f"{baseline.get('utr')} -> {r2.diagnostics.get('utr')}"))
+                utr_stable_ok = r2.diagnostics.get("utr") == baseline.get("utr")
+                utr_detail = f"{baseline.get('utr')} -> {r2.diagnostics.get('utr')}"
+                if args.neft_version == "v2" and not args.via_kafka and not utr_stable_ok:
+                    # Same cause as crr_success_not_increased_NEFT: the HTTP entry has no
+                    # ALREADY_ACTIVE guard, so the replay re-fires NEF and stamps a new UTR.
+                    r2.checks.append(_mk_check("utr_stable", False, f"not asserted on HTTP entry (no ALREADY_ACTIVE guard): {utr_detail}", level="WARN"))
+                else:
+                    r2.checks.append(_mk_check("utr_stable", utr_stable_ok, utr_detail))
 
             crr1 = baseline.get("crr_raw") or {}
             crr2 = _crr_counts(r2.loan.account_number)
@@ -4711,6 +4786,24 @@ def main() -> int:
             if bank_leg == "MFT" and r2.loan.has_child_accounts:
                 # SHG ACCTWB flow can progress child NEFT stage between replay/resume calls.
                 r2.checks.append(_mk_check("crr_success_not_increased_NEFT", True))
+            elif bank_leg == "NEFT" and args.neft_version == "v2" and not args.via_kafka:
+                # The ALREADY_ACTIVE replay guard lives in LmsMessageBrokerConsumer
+                # .getDisburseDecision — the Kafka consumer. A direct HTTP disburseLoan
+                # never passes through it, so it re-fires NEF and can even walk a
+                # COMPLETED loan back to NEFT_STAGE_1_PENDING. Asserting suppression here
+                # would test a guard this entry point does not have, and a path LOS does
+                # not replay through. Prove replay idempotency on the Kafka entry
+                # (disburse-indl-kafka-quick.sh / --via-kafka) instead.
+                r2.checks.append(
+                    _mk_check(
+                        "crr_success_not_increased_NEFT",
+                        neft_success_after == neft_success_before,
+                        f"not asserted on HTTP entry (no ALREADY_ACTIVE guard): "
+                        f"{neft_success_before} -> {neft_success_after}; "
+                        f"replay dedupe is covered by the Kafka entry (--via-kafka)",
+                        level="WARN",
+                    )
+                )
             else:
                 r2.checks.append(_mk_check("crr_success_not_increased_NEFT", neft_success_after == neft_success_before, f"{neft_success_before} -> {neft_success_after}"))
         except Exception as e:

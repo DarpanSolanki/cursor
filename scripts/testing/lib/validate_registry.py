@@ -75,6 +75,7 @@ def validate_registry(path: Path | None = None) -> list[str]:
                     "batch_api",
                     "http_api",
                     "orch_request",
+                    "kafka",
                     "mixed",
                     "sim",
                 ):

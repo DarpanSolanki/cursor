@@ -106,3 +106,5 @@
 - **Pending ship GC:** drop clean+pushed zombies — `feedback_pending_ship_gc_no_sticky.md`
 
 - **SHG IAD column audit:** `flowtest/iad_column_audit.py` in shg_int_accrual_stitch; tip lag WARN = LMS-DEFECT-child-iad-stuck-tip
+- [Kafka disburse local harness gotchas](feedback_kafka_disburse_local_harness_gotchas.md) — consumer 'assigned' false positive, fixture reset wedging the consumer on a Yugabyte row lock, per-scenario reset
+- [Disbursement is Kafka-only](reference_disbursement_is_kafka_only.md) — ALREADY_ACTIVE guard is correctly Kafka-only; HTTP replay re-firing NEF is accepted, do not re-raise

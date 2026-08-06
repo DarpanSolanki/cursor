@@ -107,6 +107,16 @@ ALLOWED_SEEDED_HINTS = frozenset(
         # daily walk — posting-days-only under-fires SHG distribute and hides the
         # per-segment break, whereas +1 intermediate calc per gap does not.
         "roll_cadence_hop",
+        # LOS-side row the sync consumer updates (mfi_los.disburse_loan_process). Seeding the
+        # target row is fixture, not outcome — the failure_reason under assert is still written
+        # by DisbursementSyncService, never by the harness.
+        "los_disburse_process_seed",
+        # Prior loans for the payload's customers closed before each scenario. Without it the
+        # second scenario for a customer dies on 134494 (active loan for product) before the
+        # validation under test runs, and the matrix silently degrades into codes that prove
+        # nothing. Must drain the disburse consumer to lag 0 first — resetting mid-flight wedges
+        # it on a Yugabyte row lock.
+        "customer_loans_closed_reset",
     }
 )
 
@@ -186,9 +196,9 @@ def check_case(cid: str, case: dict[str, Any]) -> list[str]:
         )
     else:
         entry = (fid.get("entry") or "").strip()
-        if entry not in {"batch_api", "http_api", "orch_request", "mixed", "sim"}:
+        if entry not in {"batch_api", "http_api", "orch_request", "kafka", "mixed", "sim"}:
             errs.append(
-                f"{cid}: fidelity.entry must be batch_api|http_api|orch_request|mixed|sim "
+                f"{cid}: fidelity.entry must be batch_api|http_api|orch_request|kafka|mixed|sim "
                 f"(got {entry!r})"
             )
         if entry == "sim" and (case.get("verify_mode") or "").lower() in {
