@@ -10,6 +10,8 @@ from typing import Any
 
 REGISTRY = Path(__file__).resolve().parent.parent / "registry.json"
 VAR_RE = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
+# ntest injects these per run, so they are resolvable without a _correlators entry.
+RUNTIME_CORRELATORS = {"STAN"}
 
 
 def _collect_vars(obj: Any, found: set[str]) -> None:
@@ -31,7 +33,7 @@ def validate_registry(path: Path | None = None) -> list[str]:
     except json.JSONDecodeError as ex:
         return [f"invalid JSON: {ex}"]
 
-    correlators = set((raw.get("_correlators") or {}).keys())
+    correlators = set((raw.get("_correlators") or {}).keys()) | RUNTIME_CORRELATORS
     cases = {k: v for k, v in raw.items() if not k.startswith("_")}
 
     for cid, case in cases.items():

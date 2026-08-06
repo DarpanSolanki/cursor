@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from .api_client import ApiResult
@@ -104,10 +104,13 @@ def run_assertions(
             elif t == "db_matches_path":
                 sql = rule["sql"]
                 for k, v in env.items():
-                    sql = sql.replace(f":{k}", str(v))
+                    sql = sql.replace(f"${{{k}}}", str(v)).replace(f":{k}", str(v))
                 db_val = _run_db_scalar(sql, env)
                 api_val = str(get_path(obj, rule["path"]))
-                ok = _dec(db_val) == _dec(api_val)
+                try:
+                    ok = _dec(db_val) == _dec(api_val)
+                except (InvalidOperation, ValueError):
+                    ok = db_val.strip() == api_val.strip()
                 out.append(AssertResult(ok, name, f"db={db_val} api={api_val} @ {rule['path']}"))
             else:
                 out.append(AssertResult(False, name, f"unknown assertion type: {t}"))

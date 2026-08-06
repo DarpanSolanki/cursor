@@ -195,6 +195,13 @@ WHERE la.la_account_number='{CHILD}' AND ldd.is_deleted=false
         },
     )
     bpd = Decimal(str(bpd_resp.get("bpd_amount") or bpd_resp.get("response", {}).get("bpd_amount") or "0"))
+    billed_dpi = Decimal(
+        str(
+            bpd_resp.get("total_outstanding_dpi_amount")
+            or bpd_resp.get("response", {}).get("total_outstanding_dpi_amount")
+            or "0"
+        )
+    )
     # gross = overdue + overdue_fee + bpi + net + charges + due (orch 134227)
     # We put all past-due into overdue_amount and due_amount=0 to avoid double-count,
     # OR due=currentDue and overdue=0 — check product semantics.
@@ -203,8 +210,21 @@ WHERE la.la_account_number='{CHILD}' AND ldd.is_deleted=false
     # But validateDueAmount fails if currentDue>0 and due_amount != currentDue-excess.
     due_for_api = due_amount
     overdue_for_api = Decimal("0")  # avoid double-count in gross formula
-    gross = (overdue_for_api + NET + due_for_api).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-    print(f"  overdue_bucket={overdue} due_api={due_for_api} bpd={bpd} net={NET} gross={gross}")
+    gross = overdue_for_api + NET + due_for_api + billed_dpi + bpd
+    print(
+        f"  overdue_bucket={overdue} due_api={due_for_api} billed_dpi={billed_dpi} "
+        f"bpd={bpd} net={NET} gross={gross}"
+    )
+
+    # APPROVE re-checks this against SUM(due-paid-waived) over every non-deleted due row (134255).
+    total_outstanding = psql_raw(
+        f"""
+SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - ldd.waived_amount), 0)::text
+FROM mfi_accounting.loan_due_details ldd
+JOIN mfi_accounting.loan_account la ON la.account_id = ldd.loan_account_id
+JOIN mfi_accounting.account a ON a.id = la.account_id
+WHERE a.account_number = '{CHILD}' AND ldd.is_deleted = false;"""
+    ).strip()
 
     receipt = f"pp{int(time.time()) % 10**12:012d}"
     stan = f"ft_pp_{int(time.time())}"
@@ -228,15 +248,16 @@ WHERE la.la_account_number='{CHILD}' AND ldd.is_deleted=false
             "excess_amount": "0",
             "paid_by": "CUSTOMER",
             "depositor_name": "FLOWTEST_PP",
+            "total_outstanding_amount": total_outstanding,
         }
     }
     resp: dict = {}
     ok = False
-    # REAL DEFAULT→task needs getLoanAccountDetails→getCustomerDetails; local glad returns
-    # 200065 (actor wants request.id). TRIAL posts txn + GL without approval (30485).
-    # REAL schedule persist: SU-FLOW-PARTPREP-REAL-GLAD.
+    # TRIAL posts txn + GL without approval (30485). REAL is maker -> checker: DEFAULT only
+    # initiates the task (30483), APPROVE posts the transaction — both legs must run.
     run_mode = os.environ.get("PART_PREP_RUN_MODE", "TRIAL")
-    for fc in ("DEFAULT",):
+    legs = ("DEFAULT", "APPROVE") if run_mode == "REAL" else ("DEFAULT",)
+    for fc in legs:
         body = {
             "headers": _headers(f"{stan}_{fc}", function_code=fc, run_mode=run_mode),
             "request": request,
@@ -244,9 +265,12 @@ WHERE la.la_account_number='{CHILD}' AND ldd.is_deleted=false
         resp = _post("loanAccountPartPrepayment", body)
         st = resp.get("response_status", {})
         print(f"  partPrepayment {run_mode}/{fc}: {st.get('code')}/{st.get('status')} — {str(st.get('message',''))[:120]}")
-        if st.get("status") == "SUCCESS" or st.get("code") in ("000", "30485", "30365", "30267", "30366", "30304"):
-            ok = True
+        ok = st.get("status") == "SUCCESS" or st.get("code") in (
+            "000", "30483", "30485", "30365", "30267", "30366", "30304",
+        )
+        if not ok:
             break
+        time.sleep(2)
     if not ok:
         raise RuntimeError(f"loanAccountPartPrepayment failed: {json.dumps(resp)[:500]}")
 

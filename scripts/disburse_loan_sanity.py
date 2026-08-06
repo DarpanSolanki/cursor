@@ -1084,6 +1084,33 @@ def _seed_repayment_mandate_for_loan_app_id(*, loan_app_id: str, req: dict[str, 
     print(f"[suite] mandate ready loan_app_id={loan_app_id} repayment_casa={account_number}", flush=True)
 
 
+def _has_rep_acct(details: Any) -> bool:
+    for item in details or []:
+        if not isinstance(item, dict):
+            continue
+        for purpose in item.get("purpose") or []:
+            if not isinstance(purpose, dict):
+                continue
+            code = str(purpose.get("code") or purpose.get("purpose_code") or "").strip()
+            if code.upper() == "REP_ACCT":
+                return True
+    return False
+
+
+def _member_or_parent_rep_acct_details(req: dict[str, Any], member: dict[str, Any]) -> list[Any]:
+    """Mirror ChildLoanBookingEventsQueueDataPopulator.addParentRepAcct — a member that sends no
+    REP_ACCT inherits the parent group REP_ACCT, so the seeded mandate matches what CLB writes."""
+    member_details = member.get("disbursement_repayment_account_details") or []
+    if _has_rep_acct(member_details):
+        return member_details
+    parent_details = req.get("disbursement_repayment_account_details") or []
+    if not _has_rep_acct(parent_details):
+        return member_details
+    return list(member_details) + [
+        item for item in parent_details if isinstance(item, dict) and _has_rep_acct([item])
+    ][:1]
+
+
 def _seed_member_mandates_for_shg(req: dict[str, Any]) -> None:
     """SHG CLB/createOrUpdate uses member external_ref as loan_application_id — seed each.
 
@@ -1112,7 +1139,7 @@ def _seed_member_mandates_for_shg(req: dict[str, Any]) -> None:
             },
             "repayment_details": repayment_details,
             "group_details": group_details,
-            "disbursement_repayment_account_details": member.get("disbursement_repayment_account_details") or [],
+            "disbursement_repayment_account_details": _member_or_parent_rep_acct_details(req, member),
         }
         _seed_repayment_mandate_for_loan_app_id(loan_app_id=loan_app_id, req=member_req)
 

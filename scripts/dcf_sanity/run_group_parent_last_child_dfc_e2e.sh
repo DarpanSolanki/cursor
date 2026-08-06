@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+export DISBURSE_ENTRY="${DISBURSE_ENTRY:-http}"
 export DCF_FRESH_GROUP="${DCF_FRESH_GROUP:-0}"
 export PARENT_LAN="${PARENT_LAN:-}"
 export CHILD1_LAN="${CHILD1_LAN:-}"

@@ -33,7 +33,7 @@ python3 cursor-bundle/kg/bin/kg.py stale
 python3 cursor-bundle/kg/bin/kg.py stats | head -3
 python3 cursor-bundle/kg/bin/kg.py flow disburseLoan | head -3
 if [[ -x .cursor/hooks/kg-session-watermark.sh ]]; then
-  CURSOR_PROJECT_DIR="$ROOT" .cursor/hooks/kg-session-watermark.sh >/dev/null 2>&1 || true
+  CLAUDE_PROJECT_DIR="$ROOT" .cursor/hooks/kg-session-watermark.sh >/dev/null 2>&1 || true
   check test -f .cursor/workspace-kg-state.md
 fi
 

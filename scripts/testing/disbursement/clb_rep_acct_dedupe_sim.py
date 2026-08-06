@@ -3,8 +3,8 @@
 
 Forward path:
 1. Parent disburseLoan: CustomValidate… → 134126 if any member has >1 REP_ACCT.
-2. CLB populator: drop blank REP_ACCT; if non-CASH and no usable REP → 130142.
-   Do NOT copy parent REP into child CLB data (LOS must send correct member REP).
+2. CLB populator: drop blank REP_ACCT; if non-CASH and member has none, copy the parent
+   group REP_ACCT from ExecutionContext; only when the parent has none either → 130142.
 3. createOrUpdateLoanAccount CustomValidate remains backstop for poison queue rows.
 """
 from __future__ import annotations
@@ -78,7 +78,12 @@ def main() -> int:
     _require(
         "getAPIRequestJson" not in pop_src
         and "parseAndAddDisbursementRepaymentAccountDetails" not in pop_src,
-        "Populator must NOT auto-copy parent REP from API request JSON",
+        "Parent REP fallback must read ExecutionContext, never re-parse the API request JSON",
+    )
+    _require(
+        "addParentRepAcct" in pop_src
+        and "executionContext.get(DISBURSEMENT_REPAYMENT_ACCOUNT_DETAILS)" in pop_src,
+        "Populator must copy parent REP_ACCT from EC when member has none",
     )
     _require(
         "keepAtMostOneRepAcct" not in pop_src,
@@ -100,7 +105,7 @@ def main() -> int:
     pop_idx = orc_src.find("customValidateDisbursementRepaymentAccountDetailsProcessor")
     clb_idx = orc_src.find('bean="createLoanAccountEventsProcessor"')
     _require(pop_idx >= 0 and clb_idx > pop_idx, "customValidate must appear before CLB createLoanAccountEventsProcessor")
-    print("PROCESSOR_MIRROR_SIM PASS: reject gate + no parent copy + 130142 fail-closed")
+    print("PROCESSOR_MIRROR_SIM PASS: reject gate + EC parent fallback + 130142 fail-closed")
 
     poison_members = [
         {
@@ -158,7 +163,7 @@ def main() -> int:
         "REPAY_MODE_CASH" in pop_src,
         "CASH repayment must skip mandatory member REP",
     )
-    print("PROCESSOR_MIRROR_SIM PASS: blank REP_ACCT treated as missing (130142); no invent")
+    print("PROCESSOR_MIRROR_SIM PASS: blank REP_ACCT treated as missing; parent fallback then 130142")
 
     _require(not member_would_reject_134126([]), "no members → no member reject")
     print("PROCESSOR_MIRROR_SIM PASS: INDL/empty member_details no-op")

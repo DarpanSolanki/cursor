@@ -5,9 +5,9 @@
 # fetch origin+upstream and ensure HEAD includes upstream/<branch> tip. Machine
 # gate: train-upstream-sync.sh (--sync if clean, else --check fail). Never push
 # from an origin tip behind upstream. See:
-#   .cursor/rules/upstream-mainline-push-sync.mdc
+#   .cursor/rules/upstream-mainline-push-sync.md
 #   cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md
-#   .cursor/rules/10-quality-gates.mdc
+#   .cursor/rules/10-quality-gates.md
 #
 # Usage:
 #   push-origin.sh                    # push current branch: git push -u origin HEAD

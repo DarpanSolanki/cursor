@@ -25,9 +25,18 @@ aops_is_dpi_api() {
   [[ "$api" == dpi* ]]
 }
 
+aops_is_bank_leg_disburse_api() {
+  local api="${1,,}"
+  [[ "$api" == *disburse* ]] || return 1
+  case "$api" in
+    updateloanaccountpredisbursementdetails) return 1 ;;
+  esac
+  return 0
+}
+
 aops_is_money_test() {
   local api="$1"
-  aops_is_batch_api "$api" || aops_is_dpi_api "$api" || [[ "${1,,}" == *disburse* ]] || [[ "${1,,}" == *foreclos* ]]
+  aops_is_batch_api "$api" || aops_is_dpi_api "$api" || aops_is_bank_leg_disburse_api "$api" || [[ "${1,,}" == *foreclos* ]]
 }
 
 aops_repo_dir() {
@@ -158,7 +167,7 @@ aops_before_test() {
   # Disburse needs actor + masterdata + bank simulator on every entry path. LOS and Kafka are
   # required only when the run enters through the Kafka producer (TDPQA-54); a direct HTTP
   # disburseLoan call never touches them, so declaring DISBURSE_ENTRY=http skips those two.
-  if [[ "${api,,}" == *disburse* ]]; then
+  if aops_is_bank_leg_disburse_api "$api"; then
     local los_compile=0 sim_compile=0 actor_compile=0
     local entry="${DISBURSE_ENTRY:-kafka}"
     if [[ "$entry" == "kafka" ]]; then
@@ -260,6 +269,6 @@ aops_write_state() {
     _los_boot="$(nps_boot_log los 2>/dev/null || echo "$_AOPS_ROOT/scripts/scratch/services/los-bootrun.log")"
     echo "- los boot: \`${_los_boot}\`"
     echo ""
-    echo "Rule: \`.cursor/rules/00-workspace-core.mdc\`"
+    echo "Rule: \`.cursor/rules/00-workspace-core.md\`"
   } >"$state"
 }

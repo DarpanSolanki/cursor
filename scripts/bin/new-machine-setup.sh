@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bring this workspace up on a fresh Cursor-enabled machine.
+# Bring this workspace up on a fresh Claude-enabled machine.
 #
 #   new-machine-setup.sh --dry-run    # show every step, change nothing (do this first)
 #   new-machine-setup.sh              # run it
@@ -102,7 +102,7 @@ else
 fi
 
 step "5/6 hooks and gates"
-run bash scripts/bin/install-user-cursor-gates.sh
+run bash scripts/bin/install-user-claude-gates.sh
 run bash scripts/bin/install-kg-git-hooks.sh
 
 step "6/6 what is still manual"
@@ -112,7 +112,7 @@ cat <<'TXT'
     still serves lookups read-only, so `kg schema` works before the DB exists.
   - Local services (accounting :8002, actor :8003, los :8013, task :8019,
     simulators :8018, Kafka :9092) — needed only to RUN flows, not to query knowledge.
-  - Atlassian MCP needs an interactive auth once: `/mcp` or /mcp.
+  - Atlassian MCP needs an interactive auth once: `claude mcp` or /mcp.
 TXT
 
 echo ""

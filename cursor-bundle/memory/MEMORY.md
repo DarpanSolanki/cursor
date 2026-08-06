@@ -108,3 +108,15 @@
 - **SHG IAD column audit:** `flowtest/iad_column_audit.py` in shg_int_accrual_stitch; tip lag WARN = LMS-DEFECT-child-iad-stuck-tip
 - [Kafka disburse local harness gotchas](feedback_kafka_disburse_local_harness_gotchas.md) — consumer 'assigned' false positive, fixture reset wedging the consumer on a Yugabyte row lock, per-scenario reset
 - [Disbursement is Kafka-only](reference_disbursement_is_kafka_only.md) — ALREADY_ACTIVE guard is correctly Kafka-only; HTTP replay re-firing NEF is accepted, do not re-raise
+- [Jira enrich one call ship](feedback_jira_enrich_one_call_ship.md) — Jira enrichment slowness was agent round trips, not the scripts — use jira-enrich.sh ship for the whole handoff in one call
+- [Jira phase2 direct after qa confirmation](feedback_jira_phase2_direct_after_qa_confirmation.md) — Once the agent has confirmed testing done and good-to-release-to-QA, enrich JIRA straight to phase 2 — mentions and transition included
+- [Jira transition walk stop exactly](feedback_jira_transition_walk_stop_exactly.md) — Walking a Jira workflow: plan the full route, verify each state's precondition, and match the target state by equality — substring matching walked a ticket into QA:Closed
+- [Mcp server stale after code fix](feedback_mcp_server_stale_after_code_fix.md) — Fixing a file the MCP server imports does not fix the running server — hot-reload may not fire; kill the process
+- [Money proof metric was typed not proven](feedback_money_proof_metric_was_typed_not_proven.md) — Footprint 'verified' came from a CLI flag, not a run — 18 of 21 money footprints had no recorded run
+- [Never bare git stash pop](feedback_never_bare_git_stash_pop.md) — Never use bare `git stash`/`git stash pop` in this workspace — stash@{0} is usually someone else's; and check tracked status before rm
+- [Prod runs no alter](feedback_prod_runs_no_alter.md) — The manual Flyway pack is for ALTER/DDL only — INSERT/UPDATE migrations run normally and need no pack
+- [Shared dpi fixture needs teardown](feedback_shared_dpi_fixture_needs_teardown.md) — A scenario that mutates loan config or appends dues on a shared DPI fixture LAN must tear down, or it silently reds sibling cases
+- [Sql seeded config needs cache evict](feedback_sql_seeded_config_needs_cache_evict.md) — A SQL-seeded config value the app reads through @Cacheable is invisible until the Redis key is evicted — the run looks green against the stale value
+- [Stale branch mapping docs](feedback_stale_branch_mapping_docs.md) — Hand-maintained branch/repo tables rot and can invert — regenerate from live git, and never trust a doc's checkout claim
+- [Forward merge chain](reference_forward_merge_chain.md) — Declared train forward-merge order — use it before porting a fix, allocating a migration version, or calling a branch "regressed"
+- [Router v2 minimal path](reference_router_v2_minimal_path.md) — Router v2 — process matrix is a weighted DAG with terminal state; how PLAN/GOAL/escalation work and what may never be traded for speed

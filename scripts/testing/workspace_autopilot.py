@@ -66,7 +66,7 @@ OPTIONS_BOARD_DIRECTIVE = (
     "behind evidence-gathering. Format each tier: change / where / effort / risk / what it does NOT fix. "
     "Use `N/A — <one line>` only when a tier truly does not apply. Evidence/prod checks may be a "
     "prerequisite under a tier, never a substitute for the board. "
-    "See `.cursor/skills/architect-thinking/tiered-solutions.md` + `.cursor/rules/00-workspace-core.mdc`."
+    "See `.cursor/skills/architect-thinking/tiered-solutions.md` + `.cursor/rules/00-workspace-core.md`."
 )
 
 
@@ -448,7 +448,7 @@ def build_plan(
         "Run autopilot on EVERY new user message in this tab — task type may have changed.",
         "Extended session: re-read `.cursor/workspace-kg-state.md` + run `kg watermark` when resuming after branch checkout.",
         "Do not ask the user to run scripts — autopilot + hooks handle ops.",
-        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/10-quality-gates.mdc.",
+        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/10-quality-gates.md.",
         "After verified test + commit: push runs via ship-and-continue (do not wait for session end).",
     ]
     if task_shift:

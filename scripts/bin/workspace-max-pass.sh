@@ -31,7 +31,7 @@ for id in WS-001 WS-002 WS-003 WS-004 WS-005; do
 done
 
 if [[ "${1:-}" == "--repair" || "${1:-}" == "--full" ]]; then
-  bash "$ROOT/scripts/bin/install-user-cursor-gates.sh" 2>/dev/null || true
+  bash "$ROOT/scripts/bin/install-user-claude-gates.sh" 2>/dev/null || true
 fi
 
 if [[ "${1:-}" == "--full" || "${FULL:-0}" == "1" ]]; then

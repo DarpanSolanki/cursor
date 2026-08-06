@@ -17,6 +17,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 
+import forward_merge
+
 ROOT = Path(__file__).resolve().parents[2]
 KG_DB = ROOT / "cursor-bundle/kg/data/kg.db"
 TRAIN_REF = re.compile(r"^upstream/(mfi_(?:integration|release)_v\d+(?:\.\d+)*)$")
@@ -570,9 +572,16 @@ def missing_branches(repo: Path, sha: str, floor: str | None = None) -> int:
     selected = sorted(branches, key=version_key)
     if floor:
         selected = [branch for branch in selected if version_key(branch) >= version_key(floor)]
+    source = current_train_branch(repo)
+    arriving = set(forward_merge.downstream(source)) if source else set()
     for branch in selected:
-        state = "HAS" if branch in containing else "MISSING"
-        print(f"{state:7} upstream/{branch}")
+        if branch in containing:
+            print(f"{'HAS':7} upstream/{branch}")
+            continue
+        route = "arrives by forward merge" if branch in arriving else "needs explicit port"
+        print(f"{'MISSING':7} upstream/{branch}  ({route})")
+    if source:
+        print(f"# forward-merge source {source}: {forward_merge.coverage_note(source)}")
     return 0
 
 

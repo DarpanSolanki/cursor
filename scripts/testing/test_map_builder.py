@@ -18,6 +18,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import run_evidence
+import scope_out
+
 WORKSPACE = Path(__file__).resolve().parents[2]
 FLOW = WORKSPACE / "cursor-bundle/flow-test"
 REGISTRY = WORKSPACE / "scripts/testing/registry.json"
@@ -153,6 +156,7 @@ def build_maps() -> tuple[list[dict], list[dict], list[dict], dict]:
     by_api = ftg_by_api(flows)
     by_ntest = ftg_by_ntest_case(flows)
     footprints = load_footprints()
+    run_ev = run_evidence.evidence()
     chains = {c["request"]: c for c in load_jsonl(FLOW / "chains.jsonl")}
     junit = scan_junit_index()
     junit_by_hint: dict[str, list[str]] = defaultdict(list)
@@ -267,14 +271,26 @@ def build_maps() -> tuple[list[dict], list[dict], list[dict], dict]:
             or cov["ntest_cases"]
         )
         gap_reasons: list[str] = []
-        if cov["money"] and cov["footprint_best"] in ("none", "untested"):
+        # A curated footprint is typed, not proven. A recorded ntest pass is evidence, so it
+        # satisfies the money-proof gate; a recorded fail is worse than silence and is named.
+        run_status = run_evidence.status_for(api, run_ev)
+        # Flows that are not live in production (penal, write-off) carry no coverage debt —
+        # their absence of proof is correct, not a gap. Scoping one in is a product decision.
+        scoped_out = scope_out.is_scope_out(api)
+        proven = cov["footprint_best"] == "verified" or run_status == "run_verified"
+        if scoped_out:
+            pass
+        elif cov["money"] and not proven:
             gap_reasons.append("money_no_verified_footprint")
-        if cov["money"] and not has_proof:
+        if not scoped_out and cov["money"] and run_status == "run_failed":
+            gap_reasons.append("last_run_failed")
+        if not scoped_out and cov["money"] and not has_proof:
             gap_reasons.append("no_tests")
-        for f in flows_by_id.values():
-            if f.get("request") == api and f.get("coverage") == "gap":
-                gap_reasons.append("ftg_coverage_gap")
-                break
+        if not scoped_out:
+            for f in flows_by_id.values():
+                if f.get("request") == api and f.get("coverage") == "gap":
+                    gap_reasons.append("ftg_coverage_gap")
+                    break
         row = {
             "id": f"coverage:{api}",
             "api": api,
@@ -287,6 +303,7 @@ def build_maps() -> tuple[list[dict], list[dict], list[dict], dict]:
             "footprint_best": cov["footprint_best"],
             "tiers": sorted(cov["tiers"]),
             "has_proof": has_proof,
+            "scope": "out" if scoped_out else "in",
             "gaps": sorted(set(gap_reasons)),
         }
         if chain := chains.get(api):

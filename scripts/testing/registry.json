@@ -12,7 +12,17 @@
   "FORECLOSURE_LAN": "6000000262",
   "FORECLOSURE_RECEIPT": "412700000001537",
   "FORECLOSURE_AMOUNT": "5324.00",
-  "FORECLOSURE_PREPAY_DATE": "1725148800000"
+  "FORECLOSURE_PREPAY_DATE": "1725148800000",
+  "TDPQA241_INFLIGHT_LAN": "6000022777",
+  "TDPQA241_INFLIGHT_REF": "984820",
+  "TDPQA241_COMPLETED_LAN": "0000000820",
+  "TDPQA241_COMPLETED_REF": "789876789876",
+  "TDPQA241_OPEN_LAN": "0000002256",
+  "TDPQA241_OPEN_REF": "1694002423",
+  "TDPQA241_OPEN_NEW_CASA": "38439483911999",
+  "GLZERO_DR_GL": "45590",
+  "GLZERO_CR_GL": "23480",
+  "GLZERO_AMOUNT": "10.00"
  },
  "dpic.overview_api": {
   "type": "api",
@@ -44,6 +54,9 @@
    "account_overview_list[0].amount_details.dpi_due_amount",
    "account_overview_list[0].amount_details.total_accrued_dpi_amount",
    "account_overview_list[0].payment_details.payment_details_list[0].dpi_amount"
+  ],
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
   ]
  },
  "dpic.restructuring_bpi_api": {
@@ -84,7 +97,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.summary_api": {
   "type": "api",
@@ -122,6 +138,9 @@
    "dpi_details.accrued_amount",
    "dpi_details.overdue_amount",
    "dpi_details.current_due_amount"
+  ],
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
   ]
  },
  "dpic.foreclosure_sim": {
@@ -162,7 +181,10 @@
    ],
    "verify_mode": "processor_mirror_sim"
   },
-  "verify_mode": "processor_mirror_sim"
+  "verify_mode": "processor_mirror_sim",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.foreclosure_bpd_growth": {
   "type": "flow",
@@ -175,7 +197,10 @@
   "env": {
    "ACCOUNT_NUMBER": "6004055825",
    "LOAN_ACCOUNT_ID": "8101960"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.loan_prepayment_billed_dpi_e2e": {
   "type": "flow",
@@ -188,7 +213,10 @@
   "env": {
    "ACCOUNT_NUMBER": "6004055825",
    "LOAN_ACCOUNT_ID": "8101960"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.foreclosure_details_api": {
   "type": "api",
@@ -224,7 +252,10 @@
    "loan_foreclosure_details_list[0].billed_dpi_details.due_amount",
    "loan_foreclosure_details_list[0].bpd_details.due_amount"
   ],
-  "note": "Use dpic.foreclosure_details_flow (restore first) when billed_dpi may be 0 after repayment"
+  "note": "Use dpic.foreclosure_details_flow (restore first) when billed_dpi may be 0 after repayment",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.foreclosure_details_flow": {
   "type": "flow",
@@ -238,7 +269,10 @@
    "LOAN_ACCOUNT_ID": "8060160",
    "ACCOUNT_NUMBER": "6004044425",
    "JOB_TIME": "1782563400000"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.repayment_e2e": {
   "type": "flow",
@@ -319,7 +353,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.repayment_reversal_e2e": {
   "type": "flow",
@@ -351,7 +388,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.extended_regression": {
   "type": "flow",
@@ -367,7 +407,10 @@
    "JOB_TIME": "1782563400000",
    "FORECLOSURE_DATE": "1784984400000"
   },
-  "note": "Preflight + phased restore; TRIAL part-prep + REAL ICF GL legs; skips reversal if task down"
+  "note": "Preflight + phased restore; TRIAL part-prep + REAL ICF GL legs; skips reversal if task down",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.regression_preflight": {
   "type": "flow",
@@ -380,7 +423,10 @@
   "env": {
    "LOAN_ACCOUNT_ID": "8060160",
    "ACCOUNT_NUMBER": "6004044425"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.part_prepayment_bpi_api": {
   "type": "api",
@@ -388,7 +434,7 @@
    "dpi",
    "part-prepayment"
   ],
-  "title": "getPartPrepaymentBPIAmount — bpd_amount for rescheduling date",
+  "title": "getPartPrepaymentBPIAmount — bpd_amount and total_outstanding_dpi_amount for rescheduling date",
   "service": "accounting",
   "api": "getPartPrepaymentBPIAmount",
   "request": {
@@ -398,7 +444,8 @@
   "expect": {
    "status": "SUCCESS",
    "paths": [
-    "bpd_amount"
+    "bpd_amount",
+    "total_outstanding_dpi_amount"
    ],
    "any_path_gt": {
     "paths": [
@@ -409,7 +456,11 @@
   },
   "print": [
    "bpd_amount",
+   "total_outstanding_dpi_amount",
    "bpi_amount"
+  ],
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
   ]
  },
  "dpic.part_prepayment_details_api": {
@@ -441,6 +492,9 @@
   "print": [
    "loan_part_prepayment_details.bpd_amount",
    "loan_part_prepayment_details.bpi_amount"
+  ],
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
   ]
  },
  "dpic.part_prepayment_bpi_flow": {
@@ -455,7 +509,10 @@
    "LOAN_ACCOUNT_ID": "8060160",
    "ACCOUNT_NUMBER": "6004044425",
    "JOB_TIME": "1782563400000"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.part_prepayment_details_flow": {
   "type": "flow",
@@ -469,7 +526,10 @@
    "LOAN_ACCOUNT_ID": "8060160",
    "ACCOUNT_NUMBER": "6004044425",
    "JOB_TIME": "1782563400000"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.part_prepayment_write_e2e": {
   "type": "flow",
@@ -500,7 +560,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.foreclosure_write_e2e": {
   "type": "flow",
@@ -537,7 +600,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.child_repayment_e2e": {
   "type": "flow",
@@ -576,7 +642,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.npa_dpi_movement_e2e": {
   "type": "flow",
@@ -591,7 +660,10 @@
    "ACCOUNT_NUMBER": "6004044425",
    "JOB_TIME": "1782563400000"
   },
-  "note": "Requires actor :8003; seeds NPA DPI catalogue 1331/1332 for product 6367; restores fixture after"
+  "note": "Requires actor :8003; seeds NPA DPI catalogue 1331/1332 for product 6367; restores fixture after",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "actor.user_basic": {
   "type": "api",
@@ -697,7 +769,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.grace_e2e": {
   "type": "flow",
@@ -712,7 +787,10 @@
    "FIRST_EMI_DUE_DATE": "2026-05-14",
    "GRACE_DAYS": "3",
    "JOB_TIME": "1779280200000"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.grace_overlap_e2e": {
   "type": "flow",
@@ -729,7 +807,10 @@
    "GRACE_DAYS": "3",
    "JOB_TIME": "1781699400000",
    "RUN_COLUMN_AUDIT": "1"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.multi_emi_installment_e2e": {
   "type": "flow",
@@ -744,7 +825,10 @@
    "DEMO_LAN": "6004041325",
    "JOB_TIME": "1782563400000",
    "GRACE_DAYS": "3"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.two_emi_full_chain": {
   "type": "flow",
@@ -786,7 +870,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.shg_parent_child_parity": {
   "type": "flow",
@@ -869,7 +956,10 @@
    "wall_s": 240,
    "source": "telemetry_pass",
    "filled_at": "2026-07-31T10:00:00Z"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.integration_smoke": {
   "type": "flow",
@@ -882,7 +972,10 @@
   "env": {
    "LOAN_ACCOUNT_ID": "8060160",
    "JOB_TIME": "1781699400000"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.batch_perf_10k": {
   "type": "flow",
@@ -900,7 +993,10 @@
    "FORCE_CHUNK": "500",
    "JOB_TIME": "1781699400000"
   },
-  "note": "FULL_EOD=1 + seed_dpi_gl for booking/billing at scale; report under scripts/scratch/dpi-batch-perf/"
+  "note": "FULL_EOD=1 + seed_dpi_gl for booking/billing at scale; report under scripts/scratch/dpi-batch-perf/",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.dpi_regression": {
   "type": "flow",
@@ -910,7 +1006,10 @@
    "LOAN_ACCOUNT_ID": "8060160",
    "JOB_TIME": "1781699400000"
   },
-  "note": "DEPRECATED — prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)"
+  "note": "DEPRECATED — prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.dpi_max_regression": {
   "type": "flow",
@@ -944,52 +1043,82 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.status": {
   "type": "flow",
   "title": "DPIC demo — show LAN + phase readiness",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh status"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh status",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.preflight": {
   "type": "flow",
   "title": "DPIC preflight — DB + product EMI + services",
-  "cmd": "bash scripts/dpic/run_preflight.sh"
+  "cmd": "bash scripts/dpic/run_preflight.sh",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.setup": {
   "type": "flow",
   "title": "DPIC one-time DB setup (product 6367)",
-  "cmd": "bash scripts/dpic/run_setup.sh"
+  "cmd": "bash scripts/dpic/run_setup.sh",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.phase1": {
   "type": "flow",
   "title": "DPIC demo phase 1 — disburse + fast EOD jobs",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh phase1"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh phase1",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.phase2": {
   "type": "flow",
   "title": "DPIC demo phase 2 — GET APIs (DPI response keys)",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh phase2"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh phase2",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.phase3": {
   "type": "flow",
   "title": "DPIC demo phase 3 — loanRepayment",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh phase3"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh phase3",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.phase4": {
   "type": "flow",
   "title": "DPIC demo phase 4 — loan transaction reversal (INITIATE + APPROVE)",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh phase4"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh phase4",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo.all": {
   "type": "flow",
   "title": "DPIC demo — all 4 phases (automation only, not live presentation)",
-  "cmd": "bash scripts/dpic/demo/run_demo.sh all"
+  "cmd": "bash scripts/dpic/demo/run_demo.sh all",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.demo_verify": {
   "type": "flow",
   "title": "DPIC — ntest API verify (uses scripts/scratch/dpic_demo_state.env)",
-  "cmd": "bash scripts/dpic/run_demo_api_verify.sh"
+  "cmd": "bash scripts/dpic/run_demo_api_verify.sh",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.full_gate": {
   "type": "flow",
@@ -1014,7 +1143,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.full_regression": {
   "type": "flow",
@@ -1046,12 +1178,18 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.disburse": {
   "type": "flow",
   "title": "DPIC disburseLoan",
-  "cmd": "bash scripts/dpic/run_disburse.sh"
+  "cmd": "bash scripts/dpic/run_disburse.sh",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.ud_compliance": {
   "type": "flow",
@@ -1095,7 +1233,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.go_live_ud": {
   "type": "flow",
@@ -1138,7 +1279,10 @@
    "wall_s": 222,
    "source": "telemetry_pass",
    "filled_at": "2026-07-30T20:01:18Z"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.posting_calendar_regression": {
   "type": "flow",
@@ -1184,7 +1328,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.booking_anchor_next_due": {
   "type": "flow",
@@ -1220,7 +1367,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.june_slice_job_proof": {
   "type": "flow",
@@ -1254,7 +1404,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.three_job_verify": {
   "type": "flow",
@@ -1303,7 +1456,10 @@
    "wall_s": 659,
    "source": "telemetry_pass",
    "filled_at": "2026-07-30T20:01:18Z"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.three_job_verify_single_eod": {
   "type": "flow",
@@ -1343,7 +1499,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.jump_regression": {
   "type": "flow",
@@ -1381,7 +1540,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.emi_first_anchor_regression": {
   "type": "flow",
@@ -1423,7 +1585,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.eod_txn_regression": {
   "type": "flow",
@@ -1465,7 +1630,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.billing_ud_next_emi": {
   "type": "flow",
@@ -1507,7 +1675,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.post_maturity_billing": {
   "type": "flow",
@@ -1550,7 +1721,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.post_maturity_billing_catchup": {
   "type": "flow",
@@ -1596,7 +1770,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.ship_close_verify": {
   "type": "flow",
@@ -1627,7 +1804,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.release_gate": {
   "type": "flow",
@@ -1652,7 +1832,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.qa_verify": {
   "type": "flow",
@@ -1676,7 +1859,10 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.dual_billing": {
   "type": "flow",
@@ -1705,7 +1891,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.push_release": {
   "type": "flow",
@@ -1736,7 +1925,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.dpi_sanity": {
   "type": "flow",
@@ -1768,7 +1960,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.eod_dpi": {
   "type": "flow",
@@ -1783,7 +1978,10 @@
    "JOB_TIME": "1781699400000",
    "LOAN_ACCOUNT_ID": "8060160"
   },
-  "note": "Prefer dpic.certify_scenarios for fresh LAN; correlators sync from certified_fixtures.json"
+  "note": "Prefer dpic.certify_scenarios for fresh LAN; correlators sync from certified_fixtures.json",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.certify_scenarios": {
   "type": "flow",
@@ -1821,7 +2019,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.verify_certified": {
   "type": "flow",
@@ -1830,7 +2031,10 @@
    "certify"
   ],
   "title": "Re-run DPI jobs on certified_fixtures.json (no new disburse)",
-  "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh --verify-only"
+  "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh --verify-only",
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "dpic.cross_eod_replay_134497": {
   "type": "flow",
@@ -1872,7 +2076,10 @@
    ],
    "out_of_scope": [],
    "note": "AUTO-STUB fidelity — review seeded/out_of_scope; real entry path must stay batch/http/orch"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "foreclosure.dpi_waiver_smoke": {
   "type": "flow",
@@ -2994,7 +3201,8 @@
     }
    ],
    "out_of_scope": []
-  }
+  },
+  "note": "Asserts assert_force_bill_reversed_on_reopen: the reopened child's force-bill labd rows and the SHG parent mirror row for that child must be reversed=true with their BILLING transactions reversed, while other children's parent contributions stay untouched (one labd row per force-bill txn). Red evidence QA4 LAN 6002270025: closure reversed but labd 163202 / txn 1970684 left open."
  },
  "flowtest.loan_writeoff": {
   "type": "flow",
@@ -3709,7 +3917,10 @@
   "note": "PROCESSOR_MIRROR_SIM (not live recurring chunk E2E). Proves LoanRecurringPaymentBatchProcessor builds dpi_due/dpi_overdue from amountMap.getOrDefault(..., ZERO), not shared ExecutionContext. Full E2E needs chunk [hasDPI,noDPI] + Kafka/collection assert. Existing poison collection rows need batch re-run / LMS refresh.",
   "acceptance": {
    "verify_mode": "processor_mirror_sim"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "disbursement.child_sanction_date_sim": {
   "type": "flow",
@@ -3766,6 +3977,44 @@
    "dimensions": [
     "adjacent_sibling"
    ]
+  }
+ },
+ "disbursement.clb_parent_rep_acct_fallback": {
+  "type": "flow",
+  "api": "disburseLoan",
+  "apis": [
+   "disburseLoan",
+   "createOrUpdateLoanAccount",
+   "childLoanDisbursement"
+  ],
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "verify_mode": "processor_mirror_sim",
+  "tags": [
+   "disburse",
+   "shg",
+   "clb"
+  ],
+  "title": "CLB copies parent REP_ACCT when SHG member_details has none",
+  "cmd": "bash scripts/testing/disbursement/run_clb_parent_rep_acct_fallback.sh",
+  "note": "REAL invocation of ChildLoanBookingEventsQueueDataPopulator.ensureMemberHasUsableRepAcct on compiled accounting classes (no service restart). Red before fix: every parent-fallback case threw 130142. Asserts value-level: member own REP_ACCT untouched; parent CASA copied exactly once with parent account_number; blank stub dropped then parent copied; no member and no parent REP_ACCT still 130142; CASH never copies; each member gets an independent JSONObject so mutation cannot leak across members or back into the parent array. Live SHG DB column audit still owed via disbursement.shg.",
+  "acceptance": {
+   "verify_mode": "processor_mirror_sim",
+   "dimensions": [
+    "happy",
+    "dirty"
+   ]
+  },
+  "fidelity": {
+   "entry": "sim",
+   "apis": [
+    "disburseLoan"
+   ],
+   "seeded": [],
+   "out_of_scope": [
+    "child createOrUpdateLoanAccount and mandate match — covered by disbursement.shg"
+   ],
+   "note": "Real static invocation of ChildLoanBookingEventsQueueDataPopulator on compiled accounting classes with a stubbed ExecutionContext; the live SHG path with member REP_ACCT stripped is covered by disbursement.shg."
   }
  },
  "disbursement.clb_mandate_match_sim": {
@@ -3907,7 +4156,10 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "batch.dpi_booking": {
   "type": "batch",
@@ -3924,7 +4176,10 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "batch.dpi_billing": {
   "type": "batch",
@@ -3941,7 +4196,10 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "batch.dpd_calc": {
   "type": "batch",
@@ -4472,7 +4730,10 @@
   "note": "PROCESSOR_MIRROR_SIM for DpiForeclosureBrokenPeriodService. Local schema is aligned (dpi_suspense_amount present); runtime dpic.foreclosure_sim currently reaches business validation and fails 134389 because fixture LAN 6004055825 is not ACTIVE.",
   "acceptance": {
    "verify_mode": "processor_mirror_sim"
-  }
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
  },
  "disbursement.any": {
   "type": "flow",
@@ -5685,6 +5946,177 @@
    "seeded": [],
    "out_of_scope": [],
    "note": "Fresh 3-member SHG group by real disburse; every member foreclosed through real loanPrepayment; the group closure is asserted on the last member."
+  }
+ },
+ "dpic.roi_change_e2e": {
+  "type": "flow",
+  "api": "dpiAccrualCalculation",
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "tags": [
+   "dpi",
+   "restructuring",
+   "roi",
+   "regression"
+  ],
+  "title": "TDPQA-237 - DPI accrual uses ROI in force per day across a restructure rate change",
+  "cmd": "bash scripts/dpic/run_dpi_roi_change_e2e.sh",
+  "env": {
+   "LOAN_ACCOUNT_ID": "8060160",
+   "GO_LIVE_DDMM": "15-04-2026",
+   "ROI_CHANGE_DATE": "2026-05-20",
+   "OLD_ROI": "16",
+   "NEW_ROI": "20",
+   "JOB_TIME": "1782563400000"
+  },
+  "verify_mode": "runtime",
+  "acceptance": {
+   "verify_mode": "runtime",
+   "note": "Value-level: every dpi_accrual_details row ending on/before the ROI change date must carry old_roi, every row starting on/after it new_roi, and no row may straddle the change date. Seen RED on the pre-fix build (single 2026-05-02..2026-05-31 row at 20 percent, accrued 34) and GREEN after (16 percent split at 2026-05-20).",
+   "db_asserts": [
+    "dpi_accrual_details.dpi_annual_rate = OLD_ROI for every row with end_date <= ROI_CHANGE_DATE",
+    "dpi_accrual_details.dpi_annual_rate = NEW_ROI for every row with start_date >= ROI_CHANGE_DATE",
+    "count(rows with start_date < ROI_CHANGE_DATE AND end_date > ROI_CHANGE_DATE) = 0"
+   ]
+  },
+  "fidelity": {
+   "entry": "batch_api",
+   "apis": [
+    "dpiAccrualCalculation"
+   ],
+   "seeded": [
+    {
+     "key": "roi_change_seed",
+     "reason": "ROI-change row + effective_rate seeded by SQL with Redis evict; loanAccountRestructuring orchestration not replayed locally"
+    }
+   ],
+   "out_of_scope": [],
+   "note": "Real dpiAccrualCalculation batch drives the assert; only the restructure fixture is seeded."
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
+  ]
+ },
+ "accounting.disb_update_in_progress_error": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "disbursement",
+   "tdpqa-241"
+  ],
+  "title": "updateLoanAccountPreDisbursementDetails — NEFT in-flight raises 134498, not 'already disbursed'",
+  "service": "accounting",
+  "api": "updateLoanAccountPreDisbursementDetails",
+  "request": {
+   "external_ref_number": "${TDPQA241_INFLIGHT_REF}",
+   "account_number": "${TDPQA241_INFLIGHT_LAN}",
+   "disbursement_mode": "OTHBACCT",
+   "disbursement_account_number": "50100999888777",
+   "disbursement_bank_name": "HDFC BANK",
+   "disbursement_account_holder_name": "QA TDPQA241"
+  },
+  "expect": {
+   "status": "FAIL",
+   "code": "134498"
+  },
+  "note": "TDPQA-241. Fixture LAN must sit at disbursement_status=NEFT_STAGE_1_PENDING. Value-level on the code: before the fix this returned 134130 'Loan Account is already disbursed'. 134498/LON-DSB-011 requires the V9000429 notification rows."
+ },
+ "accounting.disb_update_completed_error": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "disbursement",
+   "tdpqa-241"
+  ],
+  "title": "updateLoanAccountPreDisbursementDetails — COMPLETED keeps 134130",
+  "service": "accounting",
+  "api": "updateLoanAccountPreDisbursementDetails",
+  "request": {
+   "external_ref_number": "${TDPQA241_COMPLETED_REF}",
+   "account_number": "${TDPQA241_COMPLETED_LAN}",
+   "disbursement_mode": "OTHBACCT",
+   "disbursement_account_number": "50100999888777",
+   "disbursement_bank_name": "HDFC BANK",
+   "disbursement_account_holder_name": "QA TDPQA241"
+  },
+  "expect": {
+   "status": "FAIL",
+   "code": "134130"
+  },
+  "note": "TDPQA-241 no-regression control: genuinely disbursed statuses keep the original code."
+ },
+ "accounting.disb_update_success_writes_history": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "disbursement",
+   "tdpqa-241"
+  ],
+  "title": "updateLoanAccountPreDisbursementDetails — allowed status writes a new row and soft-deletes the old",
+  "service": "accounting",
+  "api": "updateLoanAccountPreDisbursementDetails",
+  "request": {
+   "external_ref_number": "${TDPQA241_OPEN_REF}",
+   "account_number": "${TDPQA241_OPEN_LAN}",
+   "disbursement_mode": "ACCTWB",
+   "disbursement_account_number": "${TDPQA241_OPEN_NEW_CASA}",
+   "disbursement_bank_name": "HDFC BANK",
+   "disbursement_account_holder_name": "QA TDPQA241"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT d.account_number FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.account a ON a.id = d.loan_account_id WHERE a.account_number = '${TDPQA241_OPEN_LAN}' AND d.is_deleted = false ORDER BY d.id DESC LIMIT 1) = '${TDPQA241_OPEN_NEW_CASA}' AND (SELECT count(*) FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.account a ON a.id = d.loan_account_id WHERE a.account_number = '${TDPQA241_OPEN_LAN}' AND d.is_deleted = true) >= 1 THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "note": "TDPQA-241 success path. The two refusal cases prove nothing is written; this proves the allowed path DOES write — new live row carries the requested CASA and the previous row is soft-deleted for history. Closes money_no_verified_footprint for this API. Fixture LAN must be in a non-blocked disbursement_status (LAN_CREATED). Re-runs append another history row by design; the assert reads the latest live row, so it is stable across repeats."
+ },
+ "accounting.gl_balance_zeroisation": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "ship_auto": false,
+  "tags": [
+   "gl",
+   "zeroisation"
+  ],
+  "title": "glBalanceZeroisation — posts a balanced GL transfer between two internal accounts",
+  "service": "accounting",
+  "api": "glBalanceZeroisation",
+  "function_sub_code": "TRANSACTION",
+  "request": {
+   "gl_amount_details": {
+    "dr_gl_code": "${GLZERO_DR_GL}",
+    "cr_gl_code": "${GLZERO_CR_GL}",
+    "amount": "${GLZERO_AMOUNT}",
+    "gl_transaction_reference_number": "GLZ${STAN}",
+    "currency": "INR"
+   }
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.transaction_master tm WHERE tm.client_reference_number = 'GLZ${STAN}') = 1 AND (SELECT COALESCE(SUM(td.net_amount),0) FROM mfi_accounting.transaction_details td JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id WHERE tm.client_reference_number = 'GLZ${STAN}' AND td.cr_dr_indicator = 'D') = -(SELECT COALESCE(SUM(td.net_amount),0) FROM mfi_accounting.transaction_details td JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id WHERE tm.client_reference_number = 'GLZ${STAN}' AND td.cr_dr_indicator = 'C') THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "note": "glBalanceZeroisation had zero tests — the only money API in the workspace with none. Writing this case found GAP-079: the API throws ClassCastException on every call (office_id read as Long, String everywhere else), so it is RED by design until that is fixed. Asserts double-entry: one transaction_master for this run's client_reference_number, debit legs = credit legs. ship_auto false so an open product defect does not block ships.",
+  "known_open_gap": "GAP-079",
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "glBalanceZeroisation"
+   ],
+   "seeded": [],
+   "out_of_scope": [
+    "multi-leg zeroisation across more than one GL pair",
+    "reversal of a zeroisation transaction"
+   ],
+   "note": "Real HTTP entry through the orchestration; nothing about the outcome is seeded. The GL codes and their internal accounts on office 1 are pre-existing local masterdata, not written by this case. transaction_master/transaction_details are written by the run and asserted from the DB."
   }
  },
  "disbursement.sync_error_message_placeholder": {

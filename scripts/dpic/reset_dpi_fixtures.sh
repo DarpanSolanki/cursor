@@ -20,6 +20,13 @@ reset_one_loan() {
     -f "$ROOT/scripts/dpic/sql/helpers/reset_dpi_booking_replay.sql" >/dev/null
   dpi_pg -v ON_ERROR_STOP=1 -v loan_account_id="$loan_id" \
     -f "$ROOT/scripts/dpic/sql/helpers/restore_demo_installments_after_post_maturity_e2e.sql" >/dev/null 2>&1 || true
+  # Billed DPI dues survive an accrual-only purge, so every billing run adds another row and
+  # milestone asserts drift (jump_regression read due=108 against billed=27 on a 4-row pile-up).
+  dpi_pg -v ON_ERROR_STOP=1 -c "
+UPDATE mfi_accounting.loan_due_details
+SET is_deleted = true, updated_on = NOW(), updated_by = 'DPI_FIXTURE_RESET'
+WHERE loan_account_id = $loan_id AND component_type = 'DPI' AND is_deleted = false;
+" >/dev/null
   dpi_pg -v ON_ERROR_STOP=1 -c "
 UPDATE mfi_accounting.loan_account
 SET loan_status = 'ACTIVE', is_deleted = false, la_closing_date = NULL,

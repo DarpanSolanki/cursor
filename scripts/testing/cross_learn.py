@@ -177,6 +177,29 @@ def unified_orient(api: str) -> str:
     return "\n".join(lines)
 
 
+_SERVICE_REPO = {
+    "accounting": "trustt-platform-accounting",
+    "los": "trustt-platform-los",
+    "actor": "trustt-platform-actor",
+    "payments": "trustt-platform-payments",
+    "task": "trustt-platform-task",
+}
+
+
+def _service_train(service: str) -> str:
+    """Branch the evidence was recorded on — a pass on 3.7.1 says nothing about 3.5.1.1."""
+    repo = ROOT / _SERVICE_REPO.get(service, "trustt-platform-accounting")
+    if not (repo / ".git").exists():
+        return ""
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "-C", str(repo), "branch", "--show-current"],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    )
+    return out.stdout.strip()
+
+
 def record_test_result(
     *,
     api: str,
@@ -196,7 +219,7 @@ def record_test_result(
         api=api,
         detail=f"case={case_id}",
         evidence=f"http={http_status}",
-        meta={"case_id": case_id, "service": service},
+        meta={"case_id": case_id, "service": service, "train": _service_train(service)},
     )
     if not passed and body:
         codes = re.findall(r"\b(?:1[0-9]{5}|[3-9][0-9]{4})\b", body)

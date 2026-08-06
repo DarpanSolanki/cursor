@@ -118,6 +118,72 @@ def _ok(st: dict) -> bool:
     )
 
 
+def _scalar(sql: str) -> int:
+    for line in psql(sql).splitlines():
+        token = line.strip()
+        if token.lstrip("-").isdigit():
+            return int(token)
+    return 0
+
+
+def _account_id(lan: str) -> str:
+    return psql(
+        f"SELECT account_id FROM mfi_accounting.loan_account WHERE la_account_number='{lan}'"
+    ).strip().splitlines()[0].strip()
+
+
+def _open_force_bills(account_id: str, mirror_of: str | None = None) -> int:
+    mirror = ""
+    if mirror_of:
+        mirror = (
+            " AND EXISTS (SELECT 1 FROM mfi_accounting.transaction_master tm"
+            f" WHERE tm.reference_number=b.transaction_reference_number"
+            f" AND tm.client_reference_number LIKE '{account_id}%'"
+            f" AND tm.client_reference_number LIKE '%{mirror_of}')"
+        )
+    return _scalar(
+        "SELECT count(*) FROM mfi_accounting.loan_account_billing_details b"
+        f" WHERE b.account_id={account_id} AND b.principal_amount=0 AND b.reversed=false{mirror}"
+    )
+
+
+def assert_force_bill_reversed_on_reopen(child_lan: str, parent_lan: str, before: dict) -> None:
+    """Reopening must reverse the child force bill and the parent mirror raised for that child,
+    leaving other children's parent contributions alone (labd is one row per force-bill txn)."""
+    child_id, parent_id = _account_id(child_lan), _account_id(parent_lan)
+
+    if before["child"] == 0 and before["parent_mirror"] == 0:
+        print("  force-bill reversal N/A: no open force bill on child or parent mirror before reopen")
+        return
+
+    child_open = _open_force_bills(child_id)
+    mirror_open = _open_force_bills(parent_id, mirror_of=child_id)
+    other_open = _open_force_bills(parent_id) - mirror_open
+    unreversed_txn = _scalar(
+        "SELECT count(*) FROM mfi_accounting.loan_account_billing_details b"
+        " JOIN mfi_accounting.transaction_master tm ON tm.reference_number=b.transaction_reference_number"
+        f" WHERE b.account_id IN ({child_id},{parent_id}) AND b.principal_amount=0"
+        " AND b.reversed=true AND tm.reversed=false"
+    )
+
+    if child_open:
+        raise AssertionError(f"child {child_lan} still has {child_open} unreversed force bill(s) after reopen")
+    if mirror_open:
+        raise AssertionError(
+            f"parent {parent_lan} still has {mirror_open} unreversed mirror force bill(s) for child {child_lan}"
+        )
+    if unreversed_txn:
+        raise AssertionError(f"{unreversed_txn} reversed force-bill row(s) whose transaction is not reversed")
+    if other_open != before["parent_other"]:
+        raise AssertionError(
+            f"parent {parent_lan} other-child force bills changed {before['parent_other']}→{other_open}"
+        )
+    print(
+        f"  force-bill reversal PASS: child={before['child']}→0 parent_mirror={before['parent_mirror']}→0"
+        f" other_children_untouched={other_open} txn_reversed=all"
+    )
+
+
 def main() -> int:
     acquire_flowtest_lock()
     mark_lock_held()
@@ -141,6 +207,16 @@ def main() -> int:
     print(f"  invariants baseline: lans={[PARENT, CHILD]}")
 
     _icf_close()
+    _child_id, _parent_id = _account_id(CHILD), _account_id(PARENT)
+    force_bill_before = {
+        "child": _open_force_bills(_child_id),
+        "parent_mirror": _open_force_bills(_parent_id, mirror_of=_child_id),
+        "parent_other": _open_force_bills(_parent_id) - _open_force_bills(_parent_id, mirror_of=_child_id),
+    }
+    print(
+        f"  force-bill before reopen: child={force_bill_before['child']}"
+        f" parent_mirror={force_bill_before['parent_mirror']} parent_other={force_bill_before['parent_other']}"
+    )
     closed = snapshot_dues(CHILD, "before-reopen")
     print("  LAYERS: ICF=REAL reopen=REAL docs=STUB_PAYLOAD fixture=dcf_bak compose=chain")
 
@@ -178,6 +254,7 @@ ORDER BY lacd.id DESC LIMIT 1
     if ref:
         assert_gl_balanced_txn(ref, f"{CHILD}/closure-ref-after-reopen", allow_empty=True)
     assert_webapp_summary_accrued_le_original(CHILD, role="reopened-child")
+    assert_force_bill_reversed_on_reopen(CHILD, PARENT, force_bill_before)
     print("  LAYERS_DECLARE: ICF=REAL reopen=REAL docs=STUB_PAYLOAD")
     print("=== PASS: flowtest.loan_reopening ===")
     finish_scenario([PARENT, CHILD], baseline=inv_baseline, label="flowtest.loan_reopening")

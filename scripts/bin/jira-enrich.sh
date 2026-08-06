@@ -95,6 +95,13 @@ case "$cmd" in
     # shellcheck disable=SC2086
     "$PY" "$REST" apply-pack "$key" "$pack" $comment_id
     ;;
+  ship)
+    ensure_venv
+    key="${1:?issue key required}"
+    payload="${2:?payload.json required}"
+    shift 2 || true
+    "$PY" "$ROOT/scripts/bin/jira_ship.py" "$key" "$payload" "$@"
+    ;;
   post)
     ensure_venv
     key="${1:?issue key required}"
@@ -111,7 +118,7 @@ case "$cmd" in
     ;;
   *)
     cat <<EOF
-Usage: jira-enrich.sh <ensure|set-token|token-status|whoami|pack|apply|post> ...
+Usage: jira-enrich.sh <ensure|set-token|token-status|whoami|ship|pack|apply|post> ...
 
   ensure                         Install .venv-jira (secretstorage) if missing
   set-token [TOKEN]              Store a bearer token at ~/.cursor/jira-oauth-token (no Cursor needed)
@@ -120,6 +127,9 @@ Usage: jira-enrich.sh <ensure|set-token|token-status|whoami|pack|apply|post> ...
   pack <KEY> [payload.json]      Build full handoff pack (one scan, all ADF fields)
   apply <KEY> pack.json          PUT fields + comment via REST (cached OAuth)
   post <KEY> payload.json        pack + apply in one shot
+  ship <KEY> payload.json [...]  ONE call: gate + pack + fields + comment + walk to --to STATUS
+                                 --to QA:Test --sha <fix> --train <branch> --repo <dir>
+                                 --dry-run | --fields-only | --comment-id <id> | --skip-gate
 
 MCP fast path (parent agent): jira-fix-adf.py pack once → one editJiraIssue + one addComment.
 Do not call getJiraIssueTypeMetaWithFields on every enrich — use fields-reference.md.

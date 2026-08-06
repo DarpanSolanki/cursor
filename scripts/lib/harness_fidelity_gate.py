@@ -107,6 +107,10 @@ ALLOWED_SEEDED_HINTS = frozenset(
         # daily walk — posting-days-only under-fires SHG distribute and hides the
         # per-segment break, whereas +1 intermediate calc per gap does not.
         "roll_cadence_hop",
+        # Restructure ROI change seeded into loan_account_restructuring_details +
+        # account_interest_details instead of replaying loanAccountRestructuring. The seed must
+        # also evict the account_interest_details Redis cache — the real flow evicts via save().
+        "roi_change_seed",
         # LOS-side row the sync consumer updates (mfi_los.disburse_loan_process). Seeding the
         # target row is fixture, not outcome — the failure_reason under assert is still written
         # by DisbursementSyncService, never by the harness.

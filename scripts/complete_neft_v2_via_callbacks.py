@@ -11,9 +11,25 @@ Flow:
   → POST doGenericSyncSTPBankNEINeftCallBack (faml codstatus=P)
   → COMPLETED
 
+Group (SHG/JLG child) CLMT legs — `--parent-lan`:
+  A child's NEFT stage does NOT live on `loan_account.disbursement_status`; it lives
+  in the CLMT `loan_account_events_queue.data.disbursement_status`, and its CRR rows
+  are booked under the PARENT LAN as `LOAN_DISBURSEMENT_EXTREF<childRef>_NEFT_NEF`.
+  Looking either up by the child LAN finds nothing, which is why the local suite used
+  to leave a group parked at PARENT_SUCCESS forever.
+
+  `DoGenericSyncSTPBankNeftCallBackProcessor` already handles this (CHILD_TXN_MARKER
+  `_EXTREF`): ST_NEF moves the CLMT row NEFT_STAGE_1_PENDING|DTFC_SUCCESS →
+  NEFT_STAGE_1_SUCCESS and stamps the UTR; ST_NEI moves NEFT_STAGE_1_SUCCESS|
+  NEFT_STAGE_2_PENDING → COMPLETED with event_status='C' and then calls
+  syncParentAfterChildQueueProgress → parent COMPLETED once every CLMT is 'C'.
+  The child path accepts NEI straight from NEFT_STAGE_1_SUCCESS, so no intermediate
+  `disburseLoan NEFT_STAGE_1_SUCCESS` stage call is needed (unlike the single-loan path).
+
 Usage:
   python3 scripts/complete_neft_v2_via_callbacks.py --lan 6000…
   python3 scripts/complete_neft_v2_via_callbacks.py --ext-ref-prefix <prefix>
+  python3 scripts/complete_neft_v2_via_callbacks.py --parent-lan 6004162825
 """
 from __future__ import annotations
 
@@ -100,6 +116,152 @@ LIMIT 1;
     if not row:
         raise SystemExit(f"no NEFT_NEF CRR for LAN {lan} — run disburse with --neft-version v2 first")
     return row.strip()
+
+
+def _pending_clmt_rows(parent_lan: str) -> list[tuple[str, str, str]]:
+    """(queue_row_id, child_ext_ref, clmt_stage) for CLMT rows not yet 'C'."""
+    out = _psql(
+        f"""
+SELECT q.id::text, q.filler_2, COALESCE(q.data::json->>'disbursement_status','')
+FROM mfi_accounting.loan_account_events_queue q
+JOIN mfi_accounting.loan_account la ON la.account_id = q.parent_account_id
+JOIN mfi_accounting.account a ON a.id = la.account_id
+WHERE a.account_number = '{parent_lan}'
+  AND q.event_type = 'CLMT'
+  AND q.event_status <> 'C'
+  AND COALESCE(q.is_deleted,false) = false
+ORDER BY q.id;
+"""
+    )
+    rows = []
+    for line in out.splitlines():
+        if line.strip():
+            parts = line.split("|")
+            rows.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+    return rows
+
+
+def _child_nef_client_ref(parent_lan: str, child_ext_ref: str) -> str:
+    """Child NEF CRR is booked under the PARENT LAN as ..._EXTREF<ref>_NEFT_NEF."""
+    row = _psql(
+        f"""
+SELECT client_reference_number
+FROM mfi_accounting.client_request_response_log
+WHERE loan_account_number = '{parent_lan}'
+  AND transaction_type LIKE '%%EXTREF{child_ext_ref}\\_NEFT\\_NEF'
+ORDER BY id DESC
+LIMIT 1;
+"""
+    )
+    return row.strip()
+
+
+def _clmt_state(row_id: str) -> tuple[str, str]:
+    out = _psql(
+        f"""
+SELECT event_status, COALESCE(data::json->>'disbursement_status','')
+FROM mfi_accounting.loan_account_events_queue WHERE id = {int(row_id)};
+"""
+    )
+    if "|" not in out:
+        return "", ""
+    a, b = out.split("|", 1)
+    return a.strip(), b.strip()
+
+
+def _parent_status(parent_lan: str) -> str:
+    return _psql(
+        f"""
+SELECT la.disbursement_status FROM mfi_accounting.loan_account la
+JOIN mfi_accounting.account a ON a.id = la.account_id
+WHERE a.account_number = '{parent_lan}';
+"""
+    ).strip()
+
+
+def _fire_child_queue_batch() -> None:
+    """childLoanEventProcessingBatchJob drains CLB/CLMT rows the callbacks advanced."""
+    subprocess.run(
+        [
+            "python3",
+            str(ROOT / "scripts/testing/api-fire.py"),
+            "childLoanEventProcessingBatchJob",
+            "--batch",
+        ],
+        cwd=str(ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _dedupe_child_queue_rows() -> None:
+    """Restore filler_2 uniqueness before resolving any child leg.
+
+    Must run AFTER the disbursement (not only in reset): the run itself creates a new
+    CLMT row carrying the canonical payload's hardcoded member ext ref, so it collides
+    with rows left by every previous local group. `findOneByFiller2` is a single-result
+    lookup, so the NEFT child callback then dies with
+    IncorrectResultSizeDataAccessException and the child never leaves stage 1.
+    Keeps the newest row per (filler_2, event_type) — i.e. this run's.
+    """
+    subprocess.run(
+        [
+            "bash",
+            str(ROOT / "scripts/bin/db-local-write.sh"),
+            "--file",
+            str(ROOT / "scripts/sql/reset/local_dedupe_child_queue_rows.sql"),
+        ],
+        cwd=str(ROOT),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def complete_group_children(parent_lan: str, *, run_queue_batch: bool = True) -> int:
+    """Drive every pending CLMT NEFT leg to COMPLETED, then the parent."""
+    _dedupe_child_queue_rows()
+    pending = _pending_clmt_rows(parent_lan)
+    if not pending:
+        print(f"  no pending CLMT rows for parent {parent_lan}")
+    for row_id, child_ref, stage in pending:
+        print(f"→ CLMT row={row_id} child_ext_ref={child_ref} stage={stage or '(none)'}")
+        pref = _child_nef_client_ref(parent_lan, child_ref)
+        if not pref:
+            print(f"  SKIP: no ..._EXTREF{child_ref}_NEFT_NEF CRR under parent {parent_lan} "
+                  f"(child rail is not NEFT, or NEF never fired)")
+            continue
+        print(f"  NEF client_reference_number={pref}")
+
+        _, stage = _clmt_state(row_id)
+        if stage in {"NEFT_STAGE_1_PENDING", "DTFC_SUCCESS"}:
+            print("  → ST_NEF callback")
+            _post_api("doGenericSyncSTPBankNEFNeftCallBack", _nef_callback(pref))
+            time.sleep(2)
+            _, stage = _clmt_state(row_id)
+            print(f"    stage={stage}")
+
+        if stage in {"NEFT_STAGE_1_SUCCESS", "NEFT_STAGE_2_PENDING"}:
+            print("  → ST_NEI callback")
+            _post_api("doGenericSyncSTPBankNEINeftCallBack", _nei_callback(pref))
+            time.sleep(2)
+            ev, stage = _clmt_state(row_id)
+            print(f"    stage={stage} event_status={ev}")
+
+        ev, stage = _clmt_state(row_id)
+        if ev != "C":
+            print(f"  WARN CLMT row {row_id} still event_status={ev} stage={stage}")
+
+    if run_queue_batch:
+        print("→ childLoanEventProcessingBatchJob")
+        _fire_child_queue_batch()
+        time.sleep(3)
+
+    status = _parent_status(parent_lan)
+    left = _pending_clmt_rows(parent_lan)
+    print(f"=== parent {parent_lan} disbursement_status={status} pending_clmt={len(left)} ===")
+    return 0 if status == "COMPLETED" else 1
 
 
 def _post_api(api: str, body: dict) -> dict:
@@ -233,6 +395,14 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--lan", default="")
     p.add_argument("--ext-ref-prefix", default="")
+    p.add_argument(
+        "--parent-lan",
+        default="",
+        help="SHG/JLG group parent LAN — completes every pending CLMT child NEFT leg, "
+        "then drains the queue so the parent reaches COMPLETED",
+    )
+    p.add_argument("--skip-queue-batch", action="store_true",
+                   help="with --parent-lan: skip firing childLoanEventProcessingBatchJob")
     p.add_argument("--skip-nei-replay", action="store_true")
     p.add_argument(
         "--request-file",
@@ -242,8 +412,12 @@ def main() -> int:
         help="Full disburseLoan JSON (stage resume needs office_id and other mandatory fields)",
     )
     args = p.parse_args()
+    if args.parent_lan:
+        return complete_group_children(
+            args.parent_lan, run_queue_batch=not args.skip_queue_batch
+        )
     if not args.lan and not args.ext_ref_prefix:
-        raise SystemExit("pass --lan or --ext-ref-prefix")
+        raise SystemExit("pass --lan, --ext-ref-prefix or --parent-lan")
     request_file = Path(args.request_file)
     if not request_file.is_file():
         raise SystemExit(f"request file not found: {request_file}")

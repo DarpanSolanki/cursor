@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-08-03",
-  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability re-probed 2026-08-03 (all qa1-qa6 REACHABLE from sliProd).",
+  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability re-probed 2026-08-03 (all qa1-qa6 REACHABLE from sliProdClaude).",
   "environments": {
     "local": {
       "db_wrapper": "scripts/db-local.sh",
@@ -145,7 +145,7 @@
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": false,
-      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)",
+      "write_policy": "forbidden (darpan.md \u2014 no remote UAT/prod DB writes)",
       "reachable_checked_at": "2026-07-31T06:29:27Z",
       "reachability_status": "N/A_NO_WRAPPER",
       "deployed_train": "not-applicable",
@@ -157,7 +157,7 @@
       "deploy_method": "not-applicable: QA-team owned",
       "log_access": "not-applicable: QA-team owned",
       "reachable_from_here": false,
-      "write_policy": "forbidden (darpan.mdc \u2014 no remote UAT/prod DB writes)",
+      "write_policy": "forbidden (darpan.md \u2014 no remote UAT/prod DB writes)",
       "reachable_checked_at": "2026-07-31T06:29:27Z",
       "reachability_status": "N/A_NO_WRAPPER",
       "deployed_train": "not-applicable",

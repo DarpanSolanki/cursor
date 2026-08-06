@@ -10,5 +10,8 @@ ftg-enrich.sh
 ftg.sh
 initial-setup-local.sh
 jira-fix-handoff.sh
+# Human-run bootstrap for a fresh machine — an entry point by design, so it has no
+# caller. Documented in OPS-INDEX.md and reference_new_machine_setup.md.
+new-machine-setup.sh
 setup-qa-db.sh
 workspace-bootstrap.sh

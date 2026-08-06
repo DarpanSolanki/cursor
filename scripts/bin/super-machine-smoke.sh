@@ -125,12 +125,12 @@ done < <(python3 - <<PY
 import json
 from pathlib import Path
 root = Path(${ROOT@Q})
-h = json.loads((root / ".cursor" / "hooks.json").read_text())
+h = json.loads((root/".cursor/hooks.json").read_text())
 starts = [x.get("command","") for x in h.get("hooks",{}).get("sessionStart",[])]
 after = [x.get("command","") for x in h.get("hooks",{}).get("afterShellExecution",[])]
 for name, ok in [
   ("hooks:intel-session", any("intel-session" in c for c in starts)),
-  ("hooks:post-ntest", any("post-ntest" in c for c in after)),
+  ("hooks:post-ntest", any("post-ntest" in c in after for c in after)),
   ("hooks:super-machine-matcher", "super-machine" in json.dumps(h)),
 ]:
     print(f"{'PASS' if ok else 'FAIL'}|{name}|")

@@ -118,6 +118,27 @@ if [[ -f "$CHANGELOG" ]]; then
   fi
 fi
 
+# Flows claiming ntest cases that do not exist inflate coverage with proof nobody can run
+if python3 "$ROOT/scripts/lib/phantom_case_gate.py" --strict >/dev/null 2>&1; then
+  ok "no new phantom ntest case reference in flows.jsonl"
+else
+  warn "a flow claims an ntest case that is not in registry.json — scripts/lib/phantom_case_gate.py"
+fi
+
+# A footprint claiming `verified` with no recorded run is a claim resting on nobody's memory
+if python3 "$ROOT/scripts/lib/footprint_evidence_gate.py" --strict >/dev/null 2>&1; then
+  ok "no new unbacked 'verified' footprint"
+else
+  warn "a footprint claims verified with no recorded run — scripts/lib/footprint_evidence_gate.py"
+fi
+
+# Ticket in .cursor/changelog.md but not in brain CHANGELOG = a fix `kg cases` can never surface
+if python3 "$ROOT/scripts/lib/changelog_enrichment_gate.py" --strict >/dev/null 2>&1; then
+  ok "every workspace-changelog ticket reaches the brain CHANGELOG (no new gap)"
+else
+  warn "new ticket in .cursor/changelog.md with no brain CHANGELOG entry — run scripts/lib/changelog_enrichment_gate.py"
+fi
+
 if [[ "$issues" -eq 0 ]]; then
   echo "=== enrichment audit: PASS ==="
 else

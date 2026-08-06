@@ -186,6 +186,15 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     env = {**_correlators(), **_resolve_defaults(case)}
     service = case.get("service", "accounting")
     api = case.get("api", case_id)
+
+    # Trains diverge in both directions: a case that needs a feature absent from the checked-out
+    # train is out of scope there, not broken. Declaring the path keeps this self-maintaining —
+    # no per-train list to rot. Skips are not recorded as runs.
+    missing = [p for p in (case.get("requires_paths") or []) if not (ROOT / p).exists()]
+    if missing:
+        print(f"=== {case_id} SKIP — not on this train (absent: {missing[0]})")
+        return 0, None
+
     if health:
         ok, msg = health_check(service)
         print(f"health: {'OK' if ok else 'FAIL'} — {msg}")
@@ -199,6 +208,9 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
         return r, None
 
     stan = fresh_stan(case_id.replace(".", "_"))
+    # Dedup-guarded write APIs need a value that differs every run, or the second run fails on
+    # the guard rather than on the behaviour under test.
+    env["STAN"] = stan
     if case.get("payload_file"):
         payload = load_payload(str(ROOT / case["payload_file"]), stan, env)
     elif case.get("batch") or case.get("type") == "batch":

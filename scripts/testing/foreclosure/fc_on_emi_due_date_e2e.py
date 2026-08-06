@@ -286,8 +286,77 @@ def foreclose(lan: str, due: str) -> None:
         time.sleep(1)
 
 
+def psql_rows(sql: str) -> str:
+    """fc.psql keeps only the first line; GL audits need every partition row."""
+    out = subprocess.check_output([*fc.PG, "-c", sql], env=fc.PG_ENV, text=True)
+    return out.strip()
+
+
+def partition_legs(ref: str) -> list[tuple[str, str, str, Decimal]]:
+    rows = psql_rows(f"""
+SELECT tpd.gl_code || '|' || tpd.cr_dr_indicator || '|' || COALESCE(tpd.reference_code,'') || '|'
+       || COALESCE(tpd.amount,0)::text
+FROM mfi_accounting.transaction_partition_details tpd
+JOIN mfi_accounting.transaction_master tm ON tm.id = tpd.transaction_id
+WHERE tm.reference_number = '{ref}';
+""")
+    legs = []
+    for line in rows.split("\n"):
+        if not line.strip():
+            continue
+        gl, ind, code, amt = line.strip().split("|")
+        legs.append((gl, ind.upper()[:1], code, Decimal(amt)))
+    return legs
+
+
+def assert_double_entry(ref: str, legs: list[tuple[str, str, str, Decimal]]) -> None:
+    debit = sum((amt for _, ind, _, amt in legs if ind == "D"), Decimal(0))
+    credit = sum((amt for _, ind, _, amt in legs if ind == "C"), Decimal(0))
+    print(f"    double entry: debit {debit} credit {credit} over {len(legs)} legs")
+    if abs(debit - credit) > TOL:
+        raise AssertionError(f"LOAN_PREPAYMENT ref={ref} is not balanced: debit {debit} != credit {credit}")
+
+
+def assert_bpi_not_carried(ref: str, legs: list[tuple[str, str, str, Decimal]]) -> None:
+    bpi = sum((amt for _, ind, code, amt in legs if ind == "C" and code == "BPI_AMT"), Decimal(0))
+    print(f"    BPI_AMT credited {bpi} (force-bill reclassifies the billed slice into INT_AMT)")
+    if bpi > TOL:
+        raise AssertionError(
+            f"BPI_AMT settled {bpi} on ref={ref}: an already-billed cycle must settle through "
+            f"INT_AMT, not accrued interest receivable (TDPQA-240)"
+        )
+
+
+def assert_payment_row_matches_legs(ref: str, acct: int, legs: list[tuple[str, str, str, Decimal]]) -> None:
+    row = fc.psql(f"""
+SELECT COALESCE(principal_amount,0)::text || '|' || COALESCE(interest_amount,0)::text || '|'
+       || COALESCE(fee_amount,0)::text || '|' || COALESCE(created_by,'') || '|'
+       || COALESCE(updated_by,'') || '|' || (created_on >= NOW() - INTERVAL '2 hours')::text
+FROM mfi_accounting.loan_account_payments_details
+WHERE loan_account_id = {acct} AND transaction_reference_number = '{ref}' LIMIT 1;
+""")
+    if not row:
+        raise AssertionError(f"no loan_account_payments_details row for ref={ref}")
+    prin, intr, fee, created_by, updated_by, fresh = row.split("|")
+    leg_prin = sum((amt for _, ind, code, amt in legs if ind == "C" and code in ("PRIN_AMT", "POS")), Decimal(0))
+    leg_int = sum((amt for _, ind, code, amt in legs if ind == "C" and code == "INT_AMT"), Decimal(0))
+    leg_fee = sum((amt for _, ind, code, amt in legs if ind == "C" and code == "FORCLSR_CHRG"), Decimal(0))
+    print(f"    payment row principal {prin} vs legs {leg_prin} | interest {intr} vs legs {leg_int} "
+          f"| fee {fee} vs legs {leg_fee}")
+    print(f"    audit stamps created_by={created_by!r} updated_by={updated_by!r} written_this_run={fresh}")
+    for name, got, want in (("principal", Decimal(prin), leg_prin), ("interest", Decimal(intr), leg_int),
+                            ("fee", Decimal(fee), leg_fee)):
+        if abs(got - want) > TOL:
+            raise AssertionError(f"payment row {name} {got} != settled legs {want} on ref={ref}")
+    if not created_by.strip() or not updated_by.strip():
+        raise AssertionError(f"payment row for ref={ref} has a blank audit actor: "
+                             f"created_by={created_by!r} updated_by={updated_by!r}")
+    if fresh.strip().lower() not in ("t", "true"):
+        raise AssertionError(f"payment row for ref={ref} was not written by this run — stale fixture row")
+
+
 def assert_pass_through_gls_net_zero(ref: str) -> None:
-    rows = fc.psql(f"""
+    rows = psql_rows(f"""
 SELECT tpd.gl_code || '|' || tpd.cr_dr_indicator || '|' || COALESCE(tpd.amount,0)::text
 FROM mfi_accounting.transaction_partition_details tpd
 JOIN mfi_accounting.transaction_master tm ON tm.id = tpd.transaction_id
@@ -394,8 +463,12 @@ def main() -> int:
 
     ref, _ = fc.latest_txn(lan, "LOAN_PREPAYMENT")
     print(f"--- assert settlement GL on LOAN_PREPAYMENT ref={ref} ---")
+    legs = partition_legs(ref)
+    assert_double_entry(ref, legs)
     assert_pass_through_gls_net_zero(ref)
     assert_billed_interest_leg(ref, acct)
+    assert_bpi_not_carried(ref, legs)
+    assert_payment_row_matches_legs(ref, acct, legs)
 
     print(f"PASS foreclosure.fc_on_emi_due_date lan={lan} product={product} due={due}")
     return 0

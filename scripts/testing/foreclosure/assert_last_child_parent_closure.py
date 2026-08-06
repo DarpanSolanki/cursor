@@ -121,6 +121,16 @@ def main() -> int:
     ck("parent.open_principal_zero", dec(open_prin[0]) == 0, 0, open_prin[0],
        "the parent must net to zero once the last member has settled")
 
+    # GAP-074, open on 3.4.2.5 / 3.5.2.2 / 3.7.1 alike: SettleParentDuesOnLastChildForeclosureProcessor
+    # filters component_type='PRIN', so the parent closes still carrying its future INT schedule while
+    # every child ends at 0. Reported, not asserted — a parked product issue must not gate the suite.
+    open_int = one(
+        "SELECT COALESCE(SUM(due_amount - paid_amount - COALESCE(waived_amount,0)),0) "
+        f"FROM mfi_accounting.loan_due_details WHERE loan_account_id={parent_id} "
+        "AND component_type='INT' AND is_deleted=false")
+    if dec(open_int[0]) > 0:
+        print(f"  [note] parent.open_interest_after_closure: {open_int[0]} still open (GAP-074, known)")
+
     rsch = one(
         "SELECT COUNT(*) FROM mfi_accounting.transaction_partition_details p "
         "JOIN mfi_accounting.transaction_master tm ON tm.id=p.transaction_id "

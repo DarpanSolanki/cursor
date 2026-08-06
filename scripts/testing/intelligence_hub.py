@@ -315,7 +315,7 @@ def generate(*, fast: bool = False) -> str:
         "scripts/bin/platform-scan.sh --with-kg",
         "```",
         "",
-        "Rule: `.cursor/rules/30-kg-discipline.mdc` — KG orients; code + DB decide.",
+        "Rule: `.cursor/rules/30-kg-discipline.md` — KG orients; code + DB decide.",
     ])
     return "\n".join(lines) + "\n"
 

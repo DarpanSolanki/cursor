@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Local-only payments stub for DCF e2e (cancelCollections + JTF templates).
+"""Local-only payments stub for accounting e2e (JTF templates + collection APIs).
 
 Accounting internal API calls:
-  GET  /payments/template/{request|response}/mfi/v1/cancelCollections
-  POST /payments/api/v1/cancelCollections
+  GET  /payments/template/{request|response}/mfi/v1/{api}
+  POST /payments/api/v1/{api}
+
+Templates are served from the payments repo, so the stub answers the same shape the
+real service does. Supported: cancelCollections, loanAccountCollection (part prepayment
+and repayment challan — accounting reads batch_reference_no / receipt_number /
+merchant_id / expiry_date off it, and a null expiry_date throws in the report builder).
 
 No changes to trustt-platform-accounting or trustt-platform-payments source.
 """
@@ -11,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -18,21 +24,37 @@ ROOT = Path(__file__).resolve().parents[2]
 PAYMENTS_DEPLOY = ROOT / "trustt-platform-payments" / "deploy" / "application" / "templates"
 PORT = int(__import__("os").environ.get("DCF_PAYMENTS_STUB_PORT", "8594"))
 
-SUCCESS_BODY = json.dumps(
-    {
-        "cancelCollections": {
-            "response_status": {
-                "status": "SUCCESS",
-                "code": "000",
-                "message": "LOCAL_PAYMENTS_STUB_OK",
+SUPPORTED_APIS = ("cancelCollections", "loanAccountCollection")
+
+OK_STATUS = {"status": "SUCCESS", "code": "000", "message": "LOCAL_PAYMENTS_STUB_OK"}
+
+SUCCESS_BODY = json.dumps({"cancelCollections": {"response_status": OK_STATUS}})
+
+
+def _api_from_path(path: str) -> str | None:
+    for api in SUPPORTED_APIS:
+        if api in path:
+            return api
+    return None
+
+
+def _collection_body() -> bytes:
+    stamp = int(time.time())
+    return json.dumps(
+        {
+            "loanAccountCollection": {
+                "response_status": OK_STATUS,
+                "batch_reference_no": f"STUBCHLN{stamp}",
+                "receipt_number": f"STUBRCPT{stamp}",
+                "merchant_id": "STUB_MERCHANT",
+                "expiry_date": str((stamp + 7 * 24 * 3600) * 1000),
             }
         }
-    }
-)
+    ).encode()
 
 
-def _read_template(kind: str) -> bytes:
-    path = PAYMENTS_DEPLOY / kind / "mfi" / "cancelCollections_{kind}Template.json".format(kind=kind)
+def _read_template(kind: str, api: str) -> bytes:
+    path = PAYMENTS_DEPLOY / kind / "mfi" / f"{api}_{kind}Template.json"
     if not path.is_file():
         raise FileNotFoundError(path)
     return path.read_bytes()
@@ -57,11 +79,12 @@ class PaymentsStubHandler(BaseHTTPRequestHandler):
             self._send(200, b'{"status":"UP"}')
             return
         prefix = "/payments/template/"
-        if self.path.startswith(prefix) and "cancelCollections" in self.path:
+        api = _api_from_path(self.path)
+        if self.path.startswith(prefix) and api:
             parts = self.path[len(prefix) :].strip("/").split("/")
             if len(parts) >= 4 and parts[0] in ("request", "response"):
                 try:
-                    self._send(200, _read_template(parts[0]))
+                    self._send(200, _read_template(parts[0], api))
                     return
                 except FileNotFoundError as e:
                     self._send(404, json.dumps({"error": str(e)}).encode())
@@ -72,8 +95,8 @@ class PaymentsStubHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         if length:
             self.rfile.read(length)
-        if "/api/v1/cancelCollections" in self.path:
-            self._send(200, SUCCESS_BODY.encode())
+        if "loanAccountCollection" in self.path:
+            self._send(200, _collection_body())
             return
         self._send(200, SUCCESS_BODY.encode())
 
