@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+from accounting_flow_domains import _path_hint_matches  # noqa: E402
 PROPOSALS = ROOT / "scripts" / "testing" / "registry-proposals.json"
 REGISTRY = ROOT / "scripts" / "testing" / "registry.json"
 MANIFEST = ROOT / "scripts" / "lib" / "acceptance_coverage_manifest.json"
@@ -66,7 +67,7 @@ def draft_from_ship(*, force: bool = False) -> dict | None:
     blob = " ".join(files + apis).lower()
     for name, d in domains.items():
         hints = [h.lower() for h in (d.get("path_hints") or []) + (d.get("api_hints") or [])]
-        if any(h and h in blob for h in hints):
+        if any(h and _path_hint_matches(h, blob) for h in hints):
             domain = name
             break
 

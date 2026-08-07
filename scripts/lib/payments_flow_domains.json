@@ -1,0 +1,442 @@
+{
+ "version": 1,
+ "repo": "trustt-platform-payments",
+ "description": "Payments orchestration domain map — ship-loop + coverage (ALL flows), mirrors accounting_flow_domains.json. apiNames grounded in orch_index scan of trustt-platform-payments/deploy/application/orchestration (orc_mfi.xml, orc_collections.xml) 2026-08-08; 1 of 254 has any registry case (foreclosure.cancel_collections, no verify_mode).",
+ "domains": {
+  "foreclosure_cancellation_hooks": {
+   "label": "Foreclosure / disbursement-cancellation collection hooks",
+   "path_hints": [],
+   "api_hints": [
+    "cancelCollections",
+    "cancelCollectionForeClosure",
+    "captureForeclosureState",
+    "getForeclosureAmountForFinnoneCollection",
+    "loanAccountCollection",
+    "expirePastCollections"
+   ],
+   "impact_cases": [
+    "foreclosure.cancel_collections"
+   ],
+   "deep_cases": [],
+   "release_cases": [
+    "foreclosure.cancel_collections"
+   ],
+   "release_cases_note": "cancelCollections case exists but asserts JTF envelope only, not collection.status transition — see .cursor/payments-coverage-map.md #2.2",
+   "proof": "cancelCollections called from accounting individualChildLoanForeclosure/loanDisbursementCancellation/loanPrepayment — orc_mfi.xml:1326"
+  },
+  "allocation": {
+   "label": "Collector allocation (primary/secondary/auto + recon)",
+   "path_hints": [],
+   "api_hints": [
+    "primaryAllocateCollection",
+    "secondaryAllocateCollection",
+    "autoAllocateCollections",
+    "fetchCollectionRecords",
+    "fetchCollectionRecordsForRecon",
+    "ackCollectionRecordForRecon",
+    "getAllocationStatusDetails",
+    "getAllocationStatusSummary",
+    "updateAllocationStatus",
+    "viewCollectors",
+    "viewUniqueCollector",
+    "getCustomersIdSetForCollector",
+    "getCollectorSummaryList"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "fetchCollectionRecords feeds actor/allocateCollections — the primary collector-assignment screen; no case exists yet"
+  },
+  "settlement_reconciliation": {
+   "label": "Collection settlement & payment reconciliation",
+   "path_hints": [],
+   "api_hints": [
+    "markCollectionsAsSettled",
+    "reconcileCollectionPayments",
+    "collectionPaymentSettlementBatch",
+    "generatePaymentTrackingDetails",
+    "createOrUpdateCollectionPaymentTrack",
+    "getCollectionPaymentTrack"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "markCollectionsAsSettled/reconcileCollectionPayments called only from collectionPaymentSettlementBatch — untested end to end including the batch trigger"
+  },
+  "collections_intake": {
+   "label": "LMS collection intake (bulk_collection_data_ Kafka + LMS sync pull)",
+   "path_hints": [],
+   "api_hints": [
+    "createOrUpdateBulkCollection",
+    "fetchLMSUpdate",
+    "fetchLMSUpdatesForCollections",
+    "pushPendingLMSUpdates"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "CreateOrUpdateBulkCollectionConsumer (Kafka side of createOrUpdateBulkCollection) is a find-or-create with no Redis lock — .cursor/payments-coverage-map.md #3"
+  },
+  "customer_office_sync": {
+   "label": "Collection customer / office info sync",
+   "path_hints": [],
+   "api_hints": [
+    "updateCollectionCustomerInfo",
+    "updateCollectionOfficeInfo",
+    "createCollectionOfficeInfo",
+    "getContactDetailsForFinnoneCustomer",
+    "getFinnoneCustomerDetailsByLAN",
+    "getFinnoneKeyMemberDetailsForGroup",
+    "saveCustomerContactDetails",
+    "updateCustomerPan"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "updateCollectionCustomerInfo is called by actor updateMFICustomerDetails and recursively by itself (bulk path) — orc_mfi.xml:1805"
+  },
+  "collection_write_core": {
+   "label": "Field/branch collection capture + rectification",
+   "path_hints": [],
+   "api_hints": [
+    "createCollection",
+    "createCollectionAttempt",
+    "doCollections",
+    "doMfiCollections",
+    "doMfiBranchCollection",
+    "doMfiFieldCollection",
+    "collectAmountAfterRectification",
+    "collectNowFinalFlowSubmission",
+    "updateCollection",
+    "updateCollectionTransactions",
+    "createOrUpdateCollectionRectification",
+    "createOrUpdateRecordAttempt",
+    "createOrUpdateRecordAttempt1",
+    "getCollectedDetailsForRectification",
+    "getRecordAttemptDetails",
+    "createOrUpdateCollectionTempData",
+    "getCollectionTempData"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "updateCollection (orc_collections.xml:87) writes 10+ tables — self-called from fetchLMSUpdate batch"
+  },
+  "payment_gateway": {
+   "label": "Payment rails (Razorpay/Easebuzz/CDS/scheduled payment)",
+   "path_hints": [],
+   "api_hints": [
+    "checkPaymentStatus",
+    "enquiryPaymentStatus",
+    "generatePaymentLink",
+    "initiateEasebuzzPayment",
+    "createRazorpayOrder",
+    "updateRazorpayOrderStatus",
+    "updatePaymentStatus",
+    "getPaymentStatusDetails",
+    "getPaymentStatusSummary",
+    "panNameMatchLogicValidation",
+    "submitDocumentsForPayment",
+    "generateCDSForCasaPayment",
+    "cancelBatchDeposit",
+    "cancelCds",
+    "updateCancelCds",
+    "increaseCDSPrintCount",
+    "getDenominationDetailsForReferences",
+    "fetchCdsRecords",
+    "getCdsLoanCollectionDetails",
+    "getScheduleDetails",
+    "updateSchedulePayment",
+    "getScheduledBatchList",
+    "updateScheduledBatchExpiryDate",
+    "updateExpiredScheduledBatchStatus",
+    "generateBatch",
+    "getBatchInquiryReport"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "task_visit_ptp": {
+   "label": "Field visit, PTP promise-to-pay, supervisory review task flows",
+   "path_hints": [],
+   "api_hints": [
+    "createOrUpdateVisitDetails",
+    "getDayWiseVisitDetails",
+    "getDayWiseVisitSummary",
+    "getVisitStatus",
+    "sendPtpMessage",
+    "sendPtpMessageBatch",
+    "reminderForPtpCalenderCustomerJob",
+    "reminderForPtpCalenderUserJob",
+    "reminderForPtpCalenderUserJobRm",
+    "getPtpCalendarCountDetails",
+    "createOrUpdateTaskForCollectionBatch",
+    "createTaskForNewMfiCollections",
+    "createOrUpdateCollectionLeadTask",
+    "addContactForExternalCollectionCustomer",
+    "updateLocationForTaskIds",
+    "submitCollForDelegation",
+    "forwardSupervisoryReview",
+    "reassignSupervisoryReview",
+    "submitSupervisoryReview",
+    "createSupervisorReviewTaskDetails",
+    "getEmployeeListToReassignSupervisoryReview",
+    "updateSupervisoryReviewStatus",
+    "reviewerVerificationHistory"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "priority_dpd_calendar": {
+   "label": "DPD bucket + priority calendar",
+   "path_hints": [],
+   "api_hints": [
+    "getDpdBucketDetails",
+    "getDpdBucketSummary",
+    "updateDpdBatch",
+    "updateDpdBucketBatch",
+    "getPriorityCollectionDetails",
+    "getPriorityCollectionDetailsOld",
+    "getPriorityCountForCalendar",
+    "getPriorityCountForCalendarOld",
+    "getCollectionCalendarCountDetails",
+    "getOverThresholdCollection"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "portfolio_transfer": {
+   "label": "LCS portfolio transfer",
+   "path_hints": [
+    "portfoliotransfer",
+    "lcsportfolio"
+   ],
+   "api_hints": [
+    "executeLCSPortfolioTransfer",
+    "rollbackLCSPortfolioTransfer",
+    "validateLCSRestrictedActivitiesForPTrfr",
+    "checkForCollectionRestriction"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "bulk_file_sg": {
+   "label": "Bulk file exchange (SG handoff / inbound / outbound / Finone)",
+   "path_hints": [
+    "bulkfiletosg",
+    "bulksgto",
+    "bulkoutboundnp",
+    "colltostagnp"
+   ],
+   "api_hints": [
+    "bulkFileToSGConfirmPaymentJob",
+    "bulkFileToSGDynamicOneJob",
+    "bulkFileToSGDynamicTwoJob",
+    "bulkFileToSGExcelAgencyUploadJob",
+    "bulkFileToSGFinnoneLoanCorrectionJob",
+    "bulkFileToSGFinoneReverseJob",
+    "bulkFileToSGLoanCategoryUploadJob",
+    "bulkFileToSGLoanExceptionUploadJob",
+    "bulkFileToSGNpHandoffJob",
+    "bulkFileToSGNpRevTrailsJob",
+    "bulkFileToSGPriorityCalendarJob",
+    "bulkFileToSGRescheduleDataUploadJob",
+    "bulkFileToSGStaticDtTypeJob",
+    "bulkOutboundNpAgencyExtractJob",
+    "bulkOutboundNpCollReportJob",
+    "bulkOutboundNpHandOffFileJob",
+    "bulkOutboundNpRacCasesJob",
+    "bulkOutboundNpReverseHandoffJob",
+    "bulkOutboundNpTrialHistoryJob",
+    "bulkSGToConfirmPaymentJob",
+    "bulkSGToDynamicOneJob",
+    "bulkSGToDynamicTwoJob",
+    "bulkSGToExcelAgencyUploadJob",
+    "bulkSGToFinnoneLoanCorrectionJob",
+    "bulkSGToFinoneReverseJob",
+    "bulkSGToLoanCategoryUploadJob",
+    "bulkSGToLoanExceptionUploadJob",
+    "bulkSGToNpHandoffJob",
+    "bulkSGToNpRevTrailsJob",
+    "bulkSGToPriorityCalendarJob",
+    "bulkSGToRescheduleDataUploadJob",
+    "bulkSGToStaticDtTypeJob",
+    "collToStagNpAgentSyncJob",
+    "collToStagNpCollReportSyncJob",
+    "collToStagNpHandOffFileSyncJob",
+    "collToStagNpRacCasesSyncJob",
+    "collToStagNpTrialHistorySyncJob",
+    "runInboundNpHandoffJob",
+    "runInboundNpRevTrailsJob",
+    "runInboundStaticFinoneJob",
+    "runFinoneReverseJob",
+    "runInboundFinoneJob",
+    "viewBulkConfirmPaymentFileStatus",
+    "viewBulkExcelAgencyUploadFileStatus",
+    "viewBulkFinnoneLoanCorrectionFileStatus",
+    "viewBulkLoanCategoryUploadFileStatus",
+    "viewBulkLoanExceptionUploadFileStatus",
+    "viewBulkPriorityCalendarFileStatus",
+    "viewBulkRescheduleDataUploadFileStatus",
+    "viewBulkUploadFileStatus",
+    "downloadConfirmPaymentUploadedFile",
+    "downloadExcelAgencyUploadUploadedFile",
+    "downloadFinnoneLoanCorrectionUploadedFile",
+    "downloadLoanCategoryUploadUploadedFile",
+    "downloadLoanExceptionUploadUploadedFile",
+    "downloadPriorityCalendarUploadedFile",
+    "downloadRescheduleDataUploadUploadedFile",
+    "downloadUploadedFile",
+    "uploadCollectionDocs",
+    "deleteUploadedFile",
+    "rejectUploadedFile",
+    "processBulkUploadFile",
+    "getBulkUploadTemplate",
+    "bulkUploadFile"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments",
+   "release_cases_note": "66 batch/job-shaped apiNames per .cursor/payments-coverage-map.md #1 — job SUCCESS is not row-level proof"
+  },
+  "reporting_batch": {
+   "label": "MIS reporting, receipt notifications, agency/attempt reports",
+   "path_hints": [],
+   "api_hints": [
+    "getCollectionMISReportDetails",
+    "getCollectionAttemptsReportDetails",
+    "notifyClose",
+    "notifyCloseInBatch",
+    "sendAttemptReportAfterThresholdAttempt",
+    "collectionReminderBatch",
+    "collectNowGenerateReceiptNotificationCHJob",
+    "collectNowGenerateReceiptNotificationJob",
+    "collectNowGenerateReceiptNotificationRMJob",
+    "cashDepositCutoffTimeElapsedForCollectorJob",
+    "collectionCashinQueueBatch",
+    "collectorCashInHand",
+    "collectionLoanRepayment",
+    "readCmsMail",
+    "saveCollectionConsentInfo",
+    "getVymoNovopayMasterCode",
+    "getAgencyCode",
+    "getAttemptsTrialMode",
+    "getAttemptsTrialNextAction",
+    "getAttemptsTrialNonPayReason",
+    "getAttemptsTrialOutcome",
+    "getAttemptsTrialPersonContacted",
+    "getAttemptsTrialPlaceContacted"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "casa_insufficient_balance": {
+   "label": "CASA insufficient-balance collection screens",
+   "path_hints": [
+    "insufficientcasabalance"
+   ],
+   "api_hints": [
+    "getCustomerWithInsufficientCasaBalance",
+    "getGroupDetailsWithInsufficientCasaBalance",
+    "getGroupsWithInsufficientCasaBalance",
+    "getMembersDetailsWithInsufficientCasaBalance",
+    "getVillagePaymentPortfolioSummary"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  },
+  "group_individual_collection_views": {
+   "label": "Group / individual collection detail & summary screens",
+   "path_hints": [],
+   "api_hints": [
+    "getGroupCollBannerDetails",
+    "getGroupCollectionDemandList",
+    "getGroupCollectionDetailsV2",
+    "getGroupCollectionInfoList",
+    "getGroupLoanCollectionDetails",
+    "getGroupLoanDemandDetails",
+    "getGroupMemberName",
+    "getGroupPaymentInfoList",
+    "getIndividualCollectionDemandList",
+    "getIndividualCollectionDetailsV2",
+    "getIndlLoanDemandDetails",
+    "getIndvidualCollBannerDetails",
+    "getLoanCollectionDetails",
+    "getCustomerLoanAccountList",
+    "getCustomerCollectionInteraction",
+    "getCustomerInteractionForCollectionList",
+    "getCustomerInteractionHistoryList",
+    "getCollectionDetailsForCustomerInteractionListOLd",
+    "getModeOfCollectionDetails",
+    "getModeOfCollectionSummary",
+    "getCollectionOverview",
+    "getCollectionSummary",
+    "getCollectionStatusDetails",
+    "getCollectionStatusSummary",
+    "getCollectionTransactionList",
+    "getCollectionTrendSummary",
+    "getCollectionGeoSummary",
+    "getCollectionInfoList",
+    "getCollectionInfoListOld",
+    "getCollectionsForBatchCreation",
+    "getCollectionsList",
+    "getCollectionBatchDetails",
+    "getTransactionsForCollector",
+    "getUpdatedAmountOfCollection",
+    "getNearByCollectionDetails",
+    "getPastCollectionIdsForCollectionIds",
+    "getCollectionPayableDetails"
+   ],
+   "impact_cases": [],
+   "deep_cases": [],
+   "release_cases": [
+    "health.payments"
+   ],
+   "fallback_case": "health.payments"
+  }
+ },
+ "canonical_train_observed": "mfi_integration_v3.4.2.5",
+ "evidence_policy": "api_hints must exist as Request name= in payments orch (scripts/testing/orch_index.py scan); impact/release_cases must exist in registry.json; unmatched apiNames fall through to read_inquiry/write_ops/batch_other/other via the same regex fallback accounting_flow_domains.py already uses in coverage_report()."
+}

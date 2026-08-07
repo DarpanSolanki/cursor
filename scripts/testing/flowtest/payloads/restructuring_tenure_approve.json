@@ -1,0 +1,44 @@
+{
+ "headers": {
+  "device_id": null,
+  "actor_type": "CUSTOMER",
+  "operation_mode": "SELF",
+  "sim_number": null,
+  "channel_code": "WEB",
+  "locale": null,
+  "function_sub_code": "DEFAULT",
+  "function_code": "APPROVE",
+  "end_channel_code": null,
+  "run_mode": "REAL",
+  "location_accuracy": null,
+  "user_id": "103",
+  "stan": "{{$timestamp}}",
+  "origination_channel": null,
+  "user_handle_value": null,
+  "client_ip": null,
+  "location": null,
+  "battery_percentage": null,
+  "channel_type": null,
+  "tenant_code": "mfi",
+  "client_code": "NOVOPAY",
+  "transmission_datetime": "1786127400000"
+ },
+ "request": {
+  "loan_account_restructuring": {
+   "loan_account_number": "6004197225",
+   "rescheduling_effective_date": "1786127400000",
+   "restructuring_impact": "UPDATE_TENURE",
+   "excess_amount": "0",
+   "bpi_amount": "444.000000",
+   "overdue_amount": "0",
+   "due_amount": "0",
+   "penal_amount": "0",
+   "fee_amount": "0",
+   "old_tenure": "24",
+   "new_tenure": "24",
+   "is_roi_changed": "false",
+   "reason": "BORROWER_STRUGGLES_TO_PAY",
+   "notes": "Restructuring coverage probe"
+  }
+ }
+}

@@ -48,6 +48,7 @@ from lib.test_learnings import LEARNINGS, append_learning, load_learnings
 from lib.validate_registry import validate_registry
 
 REGISTRY = HERE / "registry.json"
+SKIP_RC = 3
 KG_ENSURE = ROOT / "scripts" / "bin" / "kg-ensure-fresh.sh"
 KG_SESSION = ROOT / "scripts" / "bin" / "kg-session-sync.sh"
 AGENT_OPS = ROOT / "scripts" / "bin" / "agent-ops.sh"
@@ -255,9 +256,10 @@ def _batch_planned(job_name: str, before_exec: str) -> int:
         return -1
 
 
-def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
+def _run_api_case_inner(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
     t0 = time.time()
     env = {**_correlators(), **_resolve_defaults(case)}
+    env["NTEST_RUN_STARTED_AT"] = str(t0)
     service = case.get("service", "accounting")
     api = case.get("api", case_id)
 
@@ -266,8 +268,11 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     # no per-train list to rot. Skips are not recorded as runs.
     missing = [p for p in (case.get("requires_paths") or []) if not (ROOT / p).exists()]
     if missing:
+        # Exit 0 made `ntest run X && echo PASS` print PASS for a case that never ran —
+        # three cases were reported as passing on that basis. SKIP is not success.
+        print(f"=== {case_id} SKIP — not on this train (absent: {missing[0]})", file=sys.stderr)
         print(f"=== {case_id} SKIP — not on this train (absent: {missing[0]})")
-        return 0, None
+        return SKIP_RC, None
 
     if health:
         ok, msg = health_check(service)
@@ -357,10 +362,10 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     DEFERRED_RULE_TYPES = {"file_exists", "file_row_count", "db_matches_path"}
     if will_wait_batch:
         immediate_rules = [r for r in all_rules if r["type"] not in DEFERRED_RULE_TYPES]
-        deferred_rules = [r for r in all_rules if r["type"] in DEFERRED_RULE_TYPES]
+        deferred_file_rules = [r for r in all_rules if r["type"] in DEFERRED_RULE_TYPES]
     else:
         immediate_rules = all_rules
-        deferred_rules = []
+        deferred_file_rules = []
 
     spec = {
         "assertions": immediate_rules,
@@ -405,23 +410,32 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
                     _telemetry(case_id, False, time.time() - t0)
                     return 1, result
 
-            if deferred_rules:
-                dspec = {"assertions": deferred_rules, "on_fail_print_body": False}
-                drun = run_assertions(result.body, result, dspec, env={**os.environ, **env})
-                for ar in drun.results:
-                    print(f"  [{'PASS' if ar.ok else 'FAIL'}] {ar.name}: {ar.detail}",
-                          file=sys.stdout if ar.ok else sys.stderr)
-                if not drun.passed:
-                    _auto_on_failure(service, api, job_time)
+            want = (case.get("expect") or {}).get("batch_wrote")
+            if want is not None:
+                read_n, write_n = _batch_counts(job_name, before_exec)
+                ok = write_n >= int(want)
+                print(f"  [{'PASS' if ok else 'FAIL'}] batch_wrote: "
+                      f"read={read_n} write={write_n} (expected write >= {want})",
+                      file=sys.stdout if ok else sys.stderr)
+                if not ok:
+                    _telemetry(case_id, False, time.time() - t0)
+                    return 1, result
+
+            if deferred_file_rules:
+                file_spec = {"assertions": deferred_file_rules, "on_fail_print_body": False}
+                file_run = run_assertions(result.body, result, file_spec, env={**os.environ, **env})
+                for ar in file_run.results:
+                    print(f"  [{'PASS' if ar.ok else 'FAIL'}] {ar.name}: {ar.detail}")
+                if not file_run.passed:
                     _telemetry(case_id, False, time.time() - t0)
                     return 1, result
         elif case.get("wait_batch"):
             print("  [WARN] wait_batch skipped — set JOB_TIME default or env", file=sys.stderr)
-            if deferred_rules:
+            if deferred_file_rules:
                 # Deferring an assert past a wait that never happens deletes it. The case would
                 # go green having evaluated only the immediate rules, which is the failure the
                 # deferral was introduced to prevent, one step further along.
-                names = ", ".join(r["type"] for r in deferred_rules)
+                names = ", ".join(r["type"] for r in deferred_file_rules)
                 print(f"  [FAIL] deferred_asserts_unevaluated: {names} — wait_batch was skipped, "
                       "so nothing checked what the job produced", file=sys.stderr)
                 _telemetry(case_id, False, time.time() - t0)
@@ -462,7 +476,7 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     return 0, result
 
 
-def _run_flow_case(case_id: str, case: dict) -> int:
+def _run_flow_case_inner(case_id: str, case: dict) -> int:
     """Run a registry flow case. Fail-closed: non-zero child rc OR printed FAIL with rc=0.
 
     Applies ``defaults`` (same as API cases) then optional ``env`` overlays so pinned
@@ -514,6 +528,22 @@ def _run_flow_case(case_id: str, case: dict) -> int:
                 file=sys.stderr,
             )
             rc = 1
+    # Flow cases never recorded to the learning bus, so run_evidence and the
+    # bus_failures check only ever saw API cases. Three dpic flow cases stayed marked
+    # failed for two days after they started passing, because a pass had no way to be
+    # heard. The e2e money cases are exactly the ones whose result matters most.
+    try:
+        from cross_learn import record_test_result
+        record_test_result(
+            api=case.get("api") or case_id,
+            case_id=case_id,
+            passed=rc == 0,
+            service=case.get("service", "accounting"),
+            body="" if rc == 0 else out[-3000:],
+        )
+    except Exception:
+        pass
+    _trigger_intel_sync()
     _telemetry(case_id, rc == 0, time.time() - t0)
     return rc
 
@@ -761,6 +791,38 @@ def cmd_api(args: argparse.Namespace) -> int:
 def cmd_orient(args: argparse.Namespace) -> int:
     print(orient_api(args.api))
     return 0
+
+
+def _money_guard(case: dict, case_id: str):
+    """Universal money invariants around any money-tier case.
+
+    Wrapping here rather than at the six call sites means a new case inherits the
+    invariants for free. Per-case asserts catch the defect the author imagined;
+    invariants catch the one nobody did.
+    """
+    sys.path.insert(0, str(ROOT / "scripts/testing/lib"))
+    from money_invariants import Guard
+    return Guard(case, case_id=case_id)
+
+
+def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
+    guard = _money_guard(case, case_id)
+    with guard:
+        rc, res = _run_api_case_inner(case_id, case, watch=watch, health=health)
+    if rc == 0 and not guard.check():
+        print(f"=== {case_id} FAIL — money invariant violated after a passing case", file=sys.stderr)
+        return 1, res
+    return rc, res
+
+
+def _run_flow_case(case_id: str, case: dict) -> int:
+    guard = _money_guard(case, case_id)
+    with guard:
+        rc = _run_flow_case_inner(case_id, case)
+    if rc == 0 and not guard.check():
+        print(f"=== {case_id} FAIL — money invariant violated after a passing case", file=sys.stderr)
+        return 1
+    return rc
 
 
 def cmd_learn(args: argparse.Namespace) -> int:

@@ -215,6 +215,29 @@ class CallerIndexTest(unittest.TestCase):
             for caller in (r.get("called_by") or [])[:5]:
                 self.assertIn("/", caller)
 
+    def test_batch_writer_callers_are_not_dropped(self) -> None:
+        """2026-08-08: `called_by` only read request->request `calls` edges, silently
+
+        dropping every processor->request edge — the shape Java `.callInternalAPI` dispatch
+        takes, including every batch item writer. Measured at 52% of all `calls` edges;
+        postTransaction's recorded callers held zero of its known SGTo* writers. Pins the
+        fix rather than only the symptom this masked (see CHANGELOG / commit history for
+        platform_api_map.py::callers()).
+        """
+        rows = load("platform_api_map.jsonl")
+        if not rows:
+            self.skipTest("api map not built")
+        by = {r["api"]: r for r in rows}
+        self.assertIn("postTransaction", by)
+        callers_ = by["postTransaction"].get("called_by") or []
+        writer_callers = [c for c in callers_ if "writer:" in c or "SGTo" in c]
+        self.assertTrue(
+            writer_callers,
+            "postTransaction has no batch-writer caller — the processor->request edge "
+            "shape is being dropped again",
+        )
+
+
 class ProcessorTest(unittest.TestCase):
 
     def setUp(self) -> None:

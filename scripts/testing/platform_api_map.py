@@ -277,6 +277,15 @@ def callers() -> dict[str, list[str]]:
     `api-contract-safety.md` opens with "find all callers", and until now that meant a
     repo-wide grep for the API name across fifteen repos. The KG already holds the edge; it
     was only ever stored in the forward direction.
+
+    A `request:%` -calls-> `request:%` edge only exists when the calling processor's own
+    orchestration parent is known. Java dispatch (`.callInternalAPI`, batch item writers)
+    is recorded as `processor:%` -calls-> `request:%` instead — 2026-08-08 measurement found
+    this was 52% of all `calls` edges, and `postTransaction`'s recorded callers included zero
+    of its known `SGTo*` batch-writer callers as a result. Every processor caller is resolved
+    to its owning request(s) via `invokes` (`request:%` -invokes-> `processor:%`); a processor
+    with no orchestration parent is attributed as the bean itself so it is visible rather than
+    silently dropped, prefixed `writer:` so it reads distinctly from a real apiName.
     """
     if not KGDB.is_file():
         return {}
@@ -289,6 +298,24 @@ def callers() -> dict[str, list[str]]:
     for src, dst in con.execute(
             "SELECT src_id, dst_id FROM edges WHERE rel='calls_api' AND src_id LIKE 'request:%'"):
         rev.setdefault(dst.split(":", 1)[1], set()).add(src.split(":", 1)[1])
+
+    proc_to_reqs: dict[str, set[str]] = {}
+    for req_id, proc_id in con.execute(
+            "SELECT src_id, dst_id FROM edges WHERE rel='invokes' "
+            "AND src_id LIKE 'request:%' AND dst_id LIKE 'processor:%'"):
+        proc_to_reqs.setdefault(proc_id, set()).add(req_id.split(":", 1)[1])
+    for src, dst, edge_src in con.execute(
+            "SELECT src_id, dst_id, src FROM edges WHERE rel='calls' "
+            "AND src_id LIKE 'processor:%' AND dst_id LIKE 'request:%'"):
+        bean = src.split(":", 1)[1]
+        owners = proc_to_reqs.get(src)
+        if owners:
+            callers_for_bean = owners
+        else:
+            repo = (edge_src or "").split("/", 1)[0] or "unknown-repo"
+            callers_for_bean = {f"{repo}/writer:{bean}"}
+        rev.setdefault(dst.split("/")[-1], set()).update(callers_for_bean)
+
     con.close()
     return {k: sorted(v) for k, v in rev.items()}
 

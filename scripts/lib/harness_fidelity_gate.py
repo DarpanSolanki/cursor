@@ -102,6 +102,17 @@ ALLOWED_SEEDED_HINTS = frozenset(
         "aging_seed",
         "excess_seed",
         "docs_stub_payload",
+        # Fresh SHG parent+children built via create_fresh_dcf_group_fixture.py — a real
+        # disburse plus real accrual/posting/billing, not a hand-crafted outcome row.
+        "fresh_shg_group",
+        # A product capability column flipped true/false (e.g. loan_restructuring_allowed)
+        # plus the matching Redis cache row evicted. Precondition, not outcome — the row
+        # under assert is written later by the real orchestration.
+        "product_flag_seed",
+        # State built by running the real batch job or orchestration request the flow
+        # depends on (e.g. interestAccrualCalculation, a DEFAULT/REAL create leg), not by
+        # inserting the row directly. The row under assert still comes from that real run.
+        "real_job_precondition",
         # EOD chain fired on selected days instead of every calendar day. Only valid
         # when the reduced cadence is PROVEN to reproduce the same defects as the full
         # daily walk — posting-days-only under-fires SHG distribute and hides the

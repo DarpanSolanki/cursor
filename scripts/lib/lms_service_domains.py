@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import sys
 from functools import lru_cache
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+from accounting_flow_domains import _path_hint_matches  # noqa: E402
 
 DOMAIN_FILE = Path(__file__).with_name("lms_service_domains.json")
 
@@ -27,14 +31,16 @@ def detect_service_domains(paths: list[str] | None, blob: str | None = None) -> 
         phints = [h.lower() for h in (meta.get("path_hints") or [])]
         matched = False
         for p in low_paths:
-            if any(r in p for r in repos):
+            if any(_path_hint_matches(r, p) for r in repos):
                 matched = True
                 break
-            if any(h in p for h in phints):
+            if any(_path_hint_matches(h, p) for h in phints):
                 matched = True
                 break
         if not matched and joined:
-            if any(r in joined for r in repos) or any(h in joined for h in phints):
+            if any(_path_hint_matches(r, joined) for r in repos) or any(
+                _path_hint_matches(h, joined) for h in phints
+            ):
                 matched = True
         if matched:
             hit.append(sid)

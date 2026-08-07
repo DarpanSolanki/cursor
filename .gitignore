@@ -24,6 +24,18 @@
 !.cursor/architecture-digest.md
 !.cursor/changelog.md
 !.cursorindexingignore
+# Generated maps of what the platform is. Regenerable in ~3s, but tracked because a fresh
+# clone should be able to read them before it can run anything.
+!.cursor/loan-transaction-map.md
+!.cursor/platform-api-map.md
+!.cursor/platform-surface-map.md
+!.cursor/eod-bod-coverage-plan.md
+!.cursor/loan-flow-coverage-plan.md
+!.cursor/accounting-coverage-map.md
+!.cursor/payments-coverage-map.md
+!.cursor/actor-coverage-map.md
+!.cursor/los-caller-surface.md
+!.cursor/workspace-tooling-audit.md
 
 !cursor-bundle/
 cursor-bundle/*
