@@ -5550,6 +5550,22 @@
         ],
         "tier": "money"
       }
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateEligibilityRuleDefinition",
+      "kind": "registry_case",
+      "api": "createOrUpdateEligibilityRuleDefinition",
+      "reason": "flow createOrUpdateEligibilityRuleDefinition impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-06T10:23:32Z"
+    },
+    {
+      "id": "impact.not_covered.createOrUpdateRuleGroupConfiguration",
+      "kind": "registry_case",
+      "api": "createOrUpdateRuleGroupConfiguration",
+      "reason": "flow createOrUpdateRuleGroupConfiguration impacted \u2014 NOT-COVERED",
+      "status": "draft",
+      "created_at": "2026-08-06T10:23:32Z"
     }
   ]
 }

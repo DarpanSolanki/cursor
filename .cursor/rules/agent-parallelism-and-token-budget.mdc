@@ -34,6 +34,7 @@ already name is 10× cheaper:
 
 | Tool | tokens |
 |------|-------:|
+| `kg_error` | **~0.16k** — cheaper than one grep; always the first hop for a code |
 | `kg_why` | ~2.0k |
 | `kg_orient` (brief, default) | ~3.4k |
 | `kg_writes` | ~3.7k |

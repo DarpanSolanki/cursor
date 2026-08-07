@@ -1,8 +1,8 @@
 {
   "schema": "mfi_accounting",
-  "flyway_branch": "feature/delayed_payment_interest",
-  "flyway_tables": 879,
-  "product_columns": 2515,
+  "flyway_branch": "mfi_integration_v3.7.1",
+  "flyway_tables": 884,
+  "product_columns": 2516,
   "local_only_columns": [
     "account_interest_details.created_by",
     "account_interest_details.updated_by",
@@ -168,7 +168,6 @@
     "prepayment_details.bpd_is_waived",
     "prepayment_details.bpd_waived_amount",
     "prepayment_details.bpd_waiver_percentage",
-    "prepayment_details.closure_type",
     "presentation_bounce_charge_details.bounce_charges_applied",
     "presentation_bounce_charge_details.created_by",
     "presentation_bounce_charge_details.created_on",

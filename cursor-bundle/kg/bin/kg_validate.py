@@ -39,6 +39,16 @@ def main():
         if e < MIN_EDGES:
             fail(f"edge count {e} < {MIN_EDGES}")
         c.execute("SELECT 1 FROM node_fts WHERE node_fts MATCH 'disburseLoan*' LIMIT 1").fetchone()
+        # Dangling `throws` edges mean a rebuild step deleted error nodes but kept their
+        # edges — refresh_cases.py did exactly that and silently dropped 1.8k codes while
+        # every other count still looked healthy.
+        dangling = c.execute(
+            "SELECT count(*) FROM edges e WHERE e.rel='throws' "
+            "AND NOT EXISTS (SELECT 1 FROM nodes n WHERE n.id=e.dst_id)"
+        ).fetchone()[0]
+        if dangling:
+            fail(f"{dangling} dangling `throws` edge(s) — error nodes deleted but edges kept; "
+                 "rebuild: cursor-bundle/kg/bin/build.sh --force")
         c.close()
     except Exception as ex:
         fail(str(ex))

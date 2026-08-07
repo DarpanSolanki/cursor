@@ -120,3 +120,5 @@
 - [Stale branch mapping docs](feedback_stale_branch_mapping_docs.md) — Hand-maintained branch/repo tables rot and can invert — regenerate from live git, and never trust a doc's checkout claim
 - [Forward merge chain](reference_forward_merge_chain.md) — Declared train forward-merge order — use it before porting a fix, allocating a migration version, or calling a branch "regressed"
 - [Router v2 minimal path](reference_router_v2_minimal_path.md) — Router v2 — process matrix is a weighted DAG with terminal state; how PLAN/GOAL/escalation work and what may never be traded for speed
+- [KG error lookup is the first hop, not grep](feedback_kg_error_first_hop_not_grep.md) — measured 1958 greps vs 7 KG calls; kg_error is ~160 tokens
+- [Error-code index: what is branch truth](reference_error_code_index.md) — throw sites are branch-qualified, message templates are runtime-only

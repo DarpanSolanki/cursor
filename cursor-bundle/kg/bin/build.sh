@@ -52,6 +52,10 @@ python3 "$BIN/build_tables.py" $REPOS             >> "$tmp"
 python3 "$BIN/build_dataaccess.py" "$tmp" $REPOS  >> "$tmp"
 # Method-level symbols for kg impact (money-path packages; branch = live checkout)
 python3 "$BIN/build_java_symbols.py" $REPOS         >> "$tmp"
+# ERROR-CODE layer: throw sites + the ExecutionContext keys each message template needs.
+# Runs before build_cases so the source-derived error node wins dedup over the sparse
+# changelog-mention one; build_cases still attaches its hit_error edges by id.
+python3 "$BIN/build_error_codes.py" "$tmp" $REPOS   >> "$tmp"
 python3 "$BIN/build_money_concepts.py" "$tmp" $REPOS >> "$tmp"
 python3 "$BIN/build_kafka.py" "$tmp" $REPOS       >> "$tmp"
 python3 "$BIN/build_schedulers.py" "$tmp"         >> "$tmp"

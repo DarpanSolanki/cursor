@@ -42,8 +42,11 @@ def bean_name(cls):
     return cls[0].lower()+cls[1:] if cls else cls
 
 def strip_comments(txt):
-    txt=re.sub(r'/\*.*?\*/', ' ', txt, flags=re.S)
-    txt=re.sub(r'//[^\n]*', ' ', txt)
+    # Blank comments without moving any line: line_at() below reports file:line against
+    # this text, and collapsing a block comment to one space shifted every line after a
+    # licence header.
+    txt=re.sub(r'/\*.*?\*/', lambda m: "\n"*m.group(0).count("\n"), txt, flags=re.S)
+    txt=re.sub(r'//[^\n]*', '', txt)
     return txt
 
 CLASS_RE=re.compile(r'\b(?:class|interface)\s+([A-Z]\w*)')

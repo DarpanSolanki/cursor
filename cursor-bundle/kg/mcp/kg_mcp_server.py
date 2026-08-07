@@ -60,6 +60,7 @@ _MONEY_LOOKUP_TOOLS = frozenset(
         "kg_orient",
         "kg_flow",
         "kg_why",
+        "kg_error",
         "kg_impact",
         "kg_crud",
         "kg_writes",
@@ -115,6 +116,21 @@ TOOLS = {
                 "auto_cap": {
                     "type": "integer",
                     "description": "Max auto silent-surface diags (default 10). Use 0 for curated-only.",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    "kg_error": {
+        "description": "START HERE for any error code (132168, LOS-0016, COL-012): every source-derived throw site with file:line and branch, the ExecutionContext keys the message template needs, the runtime template, and prior shipped fixes. Replaces grepping for the code.",
+        "args": ["error"],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "error code, e.g. 132168"},
+                "no_template": {
+                    "type": "boolean",
+                    "description": "Skip the runtime (Redis) template lookup — source-derived facts only.",
                 },
             },
             "required": ["query"],
@@ -511,6 +527,8 @@ def tool_argv(name: str, arguments: dict) -> list[str]:
             pass  # brief disabled
         elif arguments.get("brief", True):
             argv.append("--brief")
+    if name == "kg_error" and arguments.get("no_template"):
+        argv.append("--no-template")
     if name == "kg_why":
         cap = arguments.get("auto_cap")
         if cap is None:

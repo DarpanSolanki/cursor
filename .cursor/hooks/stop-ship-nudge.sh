@@ -8,8 +8,28 @@ PENDING="$ROOT/.cursor/.pending-ship-work.json"
 FLAG="$ROOT/.cursor/.pending-ship-nudge"
 GATE="$ROOT/scripts/lib/ship_push_gate.py"
 SESSION="$ROOT/scripts/lib/session_ship.py"
+KNOWLEDGE="$ROOT/scripts/lib/knowledge_loop_gate.py"
+
+# 40-knowledge-upkeep DoD was prose-only: nothing failed when a loop was skipped, so facts
+# were captured only when asked for. Name the open loops on every stop that touched behaviour.
+KNOWLEDGE_NOTE=""
+if [[ -f "$KNOWLEDGE" ]]; then
+  if ! KNOWLEDGE_OUT=$(timeout 15 python3 "$KNOWLEDGE" --strict 2>/dev/null); then
+    KNOWLEDGE_NOTE=$(printf '%s\n' "$KNOWLEDGE_OUT" | grep '^OPEN' || true)
+  fi
+fi
 
 if [[ ! -f "$PENDING" && ! -f "$FLAG" ]]; then
+  if [[ -n "$KNOWLEDGE_NOTE" ]]; then
+    python3 - <<'PY' "$KNOWLEDGE_NOTE"
+import json, sys
+print(json.dumps({"followup_message":
+    "Knowledge loop still open (40-knowledge-upkeep DoD):\n" + sys.argv[1] +
+    "\n  Capture a fact: `bash scripts/bin/learn.sh <user|feedback|project|reference> <slug> \"<summary>\" \"<body>\"`"
+    "\n  Log a change:   `bash scripts/bin/changelog-add.sh ...`"}))
+PY
+    exit 0
+  fi
   echo '{}'
   exit 0
 fi

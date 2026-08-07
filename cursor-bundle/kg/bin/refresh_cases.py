@@ -42,7 +42,14 @@ def main() -> int:
     for line in JSONL.open(encoding="utf-8"):
         o = json.loads(line)
         if o["t"] == "node":
-            if o.get("kind") in ("case", "error"):
+            # `case` and changelog-mentioned `error` nodes are regenerated from the
+            # CHANGELOG below. Source-derived error nodes (role='throw_site', from
+            # build_error_codes.py) are NOT — dropping them here rewrote kg.jsonl without
+            # them while their `throws` edges survived, leaving dangling edges and a KG
+            # that had silently lost 1.8k codes.
+            if o.get("kind") == "case" or (
+                o.get("kind") == "error" and o.get("role") != "throw_site"
+            ):
                 continue
             nodes.append(o)
         elif not _is_case_edge(o):

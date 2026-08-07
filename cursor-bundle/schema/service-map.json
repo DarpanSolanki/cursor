@@ -6,13 +6,13 @@
       "schemas_touched": [
         "mfi_accounting"
       ],
-      "java_files": 2101,
-      "entities": 172,
+      "java_files": 2191,
+      "entities": 178,
       "tables_in_db": 185,
-      "tables_mapped_by_an_entity": 171,
-      "columns_mapped": 2349,
-      "columns_with_code_binding": 2072,
-      "columns_with_ambiguous_field_name": 1661,
+      "tables_mapped_by_an_entity": 177,
+      "columns_mapped": 2466,
+      "columns_with_code_binding": 2201,
+      "columns_with_ambiguous_field_name": 1764,
       "entity_tables_absent_from_db": [
         "customer_nominee_details",
         "disbursment_transaction_history",
@@ -259,7 +259,7 @@
         "mfi_actor",
         "platform_master"
       ],
-      "java_files": 2346,
+      "java_files": 2339,
       "entities": 3,
       "tables_in_db": 7,
       "tables_mapped_by_an_entity": 1,

@@ -479,6 +479,8 @@ echo "→ assert strength (no new presence-only asserts)"
 python3 "$ROOT/scripts/bin/assert-strength-gate.py" || exit 1
 echo "→ schema refs (no assert or SQL names a column the schema lacks)"
 python3 "$ROOT/scripts/lib/schema_ref_gate.py" --sql || exit 1
+echo "→ error-index drift (every indexed throw site still matches source)"
+python3 "$ROOT/scripts/lib/error_index_drift_gate.py" --strict --sample 400 || exit 1
 echo "→ hygiene (auto-clean; never leave the tree dirtier than we found it)"
 bash "$ROOT/scripts/bin/workspace-hygiene.sh" --clean >/dev/null 2>&1 || true
 

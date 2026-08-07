@@ -90,12 +90,27 @@ def incremental_cases(src: str, dbpath: str) -> None:
 
     db = sqlite3.connect(dbpath)
     db.executescript(SCHEMA)
-    ids = [r[0] for r in db.execute("SELECT id FROM nodes WHERE kind IN ('case','error')").fetchall()]
+    # Source-derived error nodes (role='throw_site') and their `throws` edges come from
+    # build_error_codes.py, not from the changelog — a case refresh must not delete them.
+    ids = [
+        r[0]
+        for r in db.execute(
+            "SELECT id FROM nodes WHERE kind='case' "
+            "OR (kind='error' AND (role IS NULL OR role<>'throw_site'))"
+        ).fetchall()
+    ]
     if ids:
         placeholders = ",".join("?" * len(ids))
         db.execute(f"DELETE FROM node_fts WHERE id IN ({placeholders})", ids)
-    db.execute("DELETE FROM edges WHERE src_id LIKE 'case:%' OR src_id LIKE 'error:%' OR dst_id LIKE 'case:%' OR dst_id LIKE 'error:%'")
-    db.execute("DELETE FROM nodes WHERE kind IN ('case', 'error')")
+    db.execute(
+        "DELETE FROM edges WHERE rel<>'throws' AND ("
+        "src_id LIKE 'case:%' OR src_id LIKE 'error:%' "
+        "OR dst_id LIKE 'case:%' OR dst_id LIKE 'error:%')"
+    )
+    db.execute(
+        "DELETE FROM nodes WHERE kind='case' "
+        "OR (kind='error' AND (role IS NULL OR role<>'throw_site'))"
+    )
 
     nrows, erows, frows = [], [], []
     for line in open(src, encoding="utf-8"):

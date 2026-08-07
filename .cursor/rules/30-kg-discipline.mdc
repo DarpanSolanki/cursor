@@ -26,6 +26,12 @@ MCP/CLI answers carry a one-line provenance header: `[KG @<built-at> set=<key> W
 MCP server **`trustt-kg`** (`cursor-bundle/kg/mcp/kg_mcp_server.py`) wraps `kg.py` read-only (no logic duplication).
 
 For LOOKUP questions (apiName flow, impact, cross-service path, fixed-elsewhere, why/symptom):
+0. **Error code named? `kg_error` FIRST — no exceptions.** It is the cheapest tool in the
+   workspace (~160 tokens, below a single targeted grep) and returns every source-derived
+   throw site with `file:line` + branch, the ExecutionContext keys the message template
+   substitutes, the runtime template, and prior shipped fixes. Grepping for an error code
+   before running it is the single most common waste in this workspace — measured at 1,958
+   raw greps against 7 KG calls across 18 sessions.
 1. **Smallest query first** via MCP: `kg_orient` → `kg_flow` / `kg_why` / `kg_impact` / `kg_fixed_elsewhere` / `kg_search` as needed
 2. **Do not** start with `.cursor/knowledge-graph.md`, `cross-service-transactions.md`, or repo-wide grep for those lookups
 3. File reads remain for **narrative + verification** (orch XML, processors, DB) after the KG points you

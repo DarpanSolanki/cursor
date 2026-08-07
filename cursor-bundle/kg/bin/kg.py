@@ -298,6 +298,11 @@ def _pop_require_align(a):
 
 
 def cmd_flow(c,a):
+    # Display-only noise filter. `dummyProcessor` is a real orchestration entry (a control
+    # anchor), so it is never dropped from the index — only from the default view, and the
+    # hidden count is always reported. `--raw` restores it.
+    raw_view = "--raw" in a
+    a = [x for x in a if x != "--raw"]
     a=_pop_require_align(a)
     # Record orient-session touch so orient-before-edit gate is satisfied by kg flow too.
     if a:
@@ -319,7 +324,23 @@ def cmd_flow(c,a):
         print(f"not a request flow: {nid} (use request:<repo>/<name> or bare Request label)"); return
     rows=c.execute("SELECT seq,cond,dst_id,src,json FROM edges WHERE src_id=? AND rel='invokes' ORDER BY seq",(nid,)).fetchall()
     nested=c.execute("SELECT dst_id,note,src FROM edges WHERE src_id=? AND rel='calls'",(nid,)).fetchall()
-    print(f"FLOW {nid}  ({len(rows)} processors)")
+    total_rows = len(rows)
+    hidden = 0
+    if not raw_view:
+        keep = [r for r in rows if r[2].split(":", 1)[-1] != "dummyProcessor"]
+        hidden = len(rows) - len(keep)
+        rows = keep
+    thrown = {
+        r[0]: r[1]
+        for r in c.execute(
+            "SELECT src_id,count(DISTINCT dst_id) FROM edges WHERE rel='throws' "
+            "AND src_id IN (SELECT dst_id FROM edges WHERE src_id=? AND rel='invokes') "
+            "GROUP BY src_id", (nid,)
+        ).fetchall()
+    }
+    print(f"FLOW {nid}  ({total_rows} processors)")
+    if hidden:
+        print(f"  [view] {hidden} dummyProcessor control anchor(s) hidden — `--raw` to show all")
     _cap = getattr(cmd_flow, "_brief_cap", None)
     if _cap and len(rows) > _cap:
         head, tail_n = rows[:_cap], len(rows) - _cap
@@ -329,8 +350,10 @@ def cmd_flow(c,a):
         tail_n = 0
     for e in rows:
         cond="" if (e[1] or "*")=="*" else f"  [if function_code={e[1]}]"
+        n_thr = thrown.get(e[2], 0)
+        mark = f"  ⚠throws:{n_thr}" if n_thr else ""
         # prefer orch path repo over shared processor.repo (ATTR fix)
-        print(f"  {e[0]:3}. {e[2].split(':',1)[1]}{cond}  [{e[3]}]")
+        print(f"  {e[0]:3}. {e[2].split(':',1)[1]}{cond}{mark}  [{e[3]}]")
     if nested:
         print(f"  nested internal Request(s) ({len(nested)}):")
         for e in nested:
@@ -486,13 +509,72 @@ def cmd_table(c,a):
     docs=c.execute("SELECT src_id FROM edges WHERE dst_id=? AND rel='mentions' AND src_id LIKE 'doc:%'",(nid,)).fetchall()
     for d in docs[:8]: print("  doc:", d[0])
 
+def _error_template(code):
+    """Resolve the message template for a code.
+
+    Numeric error templates exist ONLY at runtime (Redis db2 / notification_message);
+    no repo carries them. So this is never branch truth — the provenance label says so
+    and the caller must not present it as train-verified.
+    """
+    import subprocess
+    for db, key in ((2, f"localmfi_{code}_en-in"), (2, f"localmfi_{code}")):
+        try:
+            out = subprocess.run(
+                ["redis-cli", "-n", str(db), "get", key],
+                capture_output=True, text=True, timeout=3,
+            ).stdout.strip()
+        except Exception:
+            return None, None
+        if out and out not in ("", "(nil)"):
+            return out.strip('"'), f"redis db{db}:{key} (RUNTIME, not branch truth)"
+    return None, None
+
+
 def cmd_error(c,a):
-    """Deep error lookup: node src + hit_error cases + FTS/file hints (MCP folded into kg_search)."""
+    """Deep error lookup: source-derived throw sites + required EC keys + cases."""
     if not a:
-        print("usage: kg error <code>"); return
-    code = str(a[0]).strip()
+        print("usage: kg error <code> [--no-template]"); return
+    a = _pop_require_align(a)
+    args = [x for x in a if not str(x).startswith("--")]
+    want_tpl = "--no-template" not in a
+    if not args:
+        print("usage: kg error <code> [--no-template]"); return
+    code = str(args[0]).strip()
     eid = resolve(c, "error:" + code) or resolve(c, code)
     import json as _j
+
+    throws = c.execute(
+        "SELECT src,json FROM edges WHERE dst_id=? AND rel='throws' ORDER BY src",
+        (f"error:{code}",),
+    ).fetchall()
+    if throws:
+        print(f"error {code} — {len(throws)} throw site(s) [source-derived]")
+        keys, branches = [], []
+        for src, ej in throws:
+            o = _j.loads(ej) if ej else {}
+            frm = (o.get("from") or "").split(":", 1)[-1]
+            sev = o.get("severity", "?")
+            via = o.get("resolved_via", "")
+            br = o.get("branch") or "?"
+            if br not in branches:
+                branches.append(br)
+            print(f"  {sev:9} {frm}")
+            print(f"            {src}  [{br}]" + (f"  via {via}" if via != "literal" else ""))
+            for k in (o.get("ctx_keys") or "").split(","):
+                if k and k not in keys:
+                    keys.append(k)
+        if keys:
+            print(f"  requires EC keys: {', '.join(keys)}")
+            print("    (the ${...} placeholders the message template substitutes; a blank")
+            print("     message means these were not in the ExecutionContext at resolve time)")
+        if len(branches) > 1:
+            print(f"  ⚠ thrown on multiple branches: {', '.join(branches)} — verify per train")
+        if want_tpl:
+            tpl, prov = _error_template(code)
+            if tpl:
+                print(f"  template: {tpl}")
+                print(f"    source: {prov}")
+
     if eid:
         nrow = c.execute("SELECT id,label,json FROM nodes WHERE id=?", (eid,)).fetchone()
         src = ""
@@ -501,13 +583,15 @@ def cmd_error(c,a):
                 src = (_j.loads(nrow[2]) or {}).get("src") or ""
             except Exception:
                 src = ""
-        print(f"error {eid.split(':',1)[1]}  src={src or '?'}")
+        if not throws:
+            print(f"error {eid.split(':',1)[1]}  src={src or '?'}")
         rows = c.execute(
             "SELECT n.label,n.json FROM edges e JOIN nodes n ON n.id=e.src_id "
             "WHERE e.dst_id=? AND e.rel='hit_error'",
             (eid,),
         ).fetchall()
-        print(f"  hit_error cases: {len(rows)}")
+        if rows or not throws:
+            print(f"  hit_error cases: {len(rows)}")
         for r in rows:
             o = _j.loads(r[1]) if r[1] else {}
             print(f"  [{o.get('sha','?')}] {r[0]}  -> git show {o.get('sha','')}")
@@ -515,7 +599,7 @@ def cmd_error(c,a):
                 if o.get(k):
                     print(f"    {k}: {o.get(k)}")
                     break
-    else:
+    elif not throws:
         print(f"error code {code!r} — no error: node")
     # FTS / label scan for throw sites & diags mentioning the code
     hits = []
@@ -526,12 +610,18 @@ def cmd_error(c,a):
         ).fetchall()
     except Exception:
         hits = []
-    if hits:
+    if hits and not throws:
         print(f"  related nodes ({len(hits)}):")
         for nid, kind, lab in hits:
             print(f"    [{kind}] {nid}  {lab}")
-    elif not eid:
-        print("error code not seen in any case")
+    if not throws and not eid:
+        # NOT_INDEXED is a coverage statement, never "this code does not exist".
+        print(f"NOT_INDEXED: {code} has no throw site in the current KG build.")
+        print("  Absence here is NOT proof the code is unused — it means one of:")
+        print("    * thrown dynamically (`new NovopayFatalException(errorCode)`) — never indexed")
+        print("    * thrown on a branch this build did not read (`kg watermark`)")
+        print("    * raised by config/DB rather than Java")
+        print(f"  Verify before concluding:  grep -rn '\"{code}\"' --include=*.java .")
 def _request_aliases(c, nid):
     """All request node ids sharing the same label (handles repo-scoped vs legacy ids)."""
     if not nid or not str(nid).startswith("request:"):

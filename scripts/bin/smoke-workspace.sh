@@ -180,6 +180,10 @@ echo "=== mcp wiring + IDE catalog ==="
 # trustt-kg. check-mcp-wiring also reads ~/.cursor/projects/<ws>/mcps/.
 mcp_out="$(python3 scripts/bin/check-mcp-wiring.py 2>&1)" && pass "mcp launch + IDE catalog" \
   || fail "mcp launch + IDE catalog" "$mcp_out"
+# mcp_wiring_gate holds the Cursor IDE loaded-server catalog check and has its own test,
+# but was reachable from no host — so it never actually ran.
+mwg_out="$(python3 scripts/lib/mcp_wiring_gate.py 2>&1)" && pass "mcp wiring gate" \
+  || fail "mcp wiring gate" "$mwg_out"
 
 echo ""
 echo "=== assert strength ==="

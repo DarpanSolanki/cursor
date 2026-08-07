@@ -51,10 +51,27 @@ class McpE2ETests(unittest.TestCase):
     def test_tools_list_count(self):
         names = [t["name"] for t in mcp.tools_list_payload()["tools"]]
         self.assertEqual(sorted(names), sorted(mcp.TOOLS.keys()))
-        for core in ("kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_writes", "kg_doctor"):
+        # kg_error was folded into kg_search while the KG held 13 changelog-mentioned codes
+        # and could not answer "where is this thrown". It now carries 1.8k source-derived
+        # codes with file:line, branch and the EC keys the template needs, so it is core.
+        for core in ("kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_writes",
+                     "kg_doctor", "kg_error"):
             self.assertIn(core, names)
-        for gone in ("kg_validate", "kg_fresh", "kg_error"):
+        for gone in ("kg_validate", "kg_fresh"):
             self.assertNotIn(gone, names)
+
+    def test_tools_error_lookup(self):
+        text, err, _ = self._call("kg_error", {"query": "132168"}, max_ms=15_000)
+        self.assertFalse(err)
+        self.assertIn("throw site", text)
+        self.assertIn("ValidateLoanAccountDetailsProcessor", text)
+        self.assertIn("field_name", text)
+
+    def test_tools_error_absence_is_honest(self):
+        text, err, _ = self._call("kg_error", {"query": "999999"}, max_ms=15_000)
+        self.assertFalse(err)
+        self.assertIn("NOT_INDEXED", text)
+        self.assertIn("NOT proof", text)
 
     def test_01_doctor_includes_validate_fresh(self):
         text, err, _ = self._call("kg_doctor", max_ms=15_000)
@@ -120,7 +137,17 @@ class McpE2ETests(unittest.TestCase):
         self.assertFalse(err, text[:400])
         self.assertIn("ORIENT", text)
         self.assertIn("individualChildLoanForeclosure", text)
-        self.assertIn("shg_child_close_mirror_force_bill", text)
+        # Train-aware: the force-bill mirror diag hangs off
+        # ForceBillPartialCycleInterestForForeclosureProcessor, which does not exist on
+        # every train (absent on mfi_integration_v3.4.2). Asserting it unconditionally
+        # tests the checkout, not the tool — same lesson as test_10_impact below.
+        _fb = (
+            ROOT
+            / "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan"
+            / "foreclosure/processor/ForceBillPartialCycleInterestForForeclosureProcessor.java"
+        )
+        if _fb.is_file():
+            self.assertIn("shg_child_close_mirror_force_bill", text)
         self.assertIn("verify (source-of-truth", text)
         self.assertLess(len(text), mcp.MAX_CHARS + 50)
 

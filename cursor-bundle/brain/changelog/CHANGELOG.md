@@ -1,3 +1,179 @@
+## 2026-08-06 | acct `df1662846` | accounting-v2 | mfi_integration_v3.4.2.5 | kg-flow | Force bill reversed on reopening
+loanAccountReopening loan_account_billing_details transaction_master transaction_details — reopening reversed only the closure txn; labd.reversed was never set true by any code path. reverseForceBillOnReopeningProcessor reverses the reopened account's force bills plus the SHG parent mirror for that child (CRN parentId+valueDate+childId), via reverseTransactionProcessor. persistForceBillBillingDetails writes one row per force-bill transaction instead of accumulating on the parent installment. RUNTIME_VERIFIED: flowtest.loan_reopening child=1->0 parent_mirror=1->0 other_children_untouched=2; dcf.group_parent_last_child_e2e PASS.
+
+## 2026-08-06 | acct `45e4e8db6a` | accounting-v2 | mfi_integration_v3.4.2.5 | kg-flow | TDPQA-257 CLB inherits parent REP_ACCT
+disburseLoan createOrUpdateLoanAccount loan_account_events_queue loan_repayment_mode_details — LOS omits REP_ACCT in member_details for SHG child LANs; ChildLoanBookingEventsQueueDataPopulator.addParentRepAcct copies the parent group REP_ACCT from getOriginalRequest (the shared-map copy is overwritten by the getLoanAccountDetails OParam and has no account_number on DIRDR). 130142 only when the parent has none; 134126 unchanged. RUNTIME_VERIFIED: children 6004190627/6004190629 COMPLETED with parent CASA 1232545866886; ntest disbursement.clb_parent_rep_acct_fallback red->green, disbursement.shg + disbursement.quick PASS.
+
+## 2026-08-05 | acct `fe703fe04` | accounting | mfi_integration_v3.5.1.1 | kg-flow | In-flight NEFT disbursement reported "already disbursed" on a CASA update (TDPQA-241)
+
+- apiName: updateLoanAccountPreDisbursementDetails; tables: loan_disbursement_mode_details (read: loan_account, loan_account_events_queue)
+- UpdateLoanDisbursementModeDetailsProcessor:145 mapped all eight LoanAccountEntity.DISBURSEMENT_BLOCK_STATUSES to one code, 134130. That code is mapped to LON-APP-003 — the *loan application* family — whose text is "Cannot update Loan Application. Loan Account is already disbursed". It was allocated for ValidateUpdateLoanAccountDetailsProcessor:68, which fires on loan_status != APPROVED; the disbursement-mode guard later borrowed it.
+- At the manual disbursement stage the loan sits at NEFT_STAGE_1_PENDING: GL_CBS and the ST_NEF debit leg acknowledged, callback failed past max retry, manual task raised. No money has moved, so "already disbursed" is false for four of the eight statuses.
+- Fix: DISBURSEMENT_IN_PROGRESS_STATUSES (REINITIATE_BANK, NEFT_STAGE_1_PENDING, NEFT_STAGE_1_SUCCESS, NEFT_STAGE_2_PENDING) raise new code 134498 / LON-DSB-011 "Disbursement is already in progress for this Loan Account. Disbursement details cannot be updated." BANK_SUCCESS, PARENT_SUCCESS, CHILD_SUCCESS, COMPLETED keep 134130. DISBURSEMENT_BLOCK_STATUSES is untouched and has exactly one caller, so nothing newly allowed and nothing newly refused — message only.
+
+## 2026-08-06 — Router v2 + speed sweep + stale-mapping gate (workspace harness)
+Planner became a weighted DAG (cost_s/requires/waves, terminal_state, route_ledger, escalation hook, route_learn). KG state banner: killed duplicate git walks, parallel drift check, plumbing reads for branch/sha — kg.py validate 1.77s to 0.32s, output byte-identical (key 972c925427b2bf3f). agent-ops preflight honours env_smoke 3600s TTL (7.69s to 2.47s cold). Fixed inverted DPI branch rows in brain/workspace-state.md (actor and initial-setup were swapped vs live) and dead novopay-* repo path in reference_dpi_feature_branch.md; added dead_repo_ref_gate.py to workspace-hygiene (runnable positions only, compat fallbacks exempt). A disk-backed cross-process memo was built, measured at no gain (2.68s vs 2.67s), and reverted.
+
+---
+
+- 134498 was the next free accounting code proven against code, not the catalogue: highest in accounting src/main/java is 134497 on both 3.5.1.1 and 3.7.1; highest in deploy/** orchestration is 134388. LON-DSB-011 is the next free slot in the disbursement-validation family (004-009 are insurance validation from V000010, 010 is 134139).
+- initial-setup `5823c612`: flyway/sli/notifications/sql/mfi/V9000429__add_msg_for_disbursement_in_progress_update.sql — two INSERTs, no DDL, so it deploys under the no-ALTER production constraint. Version V9000429 verified free on both 3.5.1.1 and 3.7.1 (the two trains carry different V9000 files in both directions).
+- Red->green on the real API, not SQL: LAN 6000022777 (NEFT_STAGE_1_PENDING) returned 134130 "already disbursed" on the pre-fix build and 134498 with the new message after; control LAN 0000000820 (COMPLETED) returned 134130 on both. loan_disbursement_mode_details unwritten in every case (row 602983 updated_on still 2024-11-30) — the blocked path must not persist.
+- Harness: registry cases accounting.disb_update_in_progress_error (value-level on 134498, would have failed pre-fix) and accounting.disb_update_completed_error (no-regression control).
+- agent-ops pre-ensure matched *disburse* on the API name, so this metadata-only API pulled up LOS + Kafka + the bank simulator and failed on an unrelated LOS compile. aops_is_bank_leg_disburse_api now excludes it; disburseLoan and disburseLoanChild still pull the full stack.
+- Reaches 3.7.1 by forward merge (3.5.1.1 is an ancestor of 3.5.2 .. 3.7.1) — do not hand-port.
+- Webapp holds no numeric accounting error map, so the new code renders from notification_message alone; the DML must ship with the build or the screen loses its message.
+
+## 2026-08-05 | acct `fb0df2871` | accounting | mfi_integration_v3.7.1 | kg-flow | DPI accrual backfilled a restructured loan at the new ROI for the whole window (TDPQA-237)
+
+- apiName: dpiAccrualCalculation; tables: dpi_accrual_details (read: loan_account_restructuring_details, account_interest_details)
+- DpiAccrualCalculationBatchService.buildConfig resolved ONE rate per run from the live account_interest_details.effective_rate (findOneByAccountId — one row per account, updated in place, no history) and stamped it on every segment the run walked. Segment boundaries were EMI due day and month-end only, so a mid-month ROI change never became a cut point.
+- Normal interest accrual has the same seal check (InterestAccrualCalculationBatchService:305) and gets this right for free because it runs daily from disbursement: the change date is always a boundary and the old-rate row always pre-exists. DPI can start its window months back (go-live backfill, first-time eligibility, missed EOD), so the seal had nothing stamped at the old rate to diverge from — TDPQA-180's isDpiRateChanged is necessary but not sufficient.
+- QA1 loan 6003887025: restructure 5431 approved 2026-08-04 15:20, is_roi_changed=t, 15% -> 20%, effective 2026-08-04 15:10. All 5 dpi_accrual_details rows — including 2026-06-05..2026-08-05, entirely pre-restructure — carry dpi_annual_rate 20. Contrast interest_accrual_details on the SAME loan: 241249 ends 2026-08-04 at 15%, 241558 starts 2026-08-04 at 20%. That contrast is the whole ticket.
+- Fix: rescheduling_effective_date of every SUCCESS + is_roi_changed restructure becomes a segment boundary, and the rate is resolved per segment — old_roi for a segment starting before the change, live effective rate on/after it. Reused findAllByAccountId (widened Integer -> Long; it had no callers) with a Java filter — no new @Query. accumulateSegment gets a per-segment DpiSchemeConfig so the daily accrual amount uses the same rate that is stamped.
+- Harness: money case dpic.roi_change_e2e (RUNTIME_VERIFIED, real dpiAccrualCalculation). Red on pre-fix build: one row 2026-05-02..2026-05-31 @20%, accrued 34. Green: 2026-05-02..2026-05-20 @16% (15), 2026-05-20..2026-05-31 @20% (15), 2026-05-31..2026-06-27 @20% (36). Asserts are value-level on dpi_annual_rate per row plus "no row straddles the change date".
+- account_interest_details is @Cacheable in Redis DB 5 — a SQL-seeded rate is invisible to the job until the key is evicted. The real restructure flow evicts via save(); the fixture must do it explicitly. First red run silently accrued at the stale 16% and looked like a pass of the wrong thing.
+- reset_dpi_fixtures.sh purged accruals but not billed DPI loan_due_details, so every billing run added a row and milestone asserts drifted (dpic.jump_regression read due=108 against billed=27 on a 4-row pile-up). Reset now soft-deletes DPI dues too.
+- Not fixed by this change, verified pre-existing (identical failure with and without the fix on a freshly reset fixture): dpic.jump_regression "single jump due 54.000000 != milestone 27.000000" and dpic.shg_parent_child_parity (RED since 2026-08-04, before this work).
+- Does NOT repair rows already written — QA1 6003887025 still holds five 20% rows. Needs a recompute/patch before retest.
+
+## 2026-08-04 | acct `1696fd63f` | accounting | mfi_integration_v3.4.2.4 | kg-flow | Foreclosure force-bill re-billed an already-billed cycle (TDPQA-240)
+
+- apiName: loanPrepayment (force-bill on foreclosure); tables: loan_account_billing_details, loan_due_details, interest_accrual_details, transaction_master
+- When the foreclosure date falls on an EMI due date, that day's billing has already swept every accrual period of the installment into the EMI. PartialCycleForceBillAmountResolver read the newest accrual row outright and billed it again, writing a dedicated interest-only labd on the installment the EMI labd already covered.
+- QA4 loan 6011430325 (INDL): cycle billed 2355 (131+1962+262), foreclosure billed the 262 a second time. Quote charged 355 of billed interest while settlement legs credited 617 — legs summed 104,977.00 against a 104,715.00 collection, leaving 262 stranded in termination suspense.
+- Fix: force-bill takes only the accrual on the foreclosure installment that billing has not already taken — accrued summed across every accrual period of that installment, less non-reversed billed interest, floored at zero. Summing per installment (not per accrual period) matters: several periods share one installment, so comparing the newest period against the installment total would under-bill a genuine mid-cycle foreclosure. findByLoanInstallmentDetailsId kept exact behaviour; the wrapped query now returns every row so the DAO can also sum them.
+- Harness `bf5cfc382`: money case foreclosure.fc_on_emi_due_date (RUNTIME_VERIFIED). Fresh INDL disbursed 60 days back with its first EMI today — loanPrepayment rejects any foreclosure_date that is not the system date (132282), so the EMI must fall on today — aged by the real accrual/posting/billing jobs, then foreclosed by real loanPrepayment DEFAULT/APPROVE_TASK/APPROVE.
+- Red on pre-fix accounting: labd rows 1 -> 2, an extra 62.00 billed on a cycle already billed 1229.00. Green with fix: 1 -> 1, INT_AMT credited 1229.00 against billed interest charged 1229.00.
+- Termination suspense nets to zero locally on BOTH builds, so the labd row count is the assert that encodes this defect — an amount-only or GL-only check passes while the loan is double-billed.
+- Regression green: foreclosure.child_fc_parent_rsch_gl (genuine mid-cycle force-bill of 311 still fires and still mirrors to the parent), foreclosure.last_child_parent_closure.
+
+## 2026-08-05 | acct `455c315e4` | accounting | mfi_integration_v3.7.1 | kg-flow | Part prepayment collects billed DPI and stops re-billing broken-period DPI (TDPQA-221)
+
+- apiName: loanAccountPartPrepayment (+ childLoanPartPrepayment, getPartPrepaymentBPIAmount, getLoanAccountPartPrepaymentDetails, getLoanAccountOverviewDetails); tables: dpi_accrual_details, loan_due_details
+- markUnbilledDpiAsBilled was gated on mode=="prepayment". mode is set only by loans_orc.xml:2089 (foreclosure, scoped local to updateLoanInstallmentDetailsProcessor) and DeathForeclosureInsuranceWriter. Part prepayment never sets it, so broken-period DPI was funded and appropriated, then re-billed by dpiBilling — charged twice.
+- Billed DPI outstanding was carried by no gross term. getTotalDueAmountByDueDateAndAccountId sums every component at due_date = now including DPI, while the screen sends emi_due_amount = PRIN+INT only (getTotalDueAmount:663 reads dpiDueAmount into a local and never adds it). Any loan with DPI due on the effective date failed 134303 — pre-existing, unfiled.
+- Fix: total_outstanding_dpi_amount is its own disjoint gross term (getBilledDpiOutstandingAsOnDate = DPI where due_date <= asOnDate), netted out of currentDueAmount via getDpiDueAmount (DPI at due_date = asOnDate — same dimension). No new @Query: alias of an existing repository query plus a Java filter over getDueAmountByComponent.
+- The DPI marking is skipped when settle_from_inherited_foreclosure. That path runs inside Request name="loanPrepayment", which already marks DPI at loans_orc.xml:2079 on the foreclosed account; firing again there would stamp the parent's accruals for money collected on the child.
+- Group loans: parent DPI accrual is the aggregate mirror of the children's (verified 315/347 local groups have parent == sum(children); one sampled group: parent 33765.000000 == children 33765.000000 at both accrual and loan_due_details level). Parent collects the whole group BPD; children's mirror rows are now closed via group_bpd_amount on the child queue payload, consumed by executionContext.putAll in ChildLoanEventsProcessingProcessor:60.
+- Evidence: red -> green on 134227 — flowtest.part_prepayment REAL failed with the old gross, passed once billed_dpi + bpd were added (billed_dpi=0 bpd=144 gross=23220). dpic.part_prepayment_bpi_api PASS with total_outstanding_dpi_amount asserted; value-checked at 93970.000000 on loan 6000041250 == SQL sum of its unpaid DPI dues. Regression: foreclosure.individual_child PASS (LAN 6000012037), dcf.group_parent_last_child_e2e PASS (double-entry balanced, air_delta=0, all CLOSED).
+- REAL part prepayment is NOT blocked locally — the old "SU-FLOW-PARTPREP-REAL-GLAD / 200065" note was wrong and cost a verification path. Chain actually cleared: (1) 134227 because the flowtest built gross without the DPI terms — that is the red->green for this fix; (2) 200065 because actors 1492082/1492182 (children of group 6000137433) were typed ADMIN, and getActorDetailsForAccount only maps customer_id under `pattern="${actor_type}" value="CUSTOMER|GROUP"` (ServiceOrchestrationXML.xml:3921) — local fixture corruption, repaired to CUSTOMER; (3) 134255 because the APPROVE leg needs total_outstanding_amount = SUM(due-paid-waived) over all non-deleted rows.
+- Remaining, and the only reason the child mirror has no runtime proof: the APPROVE leg calls payments `loanAccountCollection` for the challan, and the local stub (scripts/dcf_sanity/local_payments_stub.py) only implements cancelCollections, so it answers with that body and expiry_date comes back null -> NumberFormatException in PopulateReportDataPreProcessor:89. Fix is to teach the stub loanAccountCollection (receipt_number, batch_reference_no, expiry_date epoch ms, merchant_id) or run the real payments service. Not a train or environment limitation.
+
+## 2026-08-05 | acct `40aeea7f7` | accounting | mfi_integration_v3.7.1 | kg-flow | Death foreclosure closes the never-posted DPI it settles
+
+- apiName: deathForeclosureInsuranceApproval; tables: dpi_accrual_details
+- DeathForeclosureInsuranceWriter settles dpi_till_date_of_death (L352, getBrokenPeriodDpiAmountTillDate = posted-but-unbilled PLUS never-posted) but called only markBilledTillDate (L611), whose @Query requires accrual_posting_date IS NOT NULL. The never-posted slice was paid for and left with both posting dates NULL — still open broken-period DPI, and a replay recomputes it and inserts a duplicate DPI due row.
+- Fix: markAccrualPostedTillDate before markBilledTillDate, mirroring MarkUnbilledDpiAsBilledOnForeclosureProcessor:51-52 and PostPartPrepaymentTransactionProcessor:200-201.
+- Retracted during analysis: CapitaliseAccruedDpiService needs no change — it capitalises getUnbilledAccruedAmountTillDate and marks exactly that set. isOpenUnposted requires BOTH dates NULL, so normal marking does guard replay.
+- NOT VERIFIED end to end: no local fixture carries never-posted DPI at a death date.
+
+## 2026-08-05 | acct `4a4d62561` | accounting | mfi_integration_v3.7.1 | kg-flow | Foreclosure posted broken-period DPI twice (TDPQA-244)
+
+- apiName: loanPrepayment; tables: loan_due_details, loan_account_payments_details, transaction_master
+- UpdateDueDetailsForPrepaymentProcessor.processDpiTillForeclosure creates a DPI loan_due_details row at foreclosureDate for unbilledDpiTillDate and saves it through LoanDueDetailsSuperListUtil.saveEntityList, which re-injects it into the LOAN_DUE_DETAILS_ENTITY_SUPER_LIST. billedDpi read afterwards therefore already contains the broken period, and PopulateAdditionalAmountAndAccountDetailsForForeclosureProcessor:249 added bpdAmount on top.
+- Confirmed on QA1 loan_account_id 7777461: DPI dues 44+92+31=167 (the 31 dated at the foreclosure date), loan_account_payments_details.dpi_amount=167, GL 230000900 posted 198.000000 C = 167 + 31.
+- Fix: DPI_AMOUNT = billedDpi (two call sites — foreclosure posting and PopulateAmountComponentsForAppropriationProcessor:71 which double-added unbilledDpiTillDate the same way).
+- Ordering rule this establishes: compute money components BEFORE createDpiDueDetailsIfMissing / any writer that feeds the same super-list. DeathForeclosureInsuranceWriter:351-370 already does it in the safe order.
+- NOT VERIFIED end to end: local DPI accruals stop 2026-06-30 and all live child LANs report bpd_amount 0; red -> green never run.
+
+## 2026-08-04 | acct `4f23792b10` | accounting | mfi_integration_v3.4.2.4 | kg-flow | Parent RSCH GL after child foreclosure (TDPQA-72)
+
+- apiName: loanPrepayment (is_child_loan) -> parentLoanAccountPartPrepayment; tables: transaction_master, transaction_partition_details, transaction_accounting_rule, product_transaction_catalogue__placeholder__iad
+- Parent posted 5021.52 of 22385 (txn 1871989 vs child 1871988): RSCH_LOAN_PREPAYMENT had no funding leg, no POS/penal/round-off rules, and credited INT_REC/LOAN_ACCOUNT instead of BILLED_INTEREST/BILLED_PRINCIPAL. The child hands the parent its own breakdown (settle_from_inherited_foreclosure) in LOAN_PREPAYMENT vocabulary; codes with no rule on the catalogue are dropped silently because the engine iterates rules, not emitted codes.
+- Fix: config to the product sheet (30 rules, DUE_TO_FC_B -> TRMN_SUSP once via TRMN_SUSP_AMT, every component debited from TRMN_SUSP) + 104 placeholder->IAD maps copied from the child LOAN_PREPAYMENT catalogue + bridge in PopulateAdditionalAmountForPartPrepaymentProcessor restating inherited codes as BLD_INT_AMT/BLD_PRIN_AMT/UNBLD_PRIN_AMT/PINT_AMT/CBC_FEE_AMT (mirrors the DFC Sheet15 bridge). Parent excess waterfall no longer re-runs on the inherited path.
+- Second defect: PartialCycleForceBillAmountResolver billed only the newest IAD period (37) and used the charged BPI (311) as fallback, so the rest of the broken cycle never became billed interest and stranded in termination suspense. Charged BPI is now authoritative; BPI_AMT settles to 0 on both sides, matching the sheet (billed interest 1530.605619 = 879.605619 + 651, no AIR leg) and the BPI-after-FB invariant.
+- Sheet display names are not placeholder codes: TRMN_SUSP_ACCT->TRMN_SUSP, CBC_FEE->CBC_CHARGE, PENAL_AMOUNT->PENAL, {STD,NPA}_*_PRIN_WAIVE->PRIN_WAIVE_{STD,NPA}, FEES_WAIVED->FEE_WAIVED. Using them literally raises 134207.
+- ntest `foreclosure.child_fc_parent_rsch_gl` PASS (fresh aged SHG, real disburse+billing+repayment+loanPrepayment; parent mirrors child leg for leg, GL names verified, suspense fully drawn). `flowtest.part_prepayment` PASS, `flowtest.loan_prepayment_fc` PASS.
+
+## 2026-08-04 | acct `dfbf1e365` | accounting | mfi_integration_v3.7.1 | kg-flow | SHG child DPI base honours the go-live cut-off (TDPQA-234)
+
+- apiName: dpiAccrualCalculation (+ dpiAccrualBooking, dpiBilling); tables: dpi_accrual_details, loan_due_details
+- Child base_amount came from getTotalOverdueAmountByAccountIdsAndDate — no go-live filter, no per-row outstanding guard, due_date< instead of stored overdue_date. QA1 parent 14528/29056/43584 vs children 27346/34193/41040 + 30788/38469/46150; children summed 58134 vs parent 14528.
+- Fix: child base = own PRIN+INT admitted on/after go-live via DPICalculationService.resolveAdmissionOverdueDate, evaluated at each segment start; go-live + grace carried from the calc batch on DpiAccrualCalculationVo (not re-resolved, not inferred from accrual rows).
+- Invariants: sum(children.base) == parent.base per segment EXACT; accrued exact over window, per-segment drift bounded by child count (scale-0 split, booking rejects fractional).
+- Defect class: presence-only assert (`base_amount >= 0`) on the tip row only — passed every wrong value. Now audit_shg_child_dad_all_rows walks every row and re-derives each value in SQL.
+- ntest `dpic.shg_parent_child_parity` PASS (calc→booking→billing, audit after each: 79 tip + 103 all-row checks, 9 rows). `dpic.three_job_verify` PASS (non-SHG unaffected).
+| kg-flow | dpiAccrualCalculation
+
+## 2026-08-03 | acct `9521f6ead` | accounting | mfi_integration_v3.5.2.2 | kg-flow | Prepayment BY_LATEST went blank after a reject (TDPQA-207)
+
+- apiName: getLoanAccountPartPrepaymentDetails (BY_LATEST); tables: prepayment_details (read)
+- Rejecting a part-prepayment sets `is_deleted = true`. `PrepaymentDetailsRepository.findLatestByLoanAccountNos` hard-filtered `is_deleted = false` in both the inner `DISTINCT ON` and the outer predicate, so once the only row was rejected the details tab returned nothing at all instead of the rejected row.
+- Fix: the filter is gone from both places and became an ORDER BY preference — live rows first, REJECTED demoted only *among live* rows, soft-deleted last. A first-time reject therefore still displays. The cancel/update query is untouched.
+- Backfilled entry (2026-08-05): shipped without a brain CHANGELOG record, so `kg cases` could not surface it.
+
+## 2026-07-23 | acct `6ccb726bb` + notif `e3b6aff41` | accounting+notifications | mfi_integration_v3.4.2.5 | kg-flow | Installment SMS was N+1 on actor and starved of consumer threads (SP-308 / TDPQA-79)
+
+- Writers: LoanInstallmentDueNotificationWriter, LoanInstallmentBounceNotificationWriter; downstream: actor getCustomerDetails (HTTP)
+- L0 (notifications): SMS consumer threads 1 -> 4, maxPollRecords 10 -> 50.
+- L1 (accounting): step-scoped cache for `getCustomerDetails` in both installment notification writers — one actor HTTP call per customer per step instead of one per row.
+- `38ee181ec` records the L0+L1 pair on the train.
+- Config-conformance caveat: the SP-308 throughput uplift exists on no train, so a gate asserting it everywhere asserts an aspiration, not a contract — see `assert-notification-sms-throughput.sh` and `40-knowledge-upkeep.md` § Config-conformance gates must be train-aware.
+- Backfilled entry (2026-08-05).
+
+## 2026-07-17 | workspace | harness | mfi_integration_v3.7.1 | DPI harness 8/8 serialized — never-green was fixture backlog, not product (TDPQA-83)
+
+- No product code changed this turn. Product sat at `8a1a7cd077` + day-window `e2789d5f0` + booking `77921d275f`.
+- Root cause of the long-running red: an orphan full-portfolio calc backlog (~29k unposted rows), not DPI logic. `sealed_unbilled` was a harness false positive — a settle race plus an over-broad audit scope — fixed by isolate/purge/settle-poll and a refined billing-eligible rule.
+- Matrix green: three_job, posting, grace, grace_overlap (column audit 0), booking_anchor, two_emi, SHG parity, bpd_sim.
+- Lesson worth keeping: a suite that has never been green is evidence about the *fixture* until proven otherwise. Pairs with `feedback_suite_workarounds_hide_the_defect.md`.
+- Backfilled entry (2026-08-05).
+
+## 2026-07-15 | acct `59e9686a8` | accounting | mfi_integration_v3.4.2.4 | kg-flow | SHG child loans booked without sanction_date (SDCP-11085 / TDPQA-127)
+
+- apiName: child loan booking (CLB) queue population; tables: loan_account.sanction_date (write)
+- `ChildLoanBookingEventsQueueDataPopulator` copied VTC/sourcing/servicing employee ids from member-or-parent into `loan_details` but never `sanction_date`, so every SHG child row was created with it null.
+- Fix: same `getMemberOrParentValue` resolution for `sanction_date`, written only when non-blank — four lines, forward-only.
+- Forward-only: rows already booked keep the null and need an ops backfill. INDL is unaffected (LOS supplies it).
+- Backfilled entry (2026-08-05).
+
+## 2026-07-10 | acct `412f4d03e` | accounting | mfi_integration_v3.7.1 | kg-flow | DPI slices were owned by the grace anchor instead of the EMI due date (SDCP-11030)
+
+- apiName: dpiAccrualCalculation; tables: dpi_accrual_details
+- Slice ownership resolved from the grace `lastAnchor`, so a slice could be attributed to the wrong installment when grace shifted the anchor past the due date. EMI1's June seal landed on 18-Jun instead of 14-Jun.
+- Fix: the owner is the latest EMI due on or before `segStart`, not the grace anchor.
+- Verified on LAN 8101960 / 6004055825 — daily and milestone asserts plus a column audit with 0 violations. Companion commits in the same push: `4321639df` (grace gate-only, stored `overdue_date >= admission`), `b78e1113c` (grace stored overdue + backfill + EMI1 seal ported from `72e461e10`).
+- Backfilled entry (2026-08-05).
+
+## 2026-07-02 | workspace | kb | — | Minimal-fix rule: one root-cause layer, no stacked guards (SDCP-10590)
+
+- Precedent behind `.cursor/skills/minimal-fix/SKILL.md` and `feedback_minimal_fix_impact_gate.md`.
+- The rejected shape was a stacked fix: a write-path guard *and* a read-path dedupe for the same defect. Only one layer ships; existing bad rows are an ops patch, not a second code path.
+- Applied to interest accrual as: reader LPAC + batch `save(List)` only.
+- This is why the workspace answers "Minimal fix / Read-path needed / Existing prod LANs / Regression" before proposing any fix.
+- Backfilled entry (2026-08-05).
+
+## 2026-06-30 | acct `085284b1f` (+ `6ec669b0e`) | accounting | feature/delayed_payment_interest | kg-flow | DPI accrual posted on the wrong calendar day (SDCP-10497)
+
+- apiName: dpiAccrualBooking / dpiAccrualCalculation; tables: dpi_accrual_details
+- `isAccrualPostingDate` anchored on `dayBefore(end_date)` and asked whether *that* was month-end or an EMI due day. DPI stores an exclusive `end_date`, so the gate tested the wrong day and slices closing on a due date never posted.
+- Fix: gate on the EOD `businessDate` itself — the same calendar interest accrual booking uses. Eligibility already requires `end_date <= businessDate`, so a closed slice posts on the first posting EOD on or after closure. `dayBefore` is gone.
+- `085284b1f` extended it to due-date booking + partial billing, mirroring interest segmentation across calc/booking/billing readers and config services.
+- Ship hardening in the same work: `dpic.posting_calendar_regression` and `cross_eod_replay_134497` are mandatory in `resolve_dpi_cases`, and `dpi-booking-posting-guard.sh` blocks a `dayBefore(end_date)` regression in the ship loop — see `.cursor/rules/dpi-money-proof-gate.md`.
+- Backfilled entry (2026-08-05).
+
+## 2026-06-29 | acct `b0a3757f3` | accounting | mfi_integration_v3.3.1.2 | kg-flow | Death foreclosure understated billed principal when reporting followed death (SDCP-10494)
+
+- apiName: death foreclosure insurance approve; tables: loan_due_details (read), GL BLD_PRIN / UNBLD_PRIN legs
+- `DeathForeclosureInsuranceWriter` ran `syncBillingTillDate(reportingDate)` *after* `getUnpaidBilledPrincipalForDeathForeClosure`, so when reporting was later than death the billed/unbilled split was computed against death-date billing only and billed principal was understated.
+- Fix: move the reporting-date sync ahead of the split read. Outstanding still uses death-date billing — that part is deliberately unchanged.
+- Ordering, not arithmetic: an amount-only assert on the total passes while the BLD_PRIN/UNBLD_PRIN split is wrong. The split is the assert that encodes this.
+- Backfilled entry (2026-08-05).
+
+## 2024-12-02 | acct `83085fc9c` (removed 2026-08) | accounting | mfi_integration_v3.2.0 | kg-flow | SHG cycle delta was padded onto the last child — superseded by distribute (SDCP-3245)
+
+- apiName: interestAccrualBooking (online path); tables: interest_accrual_details
+- `InterestAccrualBookingService.adjustChildLoanAccountsInterestAccrual` dumped the parent/child cycle rounding delta onto the last child whenever the booking was forced. It made the totals tie while leaving individual child rows wrong.
+- **Removed** by the SHG distribute work: distribute allocates the delta properly, and keeping both would double-correct. Do not reintroduce it, and do not cite it as precedent for a new "pad the last row" fix.
+- Curated diag `diag:rounding.shg_parent_child_interest_accrued_rupee` carries the ₹1 parent/child rounding class this belongs to (QA4 fixtures 6011424425 / 6000000638, mid-cycle HALF_UP).
+- Backfilled entry (2026-08-05) — recorded as a decision record so the removal is not mistaken for a regression.
+
+## 2026-08-07 | workspace | kg | main | kg-flow | Error-code throw sites indexed from source (kg error / kg_error)
+
+kg error kg why kg flow nodes:error edges:throws — `error:` nodes came only from CHANGELOG mentions (13 codes), so every RCA started by grepping the code: measured 1,958 raw greps against 7 KG MCP calls over 18 sessions. build_error_codes.py indexes 1,863 codes / 5,162 throw sites with file:line + branch + severity, plus the executionContext.put keys preceding each throw (ctx_keys) so kg error 134131 names field_name,min_value,max_value. Constants resolve file -> Class.CONST -> repo -> global-unambiguous; dynamic throws and unresolved tokens are skipped, never guessed. Templates come from redis db2 at query time labelled RUNTIME (no repo carries them). Exposed as MCP kg_error (~160 tokens, cheaper than one grep) and mandated first hop in AGENTS.md + 30-kg-discipline.md. Fixed 3 accuracy bugs found en route: strip_comments line-shift (40% of sites had wrong file:line; same bug in build_failuremodes.py), refresh_cases.py deleting 1,850 error nodes while keeping their edges, and a false-positive in the new drift gate on adjacent throws. RUNTIME_VERIFIED: kg error 132168/130202/134131/130142/134126 reproduce answers independently derived by grep during SDCP-11294; error-index-drift 0 stale of 5,162; smoke ALL PASSED; harness 35/35 wired, 26/26 tests; mcp e2e 26/26.
+
+
 ## 2026-07-31 — SHG DPI Accrued distribute (acct `508950207`)
 
 - apiName `dpiAccrualCalculation` on `mfi_integration_v3.7.1`: parent SoT → `DpiGroupLoanAccrualDistributionService` (mirror INT); tables `dpi_accrual_details`; tip/calendar parity + dad_column_audit.

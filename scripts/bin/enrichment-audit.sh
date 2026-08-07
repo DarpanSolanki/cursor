@@ -139,6 +139,14 @@ else
   warn "new ticket in .cursor/changelog.md with no brain CHANGELOG entry — run scripts/lib/changelog_enrichment_gate.py"
 fi
 
+# Error codes named in the latest changelog entry must reach `kg why` as a derived
+# diagnostic — the loop that left kg why empty on 96% of platform APIs.
+if python3 "$ROOT/scripts/lib/error_diag_gate.py" --from-changelog --strict >/dev/null 2>&1; then
+  ok "error codes in the latest changelog entry are derivable into kg why"
+else
+  warn "an error code in the latest changelog entry has an open kg-why loop — run scripts/lib/error_diag_gate.py --from-changelog"
+fi
+
 if [[ "$issues" -eq 0 ]]; then
   echo "=== enrichment audit: PASS ==="
 else
