@@ -656,7 +656,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "why": "2026-08-08: fresh SHG group seeded (parent 6004197325, children 6004197525/6004197529) because the original env-pinned loans (8048470/8060160) are CLOSED. Real production entry: parent loanRepayment with child_loans[] -> ChildLoanRepaymentEventGenerationProcessor writes a REP queue row -> childLoanEventProcessingBatchJob dispatches childLoanRepayment. Direct POST to childLoanRepayment (the old cmd) is not the real path and fails on 3.4.2.5 with 333 / updated_by NOT NULL. Asserts per-component appropriation (RepaymentApproppriationProcessor.java:74-97,151-159) on a PARTIAL payment, where order matters — a full-balance payment cannot distinguish appropriation order. RED->GREEN proven twice: swapped PRIN/INT for one child (amount stayed correct, split wrong), and a flipped liquidation-order config change reproduced in the engine itself, both reverted. See scripts/testing/flowtest/tier_b/EVIDENCE.md (copied from scripts/scratch/tier-b-asserts/EVIDENCE.md)."
  },
  "dpic.npa_dpi_movement_e2e": {
   "type": "flow",
@@ -706,7 +707,8 @@
    "user_basic_details.first_name",
    "office_details.office_name"
   ],
-  "smoke_tier": "service"
+  "smoke_tier": "service",
+  "verify_mode": "runtime"
  },
  "accounting.loan_basic": {
   "type": "api",
@@ -762,7 +764,8 @@
    "office_list[0].office_details.office_name",
    "office_list[0].office_details.office_code"
   ],
-  "smoke_tier": "service"
+  "smoke_tier": "service",
+  "verify_mode": "runtime"
  },
  "dpic.restructuring_smoke": {
   "type": "flow",
@@ -4247,7 +4250,8 @@
   "expect": {
    "status": "SUCCESS"
   },
-  "smoke_tier": "service"
+  "smoke_tier": "service",
+  "why": "loanAccountDpdCalcJob. db_eq is a CONSISTENCY invariant on ACTIVE loans: a positive past_due_days must be backed by an unpaid due. Falsifiable; catches corrupted DPD. Scoped to ACTIVE because 8 CLOSED/FORECLOSURE_FREEZE accounts legitimately retain historical DPD with no open due. It does NOT prove this run did work — but note the job IS working: batch_step_execution shows read 2154 / write 2154 across 10 partitions. loan_account.updated_on does not move because Hibernate issues no UPDATE for unchanged entities, so a row-count or timestamp diff understates batch work. Measure work from batch_step_execution, not row deltas — which batch_wrote now does, scoped to the execution this case triggered (before_exec correlator). Counts sum master and partition steps, so they prove work rather than count items."
  },
  "batch.interest_accrual_calc": {
   "type": "batch",
@@ -4293,7 +4297,8 @@
    "evidence": "scripts/testing/defects/LMS-DEFECT-accrual-posting-2026-07-30.md",
    "evidence_scratch": "scripts/scratch/LMS-DEFECT-accrual-posting-2026-07-30.md",
    "file_line": "trustt-platform-lib/infra-batch/.../GenericListenerV3.java:135"
-  }
+  },
+  "why": " | db_eq proves posting state + double-entry balance on the business date. It does NOT prove this run did work: batch postings carry a job-generated stan, so the harness has no per-run correlator to scope by. See eod-bod-coverage-plan.md task 6."
  },
  "batch.loan_account_billing": {
   "type": "batch",
@@ -4312,7 +4317,8 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "why": " | db_eq: billing_amount = principal + interest on every interest-bearing row billed for the business date. Scoped to interest_amount > 0 because 60 rows across 6 accounts (2022-2027) carry a gap with zero interest — a standing anomaly, not something to encode as acceptable."
  },
  "batch.penal_interest_accrual_calc": {
   "type": "batch",
@@ -4375,7 +4381,8 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "why": "loanAdvanceRepayment settles overdue installments from a loan's excess_amount by calling the internal loanRepayment API per row (LoanAdvanceRepaymentItemWriter.java:64), with a reversal fallback on failure at :66. It writes nothing itself. A drain assert was written first and REMOVED after the run disproved it. The reader's WHERE clause (excess_amount > 0 with an unsettled installment due) returned exactly 1 candidate, account 8161861 / 6004113526 carrying 10276.00. The job read 1, wrote 1 and reported COMPLETED - and excess_amount is still 10276.00, with no client_request_response_log row for that account today and no batch_failure_audit row for the job. So the account was processed and the money did not move, and nothing anywhere records why. That may be a legitimate business rejection inside loanRepayment; it may not. Either way the drain is not this job's contract, so asserting it would have shipped a red that means nothing. Liveness until the single local candidate is explained. Note this job is one of the four GAP-093 exposures - LoanAdvanceRepaymentFailureEntityMapper chain-dereferences the skip item and the job runs force_async=TRUE - so a writer-side item failure here would fail the whole job and record nothing. It did not fail this run."
  },
  "batch.loan_account_closure": {
   "type": "batch",
@@ -4396,7 +4403,8 @@
   "expect": {
    "status": "SUCCESS",
    "batch_completed": true
-  }
+  },
+  "why": "loanAccountClosure reads every ACTIVE loan and closes the ones that qualify. Money tier: the tolerance path posts a real GL transaction - LoanAccountClosureService.processAutoClosureToleranceAmount calls postTransaction over the internal API at :289, reached from the batch closure path at :177 and from LoanAccountAutoClosureItemWriter:128. This case was first tagged service, which under-gated it. This case asserts that it RAN and processed the population - read 2057 / write 2057 across 10 partitions - and nothing about the resulting state, deliberately. Two attempts at a state assert were rejected rather than weakened: an eligibility assert (no qualifying ACTIVE loan may remain) cannot be trusted because checkInterestAccrualAndBookingUptoDate (LoanAccountClosureService.java:477) gates closure on accrual currency that no SQL here reproduces - the run proved the point, closing zero of 11 accounts that matched a tolerance-only reading of the rule; and the safety assert (no CLOSED loan may carry unpaid dues) is violated by 3472 existing rows, so shipping it would encode a fixture state as a contract without first establishing which of the two is wrong. Those 3472 rows are worth resolving - either the dues rows are legitimately left unsettled at closure, in which case the invariant needs the real outstanding source, or the fixture is dirty. Until then this case is a liveness check and says so."
  },
  "accounting.eod_core_batches": {
   "type": "flow",
@@ -6067,7 +6075,14 @@
    "status": "FAIL",
    "code": "134498"
   },
-  "note": "TDPQA-241. Fixture LAN must sit at disbursement_status=NEFT_STAGE_1_PENDING. Value-level on the code: before the fix this returned 134130 'Loan Account is already disbursed'. 134498/LON-DSB-011 requires the V9000429 notification rows."
+  "note": "TDPQA-241. Fixture LAN must sit at disbursement_status=NEFT_STAGE_1_PENDING. Value-level on the code: before the fix this returned 134130 'Loan Account is already disbursed'. 134498/LON-DSB-011 requires the V9000429 notification rows.",
+  "cmd": "python3 scripts/testing/flowtest/train_gated/disb_update_in_progress_error.py",
+  "defaults": {
+   "TDPQA241_INFLIGHT_LAN": "",
+   "TDPQA241_INFLIGHT_REF": ""
+  },
+  "verify_mode": "runtime",
+  "why": " | 2026-08-08: re-ran live on mfi_integration_v3.4.2.5 — FAILS. Not a regression (40-knowledge-upkeep.md Branches diverge in both directions): the 134498 in-flight-vs-134130 already-disbursed distinction this case asserts was added by TDPQA-241 (sha fe703fe04, \"in-flight NEFT disbursement raises its own error, not already disbursed\"), confirmed via git merge-base --is-ancestor NOT present on 3.4.2.5 — it lands on 3.5.1.1 and forward-merges upward (present on 3.5.1.1, 3.5.2.2, 3.5.3, 3.6.1, 3.7.1). On 3.4.2.5, UpdateLoanDisbursementModeDetailsProcessor.validateDisbursementUpdate throws a single generic 134130 for every blocked status including NEFT_STAGE_1_PENDING — there is no in-flight branch yet on this train. Marked SKIP_TRAIN rather than fixed-to-match or silently left failing: fixing the assert would erase the TDPQA-241 knowledge for trains that DO have it; leaving it verify_mode=runtime would report a false regression on every 3.4.2.5 run. Re-verify on 3.5.1.1+ before re-enabling. Converted to a train-gated flow wrapper (scripts/testing/flowtest/train_gated/disb_update_in_progress_error.py) that checks git merge-base --is-ancestor fe703fe04 before firing, so this exits SKIPPED (rc=0) rather than FAIL on any pre-3.5.1.1 checkout. Fixture LAN/REF for the fixture the note describes are not set here — populate TDPQA241_INFLIGHT_LAN/TDPQA241_INFLIGHT_REF when running on a qualifying train."
  },
  "accounting.disb_update_completed_error": {
   "type": "api",
@@ -6092,7 +6107,8 @@
    "status": "FAIL",
    "code": "134130"
   },
-  "note": "TDPQA-241 no-regression control: genuinely disbursed statuses keep the original code."
+  "note": "TDPQA-241 no-regression control: genuinely disbursed statuses keep the original code.",
+  "verify_mode": "runtime"
  },
  "accounting.disb_update_success_writes_history": {
   "type": "api",
@@ -6120,7 +6136,8 @@
     "sql": "SELECT CASE WHEN (SELECT d.account_number FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.account a ON a.id = d.loan_account_id WHERE a.account_number = '${TDPQA241_OPEN_LAN}' AND d.is_deleted = false ORDER BY d.id DESC LIMIT 1) = '${TDPQA241_OPEN_NEW_CASA}' AND (SELECT count(*) FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.account a ON a.id = d.loan_account_id WHERE a.account_number = '${TDPQA241_OPEN_LAN}' AND d.is_deleted = true) >= 1 THEN 'SUCCESS' ELSE 'MISMATCH' END"
    }
   },
-  "note": "TDPQA-241 success path. The two refusal cases prove nothing is written; this proves the allowed path DOES write — new live row carries the requested CASA and the previous row is soft-deleted for history. Closes money_no_verified_footprint for this API. Fixture LAN must be in a non-blocked disbursement_status (LAN_CREATED). Re-runs append another history row by design; the assert reads the latest live row, so it is stable across repeats."
+  "note": "TDPQA-241 success path. The two refusal cases prove nothing is written; this proves the allowed path DOES write — new live row carries the requested CASA and the previous row is soft-deleted for history. Closes money_no_verified_footprint for this API. Fixture LAN must be in a non-blocked disbursement_status (LAN_CREATED). Re-runs append another history row by design; the assert reads the latest live row, so it is stable across repeats.",
+  "verify_mode": "runtime"
  },
  "accounting.gl_balance_zeroisation": {
   "type": "api",
@@ -6214,5 +6231,1914 @@
    ],
    "note": "Real Kafka entry: publish to disburse_loan_api_mfi_local, LmsMessageBrokerConsumer orchestrates, result read from los_lms_disbursement_syncmfi_local and from mfi_los.disburse_loan_process.failure_reason. Requires a live CONSUMER-ID on disburse_loan_api_consumer_mfi_local and drains to lag 0 before each reset."
   }
+ },
+ "accounting.disbursement_cancellation_initiate": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "ship_auto": true,
+  "tags": [
+   "cancellation",
+   "disbursement",
+   "money",
+   "loan-transaction"
+  ],
+  "title": "loanDisbursementCancellation - initiate writes the amounts the system computed",
+  "service": "accounting",
+  "api": "loanDisbursementCancellation",
+  "apis": [
+   "loanDisbursementCancellation"
+  ],
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT",
+   "run_mode": "REAL"
+  },
+  "request": {
+   "loan_disbursement_cancellation_details": {
+    "account_number": "${DISB_CANCEL_INITIATE_LAN}",
+    "total_cancellation_amount": "${DISB_CANCEL_TOTAL}",
+    "round_off_amount": "0",
+    "excess_amount": "0",
+    "cross_sell_amount": "0",
+    "cancellation_date": "${DISB_CANCEL_DATE_MS}",
+    "currency_code": "INR",
+    "payment_mode": "CASH",
+    "cancellation_reason": "RELOCATION",
+    "paid_by": "CUSTOMER",
+    "notes": "Registry coverage run for disbursement cancellation initiate"
+   },
+   "principal_outstanding_details": {
+    "due_amount": "${DISB_CANCEL_PRINCIPAL}",
+    "is_waived": "false",
+    "is_fully_waived": "false",
+    "waiver_percentage": "0",
+    "waived_amount": "0",
+    "amount_to_be_paid": "${DISB_CANCEL_PRINCIPAL}"
+   },
+   "bpi_details": {
+    "due_amount": "${DISB_CANCEL_BPI}",
+    "is_waived": "false",
+    "is_fully_waived": "false",
+    "waiver_percentage": "0",
+    "waived_amount": "0",
+    "amount_to_be_paid": "${DISB_CANCEL_BPI}"
+   },
+   "cancellation_fee_details": {
+    "due_amount": "0",
+    "is_waived": "false",
+    "is_fully_waived": "false",
+    "waiver_percentage": "0",
+    "waived_amount": "0",
+    "amount_to_be_paid": "0"
+   },
+   "charges_details": [
+    {
+     "charge_type_value": "0",
+     "charge_type": "Flat",
+     "charge_value": "0",
+     "charge_inclusive_of_tax": null,
+     "charge_code": "",
+     "tax_components": [],
+     "base_amount": "${DISB_CANCEL_PRINCIPAL}",
+     "charge_identifier": "cancellation_fee",
+     "charge_label": "Cancellation Fees",
+     "total_tax_amount": "0"
+    }
+   ],
+   "deducted_charges_details": [
+    {
+     "charge_name": "Stamp Duty",
+     "charge_value": "${DISB_CANCEL_STAMP_DUTY}",
+     "charge_inclusive_of_tax": "",
+     "charge_code": "${DISB_CANCEL_STAMP_CODE}",
+     "tax_components": [],
+     "charge_identifier": "STAMP_DUTY",
+     "total_tax_amount": "0.00"
+    }
+   ],
+   "document_details": [
+    {
+     "document_type": "DISB_CNCL",
+     "document_sub_type": "DISB_CNCL",
+     "file_name": "cancel.pdf",
+     "urn": "registry-coverage-urn-1"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "30370",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "WITH la AS ( SELECT la.account_id, la.excess_amount, la.cross_sell_amount, la.loan_status, la.expected_disbursement_date, la.first_repayment_date FROM mfi_accounting.loan_account la JOIN mfi_accounting.account a ON a.id = la.account_id WHERE a.account_number = '${DISB_CANCEL_INITIATE_LAN}' AND la.is_deleted = false ), d AS ( SELECT c.id, c.loan_account_id, c.cancellation_date, c.principal_outstanding_amount, c.bpi_amount, c.bpi_amount_to_be_paid, c.bpi_waived_amount, c.excess_amount, c.cross_sell_amount, c.round_off_amount, c.total_cancellation_amount, c.cancellation_status, c.task_status FROM mfi_accounting.loan_disbursement_cancellation_details c JOIN la ON la.account_id = c.loan_account_id WHERE c.is_deleted = false ORDER BY c.id DESC LIMIT 1 ), prin AS ( SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - ldd.waived_amount), 0.000000) AS amt FROM mfi_accounting.loan_due_details ldd JOIN d ON d.loan_account_id = ldd.loan_account_id WHERE ldd.component_type = 'PRIN' AND ldd.due_date > d.cancellation_date AND ldd.is_deleted = false ), fee AS ( SELECT COALESCE(SUM(ch.amount_to_be_paid), 0.000000) AS amt FROM mfi_accounting.loan_disbursement_cancellation_charge_details ch JOIN d ON d.id = ch.loan_disbursement_cancellation_details_id WHERE ch.is_deleted = false ), ded AS ( SELECT COALESCE(SUM(ldc.amount_to_be_paid), 0.000000) AS amt FROM mfi_accounting.loan_disbursement_charge_details ldc JOIN d ON d.loan_account_id = ldc.loan_account_id WHERE ldc.is_deleted = false AND COALESCE(ldc.is_inclusive_of_loan_amount, true) ), int1 AS ( SELECT COALESCE(MIN(ldd.due_amount), 0.000000) AS amt FROM mfi_accounting.loan_due_details ldd JOIN d ON d.loan_account_id = ldd.loan_account_id WHERE ldd.component_type = 'INT' AND ldd.is_deleted = false AND ldd.due_date = (SELECT MIN(x.due_date) FROM mfi_accounting.loan_due_details x WHERE x.loan_account_id = d.loan_account_id AND x.component_type = 'INT' AND x.is_deleted = false) ), bpi AS ( SELECT LEAST( (SELECT amt FROM prin) * (SELECT aid.effective_rate FROM mfi_accounting.account_interest_details aid JOIN d ON d.loan_account_id = aid.account_id) / 100.0 * (SELECT (d.cancellation_date::date - la.expected_disbursement_date::date) FROM d, la) / 360.0, (SELECT amt FROM int1)) AS amt ) SELECT CASE WHEN (SELECT count(*) FROM d) = 0 THEN 'NO_CANCELLATION_ROW' WHEN (SELECT loan_status FROM la) <> 'DISB_CNCL_FREEZE' THEN 'LOAN_NOT_FROZEN:' || (SELECT loan_status FROM la) WHEN (SELECT cancellation_status || '/' || task_status FROM d) <> 'PENDING/PENDING' THEN 'TASK_STATE:' || (SELECT cancellation_status || '/' || task_status FROM d) WHEN (SELECT cancellation_date FROM d) >= (SELECT first_repayment_date FROM la) THEN 'CANCEL_DATE_AFTER_FIRST_EMI:' || (SELECT cancellation_date::text FROM d) WHEN (SELECT principal_outstanding_amount FROM d) <> (SELECT amt FROM prin) THEN 'PRIN_OUTSTANDING_MISMATCH:' || (SELECT principal_outstanding_amount::text FROM d) || '<>' || (SELECT amt::text FROM prin) WHEN (SELECT bpi_amount FROM d) <> (SELECT bpi_amount_to_be_paid + bpi_waived_amount FROM d) THEN 'BPI_SPLIT_MISMATCH:' || (SELECT bpi_amount::text FROM d) || '<>' || (SELECT (bpi_amount_to_be_paid + bpi_waived_amount)::text FROM d) WHEN ABS((SELECT bpi_amount FROM d) - (SELECT amt FROM bpi)) > 1.00 THEN 'BPI_OFF_ACCRUAL:' || (SELECT bpi_amount::text FROM d) || '<>' || (SELECT ROUND(amt, 2)::text FROM bpi) WHEN (SELECT excess_amount FROM d) <> (SELECT COALESCE(excess_amount, 0.000000) FROM la) THEN 'EXCESS_MISMATCH:' || (SELECT excess_amount::text FROM d) || '<>' || (SELECT COALESCE(excess_amount, 0.000000)::text FROM la) WHEN (SELECT cross_sell_amount FROM d) <> (SELECT COALESCE(cross_sell_amount, 0.000000) FROM la) THEN 'CROSS_SELL_MISMATCH:' || (SELECT cross_sell_amount::text FROM d) || '<>' || (SELECT COALESCE(cross_sell_amount, 0.000000)::text FROM la) WHEN (SELECT total_cancellation_amount FROM d) <> (SELECT principal_outstanding_amount + bpi_amount_to_be_paid + round_off_amount - excess_amount - cross_sell_amount FROM d) + (SELECT amt FROM fee) - (SELECT amt FROM ded) THEN 'TOTAL_MISMATCH:' || (SELECT total_cancellation_amount::text FROM d) || '<>' || ((SELECT principal_outstanding_amount + bpi_amount_to_be_paid + round_off_amount - excess_amount - cross_sell_amount FROM d) + (SELECT amt FROM fee) - (SELECT amt FROM ded))::text ELSE 'SUCCESS' END AS verdict"
+   }
+  },
+  "print": [
+   "response_status.code",
+   "account_number"
+  ],
+  "why": "loanDisbursementCancellation (loans_orc.xml:3937, 84 processors) had NO registry case at all; the only related case, accounting.disbursement_cancellation_simulation, says so in its own why. This case drives the REAL initiate leg (function_code=DEFAULT, run_mode=REAL) over HTTP against a freshly disbursed LAN and audits the row it writes. WHY THE ASSERT IS NOT DECORATIVE: every money field on loan_disbursement_cancellation_details is copied verbatim from the request - CreateDisbursementCancellationDetailsProcessor.populateBpiDetailsData sets bpi_amount from request bpi_details.due_amount and populatePrincipalOutstandingDetailsData sets principal_outstanding_amount from principal_outstanding_details.amount_to_be_paid. The only validator in front of them, ValidateDisbursementCancellationAmountDetails, checks INTERNAL ARITHMETIC ONLY (sum of amount_to_be_paid + round_off - excess - cross_sell + exclusive tax - deducted charges == total_cancellation_amount, plus waiver self-consistency at 134315/134316/134317). Nothing compares the submitted principal or BPI against what the system itself computes and showed the borrower in fetchDisbursementCancellationSimulationDetails. CLAUSES, each returning the OFFENDING VALUE: (1) NO_CANCELLATION_ROW - initiate reported SUCCESS and wrote nothing. (2) LOAN_NOT_FROZEN - updateLoanAccountStatusProcessor did not move the loan to DISB_CNCL_FREEZE, so a cancelling loan stays collectable. (3) TASK_STATE - cancellation_status/task_status not PENDING/PENDING. (4) CANCEL_DATE_AFTER_FIRST_EMI - guards the window ValidateDataForDisbursementCancellation.java:107 enforces, and is also the precondition that makes clause 6 valid. (5) PRIN_OUTSTANDING_MISMATCH - the persisted principal must equal LoanDueDetailsRepository.getFuturePrincipalOutstandingAmount (SUM(due_amount-paid_amount-waived_amount) over PRIN rows with due_date > cancellation_date, is_deleted=false), mirrored exactly. (6) BPI_SPLIT_MISMATCH - bpi_amount must equal bpi_amount_to_be_paid + bpi_waived_amount, so a waiver cannot be hidden inside the headline figure. (7) BPI_OFF_ACCRUAL - the submitted BPI must be within 1.00 of outstanding_principal * effective_rate/100 * days/360, capped at the first INT installment due. That is InterestCalculationUtil.calculateInterestTillDateUsingReducingBalance for the pre-first-EMI window - the only window this API can serve - which ends in .min(currentInstallment.getDueAmount()). The 1.00 band is deliberate: the Java path applies roundAmountWithPrecision with the product installmentRoundingFactor, which is a rounding ARTIFACT, not a contract, so exact equality would produce false failures. (8) EXCESS_MISMATCH and (9) CROSS_SELL_MISMATCH - the excess and cross-sell credited against the cancellation must equal what the loan actually holds (loan_account.excess_amount / cross_sell_amount, NULL treated as zero); a phantom excess reduces what the borrower is asked to pay. (10) TOTAL_MISMATCH - the whole-rupee identity, re-derived from the persisted parts plus loan_disbursement_cancellation_charge_details and minus the loan_disbursement_charge_details rows the Java loop deducts (is_inclusive_of_loan_amount NULL is INCLUDED, matching the null-check in the Java). TOTALS DO NOT HIDE SPLITS HERE: clause 10 is the total, clauses 5-9 are the components, and clause 10 alone would pass on any self-consistent set of wrong parts - which is precisely the shape the product validator already permits. RED->GREEN, all this session on LANs seeded for this case. Four hand-perturbations of the persisted row via db-local-write.sh, each reverted to SUCCESS: PRIN_OUTSTANDING_MISMATCH:45000.000000<>50000.000000, BPI_SPLIT_MISMATCH:104.000000<>144.000000, EXCESS_MISMATCH:250.000000<>0.000000, TOTAL_MISMATCH:50104.000000<>49954.000000. Stronger still, clause 7 was proven against a value the SYSTEM ITSELF ACCEPTED: an initiate request on freshly seeded LAN 6004200125 declaring bpi_details.due_amount=20 where the simulation for the same LAN and date returns 104 was answered 30370/SUCCESS, and the assert returned BPI_OFF_ACCRUAL:20.000000<>104.17. That is a live accepted defect, not a hand-edited row. SCOPE - READ THIS BEFORE TRUSTING THE CASE: this covers the INITIATE leg only. APPROVE and COLLECTED (the leg that posts LOAN_DISB_CNCL, settles dues and closes the account) could not be driven on this checkout - see scripts/scratch/disb-cancellation/EVIDENCE.md. Do not read a green here as cancellation being covered end to end. FIXTURE: needs a freshly disbursed ACTIVE LAN whose first_repayment_date is in the future and whose expected_disbursement_date is within max.days.for.disb.cncl (90) of the cancellation date, with no PENDING cancellation task (else 134319). Re-running on the same LAN fails 134319 by design; reseed and repoint the correlator. Seeded and proven on 6004198025 (account_id 8247460) on accounting mfi_integration_v3.4.2.5.",
+  "defaults": {
+   "DISB_CANCEL_INITIATE_LAN": "6004198025",
+   "DISB_CANCEL_DATE_MS": "1786300200000",
+   "DISB_CANCEL_PRINCIPAL": "50000.000000",
+   "DISB_CANCEL_BPI": "104",
+   "DISB_CANCEL_TOTAL": "49954",
+   "DISB_CANCEL_STAMP_DUTY": "150.00",
+   "DISB_CANCEL_STAMP_CODE": "SD1194"
+  }
+ },
+ "accounting.disbursement_cancellation_simulation": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "cancellation"
+  ],
+  "title": "fetchDisbursementCancellationSimulationDetails — cancellation amounts",
+  "service": "accounting",
+  "api": "fetchDisbursementCancellationSimulationDetails",
+  "request": {
+   "account_number": "${CANCELLATION_LAN}",
+   "cancellation_date": "${BUSINESS_DATE_MS}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "disbursement_cancellation_simulation_details.principal_outstanding_amount"
+   ]
+  },
+  "why": "loanDisbursementCancellation had zero coverage; the simulation supplies the real amounts the cancellation must post, so nothing is invented",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT",
+   "run_mode": "TRIAL"
+  },
+  "print": [
+   "disbursement_cancellation_simulation_details.principal_outstanding_amount",
+   "disbursement_cancellation_simulation_details.bpi_amount",
+   "disbursement_cancellation_simulation_details.cancellation_fee",
+   "disbursement_cancellation_simulation_details.excess_amount",
+   "disbursement_cancellation_simulation_details.cross_sell_amount"
+  ]
+ },
+ "accounting.get_account_balances": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getAccountBalances — balance read contract",
+  "service": "accounting",
+  "api": "getAccountBalances",
+  "request": {
+   "account_number_details": [
+    {
+     "account_number": "${ACCOUNT_NUMBER}"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "account_balance_details"
+   ]
+  },
+  "why": "read_inquiry had 4 of 94 APIs covered; request+response shape from the JTF templates (read_inquiry_worklist.py), not guessed"
+ },
+ "accounting.get_active_disbursed_loan_by_customer_id": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "generated"
+  ],
+  "title": "getActiveDisbursedLoanByCustomerId — read contract",
+  "service": "accounting",
+  "api": "getActiveDisbursedLoanByCustomerId",
+  "request": {
+   "customer_id": "${CUSTOMER_ID}",
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "has_active_disbursed_loan"
+   ]
+  },
+  "why": "generated from the shipped JTF request/response templates and kept only after running green (generate_read_cases.py)"
+ },
+ "accounting.get_active_loans_for_customer": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getActiveLoansForCustomer — read contract",
+  "service": "accounting",
+  "api": "getActiveLoansForCustomer",
+  "request": {
+   "customer_id": "${CUSTOMER_ID}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "account_number"
+   ]
+  },
+  "why": "read_inquiry coverage; request+response shape from the JTF templates"
+ },
+ "accounting.get_loan_account_applicable_charges": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getLoanAccountApplicableCharges — read contract",
+  "service": "accounting",
+  "api": "getLoanAccountApplicableCharges",
+  "request": {
+   "account_number": "${ACCOUNT_NUMBER}",
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "loan_account_applicable_charges[0].price_setup_code"
+   ]
+  },
+  "why": "read_inquiry coverage; request+response shape from the JTF templates"
+ },
+ "accounting.get_loan_account_generic_details": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getLoanAccountGenericDetails — read contract",
+  "service": "accounting",
+  "api": "getLoanAccountGenericDetails",
+  "request": {
+   "account_number": "${ACCOUNT_NUMBER}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "paid_installment_count"
+   ]
+  },
+  "why": "read_inquiry coverage; request+response shape from the JTF templates"
+ },
+ "accounting.get_loan_account_repayment_schedule_details": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "generated"
+  ],
+  "title": "getLoanAccountRepaymentScheduleDetails — read contract",
+  "service": "accounting",
+  "api": "getLoanAccountRepaymentScheduleDetails",
+  "request": {
+   "account_number": "${ACCOUNT_NUMBER}",
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "loan_repayment_schedule_list[0].installment_date"
+   ]
+  },
+  "why": "generated from the shipped JTF request/response templates and kept only after running green (generate_read_cases.py)"
+ },
+ "accounting.get_server_clock_details": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getServerClockDetails — read contract",
+  "service": "accounting",
+  "api": "getServerClockDetails",
+  "request": {},
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "server_clock_details.timezone"
+   ]
+  },
+  "why": "read_inquiry coverage; request+response shape from the JTF templates"
+ },
+ "accounting.get_working_day_list": {
+  "type": "api",
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry"
+  ],
+  "title": "getWorkingDayList — read contract",
+  "service": "accounting",
+  "api": "getWorkingDayList",
+  "request": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "working_day_list[0].working_day_details.id"
+   ]
+  },
+  "why": "read_inquiry coverage; request+response shape from the JTF templates"
+ },
+ "accounting.loan_status_sweep_guard": {
+  "type": "flow",
+  "smoke_tier": "money",
+  "verify_mode": "static_gate",
+  "tags": [
+   "foreclosure",
+   "disbursement-cancellation",
+   "restructuring",
+   "tdpqa72",
+   "guard"
+  ],
+  "title": "No multi-account loan_status sweep may stamp over a terminal or foreign-workflow state",
+  "cmd": "python3 scripts/lib/loan_status_sweep_gate.py",
+  "note": "TDPQA-72 class guard. Six accounting services select many loan accounts and write loan_status. Classifies each as terminal_guard / account_status_only / unguarded and ratchets: a new unguarded sweep fails the gate. Red-green proven by restoring the pre-fix UpdateLoanStatusForSHGProcessor, which the gate names.",
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "verify_mode": "static_gate",
+   "dimensions": [
+    "regression_guard"
+   ],
+   "asserts": [
+    "UpdateLoanStatusForSHGProcessor carries a terminal-status guard",
+    "no sweep is added without a guard or a deliberate --accept"
+   ]
+  }
+ },
+ "accounting.post_transaction_double_entry": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "verify_mode": "RUNTIME_VERIFIED",
+  "service": "accounting",
+  "api": "postTransaction",
+  "tags": [
+   "ledger",
+   "primitive",
+   "double-entry",
+   "money"
+  ],
+  "title": "postTransaction — per-transaction double entry, scoped by this run's stan",
+  "headers": {
+   "operation_mode": "SELF"
+  },
+  "request": {
+   "basic_details": {
+    "office_id": "2",
+    "originating_office_id": "2",
+    "transaction_type": "INTEREST",
+    "transaction_sub_type": "NORMAL_ACCRUAL",
+    "client_reference_number": "LP_${STAN}",
+    "currency": "INR",
+    "amount": "37.00",
+    "remarks": "ledger primitive double entry probe"
+   },
+   "account_details": [
+    {
+     "placeholder": "LOAN_ACCOUNT",
+     "account_number": "0000002972",
+     "narration": "ledger primitive"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "000",
+   "paths": [
+    "transaction_reference_number"
+   ],
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "WITH tm AS ( SELECT id, original_amount FROM mfi_accounting.transaction_master WHERE stan = '${STAN}' ), td AS ( SELECT d.account_number, SUM(CASE WHEN d.cr_dr_indicator = 'D' THEN d.net_amount ELSE -d.net_amount END) AS net FROM mfi_accounting.transaction_details d JOIN tm ON tm.id = d.transaction_id GROUP BY d.account_number ), tp AS ( SELECT p.account_number, SUM(CASE WHEN p.cr_dr_indicator = 'D' THEN p.amount ELSE -p.amount END) AS net FROM mfi_accounting.transaction_partition_details p JOIN tm ON tm.id = p.transaction_id GROUP BY p.account_number ), split AS ( SELECT COALESCE(td.account_number, tp.account_number) AS acct, COALESCE(td.net, 0) - COALESCE(tp.net, 0) AS diff FROM td FULL OUTER JOIN tp ON tp.account_number = td.account_number ), tot AS ( SELECT (SELECT COALESCE(SUM(net), 0) FROM td) AS td_net, (SELECT COALESCE(SUM(net), 0) FROM tp) AS tp_net, (SELECT COALESCE(SUM(CASE WHEN d.cr_dr_indicator = 'D' THEN d.net_amount ELSE 0 END), 0) FROM mfi_accounting.transaction_details d JOIN tm ON tm.id = d.transaction_id) AS td_dr, (SELECT count(*) FROM mfi_accounting.transaction_details d JOIN tm ON tm.id = d.transaction_id) AS td_legs ) SELECT CASE WHEN (SELECT count(*) FROM tm) <> 1 THEN 'NO_TRANSACTION:' || (SELECT count(*) FROM tm)::text WHEN (SELECT td_legs FROM tot) < 2 THEN 'TD_LEGS:' || (SELECT td_legs FROM tot)::text WHEN (SELECT td_net FROM tot) <> 0 THEN 'TD_UNBALANCED:' || (SELECT td_net::text FROM tot) WHEN (SELECT tp_net FROM tot) <> 0 THEN 'TPD_UNBALANCED:' || (SELECT tp_net::text FROM tot) WHEN EXISTS (SELECT 1 FROM split WHERE diff <> 0) THEN 'LEG_SPLIT_MISMATCH:' || (SELECT acct || '=' || diff::text FROM split WHERE diff <> 0 ORDER BY acct LIMIT 1) WHEN (SELECT td_dr FROM tot) <> (SELECT original_amount FROM tm) THEN 'AMOUNT_MISMATCH:' || (SELECT td_dr::text FROM tot) || 'vs' || (SELECT original_amount::text FROM tm) ELSE 'SUCCESS' END"
+   }
+  },
+  "acceptance": {
+   "verify_mode": "RUNTIME_VERIFIED",
+   "dimensions": [
+    "happy_path"
+   ],
+   "db_asserts": [
+    {
+     "table": "transaction_details",
+     "assert": "SUM(debit legs) = SUM(credit legs) for this run's transaction_master, and every leg's net matches the partition split for the same account",
+     "checked_by": "expect.db_eq clauses TD_UNBALANCED / LEG_SPLIT_MISMATCH"
+    },
+    {
+     "table": "transaction_partition_details",
+     "assert": "component split balances and reconciles per account to the summary legs",
+     "checked_by": "expect.db_eq clauses TPD_UNBALANCED / LEG_SPLIT_MISMATCH"
+    },
+    {
+     "table": "transaction_master",
+     "assert": "original_amount equals the sum of the debit legs actually written",
+     "checked_by": "expect.db_eq clause AMOUNT_MISMATCH"
+    }
+   ]
+  },
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "postTransaction"
+   ],
+   "seeded": [],
+   "out_of_scope": [
+    "which placeholders a given transaction_type resolves to — this case asserts the double-entry invariant every catalogue must satisfy, not the GL mapping of one flow"
+   ]
+  },
+  "why": "postTransaction is the ledger primitive every accounting money flow funnels through, and it had two runtime cases and zero db_asserts. The case fires it for real over HTTP (INTEREST / NORMAL_ACCRUAL, catalogue 2, the single-rule INT_REC>INT_INC posting) and asserts the one invariant that must hold for any transaction_type: the entry is balanced, per transaction, at both levels the code writes. Scope is transaction_master.stan = the harness stan for THIS run (CreateTransactionMasterProcessor.java:88 sets it from the header), so a concurrent money flow on the same local database can neither rescue nor break it — a population-wide SUM would pass by luck. The db_eq returns the offending VALUE, never a boolean. Six fail-closed clauses: NO_TRANSACTION (HTTP 200 with no master written), TD_LEGS (fewer than two legs), TD_UNBALANCED (transaction_details debits minus credits), TPD_UNBALANCED (same over transaction_partition_details), LEG_SPLIT_MISMATCH (per account_number, the summary leg and the component split disagree — the clause that survives a matching total, since CreateTransactionDetailsProcessor.java:68-103 nets accounting_map per account while CreateTransactionPartitionDetailsProcessor writes the components), and AMOUNT_MISMATCH (transaction_master.original_amount vs the debits actually written). RED-BEFORE-GREEN, both critical clauses proven this session on transaction_master 1901884 (LAN 0000002972, 37.00, D 13578 / C 47631): adding 1.00 to one transaction_details leg returned TD_UNBALANCED:-1.000000; adding 1.00 to BOTH partition legs — which leaves the partition total balanced — returned LEG_SPLIT_MISMATCH:13578=-1.000000. Both perturbations were reverted and the assert returned SUCCESS. The case is ledger-only: the postTransaction orchestration (product_transaction_orc.xml:3-42) writes transaction_master, _metadata, _partition_details and _details and nothing else, so the loan account named in account_details is read as a product-resolution input and is not mutated."
+ },
+ "accounting.reverse_transaction_double_entry": {
+  "type": "flow",
+  "quick": true,
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "verify_mode": "RUNTIME_VERIFIED",
+  "service": "accounting",
+  "api": "reverseTransaction",
+  "apis": [
+   "postTransaction",
+   "reverseTransaction"
+  ],
+  "tags": [
+   "ledger",
+   "primitive",
+   "reversal",
+   "double-entry",
+   "money"
+  ],
+  "title": "reverseTransaction — balanced mirror of every leg, plus reversal linkage",
+  "cmd": "python3 scripts/testing/flowtest/run_reverse_transaction_double_entry.py",
+  "defaults": {
+   "LEDGER_PRIMITIVE_LAN": "0000002972",
+   "LEDGER_PRIMITIVE_OFFICE_ID": "2",
+   "LEDGER_PRIMITIVE_AMOUNT": "37.00"
+  },
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "verify_mode": "RUNTIME_VERIFIED",
+   "dimensions": [
+    "happy_path"
+   ],
+   "db_asserts": [
+    {
+     "table": "transaction_master",
+     "assert": "original.reversed = true AND original.reversal_reference_number = reversal.reference_number AND reversal.client_reference_number = 'R_' || original CRN AND reversal.original_amount = original.original_amount",
+     "checked_by": "ORIGINAL_NOT_FLAGGED_REVERSED / REVERSAL_LINK_BROKEN / REVERSAL_CRN / REV_AMOUNT"
+    },
+    {
+     "table": "transaction_details",
+     "assert": "reversal is balanced AND for every account_number the reversal net exactly cancels the original net (residual = 0), with an equal leg count",
+     "checked_by": "REV_UNBALANCED / LEG_NOT_MIRRORED / LEG_COUNT"
+    },
+    {
+     "table": "transaction_partition_details",
+     "assert": "per (account_number, reference_code) the reversal component cancels the original component",
+     "checked_by": "REV_TPD_UNBALANCED / TPD_NOT_MIRRORED"
+    }
+   ]
+  },
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "postTransaction",
+    "reverseTransaction"
+   ],
+   "seeded": [],
+   "out_of_scope": [
+    "business-level reversal eligibility (childLoanTransactionReversal and the bulk reversal validators) — this case covers the ledger primitive only"
+   ]
+  },
+  "why": "reverseTransaction (product_transaction_orc.xml:89) had no registry case at all, while being the primitive under disbursement cancellation, child transaction reversal and excess refund. The case runs both primitives for real in one script: postTransaction writes an original pair, reverseTransaction mirrors it, and every assert is scoped to the two transaction_master rows this run created, by their own stans. ReverseTransactionProcessor.java:100-123 copies each original leg and flips the indicator, and :88-90 flags the original and stores the link — so the contract is per leg, not per total. LEG_NOT_MIRRORED is the clause that matters: it sums (D - C) per account_number across the original and the reversal and requires exactly zero, which a totals-only assert cannot do. TPD_NOT_MIRRORED does the same per (account_number, reference_code) so a reversal that balanced by moving amount between components would still fail. RED-BEFORE-GREEN, both proven this session on LAN 0000002972: adding 1.00 to ONE reversal leg returned REV_UNBALANCED:1.000000; adding 1.00 to BOTH reversal legs — which leaves the reversal balanced and would pass any debits-equal-credits check — returned LEG_NOT_MIRRORED:13578=-1.000000. Reverted, and a fresh run returned SUCCESS. Each run creates its own transaction pair, so there is no fixture to reseed and nothing another agent's flow can disturb; the loan account is a read-only product-resolution input, since neither orchestration writes a loan row."
+ },
+ "batch.asset_classification": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "asset-classification",
+   "batch",
+   "eod"
+  ],
+  "title": "loanAccountAssetClassificationJob",
+  "service": "accounting",
+  "api": "loanAccountAssetClassificationJob",
+  "batch_job_name": "loanAccountAssetClassificationJob",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.loan_account la JOIN mfi_accounting.loan_product lp ON lp.id = la.loan_product_id CROSS JOIN LATERAL (SELECT acs.id FROM mfi_accounting.asset_classification_slabs acs WHERE acs.asset_classification_master_id = lp.asset_classification_master_id AND acs.is_deleted = false AND 0 BETWEEN acs.npa_ageing_days_from AND acs.npa_ageing_days_to LIMIT 1) z WHERE la.loan_status IN ('ACTIVE','FORECLOSURE_FREEZE') AND la.npa_ageing_start_date IS NULL AND (la.npa_ageing_days IS DISTINCT FROM 0 OR la.asset_classification_slabs_id IS DISTINCT FROM z.id)) = 0 THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   },
+   "batch_wrote": 1
+  },
+  "why": "loanAccountAssetClassificationJob recomputes asset_classification_slabs_id and npa_ageing_days for every ACTIVE or FORECLOSURE_FREEZE loan. db_eq encodes the branch whose contract is unambiguous: when npa_ageing_start_date is null the service sets days to 0 and the slab to the one covering day 0 - but only when a day-0 slab exists for the product's master, per the calcAssetClassificationSlabId != null guard at LoanAccountAssetClassificationService.java:55 (branch at :51-66). The SQL models that same condition with CROSS JOIN LATERAL, so a loan whose master has no day-0 slab is excluded from the count exactly as the code leaves it untouched. The slab lookup is the repository query verbatim - master id plus BETWEEN npa_ageing_days_from AND npa_ageing_days_to (AssetClassificationSlabsRepository.java:21-27) - so this is the code's own contract, not a reimplementation of the ranking logic. Seen RED at 890 violating loans before the run. The npa_ageing_start_date IS NOT NULL branch is deliberately NOT asserted: it computes days against new Date() rather than the job_time business date, so its expected value moves with the wall clock and any assert on it would be measuring the clock. That wall-clock dependency is worth a second look on its own - a BOD job whose output depends on when it is run rather than the business date it is run for."
+ },
+ "batch.asset_criteria": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "asset-criteria",
+   "batch",
+   "eod",
+   "npa"
+  ],
+  "title": "loanAccountAssetCriteriaJob",
+  "service": "accounting",
+  "api": "loanAccountAssetCriteriaJob",
+  "batch_job_name": "loanAccountAssetCriteriaJob",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "batch_wrote": 1,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "WITH pop AS ( SELECT la.account_id FROM mfi_accounting.loan_account la JOIN mfi_accounting.account a ON a.id = la.account_id JOIN mfi_accounting.asset_criteria_slabs acs ON acs.id = la.asset_criteria_slabs_id JOIN mfi_accounting.loan_product lp ON lp.id = la.loan_product_id JOIN mfi_accounting.product_scheme ps ON ps.id = a.product_scheme_id WHERE la.loan_status IN ('ACTIVE','FORECLOSURE_FREEZE') AND ((la.past_due_days > 0 AND la.npa_tagging_date IS NULL) OR la.npa_tagging_date IS NOT NULL) ), pref AS ( SELECT ldd.loan_account_id, SUM(ldd.due_amount - ldd.paid_amount - ldd.waived_amount) OVER (PARTITION BY ldd.loan_account_id ORDER BY ldd.due_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running FROM mfi_accounting.loan_due_details ldd JOIN pop ON pop.account_id = ldd.loan_account_id WHERE ldd.component_type = 'INT' AND ldd.is_deleted = false ), worst AS ( SELECT COALESCE(MIN(running), 0)::numeric(18,6) AS amt FROM pref WHERE running < 0 ), step AS ( SELECT read_count, write_count, rollback_count, read_skip_count + process_skip_count + write_skip_count AS skips FROM mfi_batch.batch_step_execution WHERE step_name = 'loanAccountAssetCriteriaJobmStep1' ORDER BY step_execution_id DESC LIMIT 1 ) SELECT CASE WHEN (SELECT amt FROM worst) < 0 THEN 'NPA_INT_SUSPENSE_NEGATIVE:' || (SELECT amt::text FROM worst) WHEN (SELECT read_count - write_count FROM step) <> 0 THEN 'ITEMS_UNWRITTEN:' || (SELECT (read_count - write_count)::text FROM step) WHEN (SELECT skips + rollback_count FROM step) <> 0 THEN 'SKIPPED_OR_ROLLED_BACK:' || (SELECT (skips + rollback_count)::text FROM step) ELSE 'SUCCESS' END"
+   }
+  },
+  "why": "loanAccountAssetCriteriaJob NPA forward/reverse movement. Upgraded from status-only to a value-level assert on 2026-08-08 after the job was made green on this checkout. The db_eq has three fail-closed clauses and reports the offending VALUE, not a boolean. (1) NPA_INT_SUSPENSE_NEGATIVE - for every loan in the job's own partitioner population (ACTIVE/FORECLOSURE_FREEZE with past_due_days>0 or an npa_tagging_date), the running SUM(due_amount-paid_amount-waived_amount) over INT loan_due_details rows ordered by due_date must never go negative. That prefix sum IS the query LoanDueDetailsRepository.getInterestSuspenseAmountByDueDateForNpa runs, so a negative prefix is exactly the amount LoanAccountAssetCriteriaBatchProcessor.populateForwardMovementAmountDetails will put into total_amount and postTransaction will reject with 132160 at ValidateTransactionDataProcessor.java:76. (2) ITEMS_UNWRITTEN - the master step must write every item it read; one bad item aborts the partition and silently strands the rest of its chunk. (3) SKIPPED_OR_ROLLED_BACK - no skip or rollback on the master step. RED-BEFORE-GREEN, both proven this session: clause 1 returned NPA_INT_SUSPENSE_NEGATIVE:-41.000000 with the pre-fix fixture row restored; clause 2 returned ITEMS_UNWRITTEN:12 against failing execution 4443953. GREEN on executions 4444053 and 4444253 (COMPLETED, 11/11 steps, 2070 read / 2070 written, 0 skip, 0 rollback). GAP-093 stays OPEN and is NOT what this case now guards: the fixture fix removed the trigger, not the hazard. The hazard is that GenericListenerV3:140 hands the raw async Future to batchFailureEntityMapper.fromWriter under force_async=TRUE (BatchWriterSkipItemSupport does not exist in trustt-platform-lib on 3.4.2.x), so ANY writer exception escalates SkipListenerFailedException and fails the whole job instead of skipping and auditing one item. Clauses 2 and 3 are what would catch its return."
+ },
+ "batch.enach_presentation_file": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "enach",
+   "presentation",
+   "batch",
+   "bod"
+  ],
+  "title": "generateEnachPresentationFile",
+  "service": "accounting",
+  "api": "generateEnachPresentationFile",
+  "batch_job_name": "generateEnachPresentationFile",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.enach_presentation_details WHERE is_deleted = false AND presentation_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date) > 0 AND NOT EXISTS (SELECT 1 FROM mfi_accounting.enach_presentation_details p WHERE p.is_deleted = false AND p.presentation_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date AND (p.status <> 'I' OR p.amount <= 0 OR p.amount <> (SELECT COALESCE(sum(x.amount), -1) FROM mfi_accounting.enach_presentation_loan_account_details x WHERE x.mandate_reference_number = p.mandate_reference_number AND x.is_deleted = false AND x.value_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date + INTERVAL '1 day'))) AND NOT EXISTS (SELECT 1 FROM mfi_accounting.enach_presentation_loan_account_details c JOIN mfi_accounting.repayment_mandate_details rmd ON rmd.id = c.repayment_mandate_details_id JOIN mfi_accounting.loan_installment_details lid ON lid.loan_account_id = rmd.loan_account_id AND lid.installment_date = c.value_date AND lid.is_deleted = false JOIN mfi_accounting.loan_account la ON la.account_id = rmd.loan_account_id WHERE c.is_deleted = false AND c.value_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date + INTERVAL '1 day' AND (c.status <> 'I' OR c.amount <> LEAST(lid.installment_amount - lid.settled_amount - COALESCE(la.excess_amount, 0), rmd.max_amount))) THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "generateEnachPresentationFile mirrors the SI job: PopulateEnachPresentationStepTasklet writes enach_presentation_details (the bank debit) and enach_presentation_loan_account_details (the loans behind it), then CreateEnachPresentationFileTasklet writes the .txt. db_eq asserts the populate product. Non-vacuity on the run's own presentation date from ${JOB_TIME} - note the presentation date IS the job date, because getValueDate at :180-186 mutates the presentationDate object it is handed, so the 'new Date()' at :74 never survives; that subtlety is why the assert keys on the job date and not on today. Value date is the job date + 1, matching enach.configured.days.for.presentation = 1 in mfi_masterdata.configuration; if that config changes the assert fails loudly rather than drifting. Split-vs-total: parent amount = sum of children on the same mandate_reference_number. Unlike SI there is no parent-account branch here, so the plain form is correct - the group branch at :128-137 accumulates add(dueAmount) and the non-group branch at :105-111 is 1:1. Value: every child amount = LEAST(installment_amount - settled_amount - excess_amount, mandate max_amount). The max_amount cap is real contract (settleDueAmount :204-206) and an assert that omitted it would false-fail on any loan whose due exceeds its mandate ceiling. status 'I' on both levels. Proven RED twice - vacuously on a date the job produced nothing, and on value by moving one child amount by one rupee - then restored GREEN. JOB_TIME pinned to 2026-06-14 (value date 2026-06-15) because that is the richest eNACH candidate date in this fixture, and it is the one that exercises both the group and the individual branch: it produced 2 parents and 2 children, one is_group true and one false. Env-overridable. The file leg is not asserted for the same reason as SI - enach.presentation.report.path is /apps/documents/novopay-batch/enach/presentation and /apps does not exist here. The pre-existing note on this case about GAP-094 (PopulateEnachPresentationStepTasklet:90 dereferencing a null loan_account_id) still stands and is unrelated to this assert. Re-run note: findAllByValueDate guards the populate step, so a re-run at the pinned date short-circuits and the assert re-validates the stored product.",
+  "defaults": {
+   "JOB_TIME": "1781375400000"
+  }
+ },
+ "batch.la_derived_fields": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "derived-fields",
+   "batch",
+   "bod"
+  ],
+  "title": "updateLoanAccountDerivedFieldsJob",
+  "service": "accounting",
+  "api": "updateLoanAccountDerivedFieldsJob",
+  "batch_job_name": "updateLoanAccountDerivedFieldsJob",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.loan_account_derived_fields_run_history WHERE year = 2026 AND month = 5 AND last_run_date::date = to_timestamp(${JOB_TIME}/1000)::date) = 1 THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "updateLoanAccountDerivedFieldsJob writes loan_account_derived_fields in step 1 and, in step 2, upserts a run-history row keyed by the business date's year and month. db_eq asserts that row exists for (2026, month 5) with last_run_date equal to the job_time date. It cannot pass on residue: the key includes the business date, and the row was absent before the run (verified 0). The trigger is gated twice (LoanAccountDerivedFieldsJobProcessor.java:66-74) and both gates fail SILENTLY with a log line and a return, so an ungated run looks identical to a successful no-op. Gate one requires the latest run-history last_run_date to equal business date minus one day; the fixture sat at 2026-05-31 against a 2026-06-27 business date, so the job could never have run here. Seed for this case: UPDATE loan_account_derived_fields_run_history SET last_run_date = '2026-06-26' WHERE id = 535. Gate two requires the previous month's monthly job to have run, which the fixture already satisfies. The first seeded run still FAILED, on every partition, with 'Unable to find column position by name: external_call_status' - local schema drift, not a code defect. Flyway V000200 adds that column to si_presentation_loan_account_details and had not been applied to this database. Applying the migration's own DDL verbatim turned all ten partitions green. This is the class schema_live_drift.py exists to catch, and it is worth running before concluding any batch failure is a code bug."
+ },
+ "batch.la_derived_fields_monthly": {
+  "type": "batch",
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "derived-fields",
+   "batch",
+   "bod",
+   "monthly"
+  ],
+  "title": "updateLoanAccountDerivedFieldsMonthlyJob",
+  "service": "accounting",
+  "api": "updateLoanAccountDerivedFieldsMonthlyJob",
+  "batch_job_name": "updateLoanAccountDerivedFieldsMonthlyJob",
+  "defaults": {
+   "JOB_TIME": "1782909000000"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.loan_account_derived_fields_monthly WHERE eom_date = '2026-06-30') = (SELECT count(*) FROM mfi_accounting.account a JOIN mfi_accounting.loan_account la ON la.account_id = a.id WHERE a.status = 'ACTIVE') AND (SELECT count(*) FROM mfi_accounting.loan_account_derived_fields_monthly m JOIN mfi_accounting.loan_account la ON la.account_id = m.acc_id WHERE m.eom_date = '2026-06-30' AND la.past_due_days > 0) > 0 AND NOT EXISTS ( SELECT 1 FROM mfi_accounting.loan_account_derived_fields_monthly m JOIN mfi_accounting.account a ON a.id = m.acc_id JOIN mfi_accounting.loan_account la ON la.account_id = a.id WHERE m.eom_date = '2026-06-30' AND ( m.account_number IS DISTINCT FROM a.account_number OR m.past_due_days IS DISTINCT FROM la.past_due_days OR (la.past_due_days > 0 AND m.risk_past_due_days IS DISTINCT FROM la.past_due_days + 31) ) ) AND (SELECT is_derived_fields_monthly_job_run FROM mfi_accounting.loan_account_derived_fields_run_history WHERE id = 634) THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "updateLoanAccountDerivedFieldsMonthlyJob is a partitioned reader/processor/writer step plus a tasklet. LADerivedFieldsMonthlyIReader keys eom_date = job_time minus one day, so JOB_TIME 1782909000000 (2026-07-01 18:00 IST) writes eom_date 2026-06-30. NO SEED WAS NEEDED: LoanAccountDerivedFieldsMonthlyJobProcessor.java:64-91 requires the business date to be the 1st of its month and the run-history row for the PREVIOUS day's month to exist with is_derived_fields_monthly_job_run = false; row id=634 (year 2026, month 5 = June, Date.getMonth() is 0-indexed) already satisfied it. Both gates return silently, so an ungated run is indistinguishable from a successful one by HTTP status alone. RED: before the run, eom_date 2026-06-30 had 0 rows (30000 rows existed for eleven other eom_dates, so a residue-tolerant assert would have passed) and id=634 was false - db_eq returned MISMATCH. GREEN: read_count 3380 and write_count 3380 across ten partitions plus a 3380-row manager step, 3380 rows at eom_date 2026-06-30, id=634 flipped true, db_eq SUCCESS. The assert is value-level, not presence-only: row count must equal the live count of ACTIVE loan accounts (3380); every row's account_number must equal account.account_number and past_due_days must equal loan_account.past_due_days for the joined account; and for every row with past_due_days > 0 (3086 of them, so the scoped set is not empty) risk_past_due_days must equal past_due_days + 31, re-deriving LADerivedFieldsMonthlyIProcessor.java:324-327 where 31 is lengthOfMonth of the job_time month (July 2026). LIMIT: the past_due_days <= 0 branch of risk_past_due_days depends on the current month's installment date and is not re-derivable in SQL, so those rows are covered only by the count and the account_number/past_due_days equality. eom_avg_outstanding_amount cannot be asserted either - step 2's UpdateLADFAvgOutstandingAmountTasklet calls resetAvgOutStandingAmount(), so the loan_account_derived_fields value the reader copied is gone by the time the assert runs. RESOLVED (was unverified in the recipe): the job does NOT insert a (month=6, year=2026) run-history row. Step 2 flips is_derived_fields_monthly_job_run on the PREVIOUS month's row - id=634, year 2026 month 5 - and inserts nothing; confirmed by reading the table before and after. RE-RUN: the gate is consumed by the run. To re-run, first UPDATE mfi_accounting.loan_account_derived_fields_run_history SET is_derived_fields_monthly_job_run = false WHERE id = 634. Without that reseed the job no-ops and the assert passes on the rows this run wrote - unlike batch.trial_balance_zeroisation there is no per-run correlator on loan_account_derived_fields_monthly to scope the assert by, so the reseed is part of running the case. Note the same flag gates batch.la_derived_fields (LoanAccountDerivedFieldsJobProcessor.java:75), which aborts when the month differs and the flag is false - reseed it immediately before the monthly run, not as a parking state."
+ },
+ "batch.noc_file": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "noc",
+   "batch",
+   "report"
+  ],
+  "title": "generateNocFileJob",
+  "service": "accounting",
+  "api": "generateNocFileJob",
+  "batch_job_name": "generateNocFileJob",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true
+  },
+  "why": "generateNocFileJob returns 333/FAIL at the API layer before any batch execution is created - 57 historical batch_job_instance rows for this job, zero executions. An earlier version of this note blamed two product-JSON validators; that was wrong. They are reachable only from createOrUpdateLoanProduct/createOrUpdateSavingsProduct, and this job's orchestration (mfi_orc.xml:2523-2527) has no validators at all. 333 is the platform's generic fallback, NovopayAPIConstants.UNEXPECTED_ERROR_CODE, written by ServiceOrchestrator:73-78 for any exception that is not a NovopayFatalException or NovopayNonFatalException - about 357 throw sites, so naming two of them was a guess dressed as a citation. Actual cause: GenerateNocFileJobProcessor:77 resolves the outbound folder via FileHelperService.getFolderPath, which calls Files.createDirectories and on IOException throws BatchRuntimeException - a plain RuntimeException, so it misses the specific catch and lands in the generic one, before runJob() is ever reached. The trigger is local: master_outbound_config id 12 points at /apps/documents/noc-document and /apps does not exist here. The robustness defect is not local - a missing or unwritable output directory is indistinguishable from any other unexpected error. GAP-094. When it does run the job writes loan_account.noc_document_id and a loan_account_noc_details row and emits <lan>_closure_letter.pdf under that folder plus /outbound, nested by optional officeCode/pincode subdirectories - those are the two asserts to add.",
+  "known_open_gap": "GAP-094"
+ },
+ "batch.proactive_excess_refund": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "refund",
+   "batch",
+   "post-eod",
+   "money"
+  ],
+  "title": "proactiveExcessAmountRefund",
+  "service": "accounting",
+  "api": "proactiveExcessAmountRefund",
+  "batch_job_name": "proactiveExcessAmountRefund",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.file_staging_proactive_refund fspr JOIN mfi_accounting.loan_disbursement_mode_details ldmd ON ldmd.loan_account_id = fspr.loan_account_id WHERE fspr.pro_active_excess_amount_refund_fail = false AND fspr.is_deleted = false AND fspr.refund_allowed = true) = 0 AND (SELECT count(*) FROM mfi_accounting.file_staging_proactive_refund s WHERE s.updated_on >= current_date AND s.is_deleted = true AND (s.transaction_reference_number IS NULL OR NOT EXISTS (SELECT 1 FROM mfi_accounting.loan_account_excess_amount_refund_details d WHERE d.loan_account_id = s.loan_account_id AND d.created_on >= current_date AND d.total_refund_amount = s.total_refund_amount))) = 0 THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "proactiveExcessAmountRefund drains file_staging_proactive_refund: it calls the bank for each staged row and posts the refund. Both outcomes remove the row from the reader's set - success sets is_deleted true with a transaction_reference_number, failure sets pro_active_excess_amount_refund_fail true (ProactiveExcessAmountRefundItemWriter.java:294-301 and :255-259). db_eq asserts both halves. Drain: the reader's WHERE clause (ProactiveExcessAmountRefundItemReader.java:26-28) must return zero, seen RED at 4 rows before the run. Value: every row this run completed carries a reference number AND a matching loan_account_excess_amount_refund_details row with an equal total_refund_amount - a reference number alone would pass while the money leg was never written. Scoped to today because 108 historical rows predate this contract. Money tier: the writer calls the bank simulator on 8018 and postTransaction, so the simulator must be up. batch_wrote is absent for the same reason as the staging case - a correct re-run has nothing left to drain. Finding, not encoded here: processRecords swallows every exception at LOG.debug (:157), so a failed refund leaves no durable error signal beyond the fail flag."
+ },
+ "batch.proactive_excess_refund_staging": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "refund",
+   "batch",
+   "post-eod"
+  ],
+  "title": "proactiveExcessAmountRefundStaging",
+  "service": "accounting",
+  "api": "proactiveExcessAmountRefundStaging",
+  "batch_job_name": "proactiveExcessAmountRefundStaging",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.loan_account la JOIN mfi_accounting.account a ON a.id = la.account_id JOIN mfi_accounting.loan_product lp ON la.loan_product_id = lp.id JOIN mfi_accounting.loan_repayment_mode_details lrmd ON la.account_id = lrmd.loan_account_id WHERE lrmd.mode <> 'CASH' AND la.loan_status = 'CLOSED' AND la.refund_allowed = true AND lp.proactive_excess_amount_refund_allowed = true AND CAST(a.closing_date AS date) + lp.proactive_refund_lock_in_period < to_timestamp(${JOB_TIME}/1000)::date AND la.excess_amount >= lp.proactive_minimum_refund_amount AND la.account_id NOT IN (SELECT loan_account_id FROM mfi_accounting.file_staging_proactive_refund)) = 0 AND (SELECT count(*) FROM mfi_accounting.file_staging_proactive_refund s JOIN mfi_accounting.loan_account la ON la.account_id = s.loan_account_id WHERE s.created_on >= current_date AND (s.total_refund_amount <> la.excess_amount OR s.inout_status <> 'OUTBOUND_SUCCESS')) = 0 THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "proactiveExcessAmountRefundStaging stages closed loans carrying refundable excess into file_staging_proactive_refund. db_eq has two clauses, both derived from the job's own contract. Drain: no loan may satisfy the reader's WHERE clause and still be unstaged - this is the reader query verbatim (ProactiveExcessAmountRefundStagingItemReader.java:36-42) and it was seen RED at 4 candidates before the run. Value: every row this run wrote carries total_refund_amount equal to the loan's excess_amount and inout_status OUTBOUND_SUCCESS, per ProactiveExcessAmountRefundStagingItemProcessor.java. Scoped to created_on >= current_date because 18 of 108 historical rows carry an amount gap and 7 a status gap - residue from earlier code, not a contract this run must satisfy. The job is idempotent by construction: the reader excludes account_ids already present in the staging table, so a second run writes nothing and batch_wrote, not db_eq, is what distinguishes ran-with-nothing-to-do from did-not-run. batch_wrote is deliberately absent: this is a drain job, so a correct re-run writes zero rows and read=0/write=0 is the healthy state, not a failure. Proven here - the first run staged 4 rows (6004180628, 6004167925, 6004181928, 6004181525, each 250.00, OUTBOUND_SUCCESS) and flipped db_eq from MISMATCH to SUCCESS; the immediate second run reported read=0 write=0 with db_eq still SUCCESS. batch_wrote belongs on jobs that do work every run (dpd, accrual, billing), not on ones whose reader excludes what it already processed."
+ },
+ "batch.si_presentation_files": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "service",
+  "tags": [
+   "si",
+   "presentation",
+   "batch",
+   "bod"
+  ],
+  "title": "generateSIPresentationFiles",
+  "service": "accounting",
+  "api": "generateSIPresentationFiles",
+  "batch_job_name": "generateSIPresentationFiles",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.si_presentation_details WHERE is_deleted = false AND presentation_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date) > 0 AND NOT EXISTS (SELECT 1 FROM mfi_accounting.si_presentation_details p WHERE p.is_deleted = false AND p.presentation_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date AND (p.status <> 'I' OR p.amount <= 0 OR p.amount <> (SELECT COALESCE(sum(x.amount), -1) FROM mfi_accounting.si_presentation_loan_account_details x WHERE x.mandate_reference_number = p.mandate_reference_number AND x.parent_loan_account_id IS NULL AND x.is_deleted = false AND x.value_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date))) AND NOT EXISTS (SELECT 1 FROM mfi_accounting.si_presentation_loan_account_details c JOIN mfi_accounting.loan_installment_details lid ON lid.loan_account_id = c.loan_account_id AND lid.installment_date = c.value_date AND lid.is_deleted = false JOIN mfi_accounting.loan_account la ON la.account_id = c.loan_account_id WHERE c.is_deleted = false AND c.parent_loan_account_id IS NULL AND c.value_date::date = (to_timestamp(${JOB_TIME}/1000.0) AT TIME ZONE 'Asia/Kolkata')::date AND c.amount <> lid.installment_amount - lid.settled_amount - COALESCE(la.excess_amount, 0)) THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "generateSIPresentationFiles is two tasklets. TK1 PopulateSIPresentationStepTasklet selects the installments due on the value date and writes si_presentation_details (one row per bank debit) plus si_presentation_loan_account_details (the loans behind each debit); TK2 CreateSIPresentationFileTasklet writes the bank .txt and a si_presentation_file_details row. db_eq asserts TK1's product, which is the part that is provable on this machine. Three clauses. Non-vacuity: at least one presentation row exists for the run's own presentation date, derived from ${JOB_TIME} so the assert reads THIS run and not a previous one - seen RED at zero rows for JOB_TIME 2026-08-08, where the job COMPLETED having produced nothing. Split-vs-total: every parent amount equals the sum of its child amounts sharing the mandate_reference_number, EXCLUDING children with parent_loan_account_id set. That exclusion is the contract, not a convenience: PopulateSIPresentationStepTasklet.java:226-241 sets the parent-account presentation amount to the parent loan's own dueAmount and then adds extra child rows for the member loans, so a naive parent=sum(all children) reading is wrong and matched only 6 of 41 rows. The group branch (:253-256) accumulates add(dueAmount) and the individual branch (:271-278) is 1:1, and both are covered by the corrected form, which matched 41 of 41. Value: every child amount equals installment_amount - settled_amount - excess_amount, which is getDueAmount at :284-290 - this is the rupee figure that will be debited from the customer's bank account, so it is asserted directly rather than via a total. status must be 'I' (INITIATED). Proven RED twice: once vacuously (a date the job produced nothing for) and once on value, by moving one child amount of 41 by one rupee, which flipped the assert to MISMATCH; restored to GREEN. JOB_TIME is pinned to 2026-08-14 because that is a value date this fixture actually has SI candidates for (41), and si.configured.days.for.presentation is 0 so value date = presentation date = job date. It is env-overridable. NOT asserted, deliberately: the bank file itself. reportPath resolves from mfi_masterdata.configuration si.presentation.report.path to /apps/documents/novopay-batch/si/presentation, which does not exist on this machine, and CreateSIPresentationFileTasklet.java:137 catches IOException at LOGGER.debug - so the run logged nine FileNotFoundException for NP260814_001.txt, wrote no file and no si_presentation_file_details row, and still reported COMPLETED. That swallow is filed as a finding in EVIDENCE.md: a job whose entire purpose is a bank-facing file reports success when the file was never created, and the si_presentation_file_details row is the assert that would catch it once an output root exists. Re-run note: the populate step is guarded by findCountByPresentationDate, so a second run at the pinned date short-circuits and the assert re-validates the stored product rather than freshly produced rows; to re-prove production, point JOB_TIME at another candidate date.",
+  "defaults": {
+   "JOB_TIME": "1786645800000"
+  }
+ },
+ "batch.trial_balance_calc": {
+  "type": "batch",
+  "quick": true,
+  "wait_batch": true,
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "trial-balance",
+   "batch",
+   "bod",
+   "money"
+  ],
+  "title": "trialBalanceCalculation",
+  "service": "accounting",
+  "api": "trialBalanceCalculation",
+  "batch_job_name": "trialBalanceCalculation",
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT count(*) FROM mfi_accounting.trial_balance WHERE is_deleted = false) > 0 AND NOT EXISTS (SELECT 1 FROM mfi_accounting.trial_balance WHERE is_deleted = false GROUP BY business_date HAVING SUM(ftd_cr + ftd_dr) <> 0) AND NOT EXISTS (SELECT 1 FROM (SELECT business_date::date d, SUM(ftd_cr + ftd_dr) tb_net FROM mfi_accounting.trial_balance WHERE is_deleted = false GROUP BY 1) tb LEFT JOIN (SELECT business_date::date d, SUM(CASE WHEN cr_dr_indicator = 'C' THEN net_amount ELSE -net_amount END) td_net FROM mfi_accounting.transaction_details WHERE is_child_gl_code = false AND (narration NOT IN ('GL_BALANCE_ZEROISATION') OR narration IS NULL) GROUP BY 1) td ON td.d = tb.d WHERE tb.tb_net <> COALESCE(td.td_net, 0)) THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "trialBalanceCalculation is two tasklet steps, not a reader/processor/writer job, so the KG's footprint shows nothing: PopulateTrialBalanceBatchTasklet walks transaction_details day by day from trial_balance_run_history.tb_last_run_date + 1 and writes trial_balance; PopulateOpeningBalanceNextFYBatchTasklet writes opening_balance and the run-history row. Debits are stored negated (PopulateTrialBalanceBatchTasklet.java:246), so ftd_cr + ftd_dr is net credit movement. db_eq asserts three things: the table is non-empty (it was empty before this run, which is the red the green was measured against - 266135 rows across 2026-06-10..2026-06-26 after); every business_date nets to zero, which is the trial balance actually balancing; and each date reconciles against the same net computed straight from transaction_details, which is the check that would catch a mis-signed or dropped leg. Idempotency is gated, not deduped: the service short-circuits when calculation_start_date is after the reporting date, but the writer has no delete-before-insert, so a run that bypassed the gate would duplicate rows - the zero-sum clauses would not catch that, and a row-count assert would be fixture-brittle. Named as a limit rather than papered over. Office count comes from an external API (getActiveOfficeIdsWithExternalBranchCodes), so no fixed row count is assertable here. The gate was observed to hold: an immediate second run left the row count at 266135 unchanged."
+ },
+ "batch.trial_balance_zeroisation": {
+  "type": "batch",
+  "wait_batch": true,
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "trial-balance",
+   "zeroisation",
+   "batch",
+   "bod",
+   "money"
+  ],
+  "title": "trialBalanceZeroisationJob",
+  "service": "accounting",
+  "api": "trialBalanceZeroisationJob",
+  "batch_job_name": "trialBalanceZeroisationJob",
+  "defaults": {
+   "JOB_TIME": "1806517800000"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "batch_completed": true,
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "WITH z AS ( SELECT td.gl_code, td.office_id, td.cr_dr_indicator, td.net_amount, td.is_child_gl_code FROM mfi_accounting.transaction_details td JOIN mfi_accounting.transaction_master tm ON tm.id = td.transaction_id WHERE td.narration = 'GL_BALANCE_ZEROISATION' AND tm.stan = '${STAN}' ) SELECT CASE WHEN (SELECT count(*) FROM z) = 2 AND (SELECT count(*) FROM z WHERE gl_code='47631' AND office_id=1 AND cr_dr_indicator='D' AND net_amount=28512.000000 AND is_child_gl_code=false) = 1 AND (SELECT count(*) FROM z WHERE gl_code='230200001' AND office_id=1 AND cr_dr_indicator='C' AND net_amount=28512.000000 AND is_child_gl_code=false) = 1 AND (SELECT SUM(CASE WHEN cr_dr_indicator='C' THEN net_amount ELSE -net_amount END) FROM z) = 0 AND (SELECT is_zeroisation_done FROM mfi_accounting.trial_balance_run_history WHERE id = 503) THEN 'SUCCESS' ELSE 'MISMATCH' END"
+   }
+  },
+  "why": "trialBalanceZeroisationJob. Uses a MIDNIGHT job_time, and that is not a workaround - it is what production passes. The platform business date (current.business.date) is midnight-stamped; the workspace's default JOB_TIME correlator is 18:00 IST, which no production caller ever supplies. A same-day claim that this job cannot pass its own gate was WITHDRAWN after checking that: the cron controls when the job is triggered, not the job_time parameter it receives. trialBalanceZeroisationJob is two tasklets, no reader/writer, so batch_step_execution read/write counts are 0 even on a fully successful run - they cannot tell a real run from a no-op, and the job returns HTTP 200 + COMPLETED either way. Only the SQL proof separates them. SEED (both statements, and both must be restored afterwards): UPDATE mfi_accounting.trial_balance_run_history SET tb_last_run_date='2027-03-31', is_zeroisation_done=NULL WHERE id=503; and an opening_balance row for the new FY: INSERT INTO mfi_accounting.opening_balance (gl_code, office_id, external_branch_code, opening_balance, financial_year, created_by, created_on, updated_by, updated_on, opening_balance_after_zeroisation) VALUES ('47631', 1, '', 28512.000000, '2027-04-01 00:00:00', 'SYSTEM', now(), 'SYSTEM', now(), NULL) -- guard with NOT EXISTS. RESTORE AFTER THE RUN: UPDATE ... SET tb_last_run_date='2026-06-26', is_zeroisation_done=NULL WHERE id=503 - row 503 is the CURRENT financial year row (2026-04-01..2027-03-31) and is the same row PopulateTrialBalanceBatchTasklet walks from for batch.trial_balance_calc, so leaving the seeded value in place makes that case calculate nothing. The two cases cannot share the fixture; the seed is temporary by construction. WHY THE SEED IS NEEDED: validateJobRundate (TrialBalanceZeroisationBatchService.java:109-133) runs the job only when the business date is April 1, the run-history row keyed on the previous FY's last day exists, its tb_last_run_date is not before that day, and is_zeroisation_done is not already true. Without the opening_balance row the first tasklet posts nothing and any assert passes vacuously. JOB_TIME MUST BE MIDNIGHT (1806517800000 = 2027-04-01 00:00 IST). tb_last_run_date is a DATE column, so the entity value is always midnight, while lastDayOfPreviousFinancialYear carries job_time's time-of-day. At the recipe's 18:00 job_time (1806582600000) the comparison is 2027-03-31 00:00 .before(2027-03-31 18:00) = true and the job terminates with 'TB: Not calculated for the last day of previous Financial Year' - observed, and the job's own cron is '0 0 18 * * ?', so in production this gate can only pass if the trigger lands exactly at 00:00:00.000. Flagged as a behaviour, not worked around. RED: with the seed applied and the 18:00 job_time the job returned HTTP 200, reached COMPLETED in 1s, wrote nothing, and db_eq returned MISMATCH. GREEN: with the midnight job_time the job posted exactly two legs - 47631 (INCOME) DR 28512.000000 office 1 and 230200001 (retail earning, config retail.earning.gl.code) CR 28512.000000 office 1, is_child_gl_code=false, net zero - and db_eq returned SUCCESS. An immediate second run without the reseed returned COMPLETED again and db_eq MISMATCH, which is the assert proving it is fail-closed: it is scoped by transaction_master.stan = the STAN ntest generated for THIS run, so a no-op writes no matching master row and cannot pass on rows a previous run left. NOT VERIFIED: the second tasklet's opening_balance.opening_balance_after_zeroisation leg. PopulateOpeningBalanceAfterZeroisationBatchTasklet reads its own postings back with 'transaction_details WHERE business_date = firstDayOfFY', but CreateTransactionMasterProcessor.java:72 stamps business_date from platformDateUtil.getBusinessDateInLong() - the platform business date, which on this local stack is 2025-12-04, not 2027-04-01. The readback therefore matched nothing, no opening_balance row was updated, and the tasklet still set is_zeroisation_done=true, so the leg is lost silently and the job cannot be retried without a manual reset. In production the two dates coincide because the job runs at BOD on April 1; the coupling is undocumented and is a candidate gap. Proving that leg locally needs the platform business date moved to 2027-04-01, which is a global masterdata config (current.business.date) that every other registry case depends on - not moved."
+ },
+ "crossservice.cancel_loan_foreclosure_payments_caller": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "payments-caller",
+   "foreclosure",
+   "prepayment"
+  ],
+  "title": "cancelLoanForeclosure — payments-called foreclosure cancel soft-deletes prepayment_details + charge rows, restores loan_status ACTIVE",
+  "service": "accounting",
+  "api": "cancelLoanForeclosure",
+  "request": {
+   "account_number": "6000005157",
+   "reject_reason": "QA_TEST_CANCEL",
+   "notes": "cross-service coverage probe"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT is_deleted FROM mfi_accounting.prepayment_details WHERE id=283357)=true AND (SELECT task_status FROM mfi_accounting.prepayment_details WHERE id=283357)='REJECTED' AND (SELECT reject_reason FROM mfi_accounting.prepayment_details WHERE id=283357)='QA_TEST_CANCEL' AND NOT EXISTS (SELECT 1 FROM mfi_accounting.prepayment_charge_details WHERE prepayment_details_id=283357 AND is_deleted=false) THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT task_status||'/'||is_deleted::text FROM mfi_accounting.prepayment_details WHERE id=283357),'NULL') END"
+   }
+  },
+  "note": "SINGLE-SHOT on prepayment_details.id=283357 (LAN 6000005157) — the processor unconditionally soft-deletes the row and its charge rows, so a re-run needs a fresh open prepayment_details row (another loan_status=ACTIVE loan with a live, non-deleted prepayment_details row and no prior deleteTask dependency). Caller: apiName cancelLoanForeclosure, trustt-platform-payments (3 call sites per .claude accounting-coverage worklist / REPORT.md #17 — grep 'cancelLoanForeclosure' under trustt-platform-payments/src/main/java). Orchestration: loans_orc.xml:2273-2299 (mandatoryFieldValidator account_number=130317; Processor bean=cancelLoanForeclosureProcessor; then a Control that calls deleteTask only when task_status does NOT match APPROVED|REJECTED). Processor: CancelLoanForeclosureProcessor.java — getIdAndLoanAccountIdByAcctNo picks the latest non-deleted prepayment_details row for the account (PrepaymentDetailsRepository.java:36-37, ORDER BY created_on DESC LIMIT 1, is_deleted=false filter), soft-deletes it (isDeleted=true) with task_status forced to REJECTED and the request's reject_reason/notes (lines 44-48), soft-deletes every prepayment_charge_details row for that prepayment_details_id (lines 50-53), and restores loan_account.loan_status to ACTIVE (lines 55-59). IMPORTANT: because the processor itself always sets task_status=REJECTED into the ExecutionContext BEFORE the orchestration's Control check (line 62: executionContext.put('task_status', pdEntity.getTaskStatus())), the downstream deleteTask API call is NEVER actually invoked regardless of the row's original task_status — confirmed live (task service is not running locally on this checkout and the call still succeeded end-to-end)."
+ },
+ "crossservice.create_repayment_mandate_details_e2e": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "mandate",
+   "los-caller",
+   "standing-instructions"
+  ],
+  "title": "createRepaymentMandateDetails — LOS-called mandate registration writes repayment_mandate_details + repayment_account_details",
+  "service": "accounting",
+  "api": "createRepaymentMandateDetails",
+  "request": {
+   "mandate_details": {
+    "casa_account_number": "50100999888712",
+    "mandate_category": "ENACH",
+    "loan_category": "IND",
+    "start_date": "1786000000000",
+    "end_date": "1917000000000",
+    "repayment_frequency": "MONTHLY",
+    "mandate_type": "RECURRING",
+    "mandate_status": "ACTIVE",
+    "loan_app_id": "${STAN}",
+    "max_amount": "5000",
+    "account_type": "SAVINGS",
+    "bank_name": "HDFC BANK",
+    "ifsc_code": "HDFC0000240",
+    "casa_account_holder_name": "${STAN}"
+   }
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT rad.account_holder_name FROM mfi_accounting.repayment_mandate_details rmd JOIN mfi_accounting.repayment_account_details rad ON rad.id=rmd.repayment_account_details_id WHERE rmd.loan_application_id='${STAN}' AND rmd.mandate_status='ACTIVE' AND rmd.is_deleted=false ORDER BY rmd.id DESC LIMIT 1) = '${STAN}' THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT rad.account_holder_name FROM mfi_accounting.repayment_mandate_details rmd JOIN mfi_accounting.repayment_account_details rad ON rad.id=rmd.repayment_account_details_id WHERE rmd.loan_application_id='${STAN}' ORDER BY rmd.id DESC LIMIT 1),'NULL') END"
+   }
+  },
+  "note": "Caller: trustt-platform-los/src/main/java/in/novopay/los/util/CreateMandateAPIUtil.java:144-173 (context.put(MFIConstants.MANDATE_CASA_ACCOUNT_NUMBER=\"casa_account_number\", ...) then internalAPIClient.callInternalAPI(..., \"createRepaymentMandateDetails\", ...)). Orchestration: ServiceOrchestrationXML.xml:9021. Request fields are nested under a top-level \"mandate_details\" object per the JTF request template (trustt-platform-accounting/deploy/application/templates/request/product/createRepaymentMandateDetails_requestTemplate.json) — a flat top-level request (matching the raw ExecutionContext key names in the XML IParam fieldName attrs) fails 130349 'casa_account_number is mandatory' even though the field IS present, because the template's CMPLX/MAP wrapper is what flattens 'mandate_details.*' into the ExecutionContext; this is the exact incident-class mistake api-contract-safety.md warns about — the JTF template is the real contract, not the orchestration XML's flat IParam names. Processors: getUseCaseDetails(usecase_number=MANDATE-DTLS-UC001) -> validateMandateDetailsForCreateProcessor (ValidateMandateDetailsForCreateProcessor.java:22-58, throws 134492 if a REGISTRATION_PENDING/ACTIVE mandate already exists for the same loan_app_id — this is why loan_app_id must be unique per run, hence ${STAN}) -> createMandateDetailsProcessor (CreateMandateDetailsProcessor.java:18-100, writes repayment_mandate_details AND upserts repayment_account_details by casa_account_number). NOTE mandate_status in the request is NOT honoured for creation — CreateMandateDetailsProcessor.java:48 hardcodes MANDATE_STATUS_ACTIVE regardless of the request value; the assert checks the actual written status (ACTIVE), not the requested one. mandate_category masterdata: request value 'STANDARD' is rejected (134387 Invalid mandate_category) — valid values observed live in repayment_mandate_details are ENACH / SI / LOAN_REPAYMENT; used ENACH. Real write proven on LAN-free standalone mandate (loan_app_id=${STAN}); casa_account_number 50100999888712 is a shared fixture repayment_account_details row that upserts on every run (findOneByAccountNumber) — safe to re-run."
+ },
+ "crossservice.update_child_loan_disbursement_status_los_caller": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "los-caller",
+   "shg",
+   "clmt",
+   "disbursement"
+  ],
+  "title": "updateChildLoanDisbursementStatus — LOS LAR manual-complete path closes CLMT queue row + parent loan_account.disbursement_status",
+  "service": "accounting",
+  "api": "updateChildLoanDisbursementStatus",
+  "request": {
+   "external_ref_number": "88011001",
+   "child_loan_disbursement_details": [
+    {
+     "external_ref_number": "88011003",
+     "disbursement_status": "COMPLETED"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT event_status FROM mfi_accounting.loan_account_events_queue WHERE id=62543)='C' AND (SELECT (data::jsonb)->>'disbursement_status' FROM mfi_accounting.loan_account_events_queue WHERE id=62543)='COMPLETED' AND (SELECT la.disbursement_status FROM mfi_accounting.loan_account la JOIN mfi_accounting.account a ON a.id=la.account_id WHERE a.account_number='6004197325')='COMPLETED' THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT event_status FROM mfi_accounting.loan_account_events_queue WHERE id=62543),'NULL')||'/'||COALESCE((SELECT (data::jsonb)->>'disbursement_status' FROM mfi_accounting.loan_account_events_queue WHERE id=62543),'NULL') END"
+   }
+  },
+  "note": "SINGLE-SHOT FIXTURE — this exact case can only run once against queue row 62543 (parent LAN 6004197325 / ext_ref 88011001, child ext_ref 88011003) because the processor flips the row from event_status P to C for real; re-running requires a fresh SHG child disbursement leaving a CLMT/P row (see scripts/bin/disburse-shg-quick.sh). This mirrors the documented behaviour of accounting.disb_update_success_writes_history (re-runs append/consume real state, assert reads latest). Caller: trustt-platform-los caller of apiName updateChildLoanDisbursementStatus (LOS LAR/payment-reinitiation manual-complete flow — grep 'updateChildLoanDisbursementStatus' under trustt-platform-los/src/main/java). Orchestration: group_mfi_orc.xml:789 (no validators, single Processor bean=updateChildLoanDisbursementStatusProcessor). Processor: UpdateChildLoanDisbursementStatusProcessor.java. account_number resolution: ExternalRefLoanAccountLookup.resolveLoanRow (ExternalRefLoanAccountLookup.java) — no entity_type/product_id sent here so it falls back to loanAccountDAOService.findOneByExternalRefNumber on the PARENT external_ref_number (88011001); the CHILD external_ref_number (88011003) is matched separately inside processChildLoansDisbursement via loanAccountEventsQueueDAOService.findOneByFiller2(childRef, 'CLMT') (UpdateChildLoanDisbursementStatusProcessor.java:70). Real write: parent loan_account_events_queue row id=62543 event_status P->C, embedded JSON data.disbursement_status set to the requested 'COMPLETED' and data.external_error_message overwritten to 'Manually Completed through LAR' (line 78); no other pending CLMT/CLB rows existed for this parent_account_id=8246460 so UpdateChildLoanDisbursementStatusProcessor.java:57-61 takes the COMPLETED branch (not CHILD_SUCCESS) and sets loan_account.disbursement_status=COMPLETED, filler_1/filler_2 cleared."
+ },
+ "crossservice.update_collection_batch_details_challan_payments_caller": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "payments-caller",
+   "foreclosure",
+   "collection-batch"
+  ],
+  "title": "updateCollectionBatchDetails (function_sub_code=CHALLAN_DETAILS) — payments-called batch-approval writes prepayment_details.challan_number/approved_on",
+  "service": "accounting",
+  "api": "updateCollectionBatchDetails",
+  "headers": {
+   "function_sub_code": "CHALLAN_DETAILS"
+  },
+  "request": {
+   "loan_account_list": [
+    {
+     "event": "foreclosure",
+     "account_number": "6000137440",
+     "approved_on": "1786135916426",
+     "challan_number": "QA-CHALLAN-002",
+     "challan_number_expiry_date": "1786222316426"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT challan_number FROM mfi_accounting.prepayment_details WHERE id=284657)='QA-CHALLAN-002' THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT challan_number FROM mfi_accounting.prepayment_details WHERE id=284657),'NULL') END"
+   }
+  },
+  "note": "PARTIAL COVERAGE — only the CHALLAN_DETAILS branch (updateLoanForeclosureStatus) is covered; the sibling EXPIRED branch (expirePendingCollectionsProcessor -> ExpireLoanForeclosureService / ExpireLoanPartPrepaymentService / ExpireLoanDisbursementCancellationService, bulk age-based eligibility) is NOT covered by this case and needs its own aged fixture — left for a follow-up. FIXTURE DATA-QUALITY NOTE: the first candidate row tried (prepayment_details.id=283757, LAN 6000000262) has bpi_is_fully_waived=NULL, which throws org.springframework.orm.jpa.JpaSystemException 'Null value was assigned to a property of primitive type bpiIsFullyWaived' on ANY save touching that row (PrepaymentDetailsEntity maps this DB-nullable column to a Java primitive boolean) — this reads as response_status.code=333 'Unexpected Error Occured' with no field-level detail. This is a stale-fixture data-quality issue (an older/hand-seeded row missing a column default), not a reproduced product defect — confirmed by using a different, fully-populated row (id=284657, LAN 6000137440) which succeeds cleanly. Worth a data-quality backfill (`UPDATE prepayment_details SET bpi_is_fully_waived=false WHERE bpi_is_fully_waived IS NULL`) if this table is reused as a fixture elsewhere, but that is out of scope here — not modified. Caller: apiName updateCollectionBatchDetails, trustt-platform-payments (6 call sites, 8 total per REPORT.md #5 — grep 'updateCollectionBatchDetails' under trustt-platform-payments/src/main/java, e.g. payments/generateBatch, payments/updateExpiredScheduledBatchStatus orchestration callers). Orchestration: loans_orc.xml:3465-3484 (patternFieldValidator function_sub_code in CHALLAN_DETAILS|EXPIRED=132438; Control routes to updateLoanForeclosureStatus or expirePendingCollectionsProcessor by function_sub_code). Processor: UpdateLoanForeclosureStatus.java — for each loan_account_list entry with event=='foreclosure' (case-insensitive), looks up the latest non-deleted prepayment_details row via the SAME getIdAndLoanAccountIdByAcctNo query as cancelLoanForeclosure, and sets approvedOn/challanNumber/challanNumberExpiryDate from the request. SINGLE-SHOT on id=284657 for the value written (challan_number is idempotently overwritable, so this case IS safely re-runnable with the same literal value — unlike the CLMT/mandate/foreclosure-cancel cases above, nothing here is soft-deleted or state-transitioned one-way)."
+ },
+ "crossservice.update_disbursement_account_details_los_caller": {
+  "type": "api",
+  "smoke_tier": "service",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "los-caller",
+   "disbursement",
+   "payment-reinitiation"
+  ],
+  "title": "updateDisbursementAccountDetails — LOS payment-reinitiation checker writes loan_disbursement_mode_details",
+  "service": "accounting",
+  "api": "updateDisbursementAccountDetails",
+  "request": {
+   "loan_account_number": "0000000212",
+   "disbursement_account_details": [
+    {
+     "mode": "OTHBACCT",
+     "account_number": "50100999888700",
+     "account_type": "SAVINGS",
+     "routing_type": "ROUT_TYP_IFSC",
+     "routing_value": "HDFC0000240",
+     "account_holder_name": "${STAN}"
+    }
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT d.account_holder_name FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.loan_account la ON la.account_id=d.loan_account_id JOIN mfi_accounting.account a ON a.id=la.account_id WHERE a.account_number='0000000212' AND d.account_number='50100999888700' AND d.is_deleted=false ORDER BY d.id DESC LIMIT 1) = '${STAN}' THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT d.account_holder_name FROM mfi_accounting.loan_disbursement_mode_details d JOIN mfi_accounting.loan_account la ON la.account_id=d.loan_account_id JOIN mfi_accounting.account a ON a.id=la.account_id WHERE a.account_number='0000000212' AND d.account_number='50100999888700' AND d.is_deleted=false ORDER BY d.id DESC LIMIT 1),'NULL') END"
+   }
+  },
+  "note": "Caller: trustt-platform-los/src/main/java/in/novopay/los/processor/CreatePaymentReinitiationCheckerTaskProcessor.java:350-364 (updateDisbursementAccountDetails(...), internalAPIClient.callInternalAPI(..., 'updateDisbursementAccountDetails', ...)); field mapping at lines 365-390 (prepareRequest) puts account_type/mode/routing_type/routing_value under a flat 'disbursement_account_details' list matching this API's flat JSON shape (unlike createRepaymentMandateDetails/updateMandateStatus, this template is NOT nested — verified against trustt-platform-accounting/deploy/application/templates request template + the flat IParam names in mfi_orc.xml:2416 both agreeing, and confirmed live). Orchestration: mfi_orc.xml:2416-2429 (mandatoryFieldValidator loan_account_number=130015; Processor bean=updateDisbursementAccountDetailsProcessor). Processor: UpdateDisbursementAccountDetailsProcessor.java — upserts loan_disbursement_mode_details by (loan_account_id, account_number) via findOneByLoanAccountIdAndAccountNumber, so this case is safely re-runnable: account_holder_name is stamped with ${STAN} each run to prove a fresh write, not a stale row. account_number 0000000212 is an arbitrary existing loan_account (read-only precondition, no fixture built)."
+ },
+ "crossservice.update_mandate_status_los_caller": {
+  "type": "api",
+  "smoke_tier": "money",
+  "verify_mode": "runtime",
+  "tags": [
+   "cross-service",
+   "los-caller",
+   "mandate",
+   "standing-instructions"
+  ],
+  "title": "updateMandateStatus — LOS eNACH callback rejects a REGISTRATION_PENDING mandate",
+  "service": "accounting",
+  "api": "updateMandateStatus",
+  "request": {
+   "mandate_details": {
+    "loan_app_id": "399120",
+    "mandate_status": "FAILED"
+   }
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "SELECT CASE WHEN (SELECT mandate_status FROM mfi_accounting.repayment_mandate_details WHERE id=57248)='REJECTED' AND (SELECT rejected_or_cancelled_date IS NOT NULL FROM mfi_accounting.repayment_mandate_details WHERE id=57248) THEN 'SUCCESS' ELSE 'MISMATCH:'||COALESCE((SELECT mandate_status FROM mfi_accounting.repayment_mandate_details WHERE id=57248),'NULL') END"
+   }
+  },
+  "note": "PRECONDITION FIXTURE, NOT REBUILT — found an existing live REGISTRATION_PENDING row (repayment_mandate_details.id=57248, loan_application_id=399120) rather than hand-inserting one; CreateMandateDetailsProcessor cannot create a REGISTRATION_PENDING row (it hardcodes ACTIVE on create — see the createRepaymentMandateDetails case note), so REGISTRATION_PENDING rows only exist from other real flows (LOS eNACH registration) and are consumed by this test. SINGLE-SHOT on id=57248: after this case runs, the row is REJECTED and cannot be used again without a DB reset (or a fresh REGISTRATION_PENDING row from another real flow) — the perturb/revert cycle below is proof-of-assert only, not a repeatability mechanism for the case itself. Caller: apiName updateMandateStatus, LOS standing-instructions/eNACH-status-callback flow (grep 'updateMandateStatus' under trustt-platform-los/src/main/java). Orchestration: ServiceOrchestrationXML.xml:9494 (no validators; Processor bean=updateMandateStatusProcessor). Request nested under 'mandate_details' per the JTF template (same nesting contract as createRepaymentMandateDetails). Processor: UpdateMandateStatusProcessor.java — mandateDetailsDAOService.findRegistrationPendingMandateByLoanAppId(loan_app_id); throws 134453 if none found; for mandate_status='FAILED' sets mandateStatus=REJECTED + rejectedOrCancelledDate=now (lines 39-41); for 'ACTIVE' it also cancels any other overlapping ACTIVE mandate on the same loan_account_id (updateExistingMandates, lines 46-59) — not exercised by this case, which uses the FAILED/REJECTED branch since it needs no start_date/end_date and does not disturb sibling mandates."
+ },
+ "excess_refund.loan_account_excess_amount_refund_e2e": {
+  "type": "flow",
+  "api": "loanAccountExcessAmountRefund",
+  "apis": [
+   "loanAccountExcessAmountRefund"
+  ],
+  "service": "accounting",
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "quick": false,
+  "tags": [
+   "excess_refund",
+   "money",
+   "flowtest"
+  ],
+  "title": "loanAccountExcessAmountRefund DEFAULT->APPROVE - excess actually leaves the loan, as excess",
+  "cmd": "python3 scripts/testing/flowtest/excess_reversal/run_excess_amount_refund_e2e.py",
+  "defaults": {
+   "REFUND_AMOUNT": "500",
+   "REFUND_MODE": "TRANSFER_TO_INCOME_GL"
+  },
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "dimensions": [
+    "happy_path",
+    "money_split",
+    "over_refund"
+   ],
+   "verify_mode": "RUNTIME_VERIFIED",
+   "db_asserts": [
+    {
+     "table": "loan_account_excess_amount_refund_details,loan_account_payments_details,loan_account",
+     "assert": "one scalar, fail-closed: the approved refund must leave the loan AS EXCESS and only as excess",
+     "path": "response_status.status",
+     "sql": "WITH la AS ( SELECT l.account_id, COALESCE(l.excess_amount, 0)::numeric(18,6) AS excess_after FROM mfi_accounting.loan_account l WHERE l.la_account_number = '${ACCOUNT_NUMBER}' AND l.is_deleted = false ), r AS ( SELECT MAX(d.refund_effective_date) AS eff_date, COALESCE(SUM(d.total_refund_amount) FILTER (WHERE d.status = 'SUCCESS' AND d.task_status = 'APPROVED'), 0)::numeric(18,6) AS declared, COUNT(*) FILTER (WHERE d.status = 'PENDING_FOR_APPR') AS still_pending FROM mfi_accounting.loan_account_excess_amount_refund_details d JOIN la ON la.account_id = d.loan_account_id WHERE d.id > ${SINCE_REFUND_ID} ), p AS ( SELECT COALESCE(SUM(pd.excess_amount), 0)::numeric(18,6) AS moved, COALESCE(SUM(pd.principal_amount + pd.interest_amount + pd.penalty_amount + pd.fee_amount), 0)::numeric(18,6) AS split_leak, COALESCE(SUM(pd.amount - pd.excess_amount), 0)::numeric(18,6) AS amount_drift, COUNT(*) AS n FROM mfi_accounting.loan_account_payments_details pd JOIN la ON la.account_id = pd.loan_account_id WHERE pd.client_reference_number LIKE 'EAR' || la.account_id::text || '%' AND pd.id > ${SINCE_LAPD_ID} ), dues AS ( SELECT COALESCE(SUM(ldd.due_amount - ldd.paid_amount - ldd.waived_amount), 0)::numeric(18,6) AS open_at_eff FROM mfi_accounting.loan_due_details ldd JOIN la ON la.account_id = ldd.loan_account_id WHERE ldd.is_deleted = false AND ldd.due_date::date <= (SELECT eff_date::date FROM r) AND ldd.due_amount > ldd.paid_amount + ldd.waived_amount ) SELECT CASE WHEN (SELECT COUNT(*) FROM la) <> 1 THEN 'LAN_NOT_RESOLVED:${ACCOUNT_NUMBER}' WHEN (SELECT declared FROM r) = 0 THEN 'NO_APPROVED_REFUND_IN_WINDOW:${ACCOUNT_NUMBER}' WHEN (SELECT n FROM p) = 0 THEN 'REFUND_APPROVED_WITHOUT_PAYMENT_ROW:' || (SELECT declared FROM r)::text WHEN (SELECT split_leak FROM p) <> 0 THEN 'REFUND_SPLIT_LEAK:' || (SELECT split_leak FROM p)::text WHEN (SELECT amount_drift FROM p) <> 0 THEN 'REFUND_AMOUNT_NE_EXCESS:' || (SELECT amount_drift FROM p)::text WHEN (SELECT moved FROM p) <> (SELECT declared FROM r) THEN 'REFUND_MOVED_NE_DECLARED:' || ((SELECT moved FROM p) - (SELECT declared FROM r))::text WHEN (SELECT excess_after FROM la) < 0 THEN 'REFUNDED_MORE_THAN_HELD:' || (SELECT excess_after FROM la)::text WHEN (SELECT excess_after FROM la) <> (SELECT open_at_eff FROM dues) THEN 'EXCESS_LEFT_NE_DUES_AT_EFFECTIVE_DATE:' || ((SELECT excess_after FROM la) - (SELECT open_at_eff FROM dues))::text WHEN (SELECT still_pending FROM r) <> 0 THEN 'REFUND_STILL_PENDING:' || (SELECT still_pending FROM r)::text ELSE 'SUCCESS' END",
+     "checked_by": "db_assert: SUCCESS line in run_excess_amount_refund_e2e.py",
+     "offenders": [
+      "REFUND_APPROVED_WITHOUT_PAYMENT_ROW:<declared> - refund_details says SUCCESS/APPROVED with no payment row",
+      "REFUND_SPLIT_LEAK:<amount> - the refund was booked into principal/interest/penalty/fee instead of excess (total correct, split wrong)",
+      "REFUND_AMOUNT_NE_EXCESS:<delta> - payment row amount and excess_amount disagree",
+      "REFUND_MOVED_NE_DECLARED:<delta> - sum of refund payment rows != sum of approved total_refund_amount",
+      "REFUNDED_MORE_THAN_HELD:<excess_after> - loan_account.excess_amount went negative",
+      "EXCESS_LEFT_NE_DUES_AT_EFFECTIVE_DATE:<delta> - excess remaining != dues open at refund_effective_date",
+      "REFUND_STILL_PENDING:<n> - a PENDING_FOR_APPR row survived the run"
+     ]
+    }
+   ],
+   "note": "EXCESS_LEFT_NE_DUES_AT_EFFECTIVE_DATE is the contract, not an artifact: ValidateDataForLoanAccountExcessAmountRefundProcessor.validateTotalRefundAmount forces refund == excess_before - dues_open_at(refund_effective_date) (132448), and ExecuteExcessAmountRefundProcessor sets excess_after = excess_before - refund. The two together mean excess_after MUST equal dues_open_at(effective_date) exactly - no rounding band applies, both sides are stored numerics. The dues predicate matches LoanDueDetailsRepository.getDueDetails byte for byte (due_date <= eff, due_amount > paid+waived, is_deleted=false)."
+  },
+  "note": "Replaces the KG-presence placeholder excess_refund.loan_account_excess_amount_refund_kg. Runs the REAL API twice (DEFAULT creates the PENDING_FOR_APPR row + task, APPROVE posts EXCESS_AMT_REFUND and draws down loan_account.excess_amount). Only the precondition (loan holds excess) is seeded. LAN is auto-picked: a same-day excess payment row trips refund lock-in 134393, so a LAN is single-use per lock-in window."
+ },
+ "foreclosure.child_loan_foreclosure": {
+  "type": "flow",
+  "api": "childLoanForeclosure",
+  "apis": [
+   "loanPrepayment",
+   "childLoanEventProcessingBatchJob",
+   "childLoanForeclosure",
+   "individualChildLoanForeclosure"
+  ],
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "foreclosure",
+   "shg",
+   "group",
+   "child-fanout",
+   "prepayment-details"
+  ],
+  "title": "childLoanForeclosure — per-component split conserved on every child prepayment_details row",
+  "cmd": "bash scripts/testing/foreclosure/run_child_fc_component_split_e2e.sh",
+  "env": {
+   "WAIVE_BILLED_INTEREST": "200"
+  },
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "verify_mode": "RUNTIME_VERIFIED",
+   "dimensions": [
+    "happy_path",
+    "waiver_distribution",
+    "fanout_completeness"
+   ],
+   "db_asserts": [
+    {
+     "table": "prepayment_details",
+     "assert": "For every child prepayment_details row written by the childLoanForeclosure fan-out, and for every component the flow populates (balance_principal, billed_interest, billed_principal, bpi, billed_dpi when the train has it): <c>_amount_to_be_paid + <c>_waived_amount = <c>_amount exactly; <c>_is_fully_waived=true implies <c>_amount_to_be_paid=0 and <c>_waived_amount=<c>_amount; no component is negative; and every child of the parent has an APPROVED prepayment row. Returns the offending VALUE, never a boolean.",
+     "path": "response_status.status",
+     "sql": "WITH parent AS ( SELECT p.account_id FROM mfi_accounting.loan_account p JOIN mfi_accounting.account a ON a.id = p.account_id WHERE a.account_number = '${PARENT_LAN}' AND p.is_deleted = false ), kids AS ( SELECT c.account_id FROM mfi_accounting.loan_account c JOIN parent ON c.parent_loan_account_id = parent.account_id WHERE c.is_deleted = false ), cpd AS ( SELECT pd.* FROM mfi_accounting.prepayment_details pd JOIN kids k ON k.account_id = pd.loan_account_id WHERE pd.is_deleted = false AND pd.prepayment_status = 'APPROVED' ), comp AS ( SELECT id, loan_account_id, 'balance_principal' AS c, balance_principal_amount AS amt, balance_principal_amount_to_be_paid AS atbp, balance_principal_waived_amount AS wv, balance_principal_is_fully_waived AS fw FROM cpd UNION ALL SELECT id, loan_account_id, 'billed_interest', billed_interest_amount, billed_interest_amount_to_be_paid, billed_interest_waived_amount, billed_interest_is_fully_waived FROM cpd UNION ALL SELECT id, loan_account_id, 'billed_principal', billed_principal_amount, billed_principal_amount_to_be_paid, billed_principal_waived_amount, billed_principal_is_fully_waived FROM cpd UNION ALL SELECT id, loan_account_id, 'billed_dpi', billed_dpi_amount, billed_dpi_amount_to_be_paid, billed_dpi_waived_amount, billed_dpi_is_fully_waived FROM cpd UNION ALL SELECT id, loan_account_id, 'bpi', bpi_amount, bpi_amount_to_be_paid, bpi_waived_amount, bpi_is_fully_waived FROM cpd ), live AS ( SELECT * FROM comp WHERE amt IS NOT NULL AND atbp IS NOT NULL AND wv IS NOT NULL ), bad AS ( SELECT id, c, amt, atbp, wv, fw, CASE WHEN atbp + wv <> amt THEN 'SPLIT_NOT_CONSERVED' WHEN COALESCE(fw, false) AND atbp <> 0 THEN 'FULLY_WAIVED_STILL_BILLED' WHEN COALESCE(fw, false) AND wv <> amt THEN 'FULLY_WAIVED_AMOUNT_SHORT' WHEN wv < 0 OR atbp < 0 THEN 'NEGATIVE_COMPONENT' END AS kind FROM live ) SELECT COALESCE( (SELECT kind || ':pd=' || id || ' ' || c || ' amount=' || amt || ' to_be_paid=' || atbp || ' waived=' || wv || ' fully_waived=' || COALESCE(fw::text, 'null') FROM bad WHERE kind IS NOT NULL ORDER BY id, c LIMIT 1), CASE WHEN (SELECT COUNT(*) FROM kids) = 0 THEN 'NO_CHILDREN_FOR_PARENT' WHEN (SELECT COUNT(DISTINCT loan_account_id) FROM cpd) < (SELECT COUNT(*) FROM kids) THEN 'CHILD_PREPAYMENT_MISSING:' || (SELECT COUNT(DISTINCT loan_account_id) FROM cpd) || '/' || (SELECT COUNT(*) FROM kids) WHEN (SELECT COUNT(*) FROM live) = 0 THEN 'NO_CHILD_PREPAYMENT_COMPONENTS' ELSE 'SUCCESS' END)",
+     "checked_by": "scripts/testing/foreclosure/assert_child_fc_split.sql via child_fc_component_split_e2e.py"
+    }
+   ],
+   "note": "Split conservation is exact BigDecimal arithmetic in ChildLoanForeclosureProcessor.createPrepaymentDetailsObject (amount_to_be_paid = due - childWaived, and on the negative branch childWaived is clamped to due with amount_to_be_paid=0), so no rounding tolerance is allowed on this equality. The waived amount itself is distributed by loan-amount fraction via GroupLoanUtility.getFinalAmountListUsingCarryOver, which hard-fails 1111 unless sum(child waived) == parent waived - that is where whole-rupee carry-over legitimately moves value BETWEEN children while the total stays exact."
+  },
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "loanPrepayment"
+   ],
+   "seeded": [
+    {
+     "key": "fresh_shg_group",
+     "reason": "create_fresh_dcf_group_fixture.py - real disburse + real accrual/posting/billing"
+    }
+   ],
+   "out_of_scope": [
+    {
+     "key": "billed_dpi",
+     "reason": "no DPI component on mfi_integration_v3.4.2.5; the assert skips NULL components and arms automatically on 3.7.1"
+    }
+   ]
+  },
+  "note": "Replaces the WORKSPACE_ONLY KG-presence placeholder. Drives the real production entry: parent group loanPrepayment DEFAULT->APPROVE_TASK->APPROVE enqueues FCL rows (ChildLoanForeclosureEventGenerationProcessor), childLoanEventProcessingBatchJob dispatches EVENT_TYPE_ORC_API_MAP[FCL]=childLoanForeclosure (group_mfi_orc.xml:259), which calls individualChildLoanForeclosure per child. Proven red on four perturbations of a real run (split broken, fully-waived-still-billed, negative component, missing child prepayment)."
+ },
+ "foreclosure.shg_sweep_terminal_guard": {
+  "type": "flow",
+  "api": "loanPrepayment",
+  "smoke_tier": "money",
+  "verify_mode": "processor_mirror_sim",
+  "tags": [
+   "foreclosure",
+   "shg",
+   "disbursement-cancellation",
+   "tdpqa72"
+  ],
+  "title": "SHG parent foreclosure sweep must not restamp CLOSED / DISB_CNCL children (TDPQA-72)",
+  "cmd": "bash scripts/testing/javaprobe/run-probe.sh trustt-platform-accounting scripts/testing/foreclosure/probes/ShgSweepProbe.java",
+  "note": "UpdateLoanStatusForSHGProcessor parent branch selected every child its query returned. INITIATE (loans_orc.xml:1941) uses findAllByParentAccountId with no filter; FINAL (:2087) uses findAllByParentAccountNonClosed (loan_status != 'CLOSED') and writes a hardcoded ACTIVE. A DISB_CNCL child passed both and ended ACTIVE with account.status=CANCELLED. Red on pristine 3.4.2.5: INITIATE DISB_CNCL->FORECLOSURE_FREEZE, FINAL DISB_CNCL->ACTIVE. Runs as a Java probe because ./gradlew test cannot discover tests in this repo (527/547 tests use the removed @RunWith(JUnitPlatform.class)).",
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "verify_mode": "processor_mirror_sim",
+   "dimensions": [
+    "happy_path",
+    "dirty_state"
+   ],
+   "asserts": [
+    "DISB_CNCL child keeps DISB_CNCL through INITIATE and FINAL",
+    "CLOSED child keeps CLOSED through INITIATE",
+    "ACTIVE sibling still moves to FORECLOSURE_FREEZE on INITIATE",
+    "frozen sibling still moves to ACTIVE on FINAL"
+   ]
+  }
+ },
+ "grouploan.child_disbursement_schedule": {
+  "type": "flow",
+  "api": "childLoanDisbursement",
+  "smoke_tier": "money",
+  "tags": [
+   "shg",
+   "disbursement",
+   "grouploan"
+  ],
+  "title": "childLoanDisbursement — child schedule and due split derived from the parent",
+  "cmd": "bash scripts/bin/disburse-shg-quick.sh",
+  "verify_mode": "runtime",
+  "acceptance": {
+   "verify_mode": "runtime",
+   "dimensions": [
+    "happy_path",
+    "adjacent_sibling"
+   ],
+   "db_asserts": [
+    {
+     "table": "loan_installment_details",
+     "assert": "count of non-deleted child installments equals the child's loan_account.number_of_installments AND equals the parent's installment count; each child installment's installment_date, overdue_date and schedule_number equal the parent installment with the same serial_number.",
+     "checked_by": "assert_child_disbursement_schedule.sql — a/e columns: child_installments=24 over 2 children, parent_installments=12, e_calendar_mismatch=0",
+     "contract": "BookChildLoanProcessor.java:144-160 (one child installment per parent installment) + :172-194 (createChildInstallment copies parent calendar)"
+    },
+    {
+     "table": "loan_due_details",
+     "assert": "SUM(due_amount) per child installment equals that child installment's installment_amount, and exactly the components PRIN and INT exist. This is the split, not the total: PRIN = child principal slice, INT = installment_amount - principal slice.",
+     "checked_by": "assert_child_disbursement_schedule.sql — b_due_sum_ne_emi=0, f_unexpected_component=0",
+     "contract": "BookChildLoanProcessor.java:255-272 (dueDetails[0] PRIN = childLoanDTO.installmentAmount; dueDetails[1] INT = installmentAmount - that)"
+    },
+    {
+     "table": "loan_due_details",
+     "assert": "zero cross-loan FKs: every child due row's loan_installment_details_id resolves to an installment whose loan_account_id equals the due row's loan_account_id. A child booked against the PARENT's installment id passes every amount check and fails this one.",
+     "checked_by": "assert_child_disbursement_schedule.sql — c_cross_loan_fk_rows=0. RED: repointing one child due row to the parent's serial-1 installment gives c=1 and b=1.",
+     "contract": "BookChildLoanProcessor.java:219-223 (installment resolved from savedChildLoanInstallmentDetailsMap.get(childLoanAccountId))"
+    },
+    {
+     "table": "loan_due_details",
+     "assert": "carry-over distribution closes: per parent installment serial_number, SUM over children of child installment_amount equals the parent installment_amount, and SUM over children of child PRIN due_amount equals the parent PRIN due_amount.",
+     "checked_by": "assert_child_disbursement_schedule.sql — d_emi_split_ne_parent=0, d_prin_split_ne_parent=0. RED: swapping PRIN and INT due_amount on one child installment leaves b_due_sum_ne_emi=0 (total intact) but gives d_prin_split_ne_parent=1.",
+     "contract": "BookChildLoanProcessor.java:196-235 (shgLoanUtility.getFinalAmountListUsingCarryOver over the parent PRIN due)"
+    }
+   ]
+  }
+ },
+ "kg.response_budget": {
+  "type": "flow",
+  "smoke_tier": "workspace",
+  "verify_mode": "static_gate",
+  "tags": [
+   "kg",
+   "performance"
+  ],
+  "title": "No KG tool may cost more than the grep it replaces",
+  "cmd": "python3 scripts/lib/kg_response_budget.py",
+  "note": "Measured per tool. kg_deps was 6,855 tokens (truncated mid-output), kg_orient 19,024, kg_reads 13,891 with an N+1 flow query per processor. A lookup that expensive loses to grep whatever the rules say, which is why the KG saw 7 calls against 1,958 greps. Now 135-6,435 with explicit '--raw / --full' escapes so nothing is silently dropped.",
+  "expect": {
+   "status": "PASS"
+  }
+ },
+ "read.active_loans_for_customer_flag": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "actor",
+   "collections"
+  ],
+  "title": "getActiveLoansForCustomer — active_loan is the string \"1\", not a boolean",
+  "service": "accounting",
+  "api": "getActiveLoansForCustomer",
+  "verify_mode": "runtime",
+  "env": {
+   "CUSTOMER_ID": "2084347"
+  },
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "customer_id": "${CUSTOMER_ID}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "path_eq": {
+    "active_loan": "1",
+    "customer_id": "${CUSTOMER_ID}"
+   },
+   "paths": [
+    "account_number"
+   ],
+   "db_eq": {
+    "path": "active_loan",
+    "sql": "SELECT CASE WHEN COUNT(*) > 0 THEN '1' ELSE '0' END FROM loan_account WHERE customer_id = ${CUSTOMER_ID} AND loan_status = 'ACTIVE' AND is_deleted = false"
+   }
+  },
+  "print": [
+   "active_loan",
+   "account_number"
+  ],
+  "note": "Caller: actor custom/collections/mfi/util/AccountingUtility.java:101-108 does `\"1\".equalsIgnoreCase((String) apiResponse.get(\"active_loan\"))`. If this ever becomes a JSON boolean or \"true\", the cast fails or the compare returns false and collections silently decides the customer has no active loan — no error, no log. Existing customer 2084347 already has an ACTIVE loan; no seeding. Local run 2026-08-08 returned active_loan=\"1\", account_number=6002505525."
+ },
+ "read.bulk_loan_account_details_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "los",
+   "payments",
+   "reporting"
+  ],
+  "title": "getBulkLoanAccountDetails — account_list rows are FLAT (no account_details wrapper)",
+  "service": "accounting",
+  "api": "getBulkLoanAccountDetails",
+  "verify_mode": "runtime",
+  "env": {
+   "ACCOUNT_NUMBER": "6002505525"
+  },
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "account_number_list": [
+    "${ACCOUNT_NUMBER}"
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "path_eq": {
+    "account_list[0].account_number": "${ACCOUNT_NUMBER}"
+   },
+   "paths": [
+    "account_list[0].loan_status",
+    "account_list[0].product_code",
+    "account_list[0].product_id",
+    "account_list[0].loan_product_id",
+    "account_list[0].office_code",
+    "account_list[0].customer_code"
+   ],
+   "db_eq": {
+    "path": "account_list[0].loan_status",
+    "sql": "SELECT la.loan_status FROM loan_account la JOIN account a ON a.id = la.account_id WHERE a.account_number = '${ACCOUNT_NUMBER}' AND la.is_deleted = false"
+   }
+  },
+  "print": [
+   "account_list[0].account_number",
+   "account_list[0].loan_status",
+   "account_list[0].product_code"
+  ],
+  "note": "Callers: LOS AccountingUtil.java:377-387, payments GetCollectionRecordsAsListProcessor.java:57, reporting. IMPORTANT — the JTF response template says account_list[0].account_details.<field>; the running service returns the fields FLAT on account_list[0]. Local run 2026-08-08 confirms flat. A case generated from the template alone would assert paths that never exist. customer_code is asserted present but its value depends on the fixture."
+ },
+ "read.charge_details_contract_configured": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "los"
+  ],
+  "title": "fetchLoanAccountChargeDetails APR — charges_details never null, PROC_FEE row parseable by LOS KFS",
+  "service": "accounting",
+  "api": "fetchLoanAccountChargeDetails",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "base_amount": "55000",
+   "event": "APR",
+   "event_date": "1754582400000",
+   "office_id": "2",
+   "product_code": "JLGDL"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "30428",
+   "path_eq": {
+    "charges_configured": "true",
+    "charges_details[0].charge_identifier": "PROC_FEE"
+   },
+   "paths": [
+    "charges_details[0].charge_value",
+    "charges_details[0].charge_value_without_tax",
+    "charges_details[0].charge_code",
+    "charges_details[0].charge_type",
+    "charges_details[0].tax_components"
+   ],
+   "path_gt": {
+    "charges_details[0].charge_value": "0"
+   },
+   "db_eq": {
+    "path": "charges_details[0].charge_value",
+    "sql": "SELECT pss.base_amount FROM price_setup ps JOIN price_setup_date_slab pds ON pds.price_setup_id = ps.id AND pds.is_deleted = false JOIN price_setup_slab pss ON pss.price_setup_date_slab_id = pds.id AND pss.is_deleted = false WHERE ps.code = 'PROC_FEE' AND ps.is_deleted = false AND to_timestamp(1754582400) BETWEEN pds.start_date AND pds.end_date AND 55000 BETWEEN pss.from_amount AND pss.to_amount"
+   }
+  },
+  "print": [
+   "charges_configured",
+   "charges_details[0].charge_value",
+   "charges_details[0].charge_code"
+  ],
+  "note": "Caller: trustt-platform-los/src/main/java/in/novopay/los/util/AccountingUtil.java:361 (event=APR from KeyFactSheetDataService.java:332). KFS reads charges_configured (KeyFactSheetDataService.java:375) and iterates charges_details filtering charge_identifier==PROC_FEE (:314-321), then Double.parseDouble on charge_value / charge_value_without_tax (:481-482) — so both must be present and numeric. VALUE CROSS-CHECK 2026-08-08: API returned charge_value=150.00; the configured slab is price_setup_slab.id=2345 (base_amount 150.000000, FLAT, 0-9999999) under price_setup_date_slab.id=2243 (2024-10-09 to 2025-10-29), which is the window event_date 1754582400000 falls in — the db_eq SQL above reproduces that selection and returns 150.000000. RED->GREEN PROVEN: setting slab 2345 base_amount to 175 made the API return 175.00 on the next call (no cache in the way), and restoring 150 returned it to 150.00, so this assert discriminates on value, not shape."
+ },
+ "read.charge_details_contract_unconfigured": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "los",
+   "regression"
+  ],
+  "title": "fetchLoanAccountChargeDetails — no charge configured still returns the PROC_FEE placeholder (charges_configured incident)",
+  "service": "accounting",
+  "api": "fetchLoanAccountChargeDetails",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "base_amount": "55000",
+   "event": "APR",
+   "event_date": "1754582400000",
+   "office_id": "2",
+   "product_code": "JLGDL",
+   "charge_identifier": "NO_SUCH_CHARGE"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "30428",
+   "path_eq": {
+    "charges_configured": "false",
+    "charges_details[0].charge_identifier": "PROC_FEE",
+    "charges_details[0].charge_code": "",
+    "charges_details[0].charge_value": "0",
+    "charges_details[0].charge_value_without_tax": "0"
+   },
+   "paths": [
+    "charges_details[0].tax_components",
+    "charges_details[0].base_amount"
+   ]
+  },
+  "print": [
+   "charges_configured",
+   "charges_details[0].charge_code",
+   "charges_details[0].charge_value"
+  ],
+  "note": "This is the empty branch that broke the LOS KFS page. FetchLoanAccountChargeDetailsProcessor.java:129-136 adds createNoConfigurationPlaceholder when nothing resolves, and sets charges_configured=false. KeyFactSheetDataService.java:320 iterates chargeDetailsList with no null guard, so a null/absent charges_details NPEs the caller. charge_identifier=NO_SUCH_CHARGE drives the placeholder branch on an existing product with no fixture work (filterBasedOnRequestedChargeIdentifier, :163-170). Local run 2026-08-08 returned exactly the values asserted above."
+ },
+ "read.customer_loan_account_bounces_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "los",
+   "payments"
+  ],
+  "title": "getCustomerLoanAccountBounces — total_number_of_bounces is a Long-parseable string",
+  "service": "accounting",
+  "api": "getCustomerLoanAccountBounces",
+  "verify_mode": "runtime",
+  "env": {
+   "CUSTOMER_ID": "2084347"
+  },
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "customer_id_list": [
+    "${CUSTOMER_ID}"
+   ]
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "path_eq": {
+    "customer_bounce_details_list[0].customer_id": "${CUSTOMER_ID}"
+   },
+   "paths": [
+    "customer_bounce_details_list[0].total_number_of_bounces",
+    "customer_bounce_details_list[0].bounce_details_list[0].loan_account_number",
+    "customer_bounce_details_list[0].bounce_details_list[0].number_of_bounces"
+   ]
+  },
+  "print": [
+   "customer_bounce_details_list[0].total_number_of_bounces"
+  ],
+  "note": "Caller: LOS CommonUtil.java:562-573 does Long.parseLong on total_number_of_bounces after a nullChecker — a non-numeric or absent value throws inside group eligibility (GetGroupDetailsProcessor.java:583). Source is GetCustomerLoanAccountBouncesProcessor.java:39-52, which counts markers in loan_account.delinq_string for ACTIVE loans only; there is no bounce-count column, so no db_eq is honest here. Local run 2026-08-08 returned total 3 for customer 2084347 with one loan row. Remove the `path_eq_note_only` key before merging — it is documentation, not an assertion the runner understands."
+ },
+ "read.loan_product_details_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "masterdata",
+   "los"
+  ],
+  "title": "getLoanProductDetails LATEST — loan_details block LOS reads before disbursement",
+  "service": "accounting",
+  "api": "getLoanProductDetails",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "LATEST",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "product_id": "1"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "loan_details.name",
+    "loan_details.code",
+    "loan_details.prepayment_allowed",
+    "loan_details.part_prepayment_allowed",
+    "loan_details.excess_amount_refund_allowed",
+    "loan_details.minimum_amount",
+    "loan_details.maximum_amount",
+    "product_scheme_details.product_scheme_code",
+    "transactions_and_accounting_list[0].placeholder_gl_list[0].dr_placeholder_code"
+   ],
+   "db_eq": {
+    "path": "loan_details.code",
+    "sql": "SELECT p.code FROM loan_product lp JOIN product p ON p.id = lp.product_id WHERE lp.id = 1"
+   }
+  },
+  "print": [
+   "loan_details.name",
+   "loan_details.code",
+   "product_scheme_details.product_scheme_code"
+  ],
+  "note": "12 call sites. LOS calls it with function_code=LATEST (AccountingUtil.java:49-52) and with plain DEFAULT (KeyFactSheetDataService.java:529, ScheduleCumKeyFactSheetDataService.java:205, GroupMembersDetailsDaoService.java:768, CommonUtil.java:888); actor promocode/util/AccountingUtil.java:29. The header variant is part of the contract — assert the LATEST path, which is the one LOS uses on the pre-disbursement leg. Shape note from the local run: name/code live under loan_details, NOT at top level; GetEligibilitySummaryDetailsProcessor.java:201 reads productDetailsMap.get(\"name\") at top level and gets null there. Reported as a shape observation only — production behaviour NOT VERIFIED, do not treat as a defect."
+ },
+ "read.loan_product_list_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "masterdata",
+   "fanout"
+  ],
+  "title": "getLoanProductList — loan_product_list[].loan_details.code/name, the 35-call-site contract",
+  "service": "accounting",
+  "api": "getLoanProductList",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "page_size": "10",
+   "offset": "0"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "loan_product_list[0].loan_details.code",
+    "loan_product_list[0].loan_details.name",
+    "loan_product_list[0].loan_details.id",
+    "loan_product_list[0].loan_details.product_id",
+    "loan_product_list[0].loan_details.loan_category"
+   ],
+   "db_eq": {
+    "path": "loan_product_list[0].loan_details.code",
+    "sql": "SELECT p.code FROM loan_product lp JOIN product p ON p.id = lp.product_id WHERE lp.id = 1"
+   }
+  },
+  "print": [
+   "loan_product_list[0].loan_details.code",
+   "loan_product_list[0].loan_details.name"
+  ],
+  "note": "Highest fan-out read in accounting. Every caller flattens the SAME two hops: LOS AccountingUtil.java:123-131 maps loan_product_list -> loan_details -> code; payments GetProductInfoListProcessor.java:39-47 reads loan_details.code and loan_details.name; actor OfficeUpsertValidationService.java:130-134 maps loan_details -> code; task GetHomeScreenCountProcessor.java:52 casts loan_product_list to JSONArray. Flattening loan_details away, or renaming code/name, breaks five services silently — none of them null-check the inner map. db_eq assumes lp.id=1 exists locally (JLGDL); if the first row is not id=1 the SQL should name whatever product the fixture has."
+ },
+ "read.product_scheme_details_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "masterdata"
+  ],
+  "title": "getProductSchemeDetails — scheme block actor and LOS read for account setup",
+  "service": "accounting",
+  "api": "getProductSchemeDetails",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "id": "1"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "product_scheme_details.code",
+    "product_scheme_details.product_code",
+    "product_scheme_details.product_sub_type",
+    "product_scheme_details.end_date",
+    "product_scheme_details.non_transactional_pricing_list[0].pricing_details.price_setup_code"
+   ],
+   "db_eq": {
+    "path": "product_scheme_details.code",
+    "sql": "SELECT code FROM product_scheme WHERE id = 1 AND is_deleted = false"
+   }
+  },
+  "print": [
+   "product_scheme_details.code",
+   "product_scheme_details.product_code"
+  ],
+  "note": "Callers: actor PopulateActorAccountForApprovalUtility.java:68, actor ActorAccountDetailsValidatorUtility.java:160, LOS OriginationCardsListDAOService.java:56. Request key is `id` — the map's mandatory list omits it and the API answers 130001 'id is mandatory' without it; that is a worklist-generator gap, not an API gap."
+ },
+ "read.repayment_schedule_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "loan360"
+  ],
+  "title": "getLoanAccountRepaymentScheduleDetails — per-installment component split, first row exact",
+  "service": "accounting",
+  "api": "getLoanAccountRepaymentScheduleDetails",
+  "verify_mode": "runtime",
+  "env": {
+   "ACCOUNT_NUMBER": "6002505525"
+  },
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "account_number": "${ACCOUNT_NUMBER}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "loan_repayment_schedule_list[0].installment_date",
+    "loan_repayment_schedule_list[0].installment_amount",
+    "loan_repayment_schedule_list[0].principal_actual_amount",
+    "loan_repayment_schedule_list[0].principal_paid_amount",
+    "loan_repayment_schedule_list[0].principal_outstanding_amount",
+    "loan_repayment_schedule_list[0].interest_actual_amount",
+    "loan_repayment_schedule_list[0].interest_paid_amount",
+    "loan_repayment_schedule_list[0].is_settled",
+    "loan_repayment_schedule_list[0].rate_of_interest"
+   ],
+   "db_eq": {
+    "path": "loan_repayment_schedule_list[0].principal_actual_amount",
+    "sql": "SELECT d.due_amount FROM loan_due_details d JOIN account a ON a.id = d.loan_account_id JOIN loan_installment_details i ON i.id = d.loan_installment_details_id WHERE a.account_number = '${ACCOUNT_NUMBER}' AND d.component_type = 'PRIN' AND d.is_deleted = false ORDER BY i.installment_date LIMIT 1"
+   }
+  },
+  "print": [
+   "loan_repayment_schedule_list[0].installment_amount",
+   "loan_repayment_schedule_list[0].principal_actual_amount"
+  ],
+  "note": "Local run 2026-08-08 on LAN 6002505525: first row principal_actual 4238, principal_paid 4238, installment_amount 5666, is_settled=false. The screen renders the borrower's schedule; a component that silently zeroes is invisible to a status-only check. is_settled is asserted as present because it is a string 'false'/'true', not a boolean — a type flip breaks any caller doing equalsIgnoreCase."
+ },
+ "read.summary_details_ledger_parity": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "loan360"
+  ],
+  "title": "getLoanAccountSummaryDetails — Loan 360 principal/interest equal the ledger, not just present",
+  "service": "accounting",
+  "api": "getLoanAccountSummaryDetails",
+  "verify_mode": "runtime",
+  "env": {
+   "ACCOUNT_NUMBER": "6002505525"
+  },
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {
+   "account_number": "${ACCOUNT_NUMBER}"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "30225",
+   "paths": [
+    "principal_details.original_amount",
+    "principal_details.paid_amount",
+    "principal_details.overdue_amount",
+    "principal_details.waived_amount",
+    "interest_details.accrued_amount",
+    "interest_details.paid_amount",
+    "fees_details.paid_amount",
+    "insurance_premium_details.prem_amount"
+   ],
+   "db_eq": {
+    "path": "principal_details.paid_amount",
+    "sql": "SELECT COALESCE(SUM(d.paid_amount),0) FROM loan_due_details d JOIN account a ON a.id = d.loan_account_id WHERE a.account_number = '${ACCOUNT_NUMBER}' AND d.component_type = 'PRIN' AND d.is_deleted = false"
+   }
+  },
+  "print": [
+   "principal_details.paid_amount",
+   "principal_details.original_amount",
+   "interest_details.paid_amount"
+  ],
+  "note": "Existing fixture, no seeding. Local run 2026-08-08 on LAN 6002505525: API principal_details {original 55000, paid 15051}, interest {original 5842, paid 900}; DB loan_due_details grouped by component_type gives PRIN due 55000 paid 15051, INT due 5842 paid 900 — exact match, so db_eq is green today and goes red if the aggregation changes. Penal (PINT) is deliberately not asserted: PINT is not configured in production. Note principal_details carries no accrued_amount — the JTF response template implies one; the runtime object does not have it."
+ },
+ "read.working_days_contract": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "service",
+  "ship_auto": true,
+  "tags": [
+   "read",
+   "inquiry",
+   "contract",
+   "los",
+   "task",
+   "masterdata"
+  ],
+  "title": "getWorkingDays — working_day_list rows are FLAT; working_day_status drives TAT and schedule maths",
+  "service": "accounting",
+  "api": "getWorkingDays",
+  "verify_mode": "runtime",
+  "headers": {
+   "function_code": "DEFAULT",
+   "function_sub_code": "DEFAULT"
+  },
+  "request": {},
+  "expect": {
+   "status": "SUCCESS",
+   "paths": [
+    "working_day_list[0].name",
+    "working_day_list[0].working_day_status",
+    "working_day_list[0].recurrence",
+    "working_day_list[0].id"
+   ]
+  },
+  "print": [
+   "working_day_list[0].name",
+   "working_day_list[0].working_day_status"
+  ],
+  "note": "Callers: LOS AccountingUtil.callWorkingDaysAPI:495-509 returns the raw list and CalcucateWorkingTimeUtil.java:104 reads (String) workingDays.get(\"working_day_status\"); task CalculateUserTatService.java:105-117 and CalculateUserTatItemWriter.java:213 do the same. Both cast to String on the FLAT element. IMPORTANT — the JTF response template says working_day_list[0].working_day_details.name; the running service returns name/working_day_status/recurrence/id directly on the element. Local run 2026-08-08 confirms flat, first row SATURDAY/PRTL_WORKING. The db_eq is order-independent only if the API keeps returning SATURDAY first; if that proves unstable, pin the assert to a path_eq on the whole list length instead."
+ },
+ "restructuring.loan_account_restructuring_tenure": {
+  "type": "api",
+  "quick": true,
+  "smoke_tier": "money",
+  "tags": [
+   "restructuring",
+   "reschedule",
+   "money",
+   "tenure"
+  ],
+  "title": "loanAccountRestructuring APPROVE — UPDATE_TENURE branch applies REDUCE_TENOR",
+  "service": "accounting",
+  "api": "loanAccountRestructuring",
+  "payload_file": "scripts/testing/flowtest/payloads/restructuring_tenure_approve.json",
+  "defaults": {
+   "ACCOUNT_NUMBER": "6004197225"
+  },
+  "expect": {
+   "status": "SUCCESS",
+   "code": "30433",
+   "db_eq": {
+    "path": "response_status.status",
+    "sql": "WITH la AS ( SELECT l.account_id, l.number_of_installments, l.loan_status FROM mfi_accounting.loan_account l JOIN mfi_accounting.account a ON a.id = l.account_id WHERE a.account_number = '${ACCOUNT_NUMBER}' ), r AS ( SELECT d.* FROM mfi_accounting.loan_account_restructuring_details d JOIN la ON la.account_id = d.loan_account_id WHERE d.is_deleted = false ORDER BY d.id DESC LIMIT 1 ), rs AS ( SELECT s.* FROM mfi_accounting.loan_account_reschedule_details s JOIN r ON r.id = s.identifier_id WHERE s.identifier_type = 'EMIORTENOR' ORDER BY s.id DESC LIMIT 1 ), passed AS ( SELECT count(*) AS n FROM mfi_accounting.loan_installment_details i, la, r WHERE i.loan_account_id = la.account_id AND i.is_deleted = false AND i.is_part_prepayment_entry = false AND i.installment_date <= r.rescheduling_effective_date ), live AS ( SELECT count(*) AS n FROM mfi_accounting.loan_installment_details i, la WHERE i.loan_account_id = la.account_id AND i.is_deleted = false AND i.is_part_prepayment_entry = false ), tip AS ( SELECT i.installment_amount AS amt FROM mfi_accounting.loan_installment_details i, la, r WHERE i.loan_account_id = la.account_id AND i.is_deleted = false AND i.is_part_prepayment_entry = false AND i.installment_date > r.rescheduling_effective_date ORDER BY i.installment_date ASC LIMIT 1 ) SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM r) THEN 'NO_RESTRUCTURING_ROW' WHEN NOT EXISTS (SELECT 1 FROM rs) THEN 'NO_RESCHEDULE_ROW:' || (SELECT id::text FROM r) WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_TENURE' AND (SELECT rescheduling_handling_type FROM rs) <> 'REDUCE_TENOR' THEN 'BRANCH_MISMATCH:UPDATE_TENURE->' || (SELECT rescheduling_handling_type FROM rs) WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_EMI' AND (SELECT rescheduling_handling_type FROM rs) <> 'REDUCE_EMI' THEN 'BRANCH_MISMATCH:UPDATE_EMI->' || (SELECT rescheduling_handling_type FROM rs) WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_TENURE' AND (SELECT number_of_installments FROM rs) IS NULL THEN 'TENURE_DRIVER_MISSING:number_of_installments=NULL' WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_TENURE' AND (SELECT emi_amount FROM rs) IS NOT NULL THEN 'EMI_DRIVER_LEAKED:' || (SELECT emi_amount::text FROM rs) WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_EMI' AND (SELECT emi_amount FROM rs) IS NULL THEN 'EMI_DRIVER_MISSING:emi_amount=NULL' WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_TENURE' AND (SELECT number_of_installments FROM rs) <> (SELECT new_tenure FROM r) + (SELECT n FROM passed) THEN 'TENURE_TARGET_WRONG:' || (SELECT number_of_installments::text FROM rs) || '<>' || ((SELECT new_tenure FROM r) + (SELECT n FROM passed))::text WHEN (SELECT restructuring_impact FROM r) = 'UPDATE_TENURE' AND (SELECT n FROM live) <> (SELECT number_of_installments FROM rs) THEN 'SCHEDULE_ROWCOUNT_WRONG:' || (SELECT n::text FROM live) || '<>' || (SELECT number_of_installments::text FROM rs) WHEN (SELECT number_of_installments FROM la) <> (SELECT number_of_installments FROM rs) THEN 'LOAN_TENURE_DESYNC:' || (SELECT number_of_installments::text FROM la) || '<>' || (SELECT number_of_installments::text FROM rs) WHEN (SELECT new_emi FROM r) IS DISTINCT FROM (SELECT amt FROM tip) THEN 'NEW_EMI_NOT_SCHEDULE_TIP:' || COALESCE((SELECT new_emi::text FROM r), 'NULL') || '<>' || COALESCE((SELECT amt::text FROM tip), 'NULL') WHEN (SELECT batch_status FROM rs) <> 'SUCCESS' THEN 'RESCHEDULE_NOT_SUCCESS:' || (SELECT batch_status FROM rs) WHEN (SELECT restructuring_status FROM r) <> 'SUCCESS' OR (SELECT task_status FROM r) <> 'APPROVED' THEN 'RESTRUCTURING_NOT_APPROVED:' || (SELECT restructuring_status FROM r) || '/' || (SELECT task_status FROM r) WHEN (SELECT loan_status FROM la) <> 'ACTIVE' THEN 'LOAN_NOT_ACTIVE:' || (SELECT loan_status FROM la) ELSE 'SUCCESS' END"
+   }
+  },
+  "print": [
+   "response_status.code"
+  ],
+  "verify_mode": "runtime",
+  "acceptance": {
+   "verify_mode": "runtime"
+  },
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "loanAccountRestructuring"
+   ],
+   "seeded": [
+    {
+     "key": "product_flag_seed",
+     "reason": "loan_product.loan_restructuring_allowed=true (+ Redis db5 loan_product:: evict)"
+    },
+    {
+     "key": "real_job_precondition",
+     "reason": "interest_accrual_details via a real interestAccrualCalculation fire"
+    },
+    {
+     "key": "real_job_precondition",
+     "reason": "loan_account_restructuring_details PENDING row via the real DEFAULT/REAL create leg"
+    }
+   ],
+   "out_of_scope": [
+    "UPDATE_EMI branch (SQL carries its clauses; no fixture yet)",
+    "REJECT leg",
+    "childLoanRestructuring fan-out"
+   ],
+   "note": "Fixture: scripts/testing/flowtest/run_restructuring_tenure_fixture.sh. It seeds preconditions only; every row under assert is written by the orchestration."
+  },
+  "requires_paths": [
+   "trustt-platform-accounting/deploy/application/orchestration/loans_orc.xml",
+   "trustt-platform-accounting/src/main/java/in/novopay/accounting/loan/restucturing"
+  ],
+  "why": "loanAccountRestructuring APPROVE, UPDATE_TENURE branch. REQUIRES SETUP: run bash scripts/testing/flowtest/run_restructuring_tenure_fixture.sh with LAN=6004197225 (or a fresh LAN + matching ACCOUNT_NUMBER default) before this case — ntest has no pre-hook for api cases, so the fixture must bring the loan to the pending-APPROVE state manually first. The db_eq proves BRANCH_MISMATCH / TENURE_DRIVER_MISSING / EMI_DRIVER_LEAKED / TENURE_TARGET_WRONG / SCHEDULE_ROWCOUNT_WRONG / NEW_EMI_NOT_SCHEDULE_TIP, all red-before-green proven 2026-08-08 — see scripts/scratch/restructuring/EVIDENCE.md. UPDATE_TENURE and UPDATE_EMI branch by PopulateRegisterLoanAccountRescheduleDataPreProcessor.java:35-43, not XML; loan_account_reschedule_details is the DB witness of which branch ran. restructuring.loan_account_reschedule_kg placeholder should be retired: loanAccountReschedule is not a real orchestration Request (kg_api_presence.sh falls back to a class-name substring match); the real names are registerLoanAccountRescheduleEvent / rescheduleLoanAccountRescheduleBatch, and the reschedule surface only runs in-process inside APPROVE, which this case now covers."
+ },
+ "reversal.child_txn_reversal_e2e": {
+  "type": "flow",
+  "api": "childLoanTransactionReversal",
+  "apis": [
+   "loanRepayment",
+   "childLoanEventProcessingBatchJob",
+   "childLoanTransactionReversal"
+  ],
+  "service": "accounting",
+  "smoke_tier": "money",
+  "verify_mode": "RUNTIME_VERIFIED",
+  "quick": false,
+  "tags": [
+   "reversal",
+   "group",
+   "money",
+   "flowtest"
+  ],
+  "title": "childLoanTransactionReversal - per-installment paid_amount restored, one offsetting payment row",
+  "cmd": "PYTHONPATH=scripts/testing python3 scripts/testing/flowtest/excess_reversal/run_child_txn_reversal_e2e.py",
+  "defaults": {
+   "PARENT_LAN": "6004087025",
+   "CHILD_LAN": "6004087126"
+  },
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "dimensions": [
+    "happy_path",
+    "money_split",
+    "idempotency"
+   ],
+   "verify_mode": "RUNTIME_VERIFIED",
+   "db_asserts": [
+    {
+     "table": "loan_due_details,loan_installment_details,loan_account_payments_details,loan_account_events_queue,transaction_master",
+     "assert": "one scalar, fail-closed: every due row and installment returns to its pre-repayment value, and exactly one offsetting payment row matches the original component by component",
+     "path": "response_status.status",
+     "sql": "WITH la AS ( SELECT l.account_id FROM mfi_accounting.loan_account l WHERE l.la_account_number = '${CHILD_LAN}' AND l.is_deleted = false ), base_due AS ( SELECT * FROM (VALUES ${DUES_BASELINE}) AS t(due_id, paid_amount, waived_amount) ), base_inst AS ( SELECT * FROM (VALUES ${INST_BASELINE}) AS t(inst_id, settled_amount) ), q AS ( SELECT event_status, filler_1 FROM mfi_accounting.loan_account_events_queue WHERE id = ${QUEUE_ID} ), orig AS ( SELECT principal_amount, interest_amount, penalty_amount, fee_amount, excess_amount, amount, dpi_amount, transaction_reference_number FROM mfi_accounting.loan_account_payments_details WHERE id = ${ORIG_LAPD_ID} ), rev AS ( SELECT pd.id, pd.principal_amount, pd.interest_amount, pd.penalty_amount, pd.fee_amount, pd.excess_amount, pd.amount, pd.dpi_amount FROM mfi_accounting.loan_account_payments_details pd JOIN la ON la.account_id = pd.loan_account_id WHERE pd.transaction_reference_number = 'R_' || (SELECT transaction_reference_number FROM orig) ), due_drift AS ( SELECT b.due_id, (d.paid_amount - b.paid_amount)::numeric(18,6) AS paid_delta, (d.waived_amount - b.waived_amount)::numeric(18,6) AS waived_delta FROM base_due b JOIN mfi_accounting.loan_due_details d ON d.id = b.due_id ), inst_drift AS ( SELECT b.inst_id, (i.settled_amount - b.settled_amount)::numeric(18,6) AS settled_delta FROM base_inst b JOIN mfi_accounting.loan_installment_details i ON i.id = b.inst_id ) SELECT CASE WHEN (SELECT COUNT(*) FROM la) <> 1 THEN 'LAN_NOT_RESOLVED:${CHILD_LAN}' WHEN (SELECT event_status FROM q) IS DISTINCT FROM 'C' THEN 'QUEUE_NOT_DRAINED:' || COALESCE((SELECT event_status FROM q), 'MISSING') WHEN (SELECT filler_1 FROM q) IS NOT NULL THEN 'QUEUE_ERROR:' || LEFT((SELECT filler_1 FROM q), 120) WHEN (SELECT COUNT(*) FROM rev) <> 1 THEN 'OFFSETTING_PAYMENT_ROWS:' || (SELECT COUNT(*) FROM rev)::text WHEN (SELECT COUNT(*) FROM due_drift WHERE paid_delta <> 0) > 0 THEN 'DUE_PAID_NOT_RESTORED:' || (SELECT string_agg(due_id::text || '=' || paid_delta::text, ',' ORDER BY due_id) FROM due_drift WHERE paid_delta <> 0) WHEN (SELECT COUNT(*) FROM due_drift WHERE waived_delta <> 0) > 0 THEN 'DUE_WAIVED_NOT_RESTORED:' || (SELECT string_agg(due_id::text || '=' || waived_delta::text, ',' ORDER BY due_id) FROM due_drift WHERE waived_delta <> 0) WHEN (SELECT COUNT(*) FROM inst_drift WHERE settled_delta <> 0) > 0 THEN 'INSTALLMENT_SETTLED_NOT_RESTORED:' || (SELECT string_agg(inst_id::text || '=' || settled_delta::text, ',' ORDER BY inst_id) FROM inst_drift WHERE settled_delta <> 0) WHEN (SELECT r.principal_amount FROM rev r) <> (SELECT o.principal_amount FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:principal:' || ((SELECT r.principal_amount FROM rev r) - (SELECT o.principal_amount FROM orig o))::text WHEN (SELECT r.interest_amount FROM rev r) <> (SELECT o.interest_amount FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:interest:' || ((SELECT r.interest_amount FROM rev r) - (SELECT o.interest_amount FROM orig o))::text WHEN (SELECT r.penalty_amount FROM rev r) <> (SELECT o.penalty_amount FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:penalty:' || ((SELECT r.penalty_amount FROM rev r) - (SELECT o.penalty_amount FROM orig o))::text WHEN (SELECT r.fee_amount FROM rev r) <> (SELECT o.fee_amount FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:fee:' || ((SELECT r.fee_amount FROM rev r) - (SELECT o.fee_amount FROM orig o))::text WHEN (SELECT r.excess_amount FROM rev r) <> (SELECT o.excess_amount FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:excess:' || ((SELECT r.excess_amount FROM rev r) - (SELECT o.excess_amount FROM orig o))::text WHEN (SELECT COALESCE(r.dpi_amount, 0) FROM rev r) <> (SELECT COALESCE(o.dpi_amount, 0) FROM orig o) THEN 'REVERSAL_SPLIT_MISMATCH:dpi:' || ((SELECT COALESCE(r.dpi_amount, 0) FROM rev r) - (SELECT COALESCE(o.dpi_amount, 0) FROM orig o))::text WHEN (SELECT r.amount FROM rev r) <> (SELECT o.amount FROM orig o) THEN 'REVERSAL_TOTAL_MISMATCH:' || ((SELECT r.amount FROM rev r) - (SELECT o.amount FROM orig o))::text WHEN (SELECT COALESCE(tm.reversed, false) FROM mfi_accounting.transaction_master tm WHERE tm.reference_number = (SELECT transaction_reference_number FROM orig)) IS DISTINCT FROM true THEN 'ORIGINAL_TXN_NOT_MARKED_REVERSED:' || (SELECT transaction_reference_number FROM orig) ELSE 'SUCCESS' END",
+     "checked_by": "db_assert: SUCCESS line in run_child_txn_reversal_e2e.py",
+     "offenders": [
+      "QUEUE_NOT_DRAINED:<status> / QUEUE_ERROR:<msg> - ChildLoanEventProcessingItemProcessor swallows the exception into filler_1 and leaves event_status P, so a failed reversal is silent without this clause",
+      "DUE_PAID_NOT_RESTORED:<due_id>=<delta>,... - per row. A reversal that unwinds the right TOTAL off the wrong installments reports both offending rows",
+      "DUE_WAIVED_NOT_RESTORED:<due_id>=<delta>,...",
+      "INSTALLMENT_SETTLED_NOT_RESTORED:<inst_id>=<delta>,...",
+      "OFFSETTING_PAYMENT_ROWS:<n> - not exactly one R_<ref> row (0 = no back-out, 2 = double reversal)",
+      "REVERSAL_SPLIT_MISMATCH:<component>:<delta> - offsetting row total right, component split wrong",
+      "REVERSAL_TOTAL_MISMATCH:<delta>",
+      "ORIGINAL_TXN_NOT_MARKED_REVERSED:<ref>"
+     ]
+    }
+   ],
+   "note": "The per-row baseline is captured by the script before the repayment and rendered into the SQL as a VALUES list - the DB keeps no appropriation history, so a self-contained query cannot know the pre-repayment values. Per-row restoration is a contract only while the reversed repayment is the only unreversed one on those rows: RepaymentReversalDataGenerator walks paid due rows by loan_installment_details_id DESC and unwinds greedily per component, while repayment appropriates oldest-first, so with several outstanding repayments the reversal can legitimately unwind a different row set. The scenario repays once, then reverses, which is where the invariant holds exactly. dpi_amount is compared NULL-safely and is expected to be NULL on both rows: no code on mfi_integration_v3.4.2.5 writes it (grep setDpiAmount across trustt-platform-accounting/src/main/java returns nothing), so asserting it strictly would be a vacuous check today and a live one when the DPI train lands."
+  },
+  "note": "Replaces the KG-presence placeholder reversal.child_txn_reversal_kg. loanRepayment is REAL and childLoanEventProcessingBatchJob is REAL - the batch is what dispatches childLoanTransactionReversal (LoanAccountEventsQueueEntity.EVENT_TYPE_ORC_API_MAP TXNREV). Only the TXNREV queue row is a fixture, built from the columns the real repayment wrote in the exact shape ChildLoanTransactionReversalEventsQueueDataPopulator emits. The batch drains ALL pending queue rows, so run it under the flowtest lock."
+ },
+ "waiver.child_waive_loan_account_charges": {
+  "type": "flow",
+  "api": "childWaiveLoanAccountCharges",
+  "apis": [
+   "waiveLoanAccountCharges",
+   "childLoanEventProcessingBatchJob",
+   "childWaiveLoanAccountCharges"
+  ],
+  "smoke_tier": "money",
+  "ship_auto": true,
+  "verify_mode": "RUNTIME_VERIFIED",
+  "tags": [
+   "waiver",
+   "shg",
+   "group",
+   "child-fanout",
+   "two-layer"
+  ],
+  "title": "childWaiveLoanAccountCharges — waiver audit row must be applied to the child due it points at",
+  "cmd": "bash scripts/testing/waiver/run_child_waiver_fanout_e2e.sh",
+  "expect": {
+   "status": "PASS"
+  },
+  "acceptance": {
+   "verify_mode": "RUNTIME_VERIFIED",
+   "dimensions": [
+    "happy_path",
+    "two_layer_state",
+    "replay_idempotency"
+   ],
+   "db_asserts": [
+    {
+     "table": "waiver__loan_due_details",
+     "assert": "For every child loan_due_details row of the parent group that carries waiver__loan_due_details audit rows: loan_due_details.waived_amount = SUM(waiver__loan_due_details.waived_amount) exactly - the two-layer defect (audit row written while the due it names is untouched) fails closed. Then SUM(child audit) = parent audit for the same identifier_value, and waived+paid never exceeds due_amount on an audited row. Returns the offending VALUE, never a boolean.",
+     "path": "response_status.status",
+     "sql": "WITH parent AS ( SELECT p.account_id FROM mfi_accounting.loan_account p JOIN mfi_accounting.account a ON a.id = p.account_id WHERE a.account_number = '${PARENT_LAN}' AND p.is_deleted = false ), kids AS ( SELECT c.account_id FROM mfi_accounting.loan_account c JOIN parent ON c.parent_loan_account_id = parent.account_id ), kdue AS ( SELECT ldd.id, ldd.loan_account_id, ldd.component_type, ldd.due_date, ldd.due_amount, ldd.paid_amount, ldd.waived_amount FROM mfi_accounting.loan_due_details ldd JOIN kids k ON k.account_id = ldd.loan_account_id WHERE ldd.is_deleted = false ), aud AS ( SELECT w.loan_due_details_id AS ldd_id, SUM(w.waived_amount) AS audit_sum, COUNT(*) AS audit_rows, MIN(w.identifier_value) AS parent_waiver_id FROM mfi_accounting.waiver__loan_due_details w JOIN kdue ON kdue.id = w.loan_due_details_id GROUP BY 1 ), pdue AS ( SELECT ldd.id FROM mfi_accounting.loan_due_details ldd JOIN parent ON parent.account_id = ldd.loan_account_id WHERE ldd.is_deleted = false ), paud AS ( SELECT w.identifier_value, SUM(w.waived_amount) AS parent_waived FROM mfi_accounting.waiver__loan_due_details w JOIN pdue ON pdue.id = w.loan_due_details_id WHERE w.identifier_type = 'WAIVER' GROUP BY 1 ), caud AS ( SELECT w.identifier_value, SUM(w.waived_amount) AS child_waived FROM mfi_accounting.waiver__loan_due_details w JOIN kdue ON kdue.id = w.loan_due_details_id WHERE w.identifier_type = 'WAIVER' GROUP BY 1 ) SELECT COALESCE( (SELECT 'WAIVER_AUDIT_NOT_APPLIED_TO_DUE:ldd=' || kdue.id || ' child_loan_account_id=' || kdue.loan_account_id || ' ' || kdue.component_type || ' audit_rows=' || aud.audit_rows || ' audit_sum=' || aud.audit_sum || ' ldd_waived_amount=' || kdue.waived_amount FROM aud JOIN kdue ON kdue.id = aud.ldd_id WHERE kdue.waived_amount <> aud.audit_sum ORDER BY kdue.id LIMIT 1), (SELECT 'CHILD_WAIVER_SPLIT_NOT_EQUAL_PARENT:parent_waiver_id=' || paud.identifier_value || ' parent_waived=' || paud.parent_waived || ' child_sum=' || COALESCE(caud.child_waived, 0) FROM paud LEFT JOIN caud ON caud.identifier_value = paud.identifier_value WHERE COALESCE(caud.child_waived, -1) <> paud.parent_waived ORDER BY paud.identifier_value LIMIT 1), (SELECT 'WAIVED_PLUS_PAID_EXCEEDS_DUE:ldd=' || kdue.id || ' due_amount=' || kdue.due_amount || ' paid_amount=' || kdue.paid_amount || ' waived_amount=' || kdue.waived_amount FROM kdue JOIN aud ON aud.ldd_id = kdue.id WHERE kdue.paid_amount + kdue.waived_amount > kdue.due_amount ORDER BY kdue.id LIMIT 1), CASE WHEN (SELECT COUNT(*) FROM kids) = 0 THEN 'NO_CHILDREN_FOR_PARENT' WHEN (SELECT COUNT(*) FROM paud) = 0 THEN 'NO_PARENT_WAIVER_AUDIT_ROWS' WHEN (SELECT COUNT(*) FROM aud) = 0 THEN 'NO_CHILD_WAIVER_AUDIT_ROWS' ELSE 'SUCCESS' END)",
+     "checked_by": "scripts/testing/waiver/assert_child_waiver_applied.sql via child_waiver_fanout_e2e.py"
+    }
+   ],
+   "note": "The audited quantity is loan_due_details.waived_amount, NOT a reduction in due_amount: UpdateLoanDueDetailsForWaiverProcessor:37-39 does waived_amount += waiverAmount and never touches due_amount. Parent->child split is GroupLoanUtility.distributeAmountsEqually, which is exact (the last child absorbs the rounding difference), so the parent/child parity clause carries no tolerance. That split is EQUAL per child, not pro rata to each child's own due, so a parent waiver larger than n * (smallest child pending) can legitimately push one child over its due - the driver sizes the waiver inside that headroom."
+  },
+  "fidelity": {
+   "entry": "http_api",
+   "apis": [
+    "waiveLoanAccountCharges"
+   ],
+   "seeded": [
+    {
+     "key": "fresh_shg_group",
+     "reason": "create_fresh_dcf_group_fixture.py - real disburse + real accrual/posting/billing"
+    },
+    {
+     "key": "docs_stub_payload",
+     "reason": "flowtest.doc_stub payload stub - no HTTP DMS locally"
+    }
+   ],
+   "out_of_scope": []
+  },
+  "note": "Replaces the WORKSPACE_ONLY KG-presence placeholder. Drives the real production entry: parent waiveLoanAccountCharges DEFAULT (task) -> APPROVE (do_waiver=true) runs getChildLoanWaiverDetailsProcessor + childLoanWaiverEventGenerationProcessor (loans_orc.xml:3387-3388) to enqueue a WAIVER row; childLoanEventProcessingBatchJob dispatches EVENT_TYPE_ORC_API_MAP[WAIVER]=childWaiveLoanAccountCharges (group_mfi_orc.xml:186). Proven red on two perturbations of a real run (child due reverted to 0 with the audit row intact; audit amount altered)."
  }
 }
