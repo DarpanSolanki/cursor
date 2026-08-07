@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.payments` |
 | DB schema | `mfi_payments` (inferred — entities use unqualified `@Table`) |
 | Repo | [`novopay-platform-payments/`](../../novopay-platform-payments/) |
-| Service CLAUDE.md | [`trustt-platform-payments/CLAUDE.md`](../../trustt-platform-payments/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-payments/.cursorrules`](../../trustt-platform-payments/.cursorrules) |
 | Code | 37 core entities; ~258 Requests |
 
 ## API surface — orchestration XMLs
@@ -21,7 +21,7 @@
 | `orc_mfi_cross_schema.xml` | 300 | 7 | Cross-schema reads: `getCollectionsList`, `getCollectionCountForCollectorV2`, `getIndividualCollectionDetailsV2`, `getGroupCollectionDetailsV2`, `getPriorityCollectionDetails`, `getPriorityCountForCalendar`, `getCollectionInfoList` |
 | `product_accounting.xml` | 18 | 2 | **The bridge to accounting** — `collectionLoanRepayment`, `recurringPayment` |
 
-Top requests per CLAUDE.md (line 76):
+Top requests per .cursorrules (line 76):
 `createOrUpdateRecordAttempt1`, `generatePaymentLink`, `checkPaymentStatus`, `updatePaymentStatus`, `fetchLMSUpdate`, `getScheduleDetails`, `updateSchedulePayment`, `pushPendingLMSUpdates`, `generateBatch`, `getScheduledBatchList`, plus the 13 bulk-file pairs (Finnone static/dynamic/reverse/correction, VYMO sync, NACH).
 
 ## Kafka

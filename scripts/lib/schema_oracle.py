@@ -8,7 +8,7 @@ money-tier registry cases while that table has no soft-delete column at all.
 This module is the oracle those references are checked against: one JSON line per
 table, diffable in git, refreshed from `information_schema`. It records what the
 LOCAL fixture holds. The local DB is not production truth (see
-`.cursor/rules/40-knowledge-upkeep.md`) — `train_note` carries that caveat, and
+`.cursor/rules/40-knowledge-upkeep.mdc`) — `train_note` carries that caveat, and
 absence here means "not on this checkout", never "does not exist".
 
   schema_oracle.py --rebuild          regenerate from localhost:5433

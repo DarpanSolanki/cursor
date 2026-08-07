@@ -3,7 +3,7 @@
 
 `kg-mcp-smoke` spawns the server itself with a resolved path, so it reports
 tools=20 even when Cursor cannot start the server at all. That is exactly
-how `.mcp.json` shipped with an unexpanded `${CLAUDE_PROJECT_DIR}` in argv and
+how `.mcp.json` shipped with an unexpanded `${CURSOR_PROJECT_DIR}` in argv and
 every `mcp__trustt-kg__*` tool was silently missing for a whole session.
 
 Checks, for each stdio server in .mcp.json:
@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parents[2])
+ROOT = Path(os.environ.get("CURSOR_PROJECT_DIR") or Path(__file__).resolve().parents[2])
 MCP_JSON = ROOT / ".mcp.json"
 PLACEHOLDER = re.compile(r"\$\{[^}]+\}")
 

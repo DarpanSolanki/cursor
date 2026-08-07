@@ -118,7 +118,7 @@ Tenant/environment suffixing is applied by the message-broker framework at runti
 
 **API:** Any `<Request name="X">` exposed as `POST .../api/v1/{X}` via **`ServiceGatewayController`** (platform-lib) when routing to accounting tenant.  
 **Request fields:** SOF envelope + `request` object — parsed into `ExecutionContext` by **`defaultExecutionContextPopulator`**.  
-**Response fields:** `response_status`, `error_code`, payload keys per response template — **must remain additive-only** per `api-contract-safety.mdc`.  
+**Response fields:** `response_status`, `error_code`, payload keys per response template — **must remain additive-only** per `api-contract-safety.md`.  
 **Null-safe:** Template-dependent.  
 **Timeout:** Ingress HTTP server / gateway; not `NovopayInternalAPIClient`.  
 **Retry:** Not automatic on accounting HTTP ingress.  

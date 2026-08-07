@@ -120,7 +120,7 @@ Every item below has **description + file path + line evidence + risk level**. S
 
 ## Notes kept as rules/runbooks (not “gaps”)
 
-- **API contract safety**: `.cursor/rules/api-contract-safety.md` (not a gap; it’s the guardrail).
+- **API contract safety**: `.cursor/rules/api-contract-safety.mdc` (not a gap; it’s the guardrail).
 - **Boot version skew**: `.cursor/platform-lib.md` “Version skew” section (fact, not a gap).
 
 ---
@@ -398,7 +398,7 @@ Date found: 2026-04-09
 Service: trustt-platform-authorization  
 Lens: 10 (Security), 12 (Dead code/ghost infra), 11 (Observability)  
 Risk: 🔴 High  
-File: `GetMapMyIndiaAccessTokenProcessor.java`, `deploy/application/messagebroker/MessageBroker.xml`, `CLAUDE.md`  
+File: `GetMapMyIndiaAccessTokenProcessor.java`, `deploy/application/messagebroker/MessageBroker.xml`, `.cursorrules`  
 Line: token log + broker enabled vs doc claim  
 Description: Service logs MapMyIndia access token; MessageBroker.xml enables producer and includes plaintext SSL passwords + legacy TLS; service doc claims no Kafka usage.  
 Failure scenario: Token leakage + Kafka SSL secret exposure; operators assume Kafka unused but it is configured/enabled leading to unmanaged event behavior.  

@@ -1,5 +1,5 @@
 ---
-description: "ExecutionContext discipline — the #1 source of runtime bugs; key management, null safety, scope control"
+description: ExecutionContext discipline — the #1 source of runtime bugs; key management, null safety, scope control
 globs:
   - "**/*.java"
   - "**/*.xml"

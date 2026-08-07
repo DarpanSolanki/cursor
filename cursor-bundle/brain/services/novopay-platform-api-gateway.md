@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.apigateway` |
 | DB schema | `mfi_api_gateway` |
 | Repo | [`novopay-platform-api-gateway/`](../../novopay-platform-api-gateway/) |
-| Service CLAUDE.md | [`trustt-platform-api-gateway/CLAUDE.md`](../../trustt-platform-api-gateway/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-api-gateway/.cursorrules`](../../trustt-platform-api-gateway/.cursorrules) |
 
 ## Routing
 

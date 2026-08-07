@@ -39,7 +39,7 @@ If the first idea was “guard + resolve”, **re-evaluate**: explain why resolv
 
 - Implementation: `.cursor/rules/10-quality-gates.mdc`
 - Release impact bullet: `feedback_release_details_final.md` (Existing prod / Not affected / What fix does **not** do)
-- Broader call sites: `no-flow-break-impact-check.mdc`
+- Broader call sites: `no-flow-break-impact-check.md`
 - **Prod/ops SQL (same minimal discipline):** `feedback_prod_ops_sql_crr_impact_gate.md` — contract-native `FAIL` first; soft-archive/`LOCAL_RESET_ARCHIVED` only when proven necessary
 
 ## Calibrated example — SDCP-10255

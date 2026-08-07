@@ -1,5 +1,5 @@
 ---
-description: "Auto-loads when editing trustt-platform-los"
+description: Auto-loads when editing trustt-platform-los
 globs:
   - "**/trustt-platform-los/**/*.java"
   - "**/trustt-platform-los/**/*.xml"

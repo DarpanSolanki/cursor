@@ -34,7 +34,7 @@ bash scripts/bin/kg-switch.sh
 
 Before asserting a **cross-service** contract (LOS↔accounting, lib↔accounting):
 
-1. Print branch@sha for **each** involved repo (`git-workspace-status.sh` or the loop in `darpan.mdc`).
+1. Print branch@sha for **each** involved repo (`git-workspace-status.sh` or the loop in `darpan.md`).
 2. If trains differ → scope the claim to the named train **or** align those repos first.
 3. KG `watermark` showing `WIP` / `provisional` → treat `flow`/`crud` as branch-local, not production contract.
 

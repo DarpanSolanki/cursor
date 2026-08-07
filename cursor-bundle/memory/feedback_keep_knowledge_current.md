@@ -26,4 +26,4 @@ The brain docs under `claude/` are the **depth layer the core KG points into** â
 - **Proactively hunt drift:** `kg stale` lists docs citing repo files that no longer exist; `kg doctor` flags sources newer than the graph + watermark drift; `kg watermark` flags WIP-branch / branch-changed knowledge. Triage these when touching the area.
 - New standing fact/correction about *how to work* â†’ a `feedback_*` memory + `MEMORY.md`.
 
-Complements the proof-backed gates (CLAUDE.md Rule 7) and [[feedback_proof_backed_agent_discipline]]: verify, then **persist** what you verified into the doc + graph.
+Complements the proof-backed gates (.cursorrules Rule 7) and [[feedback_proof_backed_agent_discipline]]: verify, then **persist** what you verified into the doc + graph.

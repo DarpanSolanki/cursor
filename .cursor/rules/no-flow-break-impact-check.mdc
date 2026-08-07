@@ -1,5 +1,5 @@
 ---
-description: "Non-negotiable impact analysis before any change — learned from production incidents"
+description: Non-negotiable impact analysis before any change — learned from production incidents
 globs:
   - "**/*.java"
   - "**/*.xml"

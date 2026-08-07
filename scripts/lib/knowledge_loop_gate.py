@@ -1,4 +1,4 @@
-"""Machine check for the three loops in `.cursor/rules/40-knowledge-upkeep.md`.
+"""Machine check for the three loops in `.cursor/rules/40-knowledge-upkeep.mdc`.
 
 The rule says every change closes KG, testing suite and reference docs. Until now that was
 prose: nothing failed when a loop was skipped, so knowledge only got written when someone

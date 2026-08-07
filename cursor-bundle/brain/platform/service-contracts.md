@@ -1,6 +1,6 @@
 # Inter-service contracts — summary for agents
 
-**Rule**: Treat every contract as **additive-only** unless explicitly approved; grep **all** callers. See `.cursor/rules/api-contract-safety.md`.
+**Rule**: Treat every contract as **additive-only** unless explicitly approved; grep **all** callers. See `.cursor/rules/api-contract-safety.mdc`.
 
 ## HTTP API surface
 
@@ -66,7 +66,7 @@ Tenant/environment suffixing is applied by the message-broker framework at runti
 ## ExecutionContext keys (contract between processors)
 
 - Not HTTP-visible but **are** contracts **within** a flow and sometimes across internal API boundaries when maps are copied.
-- Document new keys when adding processors; never overwrite shared keys unintentionally (`.cursor/rules/execution-context-discipline.md`).
+- Document new keys when adding processors; never overwrite shared keys unintentionally (`.cursor/rules/execution-context-discipline.mdc`).
 
 ## Database as implicit contract
 

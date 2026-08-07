@@ -1,7 +1,5 @@
 ---
-description: >-
-  Workspace harness (scripts/dpic, dpi-sanity, agent-ops DPI prep) — commit and
-  push only to origin/main, never to mfi_integration_v* train branches.
+description: 
 alwaysApply: false
 ---
 

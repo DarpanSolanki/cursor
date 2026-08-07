@@ -1,5 +1,5 @@
 ---
-description: "Prod/ops SQL impact gate — mandatory caller + status/column blast analysis before adhoc UPDATE scripts (CRR, loan_account money patches)"
+description: Prod/ops SQL impact gate — mandatory caller + status/column blast analysis before adhoc UPDATE scripts (CRR, loan_account money patches)
 globs:
   - "scripts/sql/adhoc/**"
   - "scripts/sql/deploy/**"
@@ -69,7 +69,7 @@ Code-proven: <repo paths that prove SUCCESS-skip / retry>
 
 ## Pair with
 
-- `10-quality-gates.mdc` — applies to **prod/ops SQL**, not only Java
-- `20-ship-gates.mdc` — **Ops / prod hotfix** front
-- `00-workspace-core.mdc` — print final SQL path after edit; IDE open only if user asks
-- `10-quality-gates.mdc` — still wait for implement approval unless user asked for the SQL
+- `10-quality-gates.md` — applies to **prod/ops SQL**, not only Java
+- `20-ship-gates.md` — **Ops / prod hotfix** front
+- `00-workspace-core.md` — print final SQL path after edit; IDE open only if user asks
+- `10-quality-gates.md` — still wait for implement approval unless user asked for the SQL

@@ -1,7 +1,9 @@
 """Declarative API response assertions for api-test specs."""
 from __future__ import annotations
 
+import glob
 import json
+import os
 import subprocess
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -27,6 +29,29 @@ class RunResult:
 
 def _dec(val: Any) -> Decimal:
     return Decimal(str(val).strip())
+
+
+def _expand_env(value: str, env: dict[str, str]) -> str:
+    out = value
+    for k, v in env.items():
+        out = out.replace(f"${{{k}}}", str(v))
+    return out
+
+
+def _freshness_cutoff(env: dict[str, str]) -> float | None:
+    raw = env.get("NTEST_RUN_STARTED_AT")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _fresh_matches(pattern: str, cutoff: float) -> tuple[list[str], list[str]]:
+    matches = sorted(glob.glob(pattern))
+    fresh = [m for m in matches if os.path.getmtime(m) >= cutoff]
+    return matches, fresh
 
 
 def _run_db_scalar(sql: str, env: dict[str, str]) -> str:
@@ -112,6 +137,53 @@ def run_assertions(
                 except (InvalidOperation, ValueError):
                     ok = db_val.strip() == api_val.strip()
                 out.append(AssertResult(ok, name, f"db={db_val} api={api_val} @ {rule['path']}"))
+            elif t == "file_exists":
+                pattern = _expand_env(rule["path"], env)
+                cutoff = _freshness_cutoff(env)
+                if cutoff is None:
+                    out.append(AssertResult(
+                        False, name,
+                        f"no NTEST_RUN_STARTED_AT marker to prove freshness for {pattern}"))
+                else:
+                    matches, fresh = _fresh_matches(pattern, cutoff)
+                    nonempty_fresh = [m for m in fresh if os.path.getsize(m) > 0]
+                    if nonempty_fresh:
+                        newest = max(nonempty_fresh, key=os.path.getmtime)
+                        out.append(AssertResult(
+                            True, name,
+                            f"{newest} mtime={os.path.getmtime(newest):.0f} >= cutoff={cutoff:.0f}"))
+                    elif matches:
+                        stale = "; ".join(
+                            f"{m} mtime={os.path.getmtime(m):.0f} size={os.path.getsize(m)}"
+                            for m in matches)
+                        out.append(AssertResult(
+                            False, name,
+                            f"{pattern}: {len(matches)} match(es), none fresh+non-empty "
+                            f"(cutoff={cutoff:.0f}): {stale}"))
+                    else:
+                        out.append(AssertResult(False, name, f"no file matched {pattern}"))
+            elif t == "file_row_count":
+                pattern = _expand_env(rule["path"], env)
+                minimum = int(rule.get("min", 1))
+                cutoff = _freshness_cutoff(env)
+                if cutoff is None:
+                    out.append(AssertResult(
+                        False, name,
+                        f"no NTEST_RUN_STARTED_AT marker to prove freshness for {pattern}"))
+                else:
+                    matches, fresh = _fresh_matches(pattern, cutoff)
+                    if not fresh:
+                        out.append(AssertResult(
+                            False, name,
+                            f"{pattern}: no fresh file (cutoff={cutoff:.0f}), "
+                            f"{len(matches)} stale candidate(s)"))
+                    else:
+                        newest = max(fresh, key=os.path.getmtime)
+                        with open(newest, "r", errors="replace") as fh:
+                            rows = sum(1 for _ in fh)
+                        ok = rows >= minimum
+                        out.append(AssertResult(
+                            ok, name, f"{newest} rows={rows} (expected >= {minimum})"))
             else:
                 out.append(AssertResult(False, name, f"unknown assertion type: {t}"))
         except Exception as ex:

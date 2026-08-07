@@ -29,7 +29,7 @@ session end / close → workspace-close → ship-loop (impact+deep+release) → 
 - Ask user to run `ntest`, `verify-dpi`, `workspace-close`, `kg-switch`
 - Label release tests "manual only" — they run on money `workspace-close`
 - Run full `extended_regression` on every touch — use `ship_test_plan` phases
-- Ship money/API/batch fixes without hot-path scan on loop/DAO edits — see `10-quality-gates.mdc`
+- Ship money/API/batch fixes without hot-path scan on loop/DAO edits — see `10-quality-gates.md`
 
 ## Inspect plan (agents only)
 

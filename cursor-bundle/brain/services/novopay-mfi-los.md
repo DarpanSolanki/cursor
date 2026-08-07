@@ -11,7 +11,7 @@
 | Server port | `8013` |
 | Code stats | 130 entities, 530 processors, 308 DAOs, 48 services |
 | Repo | [`novopay-mfi-los/`](../../novopay-mfi-los/) |
-| Service CLAUDE.md | [`trustt-platform-los/CLAUDE.md`](../../trustt-platform-los/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-los/.cursorrules`](../../trustt-platform-los/.cursorrules) |
 
 ## API surface — orchestration XML
 
@@ -39,7 +39,7 @@ Domains it covers (sample of 60):
 
 `ONBOARDING` → `QUICK_DATA_ENTRY` (QDE) → `ELIGIBILITY_SUMMARY` (ES) → `LOAN_DETAILS`
 
-CLAUDE.md (line 114) shows the full operational journey:
+.cursorrules (line 114) shows the full operational journey:
 
 ```
 QDE → ES → HHIE (HouseHold Income & Expense) → AD (Address) → DDE (Detailed Data Entry)

@@ -15,4 +15,5 @@ if [[ "${1:-}" != "--bindings" ]]; then
 fi
 python3 scripts/lib/column_binding.py --rebuild "${@:2}"
 python3 scripts/lib/schema_train_diff.py | head -4
+python3 scripts/lib/schema_live_drift.py | head -6 || true
 python3 scripts/lib/schema_ref_gate.py --sql

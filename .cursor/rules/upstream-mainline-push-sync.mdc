@@ -27,4 +27,4 @@ Origin forks lag after trusttai merges. Pushing onto a stale origin tip creates 
 
 `TRAIN_UPSTREAM_SYNC_SKIP=1` — rare; state aloud why. Prefer sync.
 
-Pairs: `cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md` · `10-quality-gates.mdc` § Upstream sync · archive `workspace-gates-reference/upstream-sync-no-unrelated-diff.md`.
+Pairs: `cursor-bundle/memory/feedback_train_branch_sync_origin_upstream.md` · `10-quality-gates.md` § Upstream sync · archive `workspace-gates-reference/upstream-sync-no-unrelated-diff.md`.

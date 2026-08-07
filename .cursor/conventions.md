@@ -43,7 +43,7 @@
 ## Workspace hygiene
 
 - **Service repos**: microservice folders are separate git roots (multi-repo).
-- **Docs that must not live in service git**: workspace `docs/<service>/` per `docs-outside-service-repos.mdc`.
+- **Docs that must not live in service git**: workspace `docs/<service>/` per `docs-outside-service-repos.md`.
 - **system_brain**: curated operational knowledge; update when behaviour verified.
 
 ## Tiered responses for incidents

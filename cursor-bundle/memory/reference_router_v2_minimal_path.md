@@ -27,7 +27,7 @@ metadata:
 
 `evidence_cited` / `knowledge_loops` / `options_board` are **declared**, not checked — declaring a
 tier you did not reach is the one failure the machine cannot catch. See the simulation ladder in
-`.cursor/rules/20-ship-gates.md`.
+`.cursor/rules/20-ship-gates.mdc`.
 
 `bash scripts/bin/route-ledger.sh learn` reports classifier-too-light, chronically-unmet predicates
 and stale seed costs. Report-only by design — it never edits the matrix.

@@ -32,3 +32,7 @@ if index.is_file():
 print("- Gates: java-comment-lint (--diff) blocks comment volume on push; "
       "edits made in a git worktree OUTSIDE the workspace root bypass every path-based gate.")
 PY
+
+
+# Refresh the term index so the grep-leak hook can answer from current knowledge.
+timeout 10 python3 "$ROOT/scripts/lib/knowledge_index.py" build >/dev/null 2>&1 || true

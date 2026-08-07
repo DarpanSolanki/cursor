@@ -7,6 +7,7 @@
 | Runbook | When to use |
 |---|---|
 | [`clb-duplicate-rep-acct.md`](clb-duplicate-rep-acct.md) | CLB `loan_account_events_queue.data` members with duplicate `REP_ACCT` in `disbursement_repayment_account_details`. |
+| [`reopening-force-bill-not-reversed.md`](reopening-force-bill-not-reversed.md) | Loan reopened, closure transaction reversed, but the foreclosure force bill still `reversed=false` with its BILLING GL legs standing (incl. SHG parent mirror). |
 | [`disbursement-stuck.md`](disbursement-stuck.md) | LOS sent disburse, accounting not progressing or no result event |
 | [`shg-jlg-children-missing.md`](shg-jlg-children-missing.md) | Parent loan ACTIVE but no child rows; or some children missing |
 | [`repayment-mismatch.md`](repayment-mismatch.md) | Repayment posted but customer disputes split (PRIN/INT/PINT/FEE) |

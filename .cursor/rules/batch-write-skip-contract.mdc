@@ -1,6 +1,8 @@
 ---
-description: "Batch write-skip contract — platform Future resolve vs job mapper responsibilities (force_async)"
-globs: ["**/GenericListenerV3.java", "**/*FailureEntityMapper.java"]
+description: Batch write-skip contract — platform Future resolve vs job mapper responsibilities (force_async)
+globs:
+  - "**/GenericListenerV3.java"
+  - "**/*FailureEntityMapper.java"
 alwaysApply: false
 ---
 

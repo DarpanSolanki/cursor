@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.masterdata` |
 | DB schema | `mfi_masterdata` |
 | Repo | [`novopay-platform-masterdata-management/`](../../novopay-platform-masterdata-management/) |
-| Service CLAUDE.md | [`trustt-platform-masterdata-management/CLAUDE.md`](../../trustt-platform-masterdata-management/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-masterdata-management/.cursorrules`](../../trustt-platform-masterdata-management/.cursorrules) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (~22 Requests)
 

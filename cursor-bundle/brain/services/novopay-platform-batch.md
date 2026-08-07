@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.batch` |
 | DB schema | `mfi_batch` |
 | Repo | [`trustt-platform-batch/`](../../trustt-platform-batch/) |
-| Service CLAUDE.md | [`(CLAUDE.md removed — use service README / AGENTS.md)`](../../(CLAUDE.md removed — use service README / AGENTS.md)) |
+| Service .cursorrules | [`(.cursorrules removed — use service README / AGENTS.md)`](../../(.cursorrules removed — use service README / AGENTS.md)) |
 
 ## API surface — 22 Requests across two concerns
 

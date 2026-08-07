@@ -53,7 +53,7 @@ When working on **any** bug, production issue, JIRA, or enhancement — always p
 
 ## Rules
 
-- **After every analysis / RCA / Jira triage / “what’s next?”**: emit a full **OPTIONS BOARD** — **L0 + L1 + L2 + L3** — before recommending a single next step. Planning engine enforces this via autopilot + `00-workspace-core.mdc`.
+- **After every analysis / RCA / Jira triage / “what’s next?”**: emit a full **OPTIONS BOARD** — **L0 + L1 + L2 + L3** — before recommending a single next step. Planning engine enforces this via autopilot + `00-workspace-core.md`.
 - **Always start with L0**. Even if the real fix is L2, the team needs something deployable NOW for production fires.
 - **L2 and L3 are not optional after analysis** — if a tier does not apply, write `N/A — <one line why>`, do not omit the row.
 - **Include code-fix options when they exist** — do not bury L1/L2 behind “gather more evidence” when the hotspot is already visible in code.

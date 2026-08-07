@@ -3,6 +3,7 @@ description: Systematic debugging of production issues — evidence-based RCA, a
 globs:
   - "**/*.java"
   - "**/*.xml"
+alwaysApply: false
 ---
 
 # SYSTEM BEHAVIOR: BUG FIXING, COMPREHENSION & RCA

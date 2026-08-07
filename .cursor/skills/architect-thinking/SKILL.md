@@ -7,4 +7,4 @@ description: "On-demand architect patterns \u2014 framework internals, tiered so
 
 Auto-attached gate: `.cursor/rules/architect-thinking.mdc` (tiered solutions + repository no-comments + routing).
 
-Read topic files in this folder for depth. Content relocated verbatim from the former mega `architect-thinking.mdc`.
+Read topic files in this folder for depth. Content relocated verbatim from the former mega `architect-thinking.md`.

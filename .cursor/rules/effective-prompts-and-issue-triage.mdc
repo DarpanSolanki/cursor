@@ -1,7 +1,7 @@
 ---
-description: "How users should frame fix requests; how agents interpret thin prompts and triage before acting."
+description: How users should frame fix requests; how agents interpret thin prompts and triage before acting.
 globs:
-  - ".cursorrules"
+  - "CLAUDE.md"
   - "AGENTS.md"
   - "**/*.md"
 alwaysApply: false
@@ -32,9 +32,9 @@ More signal **up front** = fewer wrong turns. Include as many as apply (unknown 
 1. **Infer safely**: Use **`system_brain/`** (flows, edge_cases, runbooks) and **orchestration/processor names** from symptom keywords; use **`.cursorrules` + domain rules** for constraints (contracts, ExecutionContext, money).
 2. **Restate briefly**: One short paragraph: “I understand you want X; I’ll verify via Y (files/DB/logs).” If **money or API contract** is involved, name that risk explicitly.
 3. **Ask only high-value questions** — prefer **one batch** over ping-pong: e.g. “Confirm schema `mfi_accounting` and one sample `external_ref_number`?” not ten yes/no messages.
-4. **Do not assume implementation** when the user asked **only** for analysis or options—match **analyse vs implement** (`10-quality-gates.mdc`: no code edits until they clearly ask).
-5. **Tier the response** for production-style issues: **L0** quick mitigation, **L1** root fix (`architect-thinking.mdc` — Tiered solution approach) so intent (“stop bleeding” vs “fix properly”) is visible even if the user didn’t use those words.
+4. **Do not assume implementation** when the user asked **only** for analysis or options—match **analyse vs implement** (`10-quality-gates.md`: no code edits until they clearly ask).
+5. **Tier the response** for production-style issues: **L0** quick mitigation, **L1** root fix (`architect-thinking.md` — Tiered solution approach) so intent (“stop bleeding” vs “fix properly”) is visible even if the user didn’t use those words.
 
 ## Feature / enhancement prompts
 
-Add: **user story or rule** (“who / what / why”), **affected modules**, **non-goals**, **compatibility** (“must not break LOS”), and **whether** behaviour is behind a flag. The agent maps that to impact + contract checks (`api-contract-safety.mdc`, `no-flow-break-impact-check.mdc`).
+Add: **user story or rule** (“who / what / why”), **affected modules**, **non-goals**, **compatibility** (“must not break LOS”), and **whether** behaviour is behind a flag. The agent maps that to impact + contract checks (`api-contract-safety.md`, `no-flow-break-impact-check.md`).

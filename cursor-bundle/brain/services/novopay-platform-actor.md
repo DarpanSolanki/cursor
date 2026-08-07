@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.actor` |
 | DB schema | `mfi_actor` |
 | Repo | [`novopay-platform-actor/`](../../novopay-platform-actor/) |
-| Service CLAUDE.md | [`trustt-platform-actor/CLAUDE.md`](../../trustt-platform-actor/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-actor/.cursorrules`](../../trustt-platform-actor/.cursorrules) |
 
 ## API surface — orchestration XMLs (29 files, ~33 500 lines)
 

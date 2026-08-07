@@ -184,7 +184,8 @@
   "verify_mode": "processor_mirror_sim",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.foreclosure_bpd_growth": {
   "type": "flow",
@@ -200,7 +201,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.loan_prepayment_billed_dpi_e2e": {
   "type": "flow",
@@ -216,7 +218,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.foreclosure_details_api": {
   "type": "api",
@@ -255,7 +258,8 @@
   "note": "Use dpic.foreclosure_details_flow (restore first) when billed_dpi may be 0 after repayment",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.foreclosure_details_flow": {
   "type": "flow",
@@ -272,7 +276,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.repayment_e2e": {
   "type": "flow",
@@ -410,7 +415,8 @@
   "note": "Preflight + phased restore; TRIAL part-prep + REAL ICF GL legs; skips reversal if task down",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.regression_preflight": {
   "type": "flow",
@@ -426,7 +432,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.part_prepayment_bpi_api": {
   "type": "api",
@@ -461,7 +468,8 @@
   ],
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.part_prepayment_details_api": {
   "type": "api",
@@ -495,7 +503,8 @@
   ],
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.part_prepayment_bpi_flow": {
   "type": "flow",
@@ -512,7 +521,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.part_prepayment_details_flow": {
   "type": "flow",
@@ -529,7 +539,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.part_prepayment_write_e2e": {
   "type": "flow",
@@ -663,7 +674,8 @@
   "note": "Requires actor :8003; seeds NPA DPI catalogue 1331/1332 for product 6367; restores fixture after",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "actor.user_basic": {
   "type": "api",
@@ -693,7 +705,8 @@
   "print": [
    "user_basic_details.first_name",
    "office_details.office_name"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "accounting.loan_basic": {
   "type": "api",
@@ -720,7 +733,8 @@
    "external_ref_number",
    "loan_approved_amount",
    "product_scheme_code"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "actor.office_by_ids": {
   "type": "api",
@@ -747,7 +761,8 @@
   "print": [
    "office_list[0].office_details.office_name",
    "office_list[0].office_details.office_code"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.restructuring_smoke": {
   "type": "flow",
@@ -790,7 +805,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.grace_overlap_e2e": {
   "type": "flow",
@@ -810,7 +826,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.multi_emi_installment_e2e": {
   "type": "flow",
@@ -828,7 +845,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.two_emi_full_chain": {
   "type": "flow",
@@ -975,7 +993,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.batch_perf_10k": {
   "type": "flow",
@@ -996,7 +1015,8 @@
   "note": "FULL_EOD=1 + seed_dpi_gl for booking/billing at scale; report under scripts/scratch/dpi-batch-perf/",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.dpi_regression": {
   "type": "flow",
@@ -1009,7 +1029,8 @@
   "note": "DEPRECATED — prefer dpic.full_regression (DPI_REGRESSION_PROFILE=standard)",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.dpi_max_regression": {
   "type": "flow",
@@ -1054,7 +1075,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh status",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.preflight": {
   "type": "flow",
@@ -1062,7 +1084,8 @@
   "cmd": "bash scripts/dpic/run_preflight.sh",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.setup": {
   "type": "flow",
@@ -1070,7 +1093,8 @@
   "cmd": "bash scripts/dpic/run_setup.sh",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo.phase1": {
   "type": "flow",
@@ -1078,7 +1102,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh phase1",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo.phase2": {
   "type": "flow",
@@ -1086,7 +1111,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh phase2",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo.phase3": {
   "type": "flow",
@@ -1094,7 +1120,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh phase3",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo.phase4": {
   "type": "flow",
@@ -1102,7 +1129,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh phase4",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo.all": {
   "type": "flow",
@@ -1110,7 +1138,8 @@
   "cmd": "bash scripts/dpic/demo/run_demo.sh all",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.demo_verify": {
   "type": "flow",
@@ -1118,7 +1147,8 @@
   "cmd": "bash scripts/dpic/run_demo_api_verify.sh",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.full_gate": {
   "type": "flow",
@@ -1189,7 +1219,8 @@
   "cmd": "bash scripts/dpic/run_disburse.sh",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.ud_compliance": {
   "type": "flow",
@@ -1981,7 +2012,8 @@
   "note": "Prefer dpic.certify_scenarios for fresh LAN; correlators sync from certified_fixtures.json",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.certify_scenarios": {
   "type": "flow",
@@ -2034,7 +2066,8 @@
   "cmd": "bash scripts/dpic/certify_dpi_scenarios.sh --verify-only",
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "dpic.cross_eod_replay_134497": {
   "type": "flow",
@@ -4159,7 +4192,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "batch.dpi_booking": {
   "type": "batch",
@@ -4179,7 +4213,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "batch.dpi_billing": {
   "type": "batch",
@@ -4199,7 +4234,8 @@
   },
   "requires_paths": [
    "trustt-platform-accounting/src/main/java/in/novopay/accounting/batchnew/dpi"
-  ]
+  ],
+  "smoke_tier": "service"
  },
  "batch.dpd_calc": {
   "type": "batch",
@@ -4210,7 +4246,8 @@
   "api": "loanAccountDpdCalcJob",
   "expect": {
    "status": "SUCCESS"
-  }
+  },
+  "smoke_tier": "service"
  },
  "batch.interest_accrual_calc": {
   "type": "batch",
@@ -4433,17 +4470,20 @@
  "health.actor": {
   "type": "health",
   "title": "Actor API probe (getUserBasicDetails)",
-  "service": "actor"
+  "service": "actor",
+  "smoke_tier": "smoke"
  },
  "health.task": {
   "type": "health",
   "title": "Task API probe (getTaskList)",
-  "service": "task"
+  "service": "task",
+  "smoke_tier": "smoke"
  },
  "health.payments": {
   "type": "health",
   "title": "Payments API probe (getCollectionList)",
-  "service": "payments"
+  "service": "payments",
+  "smoke_tier": "smoke"
  },
  "health.los": {
   "type": "health",
@@ -4511,7 +4551,8 @@
  "foreclosure.setup": {
   "type": "flow",
   "title": "Foreclosure local setup — schema align + accounting/payments services",
-  "cmd": "bash scripts/bin/foreclosure-local-setup.sh --restart"
+  "cmd": "bash scripts/bin/foreclosure-local-setup.sh --restart",
+  "smoke_tier": "service"
  },
  "foreclosure.cancel_collections": {
   "type": "api",
@@ -4525,13 +4566,15 @@
   "expect": {
    "status": "SUCCESS",
    "code": "000"
-  }
+  },
+  "smoke_tier": "service"
  },
  "foreclosure.loan_prepayment_real": {
   "type": "flow",
   "title": "loanPrepayment APPROVE REAL — use foreclosure.sdcp10255_e2e (needs setup + headers)",
   "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh",
-  "note": "Alias for full E2E; standalone ntest auto loanPrepayment lacks APPROVE/REAL headers"
+  "note": "Alias for full E2E; standalone ntest auto loanPrepayment lacks APPROVE/REAL headers",
+  "smoke_tier": "service"
  },
  "foreclosure.by_latest_details_api": {
   "type": "flow",
@@ -4563,7 +4606,8 @@
  "foreclosure.sdcp10255_e2e": {
   "type": "flow",
   "title": "SDCP-10255 full local E2E — duplicate pending, fix, REAL, payments sync",
-  "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh"
+  "cmd": "bash scripts/testing/foreclosure/sdcp-10255-local-e2e.sh",
+  "smoke_tier": "service"
  },
  "foreclosure.individual_child": {
   "type": "flow",
@@ -4700,17 +4744,20 @@
  "workspace.doctor": {
   "type": "flow",
   "title": "Workspace doctor — KG + DB + registry (quick)",
-  "cmd": "bash scripts/bin/workspace-doctor.sh --quick"
+  "cmd": "bash scripts/bin/workspace-doctor.sh --quick",
+  "smoke_tier": "workspace"
  },
  "workspace.doctor.full": {
   "type": "flow",
   "title": "Workspace doctor — full smoke (KG CLI + hooks)",
-  "cmd": "bash scripts/bin/workspace-doctor.sh --full"
+  "cmd": "bash scripts/bin/workspace-doctor.sh --full",
+  "smoke_tier": "workspace"
  },
  "workspace.doctor.services": {
   "type": "flow",
   "title": "Workspace doctor — quick + service HTTP checks",
-  "cmd": "bash scripts/bin/workspace-doctor.sh --services"
+  "cmd": "bash scripts/bin/workspace-doctor.sh --services",
+  "smoke_tier": "workspace"
  },
  "dpic.foreclosure_bpd_day_window_sim": {
   "type": "flow",

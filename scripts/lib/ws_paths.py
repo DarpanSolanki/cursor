@@ -2,7 +2,7 @@
 """Workspace path normalisation.
 
 `str.lstrip("./")` strips a CHARACTER SET, not a prefix — it turns
-`.cursor/rules/x.md` into `claude/rules/x.md`. Use `norm_rel` instead.
+`.cursor/rules/x.mdc` into `claude/rules/x.md`. Use `norm_rel` instead.
 """
 from __future__ import annotations
 

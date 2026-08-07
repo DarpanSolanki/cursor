@@ -11,6 +11,6 @@ metadata:
 
 **Why:** A green build catches compile/contract breakage cheaply, before it reaches a shared branch. But it proves nothing about runtime correctness — only QA retest does.
 
-**How to apply (verification gate):** build green + commit + push + changelog **≠ "done"**. Status is always **"pushed; awaiting QA retest"** until QA confirms. Do **not** say "fixed", "completed", or "done" before that. CLAUDE.md §0 Rules 4–5. Pairs with [[feedback_qa_handoff_package]], [[reference_dedicated_gradle_build_env]], [[feedback_darpan_git_via_darpansolanki]].
+**How to apply (verification gate):** build green + commit + push + changelog **≠ "done"**. Status is always **"pushed; awaiting QA retest"** until QA confirms. Do **not** say "fixed", "completed", or "done" before that. .cursorrules §0 Rules 4–5. Pairs with [[feedback_qa_handoff_package]], [[reference_dedicated_gradle_build_env]], [[feedback_darpan_git_via_darpansolanki]].
 
 **Note (2026-07-23):** Historical `./gbuild.sh` wrapper is gone from this machine; do not invent a parallel wrapper — use `./gradlew` in the service repo.

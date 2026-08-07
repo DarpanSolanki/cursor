@@ -1,5 +1,5 @@
 ---
-description: "Run evidence-driven disburseLoan sanity (simulator+DB)"
+description: Run evidence-driven disburseLoan sanity (simulator+DB)
 globs:
   - "scripts/disburse_loan_sanity.py"
   - "scripts/disbursement/payloads/canonical/*.json"

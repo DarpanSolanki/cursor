@@ -1,6 +1,5 @@
 ---
-description: "Short release/QA hand-off when user asks for release details — RCA, impact, dev testing in plain language"
-globs: []
+description: Short release/QA hand-off when user asks for release details — RCA, impact, dev testing in plain language
 alwaysApply: false
 ---
 
@@ -15,6 +14,6 @@ When the user says **"release details"**, **"please release details"**, **"QA ha
    - **Impact analysis** — 2–3 lines.
    - **Dev testing** — what was done to prove success (scenarios + evidence); honest if full automated test did not run.
 4. Add **QA retest steps** and **status** (merged / fork-only / awaiting QA).
-5. **Do not write to Jira** — draft for user to paste (`darpan.mdc` boundary).
+5. **Do not write to Jira** — draft for user to paste (`darpan.md` boundary).
 
 Longer functional packages: `cursor-bundle/memory/feedback_qa_handoff_package.md`.

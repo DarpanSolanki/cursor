@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.authorization` |
 | DB schema | `mfi_authorization` |
 | Repo | [`novopay-platform-authorization/`](../../novopay-platform-authorization/) |
-| Service CLAUDE.md | [`trustt-platform-authorization/CLAUDE.md`](../../trustt-platform-authorization/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-authorization/.cursorrules`](../../trustt-platform-authorization/.cursorrules) |
 
 ## API surface
 

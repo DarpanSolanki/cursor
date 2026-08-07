@@ -194,7 +194,7 @@ flowchart LR
 | This knowledge base | `.cursor/*.md` (this file set) | Architecture + contracts summary |
 | Curated brain | `system_brain/` | Flows, edge cases, batch inventory, runbooks |
 | Deep specs | `trustt-platform-ai-codegen-artifacts-java/sli/` | Framework docs, API specs, data dictionaries |
-| Service context | `*/CLAUDE.md` in some repos | Quick service-specific orientation |
+| Service context | `*/.cursorrules` in some repos | Quick service-specific orientation |
 
 ## 11. `.cursor/docs/` — agent quick references (read fully; do not duplicate here)
 

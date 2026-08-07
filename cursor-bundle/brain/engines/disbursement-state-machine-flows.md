@@ -563,7 +563,7 @@ Why it matters:
 - The outer `disburseLoan` tx has the entity loaded into Hibernate's persistence context. If the CAS happened **inside** the outer tx, Hibernate would see "the entity I have in memory has `disbursement_status='DTFC_SUCCESS'` but the row in the DB now says `'NEFT_STAGE_1_SUCCESS'`". On outer-tx commit, Hibernate would auto-flush and overwrite the row back to `'DTFC_SUCCESS'` — **clobbering the CAS**.
 - With `REQUIRES_NEW`, the CAS runs in its own tx + its own connection. The UPDATE goes straight to the DB, commits, releases. The outer tx's Hibernate context still has the stale entity, but as long as the caller doesn't touch the entity afterward, the auto-flush never tries to write the stale state.
 
-This is exactly why CLAUDE.md hard rule §3 says **don't call setters on the entity after a CAS APPLIED**. If you do, the outer-tx auto-flush will issue a non-CAS UPDATE that overwrites the row to whatever the in-memory entity says — a silent stomp.
+This is exactly why .cursorrules hard rule §3 says **don't call setters on the entity after a CAS APPLIED**. If you do, the outer-tx auto-flush will issue a non-CAS UPDATE that overwrites the row to whatever the in-memory entity says — a silent stomp.
 
 The bug that motivated this rule (commit `4c339282f`) was a sync post-handler doing `entity.setSomething(x)` after `transition(req)` returned APPLIED. The outer tx auto-flushed and reverted later async-callback writes. Fixed by removing the setter; the rule encodes the lesson.
 
@@ -738,7 +738,7 @@ What happened operationally:
 
 The fix was to **remove the in-memory mutation entirely**. If you need to write `someField`, do it through `patchJsonFields` (a separate CAS) or through the next `transition` call's filler params. Never via setters after a CAS.
 
-This is encoded in CLAUDE.md hard rule §3 and reinforced by the `state-machine-safety` skill.
+This is encoded in .cursorrules hard rule §3 and reinforced by the `state-machine-safety` skill.
 
 ---
 

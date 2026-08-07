@@ -9,7 +9,7 @@
 | Java root package | `in.novopay` (top-level for legacy reasons) |
 | DB schema | `mfi_task` |
 | Repo | [`novopay-platform-task/`](../../novopay-platform-task/) |
-| Service CLAUDE.md | [`trustt-platform-task/CLAUDE.md`](../../trustt-platform-task/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-task/.cursorrules`](../../trustt-platform-task/.cursorrules) |
 
 ## API surface
 

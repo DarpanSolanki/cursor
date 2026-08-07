@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.dms` |
 | DB schema | (single cluster, unqualified) — primary tables `document_master`, `file_master`, `document_tags`, `sequence_generator` |
 | Repo | [`novopay-platform-dms/`](../../novopay-platform-dms/) |
-| Service CLAUDE.md | [`trustt-platform-dms/CLAUDE.md`](../../trustt-platform-dms/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-dms/.cursorrules`](../../trustt-platform-dms/.cursorrules) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (6 Requests)
 

@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.approval` |
 | DB schema | `mfi_approval` |
 | Repo | [`novopay-platform-approval/`](../../novopay-platform-approval/) |
-| Service CLAUDE.md | [`trustt-platform-approval/CLAUDE.md`](../../trustt-platform-approval/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-approval/.cursorrules`](../../trustt-platform-approval/.cursorrules) |
 
 ## API surface
 

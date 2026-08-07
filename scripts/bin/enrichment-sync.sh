@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tiered KG enrichment — rebuild only when the graph must change.
 #
-# Tiers (see .cursor/rules/20-ship-gates.md):
+# Tiers (see .cursor/rules/20-ship-gates.mdc):
 #   full   — orchestration/code watermark drift or missing kg.db
 #   cases  — brain CHANGELOG newer only (shipped-fix precedents)
 #   skip   — KB-only edits; graph already current

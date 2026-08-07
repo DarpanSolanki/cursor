@@ -25,4 +25,4 @@ Every TDPQA `tdpqa_field_handoff` pack **must** write `12004` + `12005`.
 Payload: `aitdp_lead_percent` + `aitdp_lead_remarks` (optional — defaults to Dev
 `aitdp_percent` / `aitdp_remarks` so packs always populate).
 
-Helper: `scripts/bin/jira-fix-adf.py` · Skill + `jira-tdpqa-qa-test-fields.mdc`.
+Helper: `scripts/bin/jira-fix-adf.py` · Skill + `jira-tdpqa-qa-test-fields.md`.

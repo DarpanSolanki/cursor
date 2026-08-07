@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated": "2026-08-03",
-  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability re-probed 2026-08-03 (all qa1-qa6 REACHABLE from sliProdClaude).",
+  "notes": "Paths/names only \u2014 credentials in scripts/db/env/*.env (gitignored). Reachability re-probed 2026-08-03 (all qa1-qa6 REACHABLE from sliProd).",
   "environments": {
     "local": {
       "db_wrapper": "scripts/db-local.sh",

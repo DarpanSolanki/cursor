@@ -6,10 +6,10 @@
 
 | Field | Value |
 |---|---|
-| Framework | Angular **20.3.16** (per `package.json`; CLAUDE.md says 19 — package.json is authoritative) |
+| Framework | Angular **20.3.16** (per `package.json`; .cursorrules says 19 — package.json is authoritative) |
 | Structure | Single project (not Nx/monorepo); all features under `src/app/` |
 | Repo | [`novopay-platform-webapp/`](../../novopay-platform-webapp/) |
-| Service CLAUDE.md | [`trustt-platform-webapp/CLAUDE.md`](../../trustt-platform-webapp/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-webapp/.cursorrules`](../../trustt-platform-webapp/.cursorrules) |
 
 ## Top-level feature areas
 

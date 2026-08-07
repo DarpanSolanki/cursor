@@ -4,7 +4,7 @@
 
 Once the customer (or group) is in actor, a loan application becomes the central entity. It progresses through **stages** owned by LOS, each adding data and gating on eligibility/bureau/operator decisions. The final stage triggers disbursement (next flow).
 
-Stage progression (per `StageConstants.java` + the operational sequence in LOS CLAUDE.md line 114):
+Stage progression (per `StageConstants.java` + the operational sequence in LOS .cursorrules line 114):
 
 ```
 QDE → ES → HHIE → AD → DDE → GFM (SHG/JLG only) → BET → CUWRTR → Document Mgmt → CPDC → triggerDisburseLoan

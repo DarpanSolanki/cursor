@@ -1,5 +1,5 @@
 ---
-description: "Disbursement testing playbook with simulator + CRR proof"
+description: Disbursement testing playbook with simulator + CRR proof
 globs:
   - "scripts/disburse_loan_sanity.py"
   - "scripts/disburse_loan_sanity_*.json"

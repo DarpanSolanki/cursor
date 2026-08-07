@@ -1,6 +1,6 @@
 # State machine safety — CAS contract reference
 
-> **Read this before** writing or reviewing any code that updates `loan_account.disbursement_status`, `loan_account.loan_status`, or `loan_account_events_queue.data->>'disbursement_status'`. The CLAUDE.md hard rule (§3) lives here in detail.
+> **Read this before** writing or reviewing any code that updates `loan_account.disbursement_status`, `loan_account.loan_status`, or `loan_account_events_queue.data->>'disbursement_status'`. The .cursorrules hard rule (§3) lives here in detail.
 
 **Authoritative on:** `novopay-platform-accounting-v2 mfi_integration_v3.3.1.0.1`. Earlier versions had different patterns; rules below describe the post-`4c339282f` design (2026-05-07).
 

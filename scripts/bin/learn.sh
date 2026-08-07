@@ -12,7 +12,7 @@
 # types: user | feedback | project | reference
 set -euo pipefail
 
-ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 MEM="$ROOT/cursor-bundle/memory"
 INDEX="$MEM/MEMORY.md"
 

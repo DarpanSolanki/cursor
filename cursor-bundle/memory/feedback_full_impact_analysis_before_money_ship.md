@@ -39,4 +39,4 @@ bash scripts/bin/ship-discipline.sh write \
 
 ## Why
 
-Without this, agents ship money-path validators with incomplete caller/mode analysis (mandate match class). Pair with `10-quality-gates.mdc` + `20-ship-gates.mdc`.
+Without this, agents ship money-path validators with incomplete caller/mode analysis (mandate match class). Pair with `10-quality-gates.md` + `20-ship-gates.md`.

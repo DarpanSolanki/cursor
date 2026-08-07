@@ -16,4 +16,4 @@ Every factual claim, recommendation, mail, spec, code change, or sample artifact
 
 **Why:** Half-recalled or unverified claims cause wrong fixes, wrong mails, and QA re-opens. This discipline is the backbone of the deep-RCA and QA-handoff rules.
 
-**How to apply:** Run all four gates before any factual output. The pre-Edit/Write hook reprints them. CLAUDE.md §0 Rule 7. Pairs with [[feedback_deep_rca_before_fix]], [[feedback_qa_handoff_package]], [[feedback_no_half_fixes_accounting]].
+**How to apply:** Run all four gates before any factual output. The pre-Edit/Write hook reprints them. .cursorrules §0 Rule 7. Pairs with [[feedback_deep_rca_before_fix]], [[feedback_qa_handoff_package]], [[feedback_no_half_fixes_accounting]].

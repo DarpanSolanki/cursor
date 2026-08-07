@@ -1,5 +1,5 @@
 ---
-description: "Auto-loads when editing trustt-platform-payments"
+description: Auto-loads when editing trustt-platform-payments
 globs:
   - "**/trustt-platform-payments/**/*.java"
   - "**/trustt-platform-payments/**/*.xml"

@@ -3,7 +3,6 @@ description: Workspace core — bootstrap, autopilot, contract, ops, hygiene, op
 alwaysApply: true
 ---
 
-
 # Workspace core
 
 Verbatim archives: `.cursor/skills/workspace-gates-reference/` (former alwaysApply bodies). Thematic rules state each gate **once**.
@@ -32,7 +31,7 @@ After bootstrap, for every user instruction except narrow exceptions below, prin
 | **READ-ONLY** (RCA, log analysis, KG lookups, code reading, discuss-only) | Print expansion, then **PROCEED immediately** — no wait |
 | **MUTATION** (code/config/SQL/Jira/git) **or** money-path conclusion that will drive a mutation | Expansion + **STOP-AND-WAIT** for explicit proceed/go ahead/yes before mutating |
 
-**Edit-approval (`10-quality-gates.mdc` discuss-before-updating) semantics UNTOUCHED** — never mutate without clear user ask/approval.
+**Edit-approval (`10-quality-gates.md` discuss-before-updating) semantics UNTOUCHED** — never mutate without clear user ask/approval.
 
 **Mandatory expansion topics (still expand; tier above applies):** prod logs, incidents, money, multi-service, contracts, DB/cluster, security, prod/ops SQL (contract-native FAIL first).
 
@@ -75,7 +74,7 @@ bash scripts/bin/route-ledger.sh learn      # router tuning report (report-only)
 
 Task end closes the ledger: `workspace-autopilot.sh end --declared evidence_cited,knowledge_loops
 --evidence-tier RUNTIME_VERIFIED`. Declaring a tier you did not reach is the one failure this
-system cannot catch for you — see the simulation ladder in `20-ship-gates.mdc`.
+system cannot catch for you — see the simulation ladder in `20-ship-gates.md`.
 
 ## Post-analysis OPTIONS BOARD (mandatory — planning engine)
 
@@ -99,7 +98,7 @@ Autopilot prints `OPTIONS BOARD (mandatory after analysis): …` on matching pla
 ## Mixed-train banner (Gate A — before any RCA conclusion)
 
 Autopilot prints a computed `TRAINS: … [MIXED|ALIGNED]` line from `.cursor/git-workspace-state.json` (never hand-written).
-When **`[MIXED]`** + money/cross-service task: **HARD STOP** — scope to one train (`sync-branches.sh --domain … --train …`) or get explicit user acknowledgment before cross-repo conclusions. Full wording: `10-quality-gates.mdc` Gate A.
+When **`[MIXED]`** + money/cross-service task: **HARD STOP** — scope to one train (`sync-branches.sh --domain … --train …`) or get explicit user acknowledgment before cross-repo conclusions. Full wording: `10-quality-gates.md` Gate A.
 
 ## Workspace autopilot (mandatory)
 
@@ -173,5 +172,4 @@ Identify service git root; skim architecture + flows; check platform-lib before 
 | Full always-on brain map / system_brain maintenance | `.cursor/skills/workspace-gates-reference/always-on.md` |
 | Autopilot / contract / ops / hygiene / open-final / principal / developer-tester / session-bootstrap | matching `.cursor/skills/workspace-gates-reference/<name>.md` |
 
-**RCA "Principal Engineer" workflow:** lives in glob rule `debugging-production-issues.mdc` (not duplicated here). Archive copy: `.cursor/skills/workspace-gates-reference/always-on.md` (historical).
-
+**RCA "Principal Engineer" workflow:** lives in glob rule `debugging-production-issues.md` (not duplicated here). Archive copy: `.cursor/skills/workspace-gates-reference/always-on.md` (historical).

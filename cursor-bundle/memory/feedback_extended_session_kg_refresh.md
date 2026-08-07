@@ -14,4 +14,4 @@
 - `enrichment-audit.sh --pre-push` — blocks when CHANGELOG newer than kg.db or KG quick-check stale
 - `post-commit-kg-flag.sh` — auto `enrichment-sync.sh` when branch-set drifted
 
-Pair: `feedback_full_impact_analysis_before_money_ship.md`, `30-kg-discipline.mdc`.
+Pair: `feedback_full_impact_analysis_before_money_ship.md`, `30-kg-discipline.md`.

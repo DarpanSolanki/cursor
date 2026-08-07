@@ -1,5 +1,5 @@
 ---
-description: "Death foreclosure local test harness and flow entrypoints"
+description: Death foreclosure local test harness and flow entrypoints
 globs:
   - "scripts/dcf_sanity.py"
   - "scripts/dcf_sanity/**"

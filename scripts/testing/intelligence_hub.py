@@ -241,6 +241,29 @@ def generate(*, fast: bool = False) -> str:
             val = scan.get(k) or _count_jsonl(FLOW / f"{k}.jsonl" if k != "chains" else "chains.jsonl")
         lines.append(f"| {label} | {val} |")
 
+    maps = [
+        ("API contract", "platform_api_map.jsonl", ".cursor/platform-api-map.md"),
+        ("Tables", "platform_tables.jsonl", ".cursor/platform-surface-map.md"),
+        ("Processors", "platform_processors.jsonl", ".cursor/platform-surface-map.md"),
+        ("Error codes", "platform_errors.jsonl", ".cursor/platform-surface-map.md"),
+        ("Schedulers", "platform_schedulers.jsonl", ".cursor/platform-surface-map.md"),
+        ("Kafka topics", "platform_events.jsonl", ".cursor/platform-surface-map.md"),
+        ("GL posting rules", "platform_gl_rules.jsonl", ".cursor/platform-surface-map.md"),
+        ("Loan transactions", "transaction_map.jsonl", ".cursor/loan-transaction-map.md"),
+    ]
+    built = [(label, _count_jsonl(FLOW / name), doc) for label, name, doc in maps]
+    if any(n for _, n, _ in built):
+        lines.extend([
+            "",
+            "## Stored maps — read before grepping",
+            "",
+            "| Map | Rows | Reference |",
+            "|-----|-----:|-----------|",
+        ])
+        lines += [f"| {label} | {n} | `{doc}` |" for label, n, doc in built if n]
+        lines.append("")
+        lines.append("Regenerate: `platform_api_map.py` (0.7s) · `platform_surface.py` (0.2s)")
+
     lines.extend([
         "",
         f"**Footprints:** {v} verified · {p} partial · {u} untested",
@@ -315,7 +338,7 @@ def generate(*, fast: bool = False) -> str:
         "scripts/bin/platform-scan.sh --with-kg",
         "```",
         "",
-        "Rule: `.cursor/rules/30-kg-discipline.md` — KG orients; code + DB decide.",
+        "Rule: `.cursor/rules/30-kg-discipline.mdc` — KG orients; code + DB decide.",
     ])
     return "\n".join(lines) + "\n"
 

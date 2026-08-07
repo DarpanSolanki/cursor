@@ -59,7 +59,7 @@
       "draft_plan": "DRAFT: Harvest perf idioms from in-tree exemplars (Repository/@Query patterns that EXPLAIN PASS on money tables) + pin build.gradle/YB version notes; feed learning_bus events from query-plan-gate WARN/FAIL. Deliverable: cursor-bundle/brain/reference/perf-idioms.md + optional KG nodes. Do NOT block ships on catalog absence. Owner: next Upgrade after 11-LEAN. Auto_safe=false (structural/doc harvest).",
       "created_at": "2026-07-23T12:32:05Z",
       "oldest_at": "2026-07-23T12:32:05Z",
-      "note": "Lean catalog in hot-path-perf-gate.md + reviewer line in 10-quality-gates.mdc; no new gate",
+      "note": "Lean catalog in hot-path-perf-gate.md + reviewer line in 10-quality-gates.md; no new gate",
       "done_date": "2026-07-27",
       "done_at": "2026-07-27T14:04:28Z"
     }

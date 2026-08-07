@@ -50,8 +50,8 @@ Full checklist: read `.cursor/skills/accounting-knowledge/preflight-signoff.md`.
 | Booking vs billing vs posting vs accrual | `booking-billing-posting-accrual.md` |
 | Ledger engines | `orchestration-ledger-engines.md` |
 | Orchestration walkthroughs / flows | `flows.md` |
-| Death foreclosure | `death-foreclosure-flow.md` |
 | DPI base / SHG parent→child distribute | `dpi-base-and-shg-distribute.md` |
+| Death foreclosure | `death-foreclosure-flow.md` |
 | Production lessons | `critical-lessons.md` |
 | Batch platform ↔ scheduler | `batch-platform.md` |
 | batchnew job map | `batchnew-jobs.md` |

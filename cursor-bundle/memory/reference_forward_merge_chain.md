@@ -26,7 +26,7 @@ narrative `.cursor/release-trains.md` § Declared forward-merge chain.
    be free on the *highest* chain branch, not the checked-out one — otherwise the next forward
    merge collides. `forward_merge.py highest --repo trustt-platform-initial-setup`.
 3. **Absence upstream is not a regression.** Branches before the fix legitimately lack it. Pairs
-   with [[feedback-branches-diverge-both-directions]] and `.cursor/rules/40-knowledge-upkeep.md`.
+   with [[feedback-branches-diverge-both-directions]] and `.cursor/rules/40-knowledge-upkeep.mdc`.
 
 Two of the four declared lists (L3/L4) omit 3.5.1.1 and stop at 3.5.2.2 — coverage differs,
 ordering never contradicts. `forward_merge.py coverage <branch>` prints which lists cover it.

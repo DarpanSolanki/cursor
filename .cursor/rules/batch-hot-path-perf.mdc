@@ -1,6 +1,11 @@
 ---
-description: "Batch inner-loop perf — precedents; workspace gate: 10-quality-gates.mdc (always-on)"
-globs: ["**/batchnew/**/*.java", "**/*BatchService.java", "**/*ItemProcessor.java", "**/*ItemReader.java", "**/*ItemWriter.java"]
+description: Batch inner-loop perf — precedents; workspace gate: 10-quality-gates.md (always-on)
+globs:
+  - "**/batchnew/**/*.java"
+  - "**/*BatchService.java"
+  - "**/*ItemProcessor.java"
+  - "**/*ItemReader.java"
+  - "**/*ItemWriter.java"
 alwaysApply: false
 ---
 
@@ -41,4 +46,4 @@ When editing a **batch service**, **item processor**, or **daily/segment loop** 
 - [ ] Preload scope stated (per-loan vs chunk)
 - [ ] `verify-dpi` or relevant batch sanity re-run after perf change
 
-Pairs with: `feedback_significant_perf_with_fix.md`, `10-quality-gates.mdc`, `10-quality-gates.mdc`.
+Pairs with: `feedback_significant_perf_with_fix.md`, `10-quality-gates.md`, `10-quality-gates.md`.

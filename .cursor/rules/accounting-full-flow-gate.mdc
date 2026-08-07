@@ -1,12 +1,25 @@
 ---
-description: "Accounting module — ALL flow domains (read, write, batch, money); not money-only"
-globs: ["trustt-platform-accounting/**", "scripts/accounting/**", "scripts/dpic/**", "scripts/disbursement/**", "scripts/testing/registry.json"]
+description: Accounting module — ALL flow domains (read, write, batch, money); not money-only
+globs:
+  - "trustt-platform-accounting/**"
+  - "scripts/accounting/**"
+  - "scripts/dpic/**"
+  - "scripts/disbursement/**"
+  - "scripts/testing/registry.json"
 alwaysApply: false
 ---
 
 # Accounting full-flow test gate
 
 Applies to **any** change under `trustt-platform-accounting` — disbursement, repayment, read APIs, batches, EOD, foreclosure, DPI, write ops.
+
+## Loan transaction map
+
+`.cursor/loan-transaction-map.md` — per transaction: the request contract (JTF template),
+the header fields (`function_code` / `function_sub_code` / `run_mode` are **headers**, never
+body), mandatory fields, processor order, internal + cross-service calls, tables written, and
+the error codes its validators raise. Regenerate with
+`python3 scripts/testing/transaction_map.py`. Read it before reconstructing a payload by hand.
 
 ## Domain map
 
@@ -41,4 +54,4 @@ bash scripts/bin/accounting-flow-proof.sh      # health + read smoke + domain pr
 - Treat batch job SUCCESS as business correctness without domain verify SQL
 - Skip `health.accounting` on service-tier processor/XML edits
 
-See also: `dpi-money-proof-gate.mdc` for DPI-specific posting calendar guards.
+See also: `dpi-money-proof-gate.md` for DPI-specific posting calendar guards.

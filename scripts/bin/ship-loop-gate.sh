@@ -479,6 +479,14 @@ echo "→ assert strength (no new presence-only asserts)"
 python3 "$ROOT/scripts/bin/assert-strength-gate.py" || exit 1
 echo "→ schema refs (no assert or SQL names a column the schema lacks)"
 python3 "$ROOT/scripts/lib/schema_ref_gate.py" --sql || exit 1
+echo "→ loan_status sweeps (no new sweep stamps over a terminal or foreign-workflow state)"
+python3 "$ROOT/scripts/lib/loan_status_sweep_gate.py" || exit 1
+echo "→ KG response budget (no lookup costs more than the grep it replaces)"
+python3 "$ROOT/scripts/lib/kg_response_budget.py" || exit 1
+echo "→ process matrix (DAG acyclic, deps resolve, money cells not weakened)"
+python3 "$ROOT/scripts/lib/process_router.py" ratchet || exit 1
+echo "→ domain coverage (no domain's untested surface may grow — all 44, not just money)"
+python3 "$ROOT/scripts/lib/domain_coverage_gate.py" || exit 1
 echo "→ error-index drift (every indexed throw site still matches source)"
 python3 "$ROOT/scripts/lib/error_index_drift_gate.py" --strict --sample 400 || exit 1
 echo "→ hygiene (auto-clean; never leave the tree dirtier than we found it)"

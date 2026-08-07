@@ -72,7 +72,7 @@ The closer to "money/state changes" a service is, the more it's depended on:
 
 ## What every service has
 
-- `CLAUDE.md` at repo root — service team's declaration of scope.
+- `.cursorrules` at repo root — service team's declaration of scope.
 - `deploy/application/orchestration/*.xml` — Request → processor chains.
 - `deploy/application/messagebroker/MessageBroker.xml` — Kafka declarations.
 - `src/main/java/in/novopay/<service>/` — Java root.

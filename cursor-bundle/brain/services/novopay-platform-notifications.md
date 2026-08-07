@@ -9,7 +9,7 @@
 | Java root package | `in.novopay.notifications` |
 | DB schema | `mfi_notifications` |
 | Repo | [`novopay-platform-notifications/`](../../novopay-platform-notifications/) |
-| Service CLAUDE.md | [`trustt-platform-notifications/CLAUDE.md`](../../trustt-platform-notifications/CLAUDE.md) |
+| Service .cursorrules | [`trustt-platform-notifications/.cursorrules`](../../trustt-platform-notifications/.cursorrules) |
 
 ## API surface — `ServiceOrchestrationXML.xml` (~13 Requests)
 

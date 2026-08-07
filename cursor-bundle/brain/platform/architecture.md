@@ -193,7 +193,7 @@ flowchart LR
 | This knowledge base | `.cursor/*.md` (this file set) | Architecture + contracts summary |
 | Curated brain | `system_brain/` | Flows, edge cases, batch inventory, runbooks |
 | Deep specs | `trustt-platform-ai-codegen-artifacts-java/sli/` | Framework docs, API specs, data dictionaries |
-| Service context | `*/CLAUDE.md` in some repos | Quick service-specific orientation |
+| Service context | `*/.cursorrules` in some repos | Quick service-specific orientation |
 
 ## 11. `.cursor/docs/` — agent quick references (read fully; do not duplicate here)
 
@@ -219,7 +219,7 @@ flowchart LR
 | `insurance_inbound_posting.md` | DCF inbound jobs → `DeathForeclosureInsuranceWriter`, disb-cancellation bulk → `LOAN_DISB_CNCL`, post-disb insurance **no** `postTransaction` |
 | `reversals_manual_journal_transaction_engine.md` | `reverseTransactionProcessor` lookup order, Cr/Dr swap, manual JE dedupe `134067` |
 
-Deep accounting column semantics and NEFT/CLMT detail remain in **`.cursor/rules/accounting.md`** (Module reference section; do not merge that detail into these summaries).
+Deep accounting column semantics and NEFT/CLMT detail remain in **`.cursor/rules/accounting.mdc`** (Module reference section; do not merge that detail into these summaries).
 
 ---
 

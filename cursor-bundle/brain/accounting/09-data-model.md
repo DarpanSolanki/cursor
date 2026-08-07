@@ -64,7 +64,7 @@
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-(Comprehensive entity-list reference: the table in `/home/darpan/Documents/sliProd/trustt-platform-accounting/CLAUDE.md` ships with the service.)
+(Comprehensive entity-list reference: the table in `/home/darpan/Documents/sliProd/trustt-platform-accounting/.cursorrules` ships with the service.)
 
 ---
 

@@ -1,6 +1,9 @@
 ---
-description: "DPI money path — mandatory SQL proof chain before ship or QA hand-off"
-globs: ["scripts/dpic/**", "scripts/bin/dpi-*.sh", "scripts/testing/registry.json"]
+description: DPI money path — mandatory SQL proof chain before ship or QA hand-off
+globs:
+  - "scripts/dpic/**"
+  - "scripts/bin/dpi-*.sh"
+  - "scripts/testing/registry.json"
 alwaysApply: false
 ---
 

@@ -19,7 +19,7 @@ Before proposing or shipping **any** fix, enhancement, or new capability, walk *
 
 ## Tiered delivery (always present L0 + L1 + L2 + L3 after analysis)
 
-After analysis / RCA / enhancement discussion, emit full **OPTIONS BOARD** (L0–L3; `N/A` one-liner only if truly inapplicable). Include code options when they exist — evidence-only next-step is not enough. See `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.
+After analysis / RCA / enhancement discussion, emit full **OPTIONS BOARD** (L0–L3; `N/A` one-liner only if truly inapplicable). Include code options when they exist — evidence-only next-step is not enough. See `00-workspace-core.md` § Post-analysis OPTIONS BOARD.
 
 | Tier | When | Example |
 |------|------|---------|

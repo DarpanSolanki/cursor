@@ -1,5 +1,5 @@
 ---
-description: "Auto-loads when editing any file in trustt-platform-lib"
+description: Auto-loads when editing any file in trustt-platform-lib
 globs:
   - "**/trustt-platform-lib/**/*.java"
   - "**/trustt-platform-lib/**/*.xml"

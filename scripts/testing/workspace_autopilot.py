@@ -66,7 +66,7 @@ OPTIONS_BOARD_DIRECTIVE = (
     "behind evidence-gathering. Format each tier: change / where / effort / risk / what it does NOT fix. "
     "Use `N/A — <one line>` only when a tier truly does not apply. Evidence/prod checks may be a "
     "prerequisite under a tier, never a substitute for the board. "
-    "See `.cursor/skills/architect-thinking/tiered-solutions.md` + `.cursor/rules/00-workspace-core.md`."
+    "See `.cursor/skills/architect-thinking/tiered-solutions.md` + `.cursor/rules/00-workspace-core.mdc`."
 )
 
 
@@ -448,7 +448,7 @@ def build_plan(
         "Run autopilot on EVERY new user message in this tab — task type may have changed.",
         "Extended session: re-read `.cursor/workspace-kg-state.md` + run `kg watermark` when resuming after branch checkout.",
         "Do not ask the user to run scripts — autopilot + hooks handle ops.",
-        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/10-quality-gates.md.",
+        "Hot-path perf gate (workspace-wide): no DAO/N+1 in loops; precompute before day loops — see .cursor/rules/10-quality-gates.mdc.",
         "After verified test + commit: push runs via ship-and-continue (do not wait for session end).",
     ]
     if task_shift:
@@ -986,6 +986,19 @@ def cmd_end(args: argparse.Namespace) -> int:
             )
     steps.append(Step("hub", "bash scripts/bin/write-intelligence-hub.sh", auto=True))
     results = execute_steps(steps, quiet=args.quiet)
+
+    # Source read this session that no doc, script or KG node covered. Surfacing it at
+    # close is what makes the loop self-learning: the hits were already logged, the
+    # misses — the only half that names a real gap — were not.
+    try:
+        r = subprocess.run(
+            ["python3", "scripts/lib/knowledge_miss.py", "report", "--limit", "8"],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode == 0 and "no recorded" not in r.stdout:
+            print("\n## Knowledge misses this session (capture or explain)\n" + r.stdout.rstrip())
+    except (OSError, subprocess.SubprocessError):
+        pass
 
     # LEARN close (Upgrade 8) — capture → propose → enrichment decision
     try:

@@ -10,13 +10,13 @@
 
 You can reach a **fully verified scope + design + impact map + implementation plan + QA scenarios** from `UD + KG + brain docs` *without opening service code*. The code-writing step then drops to the checkouts (precedence-ladder rung 6) — that is by design. So "UD only" = everything up to the diff is brain/KG-driven; the diff itself is code-anchored and verified against the checkout.
 
-Never skip the verification gate (CLAUDE.md Rule 5): built green ≠ done; status stays "pushed; awaiting QA retest."
+Never skip the verification gate (.cursorrules Rule 5): built green ≠ done; status stays "pushed; awaiting QA retest."
 
 ---
 
 ## 1. Ingest the UD → a behavioural-rules table (the lock)
 
-A UD is prose + sample-calc sheets. Convert it into an **enumerated, numbered behavioural-rules table** keyed to the UD section, before any design. This is the single source the rest of the work is checked against (enumerate-before-summarize, CLAUDE.md Rule 7b).
+A UD is prose + sample-calc sheets. Convert it into an **enumerated, numbered behavioural-rules table** keyed to the UD section, before any design. This is the single source the rest of the work is checked against (enumerate-before-summarize, .cursorrules Rule 7b).
 
 DPI did this — see [dpic/00-overview.md](../dpic/00-overview.md) "Key behavioural rules (locked from UD + sample-calc)": each rule traced to `UD §5.2 / §5.5` and to the sample-calc xlsx. Extract, per rule:
 
@@ -67,7 +67,7 @@ A new capability in this platform attaches at a fixed set of layers. Walk them i
 | 11 | **Surfacing** | Loan-360 / API response processors | `GetDpiAccrualDetailsProcessor` |
 | 12 | **Events (if cross-service)** | Kafka topic + consumer; [event-registry](../platform/event-registry.md) | n/a for DPI (in-service batch) |
 
-Not every feature touches all 12 — the placement matrix is a checklist so nothing is silently dropped (CLAUDE.md Rule 7b/c). Cross-service features additionally need `kg deps <service>` and [platform/service-contracts.md](../platform/service-contracts.md).
+Not every feature touches all 12 — the placement matrix is a checklist so nothing is silently dropped (.cursorrules Rule 7b/c). Cross-service features additionally need `kg deps <service>` and [platform/service-contracts.md](../platform/service-contracts.md).
 
 > **Layer 0 — Activation / wiring (the silent layer that the matrix above does NOT capture by itself).** Correct business code + green build + a `<Request>` + an `api_master` row does **not** mean the feature runs. This platform activates features through **dynamic runtime bean registration + DB-seed rows + orchestration-XML opt-in**, and **most activation misses fail SILENTLY** (no-op / null / fail-open). Before calling any feature done, walk the **[system-activation-and-wiring](../platform/system-activation-and-wiring.md) checklist**: batch → `*JobLoader` wiring + `BatchJobPlaceholderConfig` bean; `api_master` (else `13022`); processor beans by name (else `220000`); Kafka `<Consumer>` + matching bean; cache `@CacheEvict` on **every** write path; tenant propagation on new threads; Flyway right **module + band**; secured API → `api_usecase_mapping` (else the gateway **fails OPEN**); and the `<Audits>` / notification-template / `product_document_master` / `code_master` / `@NovopayConfig` opt-ins. **This is the layer the DPIC EOD jobs fell through** (coded, never wired into `LoanSystemDailyJobLoader` → never registered → never ran).
 
@@ -79,7 +79,7 @@ Apply [tiered-solution-approach.md](../rules/tiered-solution-approach.md): a fea
 
 Mandatory rail checks **before** finalising the design (these are the same rails that catch bugs):
 - [rules/no-flow-break-impact-check.md](../rules/no-flow-break-impact-check.md) — does inserting a processor / reordering break an existing flow? Cross-check with `kg impact`.
-- [rules/multi-path-state-persistence-safety.md](../rules/multi-path-state-persistence-safety.md) + `state-machine-safety` — if the feature writes a multi-writer state column (`disbursement_status`, `loan_status`, event-queue JSON), it must go through CAS; **no in-memory entity mutation after CAS** (CLAUDE.md Rule 3).
+- [rules/multi-path-state-persistence-safety.md](../rules/multi-path-state-persistence-safety.md) + `state-machine-safety` — if the feature writes a multi-writer state column (`disbursement_status`, `loan_status`, event-queue JSON), it must go through CAS; **no in-memory entity mutation after CAS** (.cursorrules Rule 3).
 - [rules/api-contract-safety.md](../rules/api-contract-safety.md) — new/changed API contract back-compat.
 - [gaps-and-risks.md](../gaps-and-risks.md) — read High items in the touched area before adding to it.
 
@@ -93,7 +93,7 @@ Only now drop to the checkouts (ladder rung 6). For each layer in the placement 
 
 - Build green: `cd <repo> && ./gradlew build -x test` (Java 17). After first build / `build.gradle` change: `./gradlew eclipse` for IDE classpath.
 - **Diff-before-claim** for any state/posting change: paste expected-vs-actual DB-state delta, not just "built green."
-- Authorship + changelog + push per CLAUDE.md Rule 4 (DarpanSolanki, `github-darpan` alias, prepend CHANGELOG in same turn).
+- Authorship + changelog + push per .cursorrules Rule 4 (DarpanSolanki, `github-darpan` alias, prepend CHANGELOG in same turn).
 
 ---
 
@@ -106,7 +106,7 @@ A UD always has gaps. Track them like DPI did — [dpic/05-open-questions.md](..
 ## 7. QA hand-off & keep-knowledge-current
 
 - Run **`qa-handoff`**: functional RCA-equivalent (here: feature behaviour spec) + impact analysis + **simulated scenarios (expected vs actual)** per behavioural rule, drafted for the user to paste.
-- **Fold the feature into the brain in the same turn** (`feedback_keep_knowledge_current`): a new `claude/<feature>/` folder (overview / impl-spec / flow / open-questions, the DPI shape), update the CLAUDE.md topic map, then rebuild the KG (`claude/kg/bin/build.sh`) so `kg flow <newRequest>` / `kg cases` answer for the next session. **WIP gate**: if it's on a feature branch / behind a flag, mark it provisional — don't rewrite stable docs as if shipped.
+- **Fold the feature into the brain in the same turn** (`feedback_keep_knowledge_current`): a new `claude/<feature>/` folder (overview / impl-spec / flow / open-questions, the DPI shape), update the .cursorrules topic map, then rebuild the KG (`claude/kg/bin/build.sh`) so `kg flow <newRequest>` / `kg cases` answer for the next session. **WIP gate**: if it's on a feature branch / behind a flag, mark it provisional — don't rewrite stable docs as if shipped.
 
 ---
 

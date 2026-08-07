@@ -13,6 +13,8 @@ VAR_RE = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
 # ntest injects these per run, so they are resolvable without a _correlators entry.
 RUNTIME_CORRELATORS = {"STAN"}
 
+TIERS = {"money", "service", "workspace", "smoke"}
+
 
 def _collect_vars(obj: Any, found: set[str]) -> None:
     if isinstance(obj, dict):
@@ -44,6 +46,13 @@ def validate_registry(path: Path | None = None) -> list[str]:
         if t not in ("api", "batch", "flow", "health"):
             errors.append(f"{cid}: unknown type {t!r}")
             continue
+        tier = case.get("smoke_tier")
+        if tier not in TIERS:
+            errors.append(
+                f"{cid}: smoke_tier must be one of {sorted(TIERS)} (got {tier!r}) — "
+                "an untiered case is invisible to every tier-driven selector, so it runs "
+                "only when someone names it"
+            )
         if t == "flow":
             if not case.get("cmd"):
                 errors.append(f"{cid}: flow missing cmd")

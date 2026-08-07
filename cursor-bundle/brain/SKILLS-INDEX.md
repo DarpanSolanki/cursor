@@ -17,8 +17,8 @@
 | Skill | Use when | Key scripts |
 |-------|----------|-------------|
 | **workspace-router** | Every session / new task | `agent-router.sh`, `write-intelligence-hub.sh` |
-| **accounting-knowledge** | Accounting money-path depth beyond thin `accounting.mdc` | topic files under skill |
-| **architect-thinking** | Architect patterns beyond thin `architect-thinking.mdc` | topic files under skill |
+| **accounting-knowledge** | Accounting money-path depth beyond thin `accounting.md` | topic files under skill |
+| **architect-thinking** | Architect patterns beyond thin `architect-thinking.md` | topic files under skill |
 | **workspace-gates-reference** | Verbatim pre-U3 alwaysApply archives | — |
 | **autonomous-workspace-ops** | Tests, sanity, ntest, batch | `agent-ops.sh`, `ntest.sh`, `novopay-logs.sh` |
 | **capture-proof** | After fix + test on money path | `capture-flow.sh`, `ship-knowledge-gate.sh` |

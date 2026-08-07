@@ -1,5 +1,5 @@
 ---
-description: "Fix 134207 on postTransaction/disburseLoan — missing product_transaction_catalogue placeholder→IAD rows (PROC_FEE, GST, STAMP_DUTY_AMT)"
+description: Fix 134207 on postTransaction/disburseLoan — missing product_transaction_catalogue placeholder→IAD rows (PROC_FEE, GST, STAMP_DUTY_AMT)
 alwaysApply: false
 ---
 

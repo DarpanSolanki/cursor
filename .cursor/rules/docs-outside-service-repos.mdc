@@ -44,7 +44,7 @@ Organize by **service** and **feature/content type**:
 
 # Workspace `docs/` maintenance
 
-Apply when adding or editing files under **`docs/`** at the workspace root. **Placement and intent** are defined in **`docs-outside-service-repos.mdc`**; this rule is **how** to write and maintain those files.
+Apply when adding or editing files under **`docs/`** at the workspace root. **Placement and intent** are defined in **`docs-outside-service-repos.md`**; this rule is **how** to write and maintain those files.
 
 ## Placement
 
@@ -56,7 +56,7 @@ Apply when adding or editing files under **`docs/`** at the workspace root. **Pl
 - **Factual**: Link to **service repo paths** (`trustt-platform-accounting/...`), ticket IDs, or environment names (non-secret). Mark **UNVERIFIED** where code was not checked.
 - **No secrets**: No passwords, API keys, production connection strings, or full PII; redact or use placeholders.
 - **Scope label**: Prefer a one-line header or folder README note: e.g. “Local QA only”, “Release email draft”, “LLD v3.2.x” so agents do not treat drafts as prod runbooks.
-- **Duplication**: Do not paste large slabs of **live** source here to “replace” the repo—**short excerpts** only; pointer to real file path. Long procedural write-ups belong here; **deep accounting behaviour** stays in **`.cursor/skills/accounting-knowledge/`** + code (thin `accounting.mdc` = gates only), with **links** from `docs/` when needed.
+- **Duplication**: Do not paste large slabs of **live** source here to “replace” the repo—**short excerpts** only; pointer to real file path. Long procedural write-ups belong here; **deep accounting behaviour** stays in **`.cursor/skills/accounting-knowledge/`** + code (thin `accounting.md` = gates only), with **links** from `docs/` when needed.
 
 ## Cross-links
 
@@ -65,4 +65,4 @@ Apply when adding or editing files under **`docs/`** at the workspace root. **Pl
 
 ## Git
 
-- These files often live in a **workspace-level** or personal branch strategy; **do not** commit `docs/` artifacts into **`novopay-platform-*`** service repos when the goal is to keep them out of that repo’s history (`docs-outside-service-repos.mdc`).
+- These files often live in a **workspace-level** or personal branch strategy; **do not** commit `docs/` artifacts into **`novopay-platform-*`** service repos when the goal is to keep them out of that repo’s history (`docs-outside-service-repos.md`).

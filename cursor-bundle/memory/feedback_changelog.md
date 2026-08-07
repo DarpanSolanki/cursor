@@ -11,4 +11,4 @@ The audit log is a **single file**: `claude/changelog/CHANGELOG.md`, newest-firs
 
 **Why:** One queryable file keeps the audit log scannable and feeds the system KG case graph (each CHANGELOG entry becomes a `case` node). Long entries duplicate what `git show` already holds.
 
-**How to apply:** Prepend a 2-line entry **in the same task turn as every commit** (author = `DarpanSolanki <darpan@novopay.in>`), via the **`changelog-add`** skill — which then runs `claude/kg/bin/build.sh` to fold the entry into the case graph. CLAUDE.md §0 Rule 4. Pairs with [[feedback_keep_knowledge_current]], [[reference_system_kg]].
+**How to apply:** Prepend a 2-line entry **in the same task turn as every commit** (author = `DarpanSolanki <darpan@novopay.in>`), via the **`changelog-add`** skill — which then runs `claude/kg/bin/build.sh` to fold the entry into the case graph. .cursorrules §0 Rule 4. Pairs with [[feedback_keep_knowledge_current]], [[reference_system_kg]].

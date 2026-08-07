@@ -7,7 +7,7 @@ description: "On-demand deep knowledge for trustt-platform-accounting \u2014 tra
 
 Auto-attached gate: `.cursor/rules/accounting.mdc` (financial signoff + routing only).
 
-**Read topic files under this folder** when the task needs depth. Content was relocated verbatim from former `accounting.mdc` deep sections and `accounting-module-knowledge.mdc`.
+**Read topic files under this folder** when the task needs depth. Content was relocated verbatim from former `accounting.md` deep sections and `accounting-module-knowledge.mdc`.
 
 | File | When |
 |------|------|

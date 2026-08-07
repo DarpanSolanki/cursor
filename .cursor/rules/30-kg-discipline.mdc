@@ -3,7 +3,6 @@ description: KG discipline — safety, self-learning, flow-cross-learn, DPI bran
 alwaysApply: true
 ---
 
-
 # KG discipline
 
 Archives: `.cursor/skills/workspace-gates-reference/kg-safety-and-consultation.md`, `self-learning-kg.md`, `flow-cross-learn.md`, `dpi-feature-branch-gate.md`
@@ -85,4 +84,3 @@ When task mentions DPI/DPIC/dpiAccrual/dpiBilling/DPI go-live/loan restructuring
 4. Optional: `git merge-base --is-ancestor 77921d275f HEAD`
 
 **Never** conclude "field/API missing" from the wrong train. Mixed workspace (webapp feature / accounting integration) → wrong analysis — align first.
-

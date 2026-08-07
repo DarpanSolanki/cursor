@@ -38,4 +38,4 @@ Same ship window as the service commit (workspace commit OK if same task turn):
 
 ## Pair with
 
-`feedback_keep_knowledge_current.md`, `20-ship-gates.mdc`, `30-kg-discipline.mdc`, `20-ship-gates.mdc`.
+`feedback_keep_knowledge_current.md`, `20-ship-gates.md`, `30-kg-discipline.md`, `20-ship-gates.md`.

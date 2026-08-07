@@ -102,7 +102,7 @@ else
 fi
 
 step "5/6 hooks and gates"
-run bash scripts/bin/install-user-claude-gates.sh
+run bash scripts/bin/install-user-cursor-gates.sh
 run bash scripts/bin/install-kg-git-hooks.sh
 
 step "6/6 what is still manual"

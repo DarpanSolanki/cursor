@@ -18,7 +18,7 @@ move and transactions will happen .. standard for any fix or implementation test
    (e.g. `DCF_SEED_EMI_LABD=1`, `SEED_EXTRA=1`), boundary zero, and the exact QA fail mode
    (EMI-labd hijack, amount!=principal, Accrued>Original). The assert must FAIL on the fail mode.
 4. **No assumed PASS.** If any written value is wrong → FAIL. If a stage can't run, follow
-   `20-ship-gates.mdc` but still cite the expected writes (table+column+value).
+   `20-ship-gates.md` but still cite the expected writes (table+column+value).
 
 ## Machine enforcement (do not rely on prose)
 

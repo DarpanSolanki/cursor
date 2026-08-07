@@ -27,7 +27,7 @@ MONEY_PATH = re.compile(
     re.I,
 )
 SERVICE_CODE = re.compile(r"(trustt-platform-|novopay-)[a-z-]+/.*\.(java|xml|gradle)$", re.I)
-KB_PATH = re.compile(r"(\.claude/|docs/|cursor-bundle/|\.md$)", re.I)
+KB_PATH = re.compile(r"(\.cursor/|docs/|cursor-bundle/|\.md$)", re.I)
 
 
 def infer_class(rel: str) -> str:

@@ -23,7 +23,7 @@ For every bug, issue, JIRA, analysis, or enhancement — after analysis emit a f
 | **L2 Enhancement** | Schema, index, config, new topic. Planned release. | Days |
 | **L3 Architectural** | Framework upgrade, outbox, circuit breaker, cross-module. | Weeks |
 
-Full examples and L3 seeds: `.cursor/skills/architect-thinking/tiered-solutions.md`. Planning engine: `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD + autopilot directive.
+Full examples and L3 seeds: `.cursor/skills/architect-thinking/tiered-solutions.md`. Planning engine: `00-workspace-core.md` § Post-analysis OPTIONS BOARD + autopilot directive.
 
 ## Repository layer — no comments
 

@@ -43,12 +43,12 @@
 ## Workspace hygiene
 
 - **Service repos**: microservice folders are separate git roots (multi-repo).
-- **Docs that must not live in service git**: workspace `docs/<service>/` per `docs-outside-service-repos.mdc`.
+- **Docs that must not live in service git**: workspace `docs/<service>/` per `docs-outside-service-repos.md`.
 - **system_brain**: curated operational knowledge; update when behaviour verified.
 
 ## Tiered responses for incidents
 
-- Always offer **L0** (hotfix) + **L1** (proper fix) minimum; optional L2/L3 (`.cursor/rules/architect-thinking.md` — Tiered solution approach).
+- Always offer **L0** (hotfix) + **L1** (proper fix) minimum; optional L2/L3 (`.cursor/rules/architect-thinking.mdc` — Tiered solution approach).
 
 ## Quick verification commands (agents)
 
@@ -61,4 +61,4 @@
 
 ---
 
-*Align with `.cursorrules` and `.cursor/rules/concise-crisp-code.md` for style.*
+*Align with `.cursorrules` and `.cursor/rules/concise-crisp-code.mdc` for style.*

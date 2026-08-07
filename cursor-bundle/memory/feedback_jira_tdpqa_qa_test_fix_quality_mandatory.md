@@ -32,4 +32,4 @@ Every TDPQA pack **must** write:
 | **Fix Quality Score** | **12003** | `aitdp_fix_score` or Dev Accuracy |
 | Lead Accuracy / Lead Remarks | 12004 / 12005 | default from Dev AITDP |
 
-Helper: `jira-fix-adf.py` · rule `jira-tdpqa-qa-test-fields.mdc` · skill `jira-fix-update`.
+Helper: `jira-fix-adf.py` · rule `jira-tdpqa-qa-test-fields.md` · skill `jira-fix-update`.

@@ -50,6 +50,6 @@ For the table-by-table mapping (which API/processor writes/reads each `mfi_accou
 ## Sources consulted (read-only)
 
 - **Authoritative (use this for new work):** `/home/darpan/Documents/sliProd/novopay-platform-accounting-v2/` and `/home/darpan/Documents/sliProd/novopay-platform-batch/` — branch `mfi_integration_v3.2.8.4.1`, working tree clean. 9 orchestration XMLs total **23 270 lines**, 27 `batchnew/*` sub-packages, `LmsMessageBrokerConsumer.java` present.
-- The service-shipped `trustt-platform-accounting/CLAUDE.md` — provides the high-level scope, table-cluster list, and known complexity gotchas. Treat as authoritative for *what the module is supposed to do*; treat the deep-dive docs here as authoritative for *how it actually does it*.
+- The service-shipped `trustt-platform-accounting/.cursorrules` — provides the high-level scope, table-cluster list, and known complexity gotchas. Treat as authoritative for *what the module is supposed to do*; treat the deep-dive docs here as authoritative for *how it actually does it*.
 
 No writes were performed outside `/home/darpan/Documents/sliProd/`.

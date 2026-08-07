@@ -1,5 +1,5 @@
 ---
-description: "Auto-loads when editing batch service or batch-shaped Spring Batch artifacts"
+description: Auto-loads when editing batch service or batch-shaped Spring Batch artifacts
 globs:
   - "**/trustt-platform-batch/**/*.java"
   - "**/*BatchConfig*.java"

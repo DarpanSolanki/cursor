@@ -9,7 +9,7 @@
 --
 -- IAD ids are copied from the golden reference product (product_id=1) for the
 -- same transaction_catalogue_id — never invented. See
--- .cursor/rules/accounting-134207-placeholder-iad.md.
+-- .cursor/rules/accounting-134207-placeholder-iad.mdc.
 --
 -- Local only (127.0.0.1:5433). Idempotent. Run via:
 --   bash scripts/bin/db-local-write.sh --file scripts/sql/setup/local_setup_jlg_billing_catalogue_placeholder_iad.sql

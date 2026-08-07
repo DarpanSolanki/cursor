@@ -37,4 +37,16 @@ def expand_expect(expect: dict[str, Any]) -> list[dict[str, Any]]:
             "path": d["path"],
             "sql": d["sql"],
         })
+    fe = expect.get("file_exists")
+    if fe:
+        for p in (fe if isinstance(fe, list) else [fe]):
+            rules.append({"type": "file_exists", "name": f"file_exists:{p}", "path": p})
+    if expect.get("file_row_count"):
+        frc = expect["file_row_count"]
+        rules.append({
+            "type": "file_row_count",
+            "name": f"file_row_count:{frc['path']}",
+            "path": frc["path"],
+            "min": frc.get("min", 1),
+        })
     return rules

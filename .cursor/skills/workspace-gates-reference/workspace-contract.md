@@ -14,7 +14,7 @@
 | Reuse-query proof on any `*Repository/*DAOService` query change | `reuse_query_gate.py` (in `ship_discipline_gate`) → `.ship-discipline.json` `reuse_query` block |
 | Real-flow value-level DB asserts on money ships | `acceptance_coverage.py` `db_asserts` vs `domain_money_tables` (manifest) — presence-only fails closed |
 | Knowledge / KG enrichment | `ship-knowledge-gate.sh` + `enrichment-audit.sh` |
-| Hooks | `.cursor/hooks.json` + `install-user-claude-gates.sh` |
+| Hooks | `.cursor/hooks.json` + `install-user-cursor-gates.sh` |
 | Health / smoke / hygiene | `workspace-max-pass.sh` / `workspace-smoke.sh` |
 | Multi-branch KG | `kg-switch.sh` / watermark LRU — never invent branch state |
 
@@ -32,7 +32,7 @@
 
 ```bash
 bash scripts/bin/workspace-max-pass.sh          # smoke + hygiene
-bash scripts/bin/install-user-claude-gates.sh   # hooks (once per machine)
+bash scripts/bin/install-user-cursor-gates.sh   # hooks (once per machine)
 bash scripts/bin/enrichment-sync.sh             # if CHANGELOG newer than kg.db
 bash scripts/bin/ship-discipline.sh write ...   # before money close
 ```

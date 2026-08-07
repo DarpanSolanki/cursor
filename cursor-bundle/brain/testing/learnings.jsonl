@@ -28,3 +28,8 @@
 {"ts": "2026-07-28T08:00:02Z", "api": "getLoanAccountOverviewDetails", "kind": "harness", "text": "dpi_paid_amount omitted when no DPI dues — registry uses total_accrued_dpi_amount"}
 {"ts": "2026-07-28T08:00:03Z", "api": "loanAccountPartPrepayment", "kind": "harness", "text": "130241: nest loan_account_part_prepayment per JTF"}
 {"ts": "2026-07-28T08:00:04Z", "api": "*", "kind": "meta", "text": "Fail fast: dpic_harness_preflight before money E2E; classify HARNESS vs PRODUCT before Java edits"}
+{"ts": "2026-08-05T08:47:05Z", "api": "loanAccountPartPrepayment", "kind": "gotcha", "text": "REAL mode validators are inside a run_mode=REAL Control — TRIAL never runs validateLoanAccountPartPrepaymentProcessor, so a TRIAL pass proves nothing about 134227/134303"}
+{"ts": "2026-08-05T08:47:05Z", "api": "loanAccountPartPrepayment", "kind": "harness", "text": "gross must include total_outstanding_dpi_amount + bpd_amount (both from getPartPrepaymentBPIAmount) or REAL fails 134227"}
+{"ts": "2026-08-05T08:47:05Z", "api": "dpiAccrualCalculation", "kind": "setup", "text": "to create open broken-period DPI locally run dpi_call_batch dpiAccrualCalculation for today — do not seed dpi_accrual_details by hand"}
+{"ts": "2026-08-05T10:01:13Z", "api": "loanAccountPartPrepayment", "kind": "gotcha", "text": "REAL APPROVE needs total_outstanding_amount = SUM(due-paid-waived) over all non-deleted loan_due_details rows, else 134255"}
+{"ts": "2026-08-05T10:01:13Z", "api": "getLoanAccountDetails", "kind": "gotcha", "text": "200065 customer_id is mandatory means the account's actor is not typed CUSTOMER or GROUP — getActorDetailsForAccount only maps customer_id under that control; check mfi_actor.actor.type before blaming the loan row"}

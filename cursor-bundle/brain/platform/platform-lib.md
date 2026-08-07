@@ -48,7 +48,7 @@ Do not use Boot 3.5-only APIs inside `novopay-platform-lib` without upgrading th
 ## Framework conventions enforced
 
 1. **Orchestration-first APIs** — validators + processors + controls in XML; generic HTTP controller in infra-service-gateway.
-2. **ExecutionContext** — `put` vs `putLocal` (`.cursor/rules/execution-context-discipline.md`).
+2. **ExecutionContext** — `put` vs `putLocal` (`.cursor/rules/execution-context-discipline.mdc`).
 3. **Transactions** — implicit for typical POST body requests; explicit (`explicitTxnMgmt="true"`) for orchestration Requests where individual `<Transaction>` blocks must commit independently. Full semantics in [`transaction-model.md`](transaction-model.md).
 4. **Errors** — `ServiceOrchestrator` wraps fatal/non-fatal and builds response maps.
 5. **Internal orchestration** — `CallInternalOrchestrationProcessor` repopulates context and calls `processRequest` with explicit transaction flag.

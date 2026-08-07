@@ -1,6 +1,6 @@
 # Services — one brain doc per service
 
-> Each file in this folder is a **single-page mental model** of one service. It tells you what the service owns, what it depends on, what depends on it, and where to look in code. It is *not* a re-statement of the service's CLAUDE.md — it is a synthesis after probing the actual orchestration XMLs, Kafka config, and entity packages on branch `mfi_integration_v3.2.8.4.1`.
+> Each file in this folder is a **single-page mental model** of one service. It tells you what the service owns, what it depends on, what depends on it, and where to look in code. It is *not* a re-statement of the service's .cursorrules — it is a synthesis after probing the actual orchestration XMLs, Kafka config, and entity packages on branch `mfi_integration_v3.2.8.4.1`.
 
 The 17 services in this workspace are:
 
@@ -35,7 +35,7 @@ The 17 services in this workspace are:
 
 - Every service has `deploy/application/orchestration/*.xml` defining `<Request name="…">` → `<Processor bean="…">` chains.
 - Every service has `deploy/application/messagebroker/MessageBroker.xml` declaring producers/consumers.
-- Every service has a CLAUDE.md at the repo root — that is the **service team's** declaration of scope. Use it as the starting fact, then verify against code.
+- Every service has a .cursorrules at the repo root — that is the **service team's** declaration of scope. Use it as the starting fact, then verify against code.
 - Java root packages all start with `in.novopay.<service>` (the older actor service uses `in.novopay.actor`; reporting uses `in.novopay`).
 - DB schemas all start with `mfi_<service>` for MFI tenant. Multi-tenant deployments may use different prefixes per tenant.
 - All services are on branch `mfi_integration_v3.2.8.4.1` (verified — see [../workspace-state.md](../workspace-state.md)).

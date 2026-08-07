@@ -21,4 +21,4 @@
 
 ## Redis / cache
 
-- Task caches actor/employee/office data (see service `CLAUDE.md`); stale cache can wrong assignment — not a new numbered gap in Wave 3.
+- Task caches actor/employee/office data (see service `.cursorrules`); stale cache can wrong assignment — not a new numbered gap in Wave 3.

@@ -1,6 +1,7 @@
 ---
-description: "No comments in persistence/repository layer — use knowledge docs or SQL"
-globs: ["**/src/main/java/**/repository/**/*.java"]
+description: No comments in persistence/repository layer — use knowledge docs or SQL
+globs:
+  - "**/src/main/java/**/repository/**/*.java"
 alwaysApply: false
 ---
 

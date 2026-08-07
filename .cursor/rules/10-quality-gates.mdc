@@ -3,7 +3,6 @@ description: Quality gates — discuss-before, minimal-fix, reuse-queries, hot-p
 alwaysApply: true
 ---
 
-
 # Quality gates
 
 Archives: `.cursor/skills/workspace-gates-reference/agent-quality-gates.md`, `minimal-fix-impact-gate.md`, `discuss-before-updating.md`, `reuse-queries-java-filter.md`, `hot-path-perf-gate.md`, `upstream-sync-no-unrelated-diff.md`
@@ -95,5 +94,4 @@ Machine gate: `acceptance_coverage.py` — fail closed on subset / SQL-only weba
 **Enforced domains (ratchet):** `death_foreclosure`, `disbursement`, `repayment`, `foreclosure`, `interest_accrual` — may only GROW (`registry_proposals.py ratchet`). All `smoke_tier:money` cases must declare `verify_mode` (ship-discipline fails otherwise).
 
 ### Gate E — Outputs
-Diplomatic RCA; after analysis emit full **OPTIONS BOARD (L0 + L1 + L2 + L3)** — code options included when they exist; evidence-only next-step is not enough; then minimal-fix gate before propose. See `00-workspace-core.mdc` § Post-analysis OPTIONS BOARD.
-
+Diplomatic RCA; after analysis emit full **OPTIONS BOARD (L0 + L1 + L2 + L3)** — code options included when they exist; evidence-only next-step is not enough; then minimal-fix gate before propose. See `00-workspace-core.md` § Post-analysis OPTIONS BOARD.

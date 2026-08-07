@@ -52,6 +52,11 @@ def current_train(service: str = "accounting") -> str:
 REGISTRY = ROOT / "scripts/testing/registry.json"
 
 
+def inapplicable_cases() -> set[str]:
+    """Public alias — callers outside this module need the same train filter."""
+    return _inapplicable_cases()
+
+
 def _inapplicable_cases() -> set[str]:
     """Cases whose `requires_paths` are absent from this checkout.
 

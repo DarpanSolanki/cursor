@@ -181,6 +181,80 @@ def _telemetry(case_id: str, passed: bool, duration_s: float = 0.0) -> None:
             pass
 
 
+def _batch_counts(job_name: str, before_exec: str) -> tuple[int, int]:
+    """Items read and written by executions of `job_name` newer than `before_exec`.
+
+    Spring Batch records this per step in `mfi_batch.batch_step_execution`, and it is the only
+    honest measure of a batch job's work: `loanAccountDpdCalcJob` reads and writes all 2154
+    active loans while `loan_account.updated_on` moves for none of them, because Hibernate
+    issues no UPDATE for an entity whose fields did not change. A row-count or timestamp diff
+    therefore understates every Spring Batch job.
+
+    The sum spans every step of the execution, and a partitioned job reports counts on both
+    the master step and each partition — so `loanAccountDpdCalcJob` returns 4308 for 2154
+    loans. This is a proof-of-work signal ("did this execution move anything"), not an item
+    count, and must not be quoted as one.
+    """
+    import subprocess as _sp
+    sql = (
+        "SELECT COALESCE(SUM(s.read_count),0)||'|'||COALESCE(SUM(s.write_count),0) "
+        "FROM mfi_batch.batch_step_execution s "
+        "JOIN mfi_batch.batch_job_execution e ON e.job_execution_id = s.job_execution_id "
+        "JOIN mfi_batch.batch_job_instance i ON i.job_instance_id = e.job_instance_id "
+        f"WHERE i.job_name = '{job_name}' AND e.job_execution_id > {int(before_exec or 0)}"
+    )
+    try:
+        out = _sp.check_output(
+            ["psql", "-h", os.environ.get("YB_HOST", "127.0.0.1"),
+             "-p", os.environ.get("YB_PORT", "5433"),
+             "-U", os.environ.get("YB_USER", "yugabyte"),
+             "-d", os.environ.get("YB_DB", "yugabyte"),
+             "-t", "-A", "-v", "ON_ERROR_STOP=1", "-c", sql],
+            env={**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")},
+            text=True, timeout=60).strip()
+        read_s, _, write_s = out.partition("|")
+        return int(read_s or 0), int(write_s or 0)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [WARN] batch_counts failed: {exc}", file=sys.stderr)
+        return -1, -1
+
+
+def _batch_planned(job_name: str, before_exec: str) -> int:
+    """How many rows the job itself decided to process, from its own `batch_record_count` param.
+
+    A partitioned job counts its candidates before it runs and stores the figure in
+    `batch_job_execution_params`. Comparing it against `read_count` is the check that catches a
+    job which planned for N rows and then read none of them — GAP-095, where the partitioner's
+    date arithmetic was the mirror image of the reader's, so the partitions were bounded to an
+    id range that structurally could not contain the reader's own candidates. `COMPLETED` with
+    read=0 is indistinguishable from "nothing due today" without this number.
+
+    Returns -1 when the job records no such parameter, which most non-partitioned jobs do not.
+    """
+    import subprocess as _sp
+    sql = (
+        "SELECT COALESCE(MAX(p.parameter_value::bigint),-1) "
+        "FROM mfi_batch.batch_job_execution_params p "
+        "JOIN mfi_batch.batch_job_execution e ON e.job_execution_id = p.job_execution_id "
+        "JOIN mfi_batch.batch_job_instance i ON i.job_instance_id = e.job_instance_id "
+        f"WHERE i.job_name = '{job_name}' AND e.job_execution_id > {int(before_exec or 0)} "
+        "AND p.parameter_name = 'batch_record_count'"
+    )
+    try:
+        out = _sp.check_output(
+            ["psql", "-h", os.environ.get("YB_HOST", "127.0.0.1"),
+             "-p", os.environ.get("YB_PORT", "5433"),
+             "-U", os.environ.get("YB_USER", "yugabyte"),
+             "-d", os.environ.get("YB_DB", "yugabyte"),
+             "-t", "-A", "-v", "ON_ERROR_STOP=1", "-c", sql],
+            env={**os.environ, "PGPASSWORD": os.environ.get("PGPASSWORD", "yugabyte")},
+            text=True, timeout=60).strip()
+        return int(out or -1)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [WARN] batch_planned query failed, plan check skipped: {exc}", file=sys.stderr)
+        return -1
+
+
 def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tuple[int, Any]:
     t0 = time.time()
     env = {**_correlators(), **_resolve_defaults(case)}
@@ -275,8 +349,21 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
     code, status = result.response_status()
     print(f"HTTP {result.http_status} ({result.elapsed_ms}ms)  {code}/{status}")
 
+    all_rules = expand_expect(case.get("expect") or {})
+    # A batch trigger returns 200 the moment the job is accepted, so any assert on what the
+    # job produced — a file on disk or a row in the database — has to wait for COMPLETED.
+    # Evaluated immediately it reads the state the PREVIOUS run left behind, which passes or
+    # fails for reasons that have nothing to do with this run.
+    DEFERRED_RULE_TYPES = {"file_exists", "file_row_count", "db_matches_path"}
+    if will_wait_batch:
+        immediate_rules = [r for r in all_rules if r["type"] not in DEFERRED_RULE_TYPES]
+        deferred_rules = [r for r in all_rules if r["type"] in DEFERRED_RULE_TYPES]
+    else:
+        immediate_rules = all_rules
+        deferred_rules = []
+
     spec = {
-        "assertions": expand_expect(case.get("expect") or {}),
+        "assertions": immediate_rules,
         "on_fail_print_body": True,
     }
     run = run_assertions(result.body, result, spec, env={**os.environ, **env})
@@ -304,8 +391,41 @@ def _run_api_case(case_id: str, case: dict, *, watch: bool, health: bool) -> tup
                 _telemetry(case_id, False, time.time() - t0)
                 return 1, result
             print("  [PASS] batch_completed: COMPLETED")
+
+            planned = _batch_planned(job_name, before_exec)
+            if planned > 0:
+                read_n, _ = _batch_counts(job_name, before_exec)
+                ok = read_n > 0
+                print(f"  [{'PASS' if ok else 'FAIL'}] batch_read_plan: "
+                      f"planned={planned} read={read_n}",
+                      file=sys.stdout if ok else sys.stderr)
+                if not ok:
+                    print("        the job counted candidates and then read none of them — "
+                          "see GAP-095", file=sys.stderr)
+                    _telemetry(case_id, False, time.time() - t0)
+                    return 1, result
+
+            if deferred_rules:
+                dspec = {"assertions": deferred_rules, "on_fail_print_body": False}
+                drun = run_assertions(result.body, result, dspec, env={**os.environ, **env})
+                for ar in drun.results:
+                    print(f"  [{'PASS' if ar.ok else 'FAIL'}] {ar.name}: {ar.detail}",
+                          file=sys.stdout if ar.ok else sys.stderr)
+                if not drun.passed:
+                    _auto_on_failure(service, api, job_time)
+                    _telemetry(case_id, False, time.time() - t0)
+                    return 1, result
         elif case.get("wait_batch"):
             print("  [WARN] wait_batch skipped — set JOB_TIME default or env", file=sys.stderr)
+            if deferred_rules:
+                # Deferring an assert past a wait that never happens deletes it. The case would
+                # go green having evaluated only the immediate rules, which is the failure the
+                # deferral was introduced to prevent, one step further along.
+                names = ", ".join(r["type"] for r in deferred_rules)
+                print(f"  [FAIL] deferred_asserts_unevaluated: {names} — wait_batch was skipped, "
+                      "so nothing checked what the job produced", file=sys.stderr)
+                _telemetry(case_id, False, time.time() - t0)
+                return 1, result
 
     if case.get("print"):
         obj = json.loads(result.body)

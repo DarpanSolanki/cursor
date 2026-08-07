@@ -21,7 +21,7 @@
 | `superset_user_session_token_*`, `superset_user_id_*` | Y | guest/session aligned | Superset guest token mapping | **Medium** |
 | Rate limiting (Bucket4j) | Y / varies | `redisApiRateLimitTemplate` + proxy config | API throttling | **Low** — availability |
 
-*Source:* `trustt-platform-api-gateway/CLAUDE.md`, `APIRateLimiterFilter`, `SessionDAOService`, `RequestForwardProcessor#urlFinder`.
+*Source:* `trustt-platform-api-gateway/.cursorrules`, `APIRateLimiterFilter`, `SessionDAOService`, `RequestForwardProcessor#urlFinder`.
 
 ---
 
@@ -139,4 +139,4 @@
 
 ## Maintenance
 
-When adding Redis usage: update this file **and** the service `CLAUDE.md` / edge-case note. For **exact** TTL milliseconds, read `NovopayCacheClient` / env defaults for the deployment.
+When adding Redis usage: update this file **and** the service `.cursorrules` / edge-case note. For **exact** TTL milliseconds, read `NovopayCacheClient` / env defaults for the deployment.

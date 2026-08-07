@@ -1,7 +1,7 @@
 {
   "source": "localhost:5433 yugabyte (local fixture)",
   "tables": 878,
-  "columns": 14619,
+  "columns": 14680,
   "schemas": {
     "mfi_accounting": 185,
     "mfi_los": 172,

@@ -93,7 +93,7 @@ Source: `deploy/application/orchestration/product_transaction_orc.xml` — Reque
 
 **Plain English**: validate → expand placeholders → dedupe client ref → load catalogue/rules → execute engines → TRIAL (limits) or REAL (persist master/partitions/details + response).
 
-Java classes live under `in.novopay.accounting.transaction.processor` (see `accounting.mdc` for narrative).
+Java classes live under `in.novopay.accounting.transaction.processor` (see `accounting.md` for narrative).
 
 ---
 
@@ -172,7 +172,7 @@ Trace the full chain with:
 
 - **NovopayFatalException** → rollback (implicit txn) → FAIL response.
 - **NovopayNonFatalException** → undo processors when configured.
-- **Idempotency**: Redis + `disburseLoan` cache key; `clientReferenceNumberDedupProcessor` on `postTransaction`; bank CRR status machine (UNKNOWN vs FAIL vs SUCCESS) — detail in `accounting.mdc`.
+- **Idempotency**: Redis + `disburseLoan` cache key; `clientReferenceNumberDedupProcessor` on `postTransaction`; bank CRR status machine (UNKNOWN vs FAIL vs SUCCESS) — detail in `accounting.md`.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: "Auto-loads when editing trustt-platform-api-gateway"
+description: Auto-loads when editing trustt-platform-api-gateway
 globs:
   - "**/trustt-platform-api-gateway/**/*.java"
   - "**/trustt-platform-api-gateway/**/*.xml"

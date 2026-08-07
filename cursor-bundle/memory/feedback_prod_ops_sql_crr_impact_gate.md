@@ -55,4 +55,4 @@ Code-proven: <repo paths that prove SUCCESS-skip / retry>
 ## Pair with
 
 - `feedback_minimal_fix_impact_gate.md` — same minimal-layer discipline for SQL
-- `20-ship-gates.mdc` — Ops / prod hotfix front
+- `20-ship-gates.md` — Ops / prod hotfix front

@@ -1,0 +1,54 @@
+---
+description: Row-only migrations are cached — evict the key before believing any result (GAP-058)
+globs:
+  - "**/flyway/**/*.sql"
+  - "**/notifications/sql/**"
+  - "**/masterdata/sql/**"
+alwaysApply: false
+---
+
+# Data-row changes are cached — evict, then verify
+
+A Flyway migration that only inserts or updates rows looks like the cheapest possible change.
+It is also the one most likely to appear to do nothing, because the reader in front of the
+table is a cache that survives a service restart.
+
+## The rule
+
+After changing **any** row that the platform caches by key, evict the key **before** believing
+any test result. A green run against a stale key proves nothing about your change.
+
+| Row changed | Cache | Key | Evict |
+|-------------|-------|-----|-------|
+| `notification_message` (error/response text) | Redis **NOTIFICATION** (db `2`) | `<tenant>_<code>_<locale>` | `redis-cli -n 2 --scan --pattern '*<code>*'` then `del` |
+| `code__notification_code__mapping` | same as above — the resolved message is what is cached | `<tenant>_<code>_<locale>` | same |
+| Loan product / scheme / IAD / accounting rule | Redis **ACCOUNTING** (db `5`) + Spring `accountingCacheManager` | see `.cursor/redis-key-registry.md` | `@CacheEvict` path, or key `del` |
+
+Full key inventory: **`.cursor/redis-key-registry.md`**. Redis db map: `RedisDBConfig`
+(`NOTIFICATION=2`, `ACCOUNTING=5`).
+
+## Symptom index — reach for this when you see
+
+- "I changed the row and the API still returns the old value"
+- "the migration ran but nothing changed"
+- "it works on a fresh environment but not on this one"
+- QA reports old wording after a build that definitely contains the new text
+
+All four are the same thing: a cache in front of the row. Check the key **before** re-reading
+code. Resolution path for messages is
+`NotificationUtil.getResponseMessage` → `cacheClient.get(tenant, code + "_" + locale, NOTIFICATION)`
+→ falls back to the `getMessage` internal API only on a miss.
+
+## Known gap
+
+**GAP-058** — the notifications message cache is written with `set` and **no TTL**, so a stale
+entry persists until something evicts it. That is why this is a standing hazard rather than a
+"wait for expiry" inconvenience.
+
+## Why this rule exists
+
+TDPQA-241 reworded one message. The row was updated, accounting was rebuilt and restarted, and
+the API still served the old text — a restart does not clear Redis. The fact was already written
+down in `redis-key-registry.md` and the consequence in GAP-058, but nothing connected either to
+the act of editing a notifications migration, so it was rediscovered by reading platform-lib
+line by line. This rule is that connection.

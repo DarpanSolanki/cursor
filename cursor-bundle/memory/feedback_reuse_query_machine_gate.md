@@ -3,7 +3,7 @@
 **Date:** 2026-07-17
 **Trigger:** A repository SQL change (`LoanAccountBillingDetailsRepository.findByLoanInstallmentDetailsId`
 gained `ORDER BY id DESC LIMIT 1` in TDPQA-72) shipped before the reuse-queries ladder was
-proven on record. Soft rule `10-quality-gates.mdc` was skipped — no exit code.
+proven on record. Soft rule `10-quality-gates.md` was skipped — no exit code.
 
 ## Permanent fix
 
