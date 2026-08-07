@@ -73,5 +73,52 @@ class KgWatermarkGateTest(unittest.TestCase):
             self.assertIn("mismatch", errs[0])
 
 
+class KgStateBannerStopTest(unittest.TestCase):
+    """The blocking state must stay blocking.
+
+    `provisional` used to conflate two states: a repo on a feature branch (the KG still
+    matches the checkout) and a stamped-set/HEAD mismatch (the KG describes code that is
+    not there). Blocking on both fired on nearly every money task, so the KG was
+    warned-off by default. Only MISMATCH blocks now — these tests exist so that
+    distinction cannot quietly collapse back into "everything is advisory".
+    """
+
+    MONEY = ("disbursement money accounting fix", "BUG/RCA")
+
+    def _stop(self, *, mismatch: bool, wip: list[str], task=None):
+        import kg_state_banner as b
+
+        st = {
+            "line": "L", "mismatch": mismatch, "wip": wip,
+            "wip_n": len(wip), "key_short": "k",
+        }
+        with mock.patch.object(b, "compute_kg_state", return_value=st):
+            return b.banner_and_stop(*(task or self.MONEY))[1]
+
+    def test_mismatch_hard_stops(self) -> None:
+        stop = self._stop(mismatch=True, wip=[])
+        self.assertIsNotNone(stop)
+        self.assertIn("HARD STOP [KG MISMATCH]", stop)
+
+    def test_mismatch_hard_stops_even_with_wip(self) -> None:
+        self.assertIn("HARD STOP", self._stop(mismatch=True, wip=["r"]))
+
+    def test_wip_only_is_advisory_not_a_block(self) -> None:
+        stop = self._stop(mismatch=False, wip=["initial-setup"])
+        self.assertIn("KG ADVISORY", stop)
+        self.assertNotIn("HARD STOP", stop)
+        self.assertIn("FIRST HOP", stop)
+        # The verification requirement must survive the downgrade.
+        self.assertIn("orch XML", stop)
+
+    def test_aligned_emits_no_stop(self) -> None:
+        self.assertIsNone(self._stop(mismatch=False, wip=[]))
+
+    def test_non_money_task_never_stops(self) -> None:
+        self.assertIsNone(
+            self._stop(mismatch=True, wip=["r"], task=("rename a README heading", "DOC"))
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

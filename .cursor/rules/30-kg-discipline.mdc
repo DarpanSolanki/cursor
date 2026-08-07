@@ -14,8 +14,17 @@ Every `workspace-autopilot.sh task` prints a computed line from watermark + comp
 `KG STATE: built@<utc> set=<key-short> repos=<n> WIP: <list> [PROVISIONAL]`
 Never invent KG freshness by hand.
 
-When the line ends with **`[PROVISIONAL]`** (WIP/feature repos in the watermark **or** live branch-set key ≠ stamped key / HEAD drift) **and** the task is **money or cross-service**:
-**HARD STOP** — before any KG-derived money conclusion, the agent must (a) align via `kg-switch.sh` / `kg-ensure-fresh.sh`, (b) run under `KG_STRICT=1`, or (c) get **explicit user acknowledgment** of provisional/mismatched KG risk.
+Two states, and they are **not** the same thing:
+
+| Tag | Means | On a money / cross-service task |
+|-----|-------|--------------------------------|
+| **`[MISMATCH]`** | live branch-set key ≠ stamped key, or HEAD drift — the KG describes code that **is not on disk** | **HARD STOP.** Align via `kg-switch.sh` / `kg-ensure-fresh.sh`, run under `KG_STRICT=1`, or get **explicit user acknowledgment**. |
+| **`[PROVISIONAL]`** | a repo sits on a non-release branch; the KG **still matches the live checkout** | **ADVISORY — use the KG first.** It is the correct first hop (`kg_error` / `kg_orient` / `kg_why`). It is not production-train truth: verify orch XML → processor → DB before the money conclusion and **state which branch you read**. |
+
+Blocking on `[PROVISIONAL]` fired on nearly every money task, so the KG was warned-off by
+default and got used **7 times against 1,958 greps** across 18 sessions. Verification (Gate C
+below) is what protects a money claim — and it is unchanged. Encoded in
+`scripts/lib/test_kg_watermark_gate.py::KgStateBannerStopTest`; do not collapse the two states.
 
 Every gate trigger appends one telemetry line (`trigger=gate`) to `.cursor/workspace-kg-state.md` — feeds the multi-profile revisit decision (`cursor-bundle/brain/decisions/kg-profiles.md`).
 

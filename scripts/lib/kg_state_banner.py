@@ -53,11 +53,24 @@ except Exception:  # noqa: BLE001
 
 
 HARD_STOP = (
-    "HARD STOP [KG PROVISIONAL/MISMATCH]: money/cross-service KG conclusions blocked until you "
+    "HARD STOP [KG MISMATCH]: the KG does not reflect the live checkout "
+    "(stamped branch-set != live, or HEAD drift), so flow/crud/why may describe code that "
+    "is not there. Money/cross-service conclusions blocked until you "
     "(a) align via kg-switch.sh / kg-ensure-fresh.sh, "
     "(b) run analysis under KG_STRICT=1, or "
-    "(c) get explicit user acknowledgment of provisional/mismatched KG risk. "
-    "Do not treat flow/crud/why as production-train truth until cleared."
+    "(c) get explicit user acknowledgment of the mismatch."
+)
+
+# A repo on a feature branch does NOT make the KG wrong — it is built from the live
+# checkout, so it describes exactly what is on disk. Blocking on it made the banner fire on
+# essentially every money task, which is why the KG was warned-off by default and got used
+# 7 times against 1,958 greps. It is now advisory, and the verification step that actually
+# protects money claims (30-kg-discipline Gate C: orch XML -> processor -> DB) is unchanged.
+ADVISORY = (
+    "KG ADVISORY [PROVISIONAL]: {n} repo(s) on a non-release branch ({repos}). The KG matches "
+    "the live checkout, so it is the correct FIRST HOP — use kg_error / kg_orient / kg_why "
+    "before grepping. It is NOT production-train truth: verify in orch XML -> processor -> DB "
+    "before any money conclusion, and say which branch you read."
 )
 
 FULL_BUILD_WARN_S = 90  # doctor threshold
@@ -143,9 +156,15 @@ def _compute_kg_state_uncached() -> dict:
     built = wm.get("built_at") or "?"
     repos_n = len(wm.get("repos") or {})
     wip = _wip_repos(wm)
-    mismatch = _key_mismatch(live, stored, wm)
-    provisional = bool(wip) or mismatch or not wm
-    tag = " [PROVISIONAL]" if provisional else " [ALIGNED]"
+    mismatch = _key_mismatch(live, stored, wm) or not wm
+    provisional = bool(wip) or mismatch
+    # MISMATCH (KG != checkout) is the blocking state. PROVISIONAL (a WIP branch exists) is
+    # advisory — the KG still describes what is on disk.
+    tag = (
+        " [MISMATCH]" if mismatch
+        else " [PROVISIONAL]" if wip
+        else " [ALIGNED]"
+    )
     wip_s = ",".join(wip[:6]) if wip else "-"
     if len(wip) > 6:
         wip_s += f"+{len(wip) - 6}"
@@ -196,9 +215,14 @@ def provenance_header() -> str:
 def banner_and_stop(task_text: str = "", classification: str = "") -> tuple[str, str | None]:
     st = compute_kg_state()
     stop = None
-    if st["provisional"] and money_or_cross_service(task_text, classification):
+    if not money_or_cross_service(task_text, classification):
+        return st["line"], None
+    if st["mismatch"]:
         stop = HARD_STOP
         append_telemetry("gate", 0.0, "gate", note=st["key_short"])
+    elif st["wip"]:
+        stop = ADVISORY.format(n=len(st["wip"]), repos=",".join(st["wip"][:4]))
+        append_telemetry("advisory", 0.0, "advisory", note=st["key_short"])
     return st["line"], stop
 
 
