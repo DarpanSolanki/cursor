@@ -594,7 +594,10 @@ def cmd_error(c,a):
             print(f"  hit_error cases: {len(rows)}")
         for r in rows:
             o = _j.loads(r[1]) if r[1] else {}
-            print(f"  [{o.get('sha','?')}] {r[0]}  -> git show {o.get('sha','')}")
+            # Workspace/harness changelog entries carry no commit sha — printing
+            # `[None] … -> git show None` offers a command that cannot work.
+            sha = o.get("sha") or ""
+            print(f"  [{sha or 'no-sha'}] {r[0]}" + (f"  -> git show {sha}" if sha else ""))
             for k in ("files", "paths", "touched"):
                 if o.get(k):
                     print(f"    {k}: {o.get(k)}")
