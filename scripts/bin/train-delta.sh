@@ -8,7 +8,7 @@
 # an afternoon. Name both trains explicitly; never infer the baseline.
 set -euo pipefail
 
-ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+ROOT="${CURSOR_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}}"
 
 usage() {
     cat >&2 <<'EOF'

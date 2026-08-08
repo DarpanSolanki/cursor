@@ -50,7 +50,7 @@
       },
       {
         "command": "python3 scripts/bin/with-budget.py --budget 10 --label hook:kg-grep-leak-log -- bash .cursor/hooks/kg-grep-leak-log.sh",
-        "matcher": "(rg|grep)\\s",
+        "matcher": "(rg|grep)\\s|(^|[;|&\\s])cat\\s|sed\\s+-n|git\\s+show\\s",
         "timeout": 10
       }
     ],

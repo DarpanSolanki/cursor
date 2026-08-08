@@ -45,7 +45,8 @@ CLASS_MAP = {
 }
 
 # Process-matrix columns — CLI `--class` with one of these forces the plan class.
-PROCESS_CLASSES = frozenset({
+# Keep the frozenset as a fallback when the matrix file is briefly unreadable.
+_PROCESS_CLASSES_FALLBACK = frozenset({
     "question",
     "read-only-rca",
     "non-money-fix",
@@ -54,6 +55,17 @@ PROCESS_CLASSES = frozenset({
     "release",
     "docs-kb",
 })
+
+
+def process_classes() -> frozenset[str]:
+    try:
+        return frozenset(load_matrix().get("classes") or []) or _PROCESS_CLASSES_FALLBACK
+    except Exception:
+        return _PROCESS_CLASSES_FALLBACK
+
+
+# Back-compat alias used by tests / callers.
+PROCESS_CLASSES = _PROCESS_CLASSES_FALLBACK
 
 MONEY_WORDS = (
     "disburse", "repay", "foreclos", "death", "dfc", "dcf", "dpi", "money", "ledger",
@@ -77,7 +89,7 @@ def map_class(classification: str, text: str = "") -> str:
     t = (text or "").lower()
     c = (classification or "GENERAL").upper()
     # CLI / callers may pass a matrix column directly — honour it.
-    if (classification or "") in PROCESS_CLASSES:
+    if (classification or "") in process_classes():
         return classification
     base = CLASS_MAP.get(c, "read-only-rca")  # unknown → heavier than question
     if c == "BUG/RCA" and any(w in t for w in ("fix", "implement", "ship", "patch")):
@@ -518,7 +530,7 @@ def main() -> int:
     ap.add_argument("--elapsed", type=float, default=0.0)
     args = ap.parse_args()
     if args.cmd == "plan":
-        force = args.cls if args.cls in PROCESS_CLASSES else None
+        force = args.cls if args.cls in process_classes() else None
         p = compute_plan(
             args.cls if force is None else "GENERAL",
             args.text,
@@ -529,7 +541,7 @@ def main() -> int:
         print(p["goal_line"])
         return 0
     if args.cmd == "terminal":
-        pclass = args.cls if args.cls in PROCESS_CLASSES else map_class(args.cls, args.text)
+        pclass = args.cls if args.cls in process_classes() else map_class(args.cls, args.text)
         for name in terminal_state(pclass):
             meta = predicate_meta(name)
             print(f"{name}\t{meta.get('check','declared')}\t{meta.get('label','')}")

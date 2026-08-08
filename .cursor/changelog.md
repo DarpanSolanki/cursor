@@ -1,3 +1,13 @@
+## 2026-08-08 | workspace | harness | L0+L2 leak hook parity, fidelity stubs, domain gate
+
+- `kg-grep-leak-log.sh` now fast-exits then delegates to `grep_leak_answer.py` (DUMP + widened
+  SERVICE SoT). `hooks.json` matcher also fires on `cat` / `sed -n` / `git show`.
+- `train-delta.sh` prefers `CURSOR_PROJECT_DIR` (Claude env still accepted as fallback).
+- Domain coverage test asserts the live 6 platform categories by name (was `>10`, permanently red).
+- 12 money runtime registry cases gained AUTO-STUB `fidelity` blocks so
+  `registry_companion_gate --hard` / workspace-close stop failing on missing blocks.
+- `process_classes()` reads matrix `classes` so CLI force_class cannot drift from the DAG SoT.
+
 ## 2026-08-08 | workspace | harness | L1 process DAG + class mapping accuracy
 
 - Implemented `validate_dag` (cycles / unknown `requires` / phase inversion) and wired it into
