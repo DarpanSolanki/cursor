@@ -1,3 +1,11 @@
+## 2026-08-08 | workspace | kg-mcp | deferred hot-reexec (no mid-call / mid-batch drop)
+
+- `_maybe_hot_reexec` only sets `_PENDING_REEXEC`; `os.execv` runs in `main()` after the
+  response flush, and only when `stdin.buffer.peek` shows no more lines.
+- Read loop uses `stdin.buffer.readline` (TextIOWrapper pre-buffer lied to peek and dropped
+  smoke tail). Smoke no longer sets `KG_MCP_NO_HOT_REEXEC`. Server 1.9.4.
+- Cursor-only; Claude owns its deny/shim fixes separately.
+
 ## 2026-08-08 | workspace | harness | agent-surface maturity closure (single plan)
 
 - Wire `knowledge-answer.py` on Cursor `preToolUse` (Grep|Glob|Read); hard-deny Grep/Glob when

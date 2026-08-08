@@ -23,11 +23,12 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.9.3"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.9.4"}
 PROTOCOL = "2024-11-05"
 _SERVER_FILE = Path(__file__).resolve()
 # Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
 _BOOT_SOURCE_MTIMES: dict[str, int] = {}
+_PENDING_REEXEC = False
 
 # Per-tool wall-clock caps. Reads ≤2s; heavy ≤15s; kg_enhance explicit.
 # CRITICAL: _run_timed must NOT shutdown(wait=True) after timeout (that was the hang).
@@ -394,9 +395,14 @@ def _capture_boot_mtimes() -> None:
 
 
 def _stdin_has_pending() -> bool:
-    """True when more JSON-RPC lines are already buffered (bulk smoke / piped batch)."""
+    """True when more JSON-RPC lines remain (bulk smoke / piped batch).
+
+    ``sys.stdin.peek`` does not exist on TextIOWrapper — use the underlying
+    buffered binary stream.
+    """
     try:
-        peek = getattr(sys.stdin, "peek", None)
+        buf = getattr(sys.stdin, "buffer", None)
+        peek = getattr(buf, "peek", None) if buf is not None else None
         if callable(peek):
             return bool(peek(1))
     except Exception:  # noqa: BLE001
@@ -405,30 +411,37 @@ def _stdin_has_pending() -> bool:
 
 
 def _maybe_hot_reexec() -> None:
-    """If MCP server / kg CLI sources changed, replace this process in-place.
+    """Flag a source change so the process is replaced *between* requests.
 
-    Cursor keeps the same stdio pipes — no IDE restart. Next tools/list + calls
-    see the new SERVER_INFO version and tool schemas.
+    Calling os.execv inside tools/call — before the response is written — leaves
+    the client with a request id outstanding that the new process never answers.
+    Defer to main() after the response is flushed.
 
-    Never reexec while more stdin lines are buffered: Python may have read the
-    whole pipe into the TextIO buffer, and os.execv inherits an fd already at
-    EOF — the child would drop every remaining tools/call (kg-mcp-smoke saw
-    only kg_doctor succeed).
+    Also defer while stdin still has buffered lines: Python may have read the
+    whole pipe into the buffer, and os.execv would leave the child at EOF —
+    dropping every remaining tools/call in kg-mcp-smoke.
     """
+    global _PENDING_REEXEC
     if os.environ.get("KG_MCP_NO_HOT_REEXEC") == "1":
         return
     if not _BOOT_SOURCE_MTIMES:
         _capture_boot_mtimes()
         return
     for path in _tracked_source_paths():
-        key = str(path)
-        now = _file_mtime_ns(path)
-        prev = _BOOT_SOURCE_MTIMES.get(key, 0)
-        if now != prev:
-            if _stdin_has_pending():
-                return
-            # Re-open sqlite handles would be stale; exec clears process state.
-            os.execv(sys.executable, [sys.executable, str(_SERVER_FILE), *sys.argv[1:]])
+        if _file_mtime_ns(path) != _BOOT_SOURCE_MTIMES.get(str(path), 0):
+            _PENDING_REEXEC = True
+            return
+
+
+def _reexec_now(mcp_fd: int | None = None) -> None:
+    """Replace the process. Only legal with no request outstanding.
+
+    main() moves the MCP pipe off fd 1 (dup2(2, 1)) so stray prints cannot corrupt
+    the protocol stream. Restore the real pipe onto fd 1 before handing over.
+    """
+    if mcp_fd is not None:
+        os.dup2(mcp_fd, 1)
+    os.execv(sys.executable, [sys.executable, str(_SERVER_FILE), *sys.argv[1:]])
 
 
 def _db():
@@ -1225,8 +1238,14 @@ def main() -> None:
     os.dup2(2, 1)
     mcp_out = os.fdopen(mcp_fd, "w", buffering=1, encoding="utf-8", errors="replace")
 
-    for line in sys.stdin:
-        line = line.strip()
+    # Read via the binary buffer — TextIOWrapper pre-loads the whole pipe into its
+    # decoder, which made buffer.peek() lie "empty" while lines remained and caused
+    # mid-batch os.execv to drop the rest of kg-mcp-smoke.
+    while True:
+        raw = sys.stdin.buffer.readline()
+        if not raw:
+            break
+        line = raw.decode("utf-8", errors="replace").strip()
         if not line:
             continue
         try:
@@ -1237,6 +1256,9 @@ def main() -> None:
         if resp is not None:
             mcp_out.write(json.dumps(resp, ensure_ascii=False) + "\n")
             mcp_out.flush()
+        if _PENDING_REEXEC and not _stdin_has_pending():
+            mcp_out.flush()
+            _reexec_now(mcp_fd)
 
 
 if __name__ == "__main__":
