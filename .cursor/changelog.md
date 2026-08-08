@@ -1,3 +1,13 @@
+## 2026-08-08 | workspace | kg | L1 resilience: atomic build + fail-closed fresh + anti-stampede
+
+- `build_db.full_build` writes `kg.db.building` then `os.replace` — never `os.remove` live DB first
+  (empty-window race that let `kg fresh` print FRESH on a 0-byte file).
+- `kg.py` `conn` / `_db_usable` / `cmd_fresh` / `cmd_watermark` fail-closed when DB missing, <100k,
+  or <3000 nodes.
+- `kg-switch.sh` + `build.sh` restore via temp+`mv`; share `.build.lock`; `--quiet` uses `flock -n`
+  and exits 0 if busy (hook stampede fix).
+- Unit: `scripts/lib/test_kg_empty_db_failclosed.py` (5 tests).
+
 ## 2026-08-08 | workspace | harness | L0+L2 leak hook parity, fidelity stubs, domain gate
 
 - `kg-grep-leak-log.sh` now fast-exits then delegates to `grep_leak_answer.py` (DUMP + widened

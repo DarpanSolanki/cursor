@@ -33,9 +33,15 @@ def _is_case_edge(o: dict) -> bool:
 
 
 def full_build(src: str, dbpath: str) -> None:
-    if os.path.exists(dbpath):
-        os.remove(dbpath)
-    db = sqlite3.connect(dbpath)
+    """Write via temp file then atomic replace — never leave a zero-byte live kg.db.
+
+    Concurrent readers/restorers used to observe an empty DB between `os.remove` and
+    the first commit; `kg fresh` still printed FRESH from watermark alone.
+    """
+    tmp = dbpath + ".building"
+    if os.path.exists(tmp):
+        os.remove(tmp)
+    db = sqlite3.connect(tmp)
     db.executescript(SCHEMA)
     nrows, erows, frows = [], [], []
     for line in open(src, encoding="utf-8"):
@@ -79,6 +85,7 @@ def full_build(src: str, dbpath: str) -> None:
     n = db.execute("SELECT count(*) FROM nodes").fetchone()[0]
     e = db.execute("SELECT count(*) FROM edges").fetchone()[0]
     db.close()
+    os.replace(tmp, dbpath)
     print(f"  kg.db: {n} nodes, {e} edges (indexed + FTS5)")
 
 

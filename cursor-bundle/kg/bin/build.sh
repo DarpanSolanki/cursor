@@ -29,11 +29,19 @@ _composite() {
   python3 "$BIN/kg_composite.py" key
 }
 
+_atomic_install() {
+  local src="$1" dest="$2"
+  local tmp="${dest}.restoring.$$"
+  cp "$src" "$tmp"
+  mv -f "$tmp" "$dest"
+}
+
 KEY="$(_composite)"
 if [[ "$FORCE" == 0 ]] && [[ -f "$CACHE/$KEY.db" ]]; then
-  cp "$CACHE/$KEY.db" "$DATA/kg.db"
-  cp "$CACHE/$KEY.jsonl" "$DATA/kg.jsonl" 2>/dev/null || true
-  cp "$CACHE/$KEY.json" "$DATA/stats.json" 2>/dev/null || true
+  # Atomic restore — never leave a truncated live kg.db for concurrent readers.
+  _atomic_install "$CACHE/$KEY.db" "$DATA/kg.db"
+  [[ -f "$CACHE/$KEY.jsonl" ]] && _atomic_install "$CACHE/$KEY.jsonl" "$DATA/kg.jsonl"
+  [[ -f "$CACHE/$KEY.json" ]] && _atomic_install "$CACHE/$KEY.json" "$DATA/stats.json"
   touch "$DATA/kg.db"
   echo "✓ KG restored from cache for current branch-set (key $KEY)."
   echo "  built_at: $(grep -o '\"built_at\"[^,]*' "$DATA/stats.json" | head -1)"
@@ -187,9 +195,9 @@ PY
 python3 "$BIN/build_db.py" "$DATA/kg.jsonl" "$DATA/kg.db"
 rm -f "$tmp" "$DATA/orchestration.jsonl" "$DATA/orch.err" 2>/dev/null || true
 
-cp "$DATA/kg.db" "$CACHE/$KEY.db"
-cp "$DATA/kg.jsonl" "$CACHE/$KEY.jsonl" 2>/dev/null || true
-cp "$DATA/stats.json" "$CACHE/$KEY.json" 2>/dev/null || true
+_atomic_install "$DATA/kg.db" "$CACHE/$KEY.db"
+[[ -f "$DATA/kg.jsonl" ]] && _atomic_install "$DATA/kg.jsonl" "$CACHE/$KEY.jsonl"
+[[ -f "$DATA/stats.json" ]] && _atomic_install "$DATA/stats.json" "$CACHE/$KEY.json"
 echo "✓ snapshotted to cache (key $KEY)."
 # Keep newest 8 branch-set snapshots; drop sidecars + orphan manifests (no .db).
 ls -1t "$CACHE"/*.db 2>/dev/null | tail -n +9 | while read -r old; do

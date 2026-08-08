@@ -48,15 +48,45 @@ log() {
 }
 
 mkdir -p "$DATA/cache" "$ROOT/.cursor"
+
+# Share build.sh lock: one restore/rebuild at a time. Quiet hooks skip if busy
+# (anti-stampede) instead of stacking hundreds of flock waiters.
+exec 9>"$DATA/.build.lock"
+if command -v flock >/dev/null 2>&1; then
+  if [[ "$QUIET" == 1 ]]; then
+    if ! flock -n 9; then
+      log "skip: another kg-switch/build holds lock (quiet anti-stampede)"
+      exit 0
+    fi
+  else
+    flock -w 1800 9 || {
+      log "FATAL: could not acquire $DATA/.build.lock (another build running too long)"
+      exit 1
+    }
+  fi
+fi
+
 KEY=$(python3 "$BIN/kg_composite.py" key)
 MANIFEST="$CACHE/$KEY.manifest.json"
+
+# Atomic install: never truncate live kg.db before the new copy is ready.
+_atomic_install() {
+  local src="$1" dest="$2"
+  local tmp="${dest}.restoring.$$"
+  cp "$src" "$tmp"
+  mv -f "$tmp" "$dest"
+}
 
 restore_cache() {
   local key="$1"
   [[ -f "$CACHE/$key.db" ]] || return 1
-  cp "$CACHE/$key.db" "$DATA/kg.db"
-  cp "$CACHE/$key.jsonl" "$DATA/kg.jsonl" 2>/dev/null || true
-  cp "$CACHE/$key.json" "$DATA/stats.json" 2>/dev/null || true
+  _atomic_install "$CACHE/$key.db" "$DATA/kg.db"
+  if [[ -f "$CACHE/$key.jsonl" ]]; then
+    _atomic_install "$CACHE/$key.jsonl" "$DATA/kg.jsonl"
+  fi
+  if [[ -f "$CACHE/$key.json" ]]; then
+    _atomic_install "$CACHE/$key.json" "$DATA/stats.json"
+  fi
   touch "$DATA/kg.db"
   # Bump cache entry mtime so build.sh / hygiene LRU keeps recently used keys.
   touch "$CACHE/$key.db" "$CACHE/$key.manifest.json" 2>/dev/null || true

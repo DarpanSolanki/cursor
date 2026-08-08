@@ -53,7 +53,15 @@ _KG_PATH_HINTS = ("/src/", "src/", "orchestration", "deploy/", "messagebroker")
 
 def conn(readonly=False):
     if not os.path.exists(DB):
-        sys.exit("kg.db missing — run claude/kg/bin/build.sh first")
+        sys.exit("kg.db missing — run scripts/bin/kg-switch.sh first")
+    try:
+        sz = os.path.getsize(DB)
+    except OSError:
+        sz = 0
+    if sz < 100_000:
+        sys.exit(
+            f"kg.db too small ({sz} bytes) — corrupt/empty; run scripts/bin/kg-switch.sh"
+        )
     if readonly:
         uri = f"file:{DB}?mode=ro"
         c = sqlite3.connect(uri, uri=True)
@@ -61,6 +69,21 @@ def conn(readonly=False):
         c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     return c
+
+
+def _db_usable() -> bool:
+    """True only when kg.db exists, is large enough, and has a nodes table with content."""
+    if not os.path.exists(DB):
+        return False
+    try:
+        if os.path.getsize(DB) < 100_000:
+            return False
+        c = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+        n = c.execute("SELECT count(*) FROM nodes").fetchone()[0]
+        c.close()
+        return n >= 3000
+    except Exception:
+        return False
 
 def resolve(c, q):
     """Resolve a node id. Requests are repo-scoped (request:{repo}/{name}); bare
@@ -999,10 +1022,16 @@ def _drift_check():
 def cmd_watermark(c,a):
     """Show, per repo, the branch@sha the KG knowledge was built from vs the repo's live HEAD —
     so you know exactly 'up to which branch/commit the knowledge is current'."""
+    if not _db_usable():
+        print(
+            "KG INVALID — kg.db missing/empty/corrupt (refusing watermark). "
+            "Run: scripts/bin/kg-switch.sh"
+        )
+        raise SystemExit(1)
     root=ROOT
     wm=_load_watermark()
     if not wm:
-        print("no watermark in stats.json — rebuild with claude/kg/bin/build.sh to stamp branch@sha."); return
+        print("no watermark in stats.json — rebuild with scripts/bin/kg-switch.sh to stamp branch@sha."); return
     import re
     RELEASE=re.compile(r'^mfi_(integration|release)_v[0-9]')
     print(f"KG built at {wm.get('built_at','?')} (UTC). Per-repo branch@sha the knowledge reflects:")
@@ -1169,6 +1198,12 @@ def cmd_deletes(c,a): _reverse_db(c,a,'deletes','DELETERS of')
 
 def cmd_fresh(c,a):
     """Compact freshness verdict: fail-closed on dirty/advanced java/xml/orc KG paths."""
+    if not _db_usable():
+        print(
+            "KG INVALID — kg.db missing/empty/corrupt (refusing FRESH). "
+            "Run: scripts/bin/kg-switch.sh"
+        )
+        raise SystemExit(1)
     built_at,drift,docs_stale,stale_files=_drift_check()
     # Always surface WIP provisional repos on money-safe answers
     wm=_load_watermark() or {}
@@ -1186,7 +1221,7 @@ def cmd_fresh(c,a):
                 wip.append(f"{short}={br[:24]}")
     prov = f" PROVISIONAL:{','.join(wip)}" if wip else ""
     if built_at is None:
-        print("KG: no watermark — run claude/kg/bin/build.sh"); return
+        print("KG: no watermark — run scripts/bin/kg-switch.sh"); return
     if not drift and not docs_stale:
         print(f"KG FRESH — reflects the live checkout of every repo (built {built_at}). `kg watermark` for per-repo detail.{prov}")
         return
