@@ -1,3 +1,8 @@
+## 2026-08-08 | workspace | hooks | knowledge-answer shared TARGETED_BUDGET_S=6s
+
+- Inline `_run_kg` calls in `_targeted` share one 6s wall deadline (was up to 4×6s=24s if
+  KG hung). MCP hint lines still emit when budget is exhausted.
+
 ## 2026-08-08 | workspace | hooks | knowledge-answer inline kg_error/kg_schema (parity)
 
 - Back-ported Claude’s `_run_kg` injection: error-code / setter Grep|Read now gets

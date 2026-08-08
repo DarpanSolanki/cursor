@@ -33,12 +33,17 @@ ROOT = os.environ.get("CURSOR_PROJECT_DIR") or os.path.dirname(
 SERVICE_HINTS = ("trustt-platform-", "novopay-platform-", "novopay-mfi-")
 SOURCE_HINTS = ("/src/main/", "/src/test/", "_orc.xml", "/deploy/application/")
 KG_PY = os.path.join(ROOT, "cursor-bundle", "kg", "bin", "kg.py")
+# One wall budget for all inline kg.py calls in a single _targeted() — not per call.
+# Without this, 2 codes + 2 columns × 6s = 24s worst-case if KG hangs.
+TARGETED_BUDGET_S = 6.0
 
 _ERROR_CODE = __import__("re").compile(r"\b(1[0-9]{5}|[3-9][0-9]{4})\b")
 _SETTER = __import__("re").compile(r"\bset([A-Z][A-Za-z0-9]+)\s*\(?")
 
 
-def _run_kg(*argv: str, timeout: float = 6.0) -> str:
+def _run_kg(*argv: str, timeout: float) -> str:
+    if timeout <= 0.05:
+        return ""
     env = dict(os.environ)
     env.setdefault("KG_NO_AUTO_REBUILD", "1")
     try:
@@ -60,14 +65,19 @@ def _run_kg(*argv: str, timeout: float = 6.0) -> str:
 
 
 def _targeted(probe: str) -> tuple[list[str], str]:
-    """Return (hint lines, optional inline KG body)."""
+    """Return (hint lines, optional inline KG body). Shared deadline across kg calls."""
     out: list[str] = []
     bodies: list[str] = []
+    deadline = time.monotonic() + TARGETED_BUDGET_S
+
+    def _left() -> float:
+        return max(0.0, deadline - time.monotonic())
+
     for code in list(dict.fromkeys(_ERROR_CODE.findall(probe)))[:2]:
         out.append(
             f"MCP trustt-kg → kg_error query={code}  (do NOT grep this code — ~160 tokens)"
         )
-        ans = _run_kg("error", code, "--no-template")
+        ans = _run_kg("error", code, "--no-template", timeout=_left())
         if ans:
             bodies.append(f"=== kg_error {code} (precomputed) ===\n{ans}")
     fields = list(dict.fromkeys(_SETTER.findall(probe)))[:2]
@@ -92,7 +102,7 @@ def _targeted(probe: str) -> tuple[list[str], str]:
                                 f"MCP trustt-kg → kg_schema query={key}  "
                                 "(readers+writers+gate codes — do NOT grep setX)"
                             )
-                            ans = _run_kg("schema", key)
+                            ans = _run_kg("schema", key, timeout=_left())
                             if ans:
                                 bodies.append(f"=== kg_schema {key} (precomputed) ===\n{ans}")
                     if len(seen) >= 2:
