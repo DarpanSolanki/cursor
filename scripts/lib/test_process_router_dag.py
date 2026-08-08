@@ -22,6 +22,7 @@ from process_router import (  # noqa: E402
     PHASE_RANK,
     compute_plan,
     load_matrix,
+    map_class,
     plan_waves,
     validate_dag,
 )
@@ -157,6 +158,25 @@ class PlanStillWorksTest(unittest.TestCase):
         used = {(m.get("phase") or "orient") for m in procs.values()}
         self.assertEqual(set(), used - set(PHASE_RANK),
                          "an unranked phase silently sorts as orient")
+
+
+class MapClassTest(unittest.TestCase):
+
+    def test_perf_rca_maps_to_batch_dpi(self) -> None:
+        self.assertEqual(
+            map_class("PERF_RCA", "IAC batch job took 2h in production"),
+            "batch-dpi",
+        )
+
+    def test_dcf_sanity_stays_on_batch_dpi(self) -> None:
+        self.assertEqual(map_class("TEST", "run dcf sanity"), "batch-dpi")
+        self.assertEqual(map_class("TEST", "death foreclosure e2e"), "batch-dpi")
+
+    def test_generic_test_without_money_is_non_money(self) -> None:
+        self.assertEqual(map_class("TEST", "run workspace smoke"), "non-money-fix")
+
+    def test_process_class_name_is_honoured(self) -> None:
+        self.assertEqual(map_class("money-fix", "anything"), "money-fix")
 
 
 if __name__ == "__main__":

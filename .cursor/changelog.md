@@ -1,3 +1,55 @@
+## 2026-08-08 | workspace | harness | L1 process DAG + class mapping accuracy
+
+- Implemented `validate_dag` (cycles / unknown `requires` / phase inversion) and wired it into
+  `process_router.py ratchet` so ship-loop cannot pass a broken matrix. Orphan
+  `test_process_router_dag.py` imports now resolve.
+- `PERF_RCA` → `batch-dpi` in `CLASS_MAP` (was falling through to `read-only-rca`).
+- `dcf`/`dfc`/`death` treated as batch-test markers; `dcf` added to `MONEY_WORDS` so
+  `run dcf sanity` plans `batch-dpi` instead of `non-money-fix`.
+- CLI `--class money-fix` (and other matrix columns) now `force_class`es the plan instead of
+  remapping through agent-kind `CLASS_MAP`.
+
+## 2026-08-08 | router | token discipline | KG/MCP-first routing for every accounting task
+
+Ported from the Claude workspace, same three defects were present here.
+
+`agent_router.classify` matched `batch job|eod` for TEST *above* BUG/RCA, so a production
+perf regression was prescribed `ntest auto` and no KG verb; CODE/DAO prescribed
+`grep *Repository.java`; accounting analysis ("accrued not matching", "amount wrong") fell
+through to GENERAL. Evidence in the Claude workspace: 1929 logged shell searches over 12
+days, 65% had a curated KG/OPS-INDEX answer that went unread.
+
+- **PERF_RCA** class above TEST: kg_orient/kg_flow/kg_impact, `train-delta.sh`,
+  `batch_step_metrics.sql` partition skew, `hot-path-scan.sh`.
+- **KG_FIRST spine on every class** (except COMMS), naming **MCP `trustt-kg` tools first**
+  (`.cursor/mcp.json` has the server) with the `cursor-bundle/kg/bin/kg.py` CLI as the
+  scripts/CI fallback — the CLI spawns a subprocess and costs more per lookup.
+- **CODE/DAO** now routes to `kg_writes|kg_reads|kg_schema` instead of prescribing a grep.
+- **Accounting detector** appends `accounting-knowledge` + flow-coverage + gaps digest for
+  any accounting-shaped task, not just money paths.
+- **`scripts/bin/train-delta.sh`** — "what is actually new vs the train in production",
+  with an explicit NEW-file marker.
+- `scripts/lib/test_agent_router.py` — 7 tests pinning the routing shape.
+
+**Hook fixes ported too** — the earlier claim that Cursor has no hooks was wrong;
+`.cursor/hooks.json` wires 5 events and `kg-grep-leak-log.sh` runs on `beforeShellExecution`
+(436 entries logged, so the payload path works).
+
+- `grep_leak_answer.py`: added a DUMP matcher so `cat`, `xargs cat`, `sed -n` and
+  `git show <ref>:<path>` are captured — previously invisible, and the most expensive calls.
+- Widened the SERVICE guard with `src/main/java|src/test/java|in/novopay/|deploy/application`.
+  Without it `git show <ref>:src/main/java/in/novopay/...` did not match and went unlogged —
+  caught only by counting log lines before/after, not by eyeballing hook exit codes.
+- `KG_LEAK_HOOK_DRYRUN=1` skips the write, so the hook can be exercised without polluting
+  the log.
+
+**Open, not guessed:** `.cursor/hooks/knowledge-answer.py` exists but is wired to no event —
+it never runs. `hooks.json` declares only sessionStart / afterFileEdit / beforeShellExecution
+/ afterShellExecution / stop, none of which fire on a file read. Whether Cursor exposes a
+read-file event is not verifiable from anything in this workspace, so nothing was invented.
+Same file is also unwired in the Claude workspace, where it has now been connected to
+PreToolUse `Grep|Glob|Read`.
+
 ## 2026-08-07 | workspace | KG | `[PROVISIONAL]` stops blocking the KG; `[MISMATCH]` still hard-stops
 
 - The KG state banner conflated two different things under one `provisional` flag: a repo on a non-release branch, and a stamped-branch-set/HEAD mismatch. Both raised **HARD STOP: money/cross-service KG conclusions blocked**. Because this workspace almost always has a WIP repo, that fired on nearly every money task — so the workspace's own gate told the agent not to trust its KG, and the agent grepped instead (7 KG calls vs 1,958 greps over 18 sessions). A knowledge layer warned-off by default cannot become the primary path.

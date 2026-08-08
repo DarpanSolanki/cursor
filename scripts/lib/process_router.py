@@ -39,13 +39,28 @@ CLASS_MAP = {
     "FIX+SHIP": "non-money-fix",
     "FEATURE": "non-money-fix",
     "TEST": "batch-dpi",
+    # Prod/UAT batch|API slowness — same gate column as batch-dpi (train-delta + hot-path).
+    "PERF_RCA": "batch-dpi",
     "RELEASE": "release",
 }
 
+# Process-matrix columns — CLI `--class` with one of these forces the plan class.
+PROCESS_CLASSES = frozenset({
+    "question",
+    "read-only-rca",
+    "non-money-fix",
+    "money-fix",
+    "batch-dpi",
+    "release",
+    "docs-kb",
+})
+
 MONEY_WORDS = (
-    "disburse", "repay", "foreclos", "death", "dfc", "dpi", "money", "ledger",
+    "disburse", "repay", "foreclos", "death", "dfc", "dcf", "dpi", "money", "ledger",
     "gl ", "neft", "accounting", "payment", "loan", "billing", "accrual",
 )
+# TEST tasks that are money/batch even when the word "batch" is absent.
+BATCH_TEST_MARKERS = ("dpi", "batch", "eod", "dcf", "dfc", "death")
 QA_ENV = re.compile(r"\b(qa[1-6]|uat|mfi_qa)\b", re.I)
 
 
@@ -61,14 +76,16 @@ def map_class(classification: str, text: str = "") -> str:
     """Fail-closed: ambiguous/money words escalate."""
     t = (text or "").lower()
     c = (classification or "GENERAL").upper()
+    # CLI / callers may pass a matrix column directly — honour it.
+    if (classification or "") in PROCESS_CLASSES:
+        return classification
     base = CLASS_MAP.get(c, "read-only-rca")  # unknown → heavier than question
     if c == "BUG/RCA" and any(w in t for w in ("fix", "implement", "ship", "patch")):
         base = "money-fix" if any(w in t for w in MONEY_WORDS) else "non-money-fix"
     if c in ("FIX+SHIP", "FEATURE") and any(w in t for w in MONEY_WORDS):
         base = "money-fix"
-    if c == "TEST" and "dpi" not in t and "batch" not in t and "eod" not in t:
-        # generic test without dpi/batch → still batch-dpi column (heavier) if money words
-        if any(w in t for w in MONEY_WORDS):
+    if c == "TEST":
+        if any(m in t for m in BATCH_TEST_MARKERS) or any(w in t for w in MONEY_WORDS):
             base = "batch-dpi"
         else:
             base = "non-money-fix"
@@ -77,6 +94,54 @@ def map_class(classification: str, text: str = "") -> str:
     if base == "question" and any(w in t for w in MONEY_WORDS):
         base = "read-only-rca"  # escalate
     return base
+
+
+def validate_dag(matrix: dict | None = None) -> list[str]:
+    """Structural invariants for `process_matrix.json` — cycles, unknown deps, phase order.
+
+    `order_path` / `plan_waves` assume these; without this check a broken matrix still
+    produces a plan that looks correct and runs gates in the wrong order.
+    """
+    man = matrix if matrix is not None else load_matrix()
+    procs = man.get("processes") or {}
+    errors: list[str] = []
+
+    for name, meta in procs.items():
+        name_phase = meta.get("phase") or "orient"
+        name_rank = PHASE_RANK.get(name_phase, 0)
+        for dep in meta.get("requires") or []:
+            if dep not in procs:
+                errors.append(f"unknown dependency: {name} requires {dep}")
+                continue
+            dep_phase = (procs[dep].get("phase") or "orient")
+            dep_rank = PHASE_RANK.get(dep_phase, 0)
+            if dep_rank > name_rank:
+                errors.append(
+                    f"phase inversion: {name} ({name_phase}) requires {dep} ({dep_phase})"
+                )
+
+    # Cycle detection on the requires graph (edge = depends-on).
+    color: dict[str, int] = {n: 0 for n in procs}  # 0=white 1=gray 2=black
+
+    def dfs(u: str, stack: list[str]) -> None:
+        color[u] = 1
+        stack.append(u)
+        for v in (procs[u].get("requires") or []):
+            if v not in procs:
+                continue
+            if color[v] == 1:
+                i = stack.index(v)
+                errors.append("cycle: " + " → ".join(stack[i:] + [v]))
+            elif color[v] == 0:
+                dfs(v, stack)
+        stack.pop()
+        color[u] = 2
+
+    for n in procs:
+        if color[n] == 0:
+            dfs(n, [])
+
+    return errors
 
 
 def load_ttl_state() -> dict:
@@ -453,12 +518,18 @@ def main() -> int:
     ap.add_argument("--elapsed", type=float, default=0.0)
     args = ap.parse_args()
     if args.cmd == "plan":
-        p = compute_plan(args.cls, args.text, api_hint=args.api or None)
+        force = args.cls if args.cls in PROCESS_CLASSES else None
+        p = compute_plan(
+            args.cls if force is None else "GENERAL",
+            args.text,
+            api_hint=args.api or None,
+            force_class=force,
+        )
         print(p["line"])
         print(p["goal_line"])
         return 0
     if args.cmd == "terminal":
-        pclass = map_class(args.cls, args.text)
+        pclass = args.cls if args.cls in PROCESS_CLASSES else map_class(args.cls, args.text)
         for name in terminal_state(pclass):
             meta = predicate_meta(name)
             print(f"{name}\t{meta.get('check','declared')}\t{meta.get('label','')}")
@@ -472,6 +543,7 @@ def main() -> int:
         return 0
     if args.cmd == "ratchet":
         errs = check_money_ratchet()
+        errs.extend(validate_dag())
         stray = MATRIX.parent / "process-matrix.json"
         if stray.is_file():
             errs.append(

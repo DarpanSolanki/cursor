@@ -15,8 +15,16 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get("CURSOR_PROJECT_DIR") or Path(__file__).resolve().parents[2])
 GREP = re.compile(r"(^|[;|&\s])(rg|grep)(\s|$)", re.I)
+DUMP = re.compile(
+    r"(^|[;|&\s])cat(\s|$)"
+    r"|xargs\s+cat"
+    r"|(^|[;|&\s])sed\s+-n"
+    r"|git\s+show\s+[^\s:]+:",
+    re.I,
+)
 SERVICE = re.compile(
-    r"trustt-platform-|novopay-platform-|novopay-mfi-|orchestration|_orc\.xml|Processor\.java",
+    r"trustt-platform-|novopay-platform-|novopay-mfi-|orchestration|_orc\.xml|Processor\.java"
+    r"|src/main/java|src/test/java|in/novopay/|deploy/application",
     re.I,
 )
 
@@ -26,16 +34,20 @@ def main() -> int:
         cmd = (json.load(sys.stdin).get("command") or "")[:500]
     except Exception:
         return 0
-    if not cmd or not GREP.search(cmd) or not SERVICE.search(cmd):
+    is_grep = bool(GREP.search(cmd))
+    is_dump = bool(DUMP.search(cmd))
+    if not cmd or not (is_grep or is_dump) or not SERVICE.search(cmd):
         return 0
 
+    if os.environ.get("KG_LEAK_HOOK_DRYRUN"):
+        return 0
     log = ROOT / ".cursor" / "kg-grep-leak.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps({
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "cmd": cmd,
-            "note": "shell_rg_grep_service_tree",
+            "note": "shell_rg_grep_service_tree" if is_grep else "whole_file_dump_service_tree",
         }, ensure_ascii=False) + "\n")
 
     report = ROOT / "cursor-bundle" / "memory" / "SELF-REPORT.md"

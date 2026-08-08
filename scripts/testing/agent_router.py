@@ -17,6 +17,29 @@ def load_manifest() -> dict:
     return json.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
+KG_FIRST = [
+    "MCP trustt-kg: kg_doctor (validate + fresh)",
+    "MCP trustt-kg: kg_orient <apiName>",
+    "MCP trustt-kg: kg_flow <apiName>",
+    "MCP trustt-kg: kg_crud <apiName>",
+    "CLI fallback (scripts/CI only): python3 cursor-bundle/kg/bin/kg.py <verb>",
+]
+
+ACCOUNTING = re.compile(
+    r"\b(accounting|accrual|accrued|billing|posting|foreclosure|disburse\w*|repayment|dpi|iad|gl"
+    r"|ledger|emi|installment|prepayment|writeoff|waiver|restructur\w*|rebooking|excess"
+    r"|shg|jlg|indl|lan|loan_\w+|due_details|interest|principal|charge|tax|gst|mandate"
+    r"|iac|dcf|clmt|crr|rps|neft|mft|npa|dpd)\b",
+    re.I,
+)
+
+ACCOUNTING_SCRIPTS = [
+    "bash scripts/bin/accounting-flow-coverage.sh",
+    "read .cursor/gaps-and-risks-digest.md (escalate to SoT when GAP-id flagged)",
+    "MCP trustt-kg: kg_why <apiName>",
+]
+
+
 def classify(text: str) -> dict:
     t = text.lower()
     if (
@@ -32,6 +55,26 @@ def classify(text: str) -> dict:
             "python3 scripts/lib/pr_review_gate.py --report <draft.md> --artifacts <collector dir>",
         ]
         risk = "Medium"
+    elif re.search(
+        r"\b(slow|slower|slowness|latency|throughput|degraded|degradation|performance|perf"
+        r"|bottleneck|hung|hang|timeout|timed out|skew|spike|took)\b"
+        r"|\b\d+\s*(h|hr|hrs|hour|hours|min|mins|minute|minutes)\b",
+        t,
+    ) and re.search(
+        r"\b(prod|production|uat|qa\d*|eod|bod|batch|job|deploy|deployed|release|train|api|query)\b",
+        t,
+    ):
+        kind = "PERF_RCA"
+        skills = ["workspace-router", "architect-thinking", "query-index-perf-gate"]
+        scripts = [
+            "MCP trustt-kg: kg_orient <apiName>",
+            "MCP trustt-kg: kg_flow <apiName>",
+            "MCP trustt-kg: kg_impact <symbol>",
+            "bash scripts/bin/train-delta.sh <repo> <fromTrain> <toTrain>",
+            "psql -f scripts/dpic/sql/helpers/batch_step_metrics.sql  # partition skew",
+            "bash scripts/bin/hot-path-scan.sh --from-pending",
+        ]
+        risk = "High"
     elif re.search(r"\b(sanity|ntest|test|verify|regression|smoke|batch job|eod|dpi)\b", t):
         kind = "TEST"
         skills = ["workspace-router", "autonomous-workspace-ops"]
@@ -41,11 +84,16 @@ def classify(text: str) -> dict:
             "scripts/bin/agent-ops.sh on-failure accounting <apiName>",
         ]
         risk = "Medium"
-    elif re.search(r"\b(rca|root cause|bug|incident|stuck|fail|error|sdcp|gap)\b", t):
+    elif re.search(
+        r"\b(rca|root cause|bug|incident|stuck|fail|error|sdcp|tdpqa|gap"
+        r"|mismatch|not matching|mismatched|wrong|incorrect|discrepanc\w*|differ\w*"
+        r"|unexpected|missing|blank|duplicate|reverted|negative|zero)\b",
+        t,
+    ):
         kind = "BUG/RCA"
         skills = ["workspace-router", "autonomous-workspace-ops"]
         scripts = [
-            "python3 cursor-bundle/kg/bin/kg.py orient <apiName>",
+            "MCP trustt-kg: kg_orient <apiName>",
             "python3 scripts/testing/footprint_builder.py show ftf:<id>",
             "scripts/testing/contract_graph.py list --money",
             "scripts/db-local.sh --canned <id> --param ...",
@@ -78,21 +126,39 @@ def classify(text: str) -> dict:
     elif re.search(r"\b(@query|repository|dao|sql)\b", t):
         kind = "CODE/DAO"
         skills = ["reuse-queries-java-filter"]
-        scripts = ["grep *Repository.java *DAOService.java before new @Query"]
+        scripts = [
+            "MCP trustt-kg: kg_writes <table>",
+            "MCP trustt-kg: kg_reads <table>",
+            "MCP trustt-kg: kg_schema <table>[.<column>]",
+            "reuse existing @Query + Java filter before adding one",
+        ]
         risk = "Medium"
     else:
         kind = "GENERAL"
         skills = ["workspace-router"]
         scripts = [
-            "python3 cursor-bundle/kg/bin/kg.py validate",
-            "python3 cursor-bundle/kg/bin/kg.py orient <apiName>",
+            "MCP trustt-kg: kg_doctor",
+            "MCP trustt-kg: kg_orient <apiName>",
         ]
         risk = "Medium"
 
     api = None
-    m = re.search(r"\b(disburseLoan|loanPrepayment|loanRepayment|dpiAccrual\w+|updateCollectionBatchDetails|glBalanceZeroisation)\b", text, re.I)
+    m = re.search(r"\b(disburseLoan|loanPrepayment|loanRepayment|dpiAccrual\w+|updateCollectionBatchDetails"
+        r"|glBalanceZeroisation|interestAccrual\w+|loanAccountBilling\w*|penalInterestAccrual\w+"
+        r"|loanForeclosure\w*|deathForeclosure\w*|postTransaction|loanAccountClosure"
+        r"|loanWriteoff|loanAdvanceRepayment|generateRepaymentSchedule)\b", text, re.I)
     if m:
         api = m.group(1)
+
+    if kind != "COMMS":
+        merged = list(KG_FIRST)
+        if ACCOUNTING.search(t):
+            skills = skills + ["accounting-knowledge"]
+            merged += ACCOUNTING_SCRIPTS
+        for s in scripts:
+            if s not in merged:
+                merged.append(s)
+        scripts = merged
 
     return {
         "classification": kind,
