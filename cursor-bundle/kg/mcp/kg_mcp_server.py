@@ -23,7 +23,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.9.1"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.9.2"}
 PROTOCOL = "2024-11-05"
 _SERVER_FILE = Path(__file__).resolve()
 # Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
@@ -36,12 +36,14 @@ TOOL_TIMEOUT_S: dict[str, float] = {
     "kg_watermark": 2.0,
     "kg_search": 2.0,
     "kg_concept": 2.0,
+    "kg_schema": 8.0,  # schema_oracle + column_binding (live DB / Java)
     "kg_flow": 2.0,
     "kg_crud": 2.0,
     "kg_writes": 2.0,
     "kg_reads": 2.0,
     "kg_cases": 2.0,
     "kg_node": 2.0,
+    "kg_error": 8.0,  # was missing → default 2s; Redis template path can exceed
     "kg_align": 3.0,
     "kg_orient": 5.0,
     "kg_why": 5.0,
@@ -206,6 +208,23 @@ TOOLS = {
         ),
         "args": ["concept"],
         "schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    },
+    "kg_schema": {
+        "description": (
+            "Resolve a table or table.column before asserts/SQL/docs (40-knowledge-upkeep). "
+            "Structure + code readers/writers + train-local column flags. Live oracle — not KG-index-only."
+        ),
+        "args": ["schema"],
+        "schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "table or table.column — e.g. loan_account or loan_account.loan_status",
+                },
+            },
+            "required": ["query"],
+        },
     },
     "kg_cases": {
         "description": "Shipped-fix precedents (CHANGELOG cases) for a flow/table.",

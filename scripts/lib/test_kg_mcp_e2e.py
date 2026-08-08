@@ -55,7 +55,7 @@ class McpE2ETests(unittest.TestCase):
         # and could not answer "where is this thrown". It now carries 1.8k source-derived
         # codes with file:line, branch and the EC keys the template needs, so it is core.
         for core in ("kg_orient", "kg_flow", "kg_why", "kg_impact", "kg_writes",
-                     "kg_doctor", "kg_error"):
+                     "kg_doctor", "kg_error", "kg_schema", "kg_concept"):
             self.assertIn(core, names)
         for gone in ("kg_validate", "kg_fresh"):
             self.assertNotIn(gone, names)
@@ -111,6 +111,23 @@ class McpE2ETests(unittest.TestCase):
         text, err, _ = self._call("kg_search", {"query": "interestAccrualCalculation"})
         self.assertFalse(err)
         self.assertIn("interestAccrualCalculation", text)
+
+    def test_06b_concept(self):
+        text, err, _ = self._call("kg_concept", {"query": "loan_account"}, max_ms=5000)
+        self.assertFalse(err)
+        self.assertIn("loan_account", text)
+        self.assertTrue(
+            "entity" in text.lower() or "purpose" in text.lower() or "maps_to" in text,
+            text[:300],
+        )
+
+    def test_06c_schema(self):
+        text, err, _ = self._call(
+            "kg_schema", {"query": "loan_account.loan_status"}, max_ms=15_000
+        )
+        self.assertFalse(err)
+        self.assertIn("loan_status", text)
+        self.assertNotIn("NOT A COLUMN", text)
 
     def test_07_flow(self):
         text, err, _ = self._call("kg_flow", {"query": "interestAccrualCalculation"})

@@ -22,6 +22,7 @@ Commands:
   fixed-elsewhere <query> [--repo R] [--base B]
                                   verified higher-branch fixes + file-touch candidates (read-only)
   table <name>                   a table: owning repo + entity + cases that touched it + docs
+  schema <table>[.<column>]      structure + code readers/writers + train-local column flags (MCP: kg_schema)
   concept <name>                 DOMAIN SEMANTICS / FRAMEWORK bone (entity|txn_type|gl_mech|framework|…)
   error <code>                   cases that hit an error code (who hit it, fix SHA)
   why [<request/processor/table/symptom>]   FAILURE-MODE catalog — the silent decision-points where bugs hide (wrong/zero/null/empty/missing/reverted). `kg why <request>` = the whole flow's silent surface. The 'pinpoint any issue' entrypoint.

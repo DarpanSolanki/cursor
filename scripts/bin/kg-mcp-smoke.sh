@@ -41,6 +41,9 @@ tools = [
     ("kg_crud", {"query": "getLoanForeclosureDetails"}),
     ("kg_writes", {"query": "loan_account_part_prepayment_details"}),
     ("kg_reads", {"query": "loan_account"}),
+    ("kg_error", {"query": "134207", "no_template": True}),
+    ("kg_schema", {"query": "loan_account.loan_status"}),
+    ("kg_concept", {"query": "loan_account"}),
     ("kg_search", {"query": "134497"}),
     ("kg_node", {"query": "request:trustt-platform-accounting/disburseLoan"}),
     ("kg_fixed_elsewhere", {
@@ -104,23 +107,27 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.9.1":
-    print(f"WARN: expected server version 1.9.1 got {si.get('version')}")
+if si.get("version") != "1.9.2":
+    print(f"WARN: expected server version 1.9.2 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")
 expected_names = sorted(TOOLS_NAMES := [n for n, _ in tools] + [align_fail[0]])
-# Server advertises smoke-probed tools plus kg_concept/kg_enhance (lookup extras).
-if len(listed) < 19 or len(listed) > 22:
-    print(f"FAIL: expected 19..22 tools, got {len(listed)}: {listed}")
+# Server advertises smoke-probed tools plus kg_enhance (lookup extras).
+if len(listed) < 20 or len(listed) > 24:
+    print(f"FAIL: expected 20..24 tools, got {len(listed)}: {listed}")
     sys.exit(3)
 for required in ("kg_doctor", "kg_align", "ship_plan", "workspace_status"):
     if required not in listed:
         print(f"FAIL: {required} missing from tools/list")
         sys.exit(3)
-for gone in ("kg_validate", "kg_fresh", "kg_error"):
+for gone in ("kg_validate", "kg_fresh"):
     if gone in listed:
-        print(f"FAIL: {gone} should be removed (folded into kg_doctor/kg_search)")
+        print(f"FAIL: {gone} should be removed (folded into kg_doctor)")
+        sys.exit(3)
+for required_extra in ("kg_error", "kg_schema", "kg_concept"):
+    if required_extra not in listed:
+        print(f"FAIL: {required_extra} missing from tools/list (core LOOKUP)")
         sys.exit(3)
 if "kg_align" not in listed:
     print("FAIL: kg_align missing from tools/list")
@@ -164,6 +171,9 @@ needles = {
     "kg_crud": ("FOOTPRINT", "prepayment"),
     "kg_writes": ("WRITERS",),
     "kg_reads": ("READERS",),
+    "kg_error": ("throw site", "134207", "NOT_INDEXED"),
+    "kg_schema": ("loan_status", "loan_account"),
+    "kg_concept": ("loan_account", "entity"),
     "kg_doctor": ("nodes/edges", "OK:", "KG FRESH", "PROVISIONAL", "STALE"),
     "kg_node": ("OUT", "IN"),
     "kg_fixed_elsewhere": ("FIXED-ELSEWHERE", "REUSE_", "FILE_TOUCH", "cache="),

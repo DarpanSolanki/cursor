@@ -1,3 +1,10 @@
+## 2026-08-08 | workspace | kg-mcp | L1 expose kg_schema + error timeout + smoke/e2e
+
+- MCP `kg_schema` wraps CLI `kg schema` (agent_router / knowledge-upkeep were routing to a
+  missing tool). `TOOL_TIMEOUT_S`: `kg_error=8`, `kg_schema=8`.
+- `kg-mcp-smoke.sh` requires `kg_error`/`kg_schema`/`kg_concept` (no longer forbids kg_error).
+- e2e: `test_06b_concept`, `test_06c_schema`; core list includes schema+concept.
+
 ## 2026-08-08 | workspace | kg | L1 resilience: atomic build + fail-closed fresh + anti-stampede
 
 - `build_db.full_build` writes `kg.db.building` then `os.replace` — never `os.remove` live DB first
