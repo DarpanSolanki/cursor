@@ -19,9 +19,11 @@ def load_manifest() -> dict:
 
 KG_FIRST = [
     "MCP trustt-kg: kg_doctor (validate + fresh)",
+    "MCP trustt-kg: kg_error <code> FIRST when any error code is named (~160 tokens)",
     "MCP trustt-kg: kg_orient <apiName>",
     "MCP trustt-kg: kg_flow <apiName>",
     "MCP trustt-kg: kg_crud <apiName>",
+    "MCP trustt-kg: kg_schema <table>[.<column>] before column asserts",
     "CLI fallback (scripts/CI only): python3 cursor-bundle/kg/bin/kg.py <verb>",
 ]
 

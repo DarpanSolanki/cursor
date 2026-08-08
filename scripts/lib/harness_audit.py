@@ -34,6 +34,7 @@ WIRING_HOSTS = (
     "scripts/testing/registry.json",
     "scripts/lib/impact_tests.py",
     "scripts/testing/workspace_autopilot.py",
+    "scripts/lib/workspace_surface_gate.py",
 )
 
 ORPHAN_EXEMPT_PREFIX = ("test_",)
@@ -291,6 +292,17 @@ def check_path_leak() -> dict:
     }
 
 
+def check_surface() -> dict:
+    """Agent-surface maturity: knowledge-answer live, KG_FIRST, no phantom settings hooks."""
+    lib = str(ROOT / "scripts" / "lib")
+    if lib not in sys.path:
+        sys.path.insert(0, lib)
+    from workspace_surface_gate import _errors
+
+    errs = _errors()
+    return {"name": "surface", "ok": not errs, "errors": errs}
+
+
 CHECKS = {
     "tests": check_tests,
     "hooks": check_hooks,
@@ -299,6 +311,7 @@ CHECKS = {
     "wiring": check_wiring,
     "orphans": check_orphans,
     "path_leak": check_path_leak,
+    "surface": check_surface,
 }
 
 
@@ -324,9 +337,9 @@ def main() -> int:
             print("no valid check selected", file=sys.stderr)
             return 2
     elif args.tests_fast:
-        names = ["hooks", "registry", "wiring", "orphans", "path_leak", "tests"]
+        names = ["hooks", "registry", "wiring", "orphans", "path_leak", "surface", "tests"]
     elif args.quick:
-        names = ["hooks", "registry", "wiring", "orphans", "path_leak"]
+        names = ["hooks", "registry", "wiring", "orphans", "path_leak", "surface"]
 
     results = [CHECKS[n]() for n in names]
     hard_fail = any(not r["ok"] for r in results)

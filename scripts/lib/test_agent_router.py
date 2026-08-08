@@ -54,6 +54,14 @@ class RouterKgFirstTest(unittest.TestCase):
             self.assertTrue(scripts, text)
             self.assertIn("kg_doctor", scripts[0], text)
 
+    def test_kg_first_names_error_and_schema(self):
+        scripts = " ".join(classify("disburseLoan stuck error 134207")["scripts"])
+        self.assertIn("kg_error", scripts)
+        self.assertIn("kg_schema", scripts)
+        # doctor stays first; error is early in the spine
+        spine = classify("disburseLoan stuck error 134207")["scripts"]
+        self.assertLess(spine.index([s for s in spine if "kg_error" in s][0]), 3)
+
     def test_dao_route_does_not_prescribe_grepping_repositories(self):
         scripts = " ".join(classify("add a new @Query on a repository")["scripts"])
         self.assertNotIn("grep *Repository", scripts)

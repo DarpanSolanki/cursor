@@ -8,6 +8,7 @@ FAIL=0
 
 pass() { echo "  OK  $1"; }
 fail() { echo "  FAIL $1 — $2"; FAIL=$((FAIL + 1)); }
+warn() { echo "  WARN $1 — $2"; }
 
 echo "=== cursor-bundle inventory ==="
 for f in cursor-bundle/kg/data/kg.db cursor-bundle/memory/MEMORY.md cursor-bundle/kg/bin/build.sh \
@@ -110,6 +111,15 @@ switch_out=$(bash scripts/bin/kg-switch.sh --quiet 2>&1) && pass "kg-switch run"
 # Legacy `kg cache` removed — watermark proves branch-set awareness (header-aware)
 $KG --no-drift-check watermark 2>/dev/null | grep -qE "branch|sha|KG|repo" && pass "kg watermark (cache stand-in)" || fail "kg watermark (cache stand-in)" ""
 $KG --no-drift-check fresh 2>/dev/null | grep -qE "FRESH|STALE|KG" && pass "kg fresh (prune stand-in)" || fail "kg fresh (prune stand-in)" ""
+
+echo ""
+echo "=== doc command gate (wired; warn-only until dead refs cleared) ==="
+if python3 scripts/lib/doc_command_gate.py >/tmp/doc_command_gate.out 2>&1; then
+  pass "doc_command_gate"
+else
+  echo "$(head -5 /tmp/doc_command_gate.out)"
+  warn "doc_command_gate has dead refs (wired; not blocking smoke — clear via doc_command_gate.py)"
+fi
 
 echo ""
 echo "=== Registry validate ==="

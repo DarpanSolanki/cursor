@@ -78,7 +78,8 @@ t0 = time.time()
 p = subprocess.run([sys.executable, str(srv)], input=stdin, text=True,
                    capture_output=True, timeout=120, cwd=${ROOT@Q},
                    env={**dict(**{k: v for k, v in __import__("os").environ.items()}),
-                        "KG_NO_AUTO_REBUILD": "1", "PYTHONUNBUFFERED": "1"})
+                        "KG_NO_AUTO_REBUILD": "1", "PYTHONUNBUFFERED": "1",
+                        "KG_MCP_NO_HOT_REEXEC": "1"})
 elapsed = time.time() - t0
 print(f"elapsed={elapsed:.1f}s exit={p.returncode}")
 
@@ -107,8 +108,8 @@ by_id = {o.get("id"): o for o in parsed if o.get("id") is not None}
 init = by_id.get(1) or {}
 si = (init.get("result") or {}).get("serverInfo") or {}
 print(f"server={si.get('name')} version={si.get('version')}")
-if si.get("version") != "1.9.2":
-    print(f"WARN: expected server version 1.9.2 got {si.get('version')}")
+if si.get("version") != "1.9.3":
+    print(f"WARN: expected server version 1.9.3 got {si.get('version')}")
 
 listed = [t["name"] for t in ((by_id.get(2) or {}).get("result") or {}).get("tools") or []]
 print(f"tools/list={len(listed)}")

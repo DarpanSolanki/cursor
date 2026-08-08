@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 """Answer a Grep/Glob/Read from knowledge the workspace already has, before it runs.
 
-The grep-leak hook only ever saw shell `grep`. PreToolUse in settings.json matched Bash
-only, so agent-native Grep, Glob and Read — the tools actually used most — were unhooked
-entirely. That is how TDPQA-241 rediscovered the notification-message Redis cache by
-reading platform-lib line by line while redis-key-registry.md:101 and GAP-058 sat unread.
+The grep-leak hook only ever saw shell `grep`. Agent-native Grep/Glob/Read were
+unhooked until wired on Cursor `preToolUse` (hooks.json) — that is how TDPQA-241
+rediscovered Redis cache keys while redis-key-registry.md sat unread.
 
 Fires when the target is service source, or when the search term itself resolves to a
 code symbol in the KG — a class name typed with no path is the common case and the first
 version stayed silent on it.
 
-Emits hookSpecificOutput.additionalContext: plain stdout from a PreToolUse hook reaches
-the transcript, not the model, so an answer printed that way is an answer nobody reads.
-Never blocks, never denies, silent when it has nothing to add.
+When `kg error` / `kg schema` returns a body for Grep/Glob, this hook **denies** the
+tool call and puts the answer in `agent_message` (inject-only was ignored; agents kept
+grepping ~50k tokens). Read stays allow+context. Silent when nothing to add.
 
-2026-08-08: when an error code or setter is detected, inject the *actual* `kg error` /
-`kg schema` answer (capped) — a nudge alone was ignored and agents kept grepping
-(~50k tokens). MCP tool names are stated so Cursor routes to trustt-kg next.
+Emits hookSpecificOutput.additionalContext on allow paths: plain stdout alone can miss
+the model context channel depending on host.
 """
 from __future__ import annotations
 
@@ -120,6 +118,35 @@ def _index():
     return mod
 
 
+def _emit_deny(ctx: str) -> None:
+    """Block Grep/Glob when KG already answered — agent_message carries the answer."""
+    print(
+        json.dumps(
+            {
+                "permission": "deny",
+                "agent_message": ctx,
+                "user_message": (
+                    "Blocked Grep/Glob — KG already answered (kg_error/kg_schema). "
+                    "Use MCP trustt-kg; do not re-grep the same code."
+                ),
+            }
+        )
+    )
+
+
+def _emit_context(ctx: str) -> None:
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "additionalContext": ctx,
+                }
+            }
+        )
+    )
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -157,10 +184,11 @@ def main() -> int:
         )
         if inline:
             ctx += "\n\n" + inline
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "additionalContext": ctx,
-        }}))
+        # Deny only when we actually have a precomputed body and the tool is a search.
+        if inline and tool in ("Grep", "Glob"):
+            _emit_deny(ctx)
+            return 0
+        _emit_context(ctx)
         return 0
 
     try:
@@ -175,25 +203,31 @@ def main() -> int:
     if not hits:
         if service_scope:
             try:
-                with open(os.path.join(ROOT, ".cursor", "knowledge-miss.jsonl"), "a",
-                          encoding="utf-8") as fh:
-                    fh.write(json.dumps({
-                        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "tool": tool, "probe": probe[:200],
-                    }) + "\n")
+                with open(
+                    os.path.join(ROOT, ".cursor", "knowledge-miss.jsonl"),
+                    "a",
+                    encoding="utf-8",
+                ) as fh:
+                    fh.write(
+                        json.dumps(
+                            {
+                                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                                "tool": tool,
+                                "probe": probe[:200],
+                            }
+                        )
+                        + "\n"
+                    )
             except OSError:
                 pass
         return 0
 
     body = "\n".join(f"  - {term}: {', '.join(refs)}" for term, refs in hits)
-    print(json.dumps({"hookSpecificOutput": {
-        "hookEventName": "PreToolUse",
-        "additionalContext": (
-            "KNOWN ALREADY — prefer MCP trustt-kg / these docs before searching source:\n"
-            + body +
-            "\n  (index: scripts/lib/knowledge_index.py · silence means nothing indexed)"
-        ),
-    }}))
+    _emit_context(
+        "KNOWN ALREADY — prefer MCP trustt-kg / these docs before searching source:\n"
+        + body
+        + "\n  (index: scripts/lib/knowledge_index.py · silence means nothing indexed)"
+    )
     return 0
 
 

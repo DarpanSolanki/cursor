@@ -23,7 +23,7 @@ import kg as kg_mod  # noqa: E402
 
 MAX_CHARS = int(os.environ.get("KG_MCP_MAX_CHARS", "24000"))
 TRUNC_MARK = "\n\n… [truncated — refine query / use brief=true / KG_MCP_MAX_CHARS; showed {shown}/{total} chars] …\n"
-SERVER_INFO = {"name": "trustt-kg", "version": "1.9.2"}
+SERVER_INFO = {"name": "trustt-kg", "version": "1.9.3"}
 PROTOCOL = "2024-11-05"
 _SERVER_FILE = Path(__file__).resolve()
 # Hot-reload without IDE restart: re-exec when this server (or kg.py) changes on disk.
@@ -393,12 +393,30 @@ def _capture_boot_mtimes() -> None:
     _BOOT_SOURCE_MTIMES = {str(p): _file_mtime_ns(p) for p in _tracked_source_paths()}
 
 
+def _stdin_has_pending() -> bool:
+    """True when more JSON-RPC lines are already buffered (bulk smoke / piped batch)."""
+    try:
+        peek = getattr(sys.stdin, "peek", None)
+        if callable(peek):
+            return bool(peek(1))
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
 def _maybe_hot_reexec() -> None:
     """If MCP server / kg CLI sources changed, replace this process in-place.
 
     Cursor keeps the same stdio pipes — no IDE restart. Next tools/list + calls
     see the new SERVER_INFO version and tool schemas.
+
+    Never reexec while more stdin lines are buffered: Python may have read the
+    whole pipe into the TextIO buffer, and os.execv inherits an fd already at
+    EOF — the child would drop every remaining tools/call (kg-mcp-smoke saw
+    only kg_doctor succeed).
     """
+    if os.environ.get("KG_MCP_NO_HOT_REEXEC") == "1":
+        return
     if not _BOOT_SOURCE_MTIMES:
         _capture_boot_mtimes()
         return
@@ -407,6 +425,8 @@ def _maybe_hot_reexec() -> None:
         now = _file_mtime_ns(path)
         prev = _BOOT_SOURCE_MTIMES.get(key, 0)
         if now != prev:
+            if _stdin_has_pending():
+                return
             # Re-open sqlite handles would be stale; exec clears process state.
             os.execv(sys.executable, [sys.executable, str(_SERVER_FILE), *sys.argv[1:]])
 

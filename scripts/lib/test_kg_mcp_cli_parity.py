@@ -34,6 +34,10 @@ CLI_ONLY = {
     "path": "raw traversal; kg_impact covers blast radius",
     "sql": "escape hatch for ad-hoc KG SQL, deliberately not exposed",
     "stale": "diagnostic; kg_doctor reports staleness",
+    "deps": "service call graph; kg_node / orient cover agent lookups",
+    "docs": "doc mentions; kg_search / kg_concept cover agent lookups",
+    "table": "folded into kg_schema + kg_writes for agent use",
+    "deletes": "reverse delete map; kg_writes covers money write paths",
 }
 
 
@@ -44,8 +48,21 @@ def mcp_tools() -> set[str]:
 
 
 def cli_commands() -> set[str]:
+    """Parse kg.py help — commands are `  name …` (not always double-spaced)."""
     out = subprocess.run([sys.executable, str(CLI)], capture_output=True, text=True).stdout
-    return set(re.findall(r"^\s{2}([a-z][a-z-]+)\s{2,}", out, re.M))
+    cmds: set[str] = set()
+    for line in out.splitlines():
+        m = re.match(
+            r"^  ([a-z][a-z0-9_-]*(?:\s*\|\s*[a-z][a-z0-9_-]*)*)\b",
+            line,
+        )
+        if not m:
+            continue
+        for part in re.split(r"\s*\|\s*", m.group(1)):
+            part = part.strip()
+            if part:
+                cmds.add(part)
+    return cmds
 
 
 class KgMcpCliParityTest(unittest.TestCase):

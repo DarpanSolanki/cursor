@@ -1,3 +1,12 @@
+## 2026-08-08 | workspace | harness | agent-surface maturity closure (single plan)
+
+- Wire `knowledge-answer.py` on Cursor `preToolUse` (Grep|Glob|Read); hard-deny Grep/Glob when
+  inline `kg_error`/`kg_schema` body exists; clear phantom Claude hooks from `.cursor/settings.json`.
+- Align `agent_router` KG_FIRST with Claude (`kg_error` FIRST + `kg_schema`); promote
+  `workspace_surface_gate` into `harness_audit --quick`; wire `doc_command_gate` (warn-only in smoke).
+- Fix MCP bulk-stdio: defer hot-reexec while stdin pending + `KG_MCP_NO_HOT_REEXEC` in smoke
+  (server 1.9.3). Strengthen CLI↔MCP help parser.
+
 ## 2026-08-08 | workspace | hooks | knowledge-answer shared TARGETED_BUDGET_S=6s
 
 - Inline `_run_kg` calls in `_targeted` share one 6s wall deadline (was up to 4×6s=24s if

@@ -37,6 +37,13 @@
         "timeout": 15
       }
     ],
+    "preToolUse": [
+      {
+        "command": "python3 scripts/bin/with-budget.py --budget 20 --label hook:knowledge-answer -- python3 .cursor/hooks/knowledge-answer.py",
+        "matcher": "Grep|Glob|Read",
+        "timeout": 20
+      }
+    ],
     "beforeShellExecution": [
       {
         "command": "python3 scripts/bin/with-budget.py --budget 15 --label hook:pre-commit-kg-reminder -- bash .cursor/hooks/pre-commit-kg-reminder.sh",

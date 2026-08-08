@@ -216,10 +216,12 @@ class KgFirstNudgeTest(unittest.TestCase):
     def test_error_code_grep_is_answered_with_kg_error(self) -> None:
         out = self._hook('{"tool_name":"Grep","tool_input":{"pattern":"134291"}}')
         self.assertIn("kg_error 134291", out)
+        self.assertIn('"permission": "deny"', out)
 
     def test_column_writer_grep_is_answered_with_kg_schema(self) -> None:
         out = self._hook('{"tool_name":"Grep","tool_input":{"pattern":"setLoanStatus"}}')
         self.assertIn("kg_schema loan_account.loan_status", out)
+        self.assertIn('"permission": "deny"', out)
 
     def test_unrelated_grep_stays_silent(self) -> None:
         self.assertEqual("", self._hook(
