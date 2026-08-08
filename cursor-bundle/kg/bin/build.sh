@@ -12,9 +12,12 @@ DATA="$BUNDLE/kg/data"
 cd "$ROOT"
 mkdir -p "$DATA"
 
-exec 9>"$DATA/.build.lock"
-if command -v flock >/dev/null 2>&1; then
-  flock -w 1800 9 || { echo "build: could not acquire lock (another build running too long)"; exit 1; }
+# Nested call from kg-switch.sh already holds .build.lock — do not re-flock (deadlocks).
+if [[ "${KG_BUILD_LOCK_HELD:-0}" != "1" ]]; then
+  exec 9>"$DATA/.build.lock"
+  if command -v flock >/dev/null 2>&1; then
+    flock -w 1800 9 || { echo "build: could not acquire lock (another build running too long)"; exit 1; }
+  fi
 fi
 
 REPOS=$(for d in novopay-* trustt-*; do [ -d "$d/.git" ] && printf '%s ' "$d"; done)

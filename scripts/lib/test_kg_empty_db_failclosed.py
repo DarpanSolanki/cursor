@@ -81,6 +81,14 @@ class KgEmptyDbFailClosedTest(unittest.TestCase):
             holder.terminate()
             holder.wait(timeout=5)
 
+    def test_build_sh_skips_flock_when_parent_holds_lock(self):
+        """kg-switch → build.sh must not re-flock .build.lock (deadlock)."""
+        build = ROOT / "cursor-bundle/kg/bin/build.sh"
+        src = build.read_text(encoding="utf-8")
+        self.assertIn('KG_BUILD_LOCK_HELD', src)
+        switch = (ROOT / "scripts/bin/kg-switch.sh").read_text(encoding="utf-8")
+        self.assertIn("KG_BUILD_LOCK_HELD=1", switch)
+
 
 if __name__ == "__main__":
     unittest.main()

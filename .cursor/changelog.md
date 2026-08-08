@@ -1,3 +1,10 @@
+## 2026-08-08 | workspace | kg | clear orch STALE + fix kg-switch→build deadlock
+
+- Force-rebuild KG so doctor no longer flags `loans_orc.xml` / `group_mfi_orc.xml` newer than
+  `kg.db` (watermark was FRESH but source-mtime STALE).
+- Nested lock fix: `kg-switch` sets `KG_BUILD_LOCK_HELD=1`; `build.sh` skips re-flock (parent
+  holding `.build.lock` then calling build was a 30min deadlock on `--force`).
+
 ## 2026-08-08 | workspace | kg-mcp | L1 expose kg_schema + error timeout + smoke/e2e
 
 - MCP `kg_schema` wraps CLI `kg schema` (agent_router / knowledge-upkeep were routing to a

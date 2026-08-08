@@ -126,6 +126,8 @@ fi
 log "⟳ KG cache miss (key $KEY) — building for current branch-set…"
 _build_args=()
 [[ "$FORCE" == 1 ]] && _build_args+=(--force)
+# Parent already holds .build.lock — tell build.sh not to re-acquire (would deadlock).
+export KG_BUILD_LOCK_HELD=1
 if [[ "$QUIET" == 1 ]]; then
   bash "$BIN/build.sh" "${_build_args[@]}" >>"$LOG" 2>&1
 else
