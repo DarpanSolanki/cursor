@@ -13,12 +13,17 @@ version stayed silent on it.
 Emits hookSpecificOutput.additionalContext: plain stdout from a PreToolUse hook reaches
 the transcript, not the model, so an answer printed that way is an answer nobody reads.
 Never blocks, never denies, silent when it has nothing to add.
+
+2026-08-08: when an error code or setter is detected, inject the *actual* `kg error` /
+`kg schema` answer (capped) — a nudge alone was ignored and agents kept grepping
+(~50k tokens). MCP tool names are stated so Cursor routes to trustt-kg next.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -27,33 +32,47 @@ ROOT = os.environ.get("CURSOR_PROJECT_DIR") or os.path.dirname(
 )
 SERVICE_HINTS = ("trustt-platform-", "novopay-platform-", "novopay-mfi-")
 SOURCE_HINTS = ("/src/main/", "/src/test/", "_orc.xml", "/deploy/application/")
+KG_PY = os.path.join(ROOT, "cursor-bundle", "kg", "bin", "kg.py")
 
 _ERROR_CODE = __import__("re").compile(r"\b(1[0-9]{5}|[3-9][0-9]{4})\b")
 _SETTER = __import__("re").compile(r"\bset([A-Z][A-Za-z0-9]+)\s*\(?")
 
 
-def _targeted(probe: str) -> list[str]:
-    """The two searches that cost the most, answered before they run.
+def _run_kg(*argv: str, timeout: float = 6.0) -> str:
+    env = dict(os.environ)
+    env.setdefault("KG_NO_AUTO_REBUILD", "1")
+    try:
+        p = subprocess.run(
+            [sys.executable, KG_PY, *argv],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    out = (p.stdout or p.stderr or "").strip()
+    if len(out) > 1800:
+        out = out[:1800] + "\n… (truncated — call MCP trustt-kg for full answer)"
+    return out
 
-    In one session six error codes were grepped and `kg_error` — the documented first hop
-    at ~213 tokens — was never called; and `setLoanStatus` was grepped for its writers when
-    `kg schema loan_account.loan_status` lists every reader and writer outright. Both are
-    mechanically detectable at the moment of the mistake, which is the only moment a nudge
-    changes anything.
 
-    The column suggestion resolves through the schema bindings rather than guessing, so it
-    names the real table.column or says nothing.
-    """
+def _targeted(probe: str) -> tuple[list[str], str]:
+    """Return (hint lines, optional inline KG body)."""
     out: list[str] = []
-    for code in list(dict.fromkeys(_ERROR_CODE.findall(probe)))[:3]:
+    bodies: list[str] = []
+    for code in list(dict.fromkeys(_ERROR_CODE.findall(probe)))[:2]:
         out.append(
-            f"kg_error {code}  — every throw site with file:line, the ExecutionContext keys "
-            "the message needs, the runtime template, and prior shipped fixes (~213 tokens, "
-            "cheaper than one grep)")
+            f"MCP trustt-kg → kg_error query={code}  (do NOT grep this code — ~160 tokens)"
+        )
+        ans = _run_kg("error", code, "--no-template")
+        if ans:
+            bodies.append(f"=== kg_error {code} (precomputed) ===\n{ans}")
     fields = list(dict.fromkeys(_SETTER.findall(probe)))[:2]
     if fields:
         try:
-            import json as _json
             binding_path = os.path.join(ROOT, "cursor-bundle", "schema", "bindings.jsonl")
             wanted = {f[0].lower() + f[1:] for f in fields}
             seen: set[str] = set()
@@ -62,7 +81,7 @@ def _targeted(probe: str) -> list[str]:
                     if not line.strip():
                         continue
                     try:
-                        row = _json.loads(line)
+                        row = json.loads(line)
                     except ValueError:
                         continue
                     if row.get("field") in wanted:
@@ -70,13 +89,17 @@ def _targeted(probe: str) -> list[str]:
                         if key not in seen:
                             seen.add(key)
                             out.append(
-                                f"kg_schema {key}  — lists every reader AND writer of that "
-                                "column, plus the error codes raised when its check fails")
-                    if len(seen) >= 3:
+                                f"MCP trustt-kg → kg_schema query={key}  "
+                                "(readers+writers+gate codes — do NOT grep setX)"
+                            )
+                            ans = _run_kg("schema", key)
+                            if ans:
+                                bodies.append(f"=== kg_schema {key} (precomputed) ===\n{ans}")
+                    if len(seen) >= 2:
                         break
         except OSError:
             pass
-    return out
+    return out, "\n\n".join(bodies)
 
 
 def _index():
@@ -115,14 +138,18 @@ def main() -> int:
     if not probe:
         return 0
 
-    targeted = _targeted(probe)
+    targeted, inline = _targeted(probe)
     if targeted:
+        ctx = (
+            "STOP — use MCP trustt-kg instead of this Grep/Read. "
+            "The answer is cheaper and more complete via the tools below.\n"
+            + "\n".join(f"  - {line}" for line in targeted)
+        )
+        if inline:
+            ctx += "\n\n" + inline
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "additionalContext": (
-                "ASK THE KG FIRST — this search has a cheaper, more complete answer:\n"
-                + "\n".join(f"  - {line}" for line in targeted)
-            ),
+            "additionalContext": ctx,
         }}))
         return 0
 
@@ -132,15 +159,10 @@ def main() -> int:
     except Exception:
         return 0
 
-    # Outside a service tree, only a hit that resolves to real code is worth interrupting
-    # for — a doc-term match on a doc search is noise.
     if not service_scope:
         hits = [(t, [r for r in refs if r.startswith("kg ")]) for t, refs in hits]
         hits = [(t, refs) for t, refs in hits if refs]
     if not hits:
-        # Silence is the signal. Reading service source the workspace has no note on is
-        # exactly the moment knowledge is being re-derived; nothing recorded it before,
-        # so the same file got read line by line again next month.
         if service_scope:
             try:
                 with open(os.path.join(ROOT, ".cursor", "knowledge-miss.jsonl"), "a",
@@ -157,8 +179,8 @@ def main() -> int:
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "additionalContext": (
-            "KNOWN ALREADY — the workspace documents these terms. Read/run these "
-            "before searching source:\n" + body +
+            "KNOWN ALREADY — prefer MCP trustt-kg / these docs before searching source:\n"
+            + body +
             "\n  (index: scripts/lib/knowledge_index.py · silence means nothing indexed)"
         ),
     }}))

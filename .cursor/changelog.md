@@ -1,3 +1,9 @@
+## 2026-08-08 | workspace | hooks | knowledge-answer inline kg_error/kg_schema (parity)
+
+- Back-ported Claude’s `_run_kg` injection: error-code / setter Grep|Read now gets
+  precomputed `kg error` / `kg schema` body + MCP tool names, not nudge-only text.
+- Caps stay `[:2]` codes / setters; paths use `cursor-bundle` + `CURSOR_PROJECT_DIR`.
+
 ## 2026-08-08 | workspace | kg | clear orch STALE + fix kg-switch→build deadlock
 
 - Force-rebuild KG so doctor no longer flags `loans_orc.xml` / `group_mfi_orc.xml` newer than
